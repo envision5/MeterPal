@@ -19,7 +19,7 @@ version: "3.9"
 services:
   postgres-autumn:
     image: postgres:16-alpine
-    container_name: ai-billing-postgres-autumn
+    container_name: meterpal-postgres-billing
     restart: unless-stopped
     environment:
       POSTGRES_USER: autumn
@@ -28,7 +28,7 @@ services:
     ports:
       - "5433:5432"
     volumes:
-      - autumn_pg:/var/lib/postgresql/data
+      - meterpal_billing_pg:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U autumn -d autumn"]
       interval: 5s
@@ -37,7 +37,7 @@ services:
 
   postgres-litellm:
     image: postgres:16-alpine
-    container_name: ai-billing-postgres-litellm
+    container_name: meterpal-postgres-gateway
     restart: unless-stopped
     environment:
       POSTGRES_USER: litellm
@@ -46,7 +46,7 @@ services:
     ports:
       - "5434:5432"
     volumes:
-      - litellm_pg:/var/lib/postgresql/data
+      - meterpal_gateway_pg:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U litellm -d litellm"]
       interval: 5s
@@ -55,26 +55,26 @@ services:
 
   redis-autumn:
     image: redis:7-alpine
-    container_name: ai-billing-redis-autumn
+    container_name: meterpal-redis-billing
     restart: unless-stopped
     command: redis-server --appendonly yes --requirepass autumn_dev_only
     ports:
       - "6380:6379"
     volumes:
-      - autumn_redis:/data
+      - meterpal_billing_redis:/data
 
   redis-litellm:
     image: redis:7-alpine
-    container_name: ai-billing-redis-litellm
+    container_name: meterpal-redis-gateway
     restart: unless-stopped
     command: redis-server --appendonly yes --requirepass litellm_dev_only
     ports:
       - "6381:6379"
     volumes:
-      - litellm_redis:/data
+      - meterpal_gateway_redis:/data
 
 volumes:
-  autumn_pg:
-  litellm_pg:
-  autumn_redis:
-  litellm_redis:
+  meterpal_billing_pg:
+  meterpal_gateway_pg:
+  meterpal_billing_redis:
+  meterpal_gateway_redis:

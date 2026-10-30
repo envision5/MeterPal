@@ -27,10 +27,10 @@ from pathlib import Path
 import httpx
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "litellm"))
+sys.path.insert(0, str(ROOT / "gateway"))
 
 AUTUMN = "http://localhost:8080"
-PG_CONTAINER = "ai-billing-postgres-autumn"
+PG_CONTAINER = "meterpal-postgres-billing"
 PG_USER, PG_DB = "autumn", "autumn"
 
 ORG_ID, ORG_SLUG = "org_demo", "demo"

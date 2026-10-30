@@ -1,19 +1,21 @@
 """
-litellm/integrations/autumn_billing.py
+litellm/integrations/meterpal_billing.py
 
-Production bridge between LiteLLM proxy and Autumn billing.
-Mirrors litellm/proxy/hooks/proxy_track_cost_callback.py.
+MeterPal usage-billing bridge between the LiteLLM proxy and the MeterPal
+billing server (a PayPal-native fork of Autumn).  Mirrors
+litellm/proxy/hooks/proxy_track_cost_callback.py.
 
 Responsibilities:
-  1. async_pre_call_hook     -> Autumn POST /check  (admission; lock=true if AUTUMN_USE_LOCK)
-  2. async_log_success_event -> Autumn POST /balances.finalize (commit) + /track_tokens (per-token debit)
-  3. async_log_failure_event -> Autumn POST /balances.finalize (release) + /track_tokens (failure record)
+  1. async_pre_call_hook     -> billing POST /check  (admission; lock=true if PAB_USE_LOCK)
+  2. async_log_success_event -> billing POST /balances.finalize (commit) + /track_tokens (per-token debit)
+  3. async_log_failure_event -> billing POST /balances.finalize (release) + /track_tokens (failure record)
 
 Usage tokens are read from response_obj.usage (a litellm Usage object) --
 kwargs["usage"] is usually None in current LiteLLM.  The customer id
 is carried from the pre-call hook through litellm metadata
-("_autumn_customer_id") because top-level end-user fields are also absent
-post-call.
+("_autumn_customer_id" -- the metadata key is a cross-service contract with
+the billing server's virtual-key provisioning, which stamps the same key on
+generated keys) because top-level end-user fields are also absent post-call.
 
 Security:
   - All credentials read from environment, never logged.
@@ -21,22 +23,23 @@ Security:
   - Fail-open by default (configurable); logged.
   - Admission short-circuit raises HTTPException(402) before any provider call.
 
-Configuration (env):
-  AUTUMN_BASE_URL        default https://api.useautumn.com/v1
-  AUTUMN_API_KEY         required -- bearer token (am_sk_...)
-  AUTUMN_FEATURE_ID      default ai_tokens
-  AUTUMN_CUSTOMER_HEADER default user
-  AUTUMN_ADMIT_MODE      block | soft
-  AUTUMN_CHECK_TTL_SEC   default 1.0
-  AUTUMN_TIMEOUT_SEC     default 2.0
-  AUTUMN_FAIL_MODE       open | closed
-  AUTUMN_USE_LOCK        true | false
-  AUTUMN_REQUIRED_BALANCE minimum balance /check demands (default 1.0 --
-                         Autumn's own default; a call may start only when the
-                         customer holds at least this much)
-  AUTUMN_MODEL_ID_MAP    JSON dict mapping LiteLLM model names/aliases to
-                         Autumn-billable model ids.  Autumn prices models by
-                         exact "<provider>/<model>" lookup against models.dev
+Configuration (env).  PAB_* names are primary; legacy AUTUMN_* names are
+honored as fallbacks so pre-existing deployments keep working:
+  PAB_BASE_URL           default https://api.meterpal.dev/v1
+  PAB_API_KEY            required -- bearer token (am_sk_...)
+  PAB_FEATURE_ID         default ai_tokens
+  PAB_CUSTOMER_HEADER    default user
+  PAB_ADMIT_MODE         block | soft
+  PAB_CHECK_TTL_SEC      default 1.0
+  PAB_TIMEOUT_SEC        default 2.0
+  PAB_FAIL_MODE          open | closed
+  PAB_USE_LOCK           true | false
+  PAB_REQUIRED_BALANCE   minimum balance /check demands (default 1.0 --
+                         the billing server's own default; a call may start
+                         only when the customer holds at least this much)
+  PAB_MODEL_ID_MAP       JSON dict mapping LiteLLM model names/aliases to
+                         billable model ids.  The billing server prices models
+                         by exact "<provider>/<model>" lookup against models.dev
                          (or "custom/<name>" against the feature's
                          model_markups), while LiteLLM hands the hook either
                          a bare alias or a deployment string like
@@ -61,9 +64,13 @@ if TYPE_CHECKING:
     # Imported only for type hints; not required at runtime.
     from litellm.proxy.proxy_server import DualCache, UserAPIKeyAuth
 
+_LEGACY_PREFIX = "AUTUMN_"
+_PREFIX = "PAB_"
+
 
 def _env(name: str, default: Optional[str] = None) -> Optional[str]:
-    val = os.environ.get(name, default)
+    """Read PAB_<name>, falling back to legacy AUTUMN_<name>."""
+    val = os.environ.get(_PREFIX + name) or os.environ.get(_LEGACY_PREFIX + name)
     return val if val else default
 
 
@@ -119,33 +126,33 @@ def _usage_breakdown(kwargs: dict, response_obj: Any = None) -> dict:
 
 
 def _bool_env(name: str, default: bool = False) -> bool:
-    v = os.environ.get(name, "true" if default else "false")
-    return v.strip().lower() in ("true", "1", "yes")
+    v = _env(name, "true" if default else "false")
+    return (v or "false").strip().lower() in ("true", "1", "yes")
 
 
-class AutumnBillingBridge(CustomLogger):
-    """CustomLogger that delegates admission + metering to Autumn."""
+class MeterPalBridge(CustomLogger):
+    """CustomLogger that delegates admission + metering to the MeterPal billing server."""
 
     def __init__(self) -> None:
-        self.api_key: str = _env("AUTUMN_API_KEY", "") or ""
-        self.base_url: str = _env("AUTUMN_BASE_URL", "https://api.useautumn.com/v1") or ""
-        self.feature_id: str = _env("AUTUMN_FEATURE_ID", "ai_tokens") or "ai_tokens"
-        self.customer_header: str = _env("AUTUMN_CUSTOMER_HEADER", "user") or "user"
-        self.admit_mode: str = _env("AUTUMN_ADMIT_MODE", "block") or "block"
-        self.check_ttl: float = float(_env("AUTUMN_CHECK_TTL_SEC", "1.0") or "1.0")
-        self.timeout: float = float(_env("AUTUMN_TIMEOUT_SEC", "2.0") or "2.0")
-        self.fail_mode: str = _env("AUTUMN_FAIL_MODE", "open") or "open"
-        self.use_lock: bool = _bool_env("AUTUMN_USE_LOCK", False)
-        self.required_balance: float = float(_env("AUTUMN_REQUIRED_BALANCE", "1.0") or "1.0")
+        self.api_key: str = _env("API_KEY", "") or ""
+        self.base_url: str = _env("BASE_URL", "https://api.meterpal.dev/v1") or ""
+        self.feature_id: str = _env("FEATURE_ID", "ai_tokens") or "ai_tokens"
+        self.customer_header: str = _env("CUSTOMER_HEADER", "user") or "user"
+        self.admit_mode: str = _env("ADMIT_MODE", "block") or "block"
+        self.check_ttl: float = float(_env("CHECK_TTL_SEC", "1.0") or "1.0")
+        self.timeout: float = float(_env("TIMEOUT_SEC", "2.0") or "2.0")
+        self.fail_mode: str = _env("FAIL_MODE", "open") or "open"
+        self.use_lock: bool = _bool_env("USE_LOCK", False)
+        self.required_balance: float = float(_env("REQUIRED_BALANCE", "1.0") or "1.0")
         self.model_id_map: dict[str, str] = {}
-        raw_map = _env("AUTUMN_MODEL_ID_MAP", "") or ""
+        raw_map = _env("MODEL_ID_MAP", "") or ""
         if raw_map.strip():
             try:
                 self.model_id_map = {str(k): str(v) for k, v in json.loads(raw_map).items()}
             except json.JSONDecodeError as exc:
                 # A silently-empty map bills under the raw model id, which
-                # Autumn then rejects -- surface the misconfiguration.
-                print(f"[AutumnBillingBridge] AUTUMN_MODEL_ID_MAP is not valid JSON ({exc}); "
+                # the billing server then rejects -- surface the misconfiguration.
+                print(f"[MeterPalBridge] {_PREFIX}MODEL_ID_MAP is not valid JSON ({exc}); "
                       f"model ids will be passed through unmapped", flush=True)
                 self.model_id_map = {}
 
@@ -153,7 +160,7 @@ class AutumnBillingBridge(CustomLogger):
             # Logged once at startup.  Bridge will no-op until configured.
             try:
                 from litellm._logging import verbose_proxy_logger
-                verbose_proxy_logger.warning("AutumnBillingBridge: AUTUMN_API_KEY missing -- bridge disabled")
+                verbose_proxy_logger.warning(f"MeterPalBridge: {_PREFIX}API_KEY missing -- bridge disabled")
             except Exception:
                 pass
 
@@ -214,13 +221,13 @@ class AutumnBillingBridge(CustomLogger):
         )
 
     def _model_id(self, kwargs: dict) -> str:
-        """Billable model id for Autumn.
+        """Billable model id for the billing server.
 
         LiteLLM hands the hook either a bare alias ("demo-gpt") or a
-        deployment string ("openai/demo-gpt"); Autumn prices by exact
-        "<provider>/<model>" against models.dev, or "custom/<name>" against
-        the credit feature's model_markups.  AUTUMN_MODEL_ID_MAP bridges the
-        two -- matched on the full id first, then the bare name after the
+        deployment string ("openai/demo-gpt"); the billing server prices by
+        exact "<provider>/<model>" against models.dev, or "custom/<name>"
+        against the credit feature's model_markups.  PAB_MODEL_ID_MAP bridges
+        the two -- matched on the full id first, then the bare name after the
         last slash.  Unmapped ids pass through unchanged.
         """
         raw = str(kwargs.get("model") or "")
@@ -231,7 +238,7 @@ class AutumnBillingBridge(CustomLogger):
         bare = raw.split("/")[-1]
         return self.model_id_map.get(bare, raw)
 
-    async def _autumn_check(self, customer_id: str) -> Tuple[bool, Optional[str]]:
+    async def _billing_check(self, customer_id: str) -> Tuple[bool, Optional[str]]:
         now = time.monotonic()
         async with self._cache_lock:
             cached = self._check_cache.get(customer_id)
@@ -254,7 +261,7 @@ class AutumnBillingBridge(CustomLogger):
             allowed = bool(payload.get("allowed", False))
             lock_id = (payload.get("lock") or {}).get("lock_id") if self.use_lock else None
         except httpx.HTTPError as exc:
-            await self._log(f"autumn /check failed: {exc!r}")
+            await self._log(f"billing /check failed: {exc!r}")
             allowed = self.fail_mode == "open"
             lock_id = None
 
@@ -262,7 +269,7 @@ class AutumnBillingBridge(CustomLogger):
             self._check_cache[customer_id] = (now, (allowed, lock_id))
         return (allowed, lock_id)
 
-    async def _autumn_finalize(self, customer_id: str, lock_id: str, action: str) -> None:
+    async def _billing_finalize(self, customer_id: str, lock_id: str, action: str) -> None:
         try:
             client = self._get_client()
             resp = await client.post(
@@ -275,11 +282,11 @@ class AutumnBillingBridge(CustomLogger):
                 },
             )
             if resp.status_code >= 300:
-                await self._log(f"autumn /balances.finalize returned HTTP {resp.status_code}")
+                await self._log(f"billing /balances.finalize returned HTTP {resp.status_code}")
         except httpx.HTTPError as exc:
-            await self._log(f"autumn /balances.finalize failed: {exc!r}")
+            await self._log(f"billing /balances.finalize failed: {exc!r}")
 
-    async def _autumn_track_tokens(
+    async def _billing_track_tokens(
         self,
         *,
         customer_id: str,
@@ -324,15 +331,15 @@ class AutumnBillingBridge(CustomLogger):
                 },
             )
             if resp.status_code >= 300:
-                await self._log(f"autumn /track_tokens returned HTTP {resp.status_code}")
+                await self._log(f"billing /track_tokens returned HTTP {resp.status_code}")
         except httpx.HTTPError as exc:
-            await self._log(f"autumn /track_tokens failed: {exc!r}")
+            await self._log(f"billing /track_tokens failed: {exc!r}")
 
     async def _log(self, msg: str) -> None:
         # Never log customer ids or API keys.
         try:
             from litellm._logging import verbose_proxy_logger
-            verbose_proxy_logger.info(f"[AutumnBillingBridge] {msg}")
+            verbose_proxy_logger.info(f"[MeterPalBridge] {msg}")
         except ImportError:
             pass
 
@@ -355,7 +362,7 @@ class AutumnBillingBridge(CustomLogger):
         data[self.customer_header] = customer_id
         data["user"] = customer_id
 
-        allowed, lock_id = await self._autumn_check(customer_id)
+        allowed, lock_id = await self._billing_check(customer_id)
         if not allowed and self.admit_mode == "block":
             raise HTTPException(
                 status_code=402,
@@ -385,9 +392,9 @@ class AutumnBillingBridge(CustomLogger):
         md = self._litellm_metadata(kwargs)
         lock_id = md.get("_autumn_lock_id")
         if self.use_lock and lock_id:
-            await self._autumn_finalize(customer_id, lock_id, "commit")
+            await self._billing_finalize(customer_id, lock_id, "commit")
         usage = _usage_breakdown(kwargs, response_obj)
-        await self._autumn_track_tokens(
+        await self._billing_track_tokens(
             customer_id=customer_id,
             model_id=self._model_id(kwargs),
             input_tokens=usage["input_tokens"],
@@ -410,10 +417,10 @@ class AutumnBillingBridge(CustomLogger):
         md = self._litellm_metadata(kwargs)
         lock_id = md.get("_autumn_lock_id")
         if self.use_lock and lock_id:
-            await self._autumn_finalize(customer_id, lock_id, "release")
+            await self._billing_finalize(customer_id, lock_id, "release")
         usage = _usage_breakdown(kwargs, response_obj)
         exc = kwargs.get("exception")
-        await self._autumn_track_tokens(
+        await self._billing_track_tokens(
             customer_id=customer_id,
             model_id=self._model_id(kwargs),
             input_tokens=usage["input_tokens"],
@@ -431,7 +438,7 @@ class AutumnBillingBridge(CustomLogger):
 # Module-level singleton.  LiteLLM's custom-callback loader requires the
 # config to name an *instance* (a class is neither a CustomLogger instance nor
 # a callable), so config.yaml registers:
-#   callbacks: ["litellm.integrations.autumn_billing.proxy_handler_instance"]
+#   callbacks: ["litellm.integrations.meterpal_billing.proxy_handler_instance"]
 # Instantiated at import time, which is when env vars are read.
-proxy_handler_instance = AutumnBillingBridge()
-autumn_bridge_instance = proxy_handler_instance  # back-compat alias
+proxy_handler_instance = MeterPalBridge()
+meterpal_bridge_instance = proxy_handler_instance

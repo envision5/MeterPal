@@ -10,7 +10,7 @@ demo-customer ──► LiteLLM :4000 ──► mock LLM :9999        (stands in
                      │  ▲
         /check,      │  │  /track_tokens, /balances.finalize
         402 deny     ▼  │
-                  Autumn :8080 ──► Postgres :5433 / Redis :6380
+                  MeterPal billing :8080 ──► Postgres :5433 / Redis :6380
 ```
 
 ## Run it
@@ -20,14 +20,14 @@ demo-customer ──► LiteLLM :4000 ──► mock LLM :9999        (stands in
 docker compose up -d
 
 # 2. Autumn billing server   (terminal 1)
-cd autumn/server
+cd billing/server
 NODE_ENV=development bun src/index.ts
 
 # 3. Mock LLM provider       (terminal 2)
 python demo/mock_llm.py
 
-# 4. LiteLLM proxy           (terminal 3) — loads litellm/.env
-cd litellm
+# 4. LiteLLM proxy           (terminal 3) — loads gateway/.env
+cd gateway
 set -a && source .env && set +a
 litellm --config config.yaml --port 4000
 
@@ -37,7 +37,7 @@ python demo/run_demo.py
 ```
 
 Prereqs: Python 3.12 with the `litellm` package installed (`pip install -e
-"../litellm[proxy]"` from `litellm/` — brings httpx/uvicorn used here),
+"../gateway[proxy]"` from `gateway/` — brings httpx/uvicorn used here),
 [Bun](https://bun.sh), and the LiteLLM + Autumn DBs already migrated (see
 `../DEPLOY.md`).
 
@@ -47,7 +47,7 @@ A fresh Autumn DB has no organization, so the script:
 
 1. **psql** — inserts org `demo` + a sandbox secret key (`am_sk_test_…`,
    stored hashed, same SHA-256 scheme as `server/src/internal/dev/apiKeys`).
-   The same key is the bridge's `AUTUMN_API_KEY` in `litellm/.env`.
+   The same key is the bridge's `PAB_API_KEY` in `gateway/.env`.
 2. **`POST /v1/features`** — creates `ai_tokens` of type
    `ai_credit_system`, with `model_markups` pricing `custom/demo-gpt` at
    $20/M input, $80/M output. 1 credit = $1 of computed model cost.
@@ -67,7 +67,7 @@ Idempotent: re-running resets to the same state.
 | 1 | Starting balance: 2.00 credits |
 | 2 | Chat calls through LiteLLM; balance drops by the computed cost after each. A call with 8,000 of 10,000 input tokens **cached** bills only the fresh tokens |
 | 3 | A second model (`gpt-4o-mini-mock`) billed from **models.dev list rates** with zero pricing config |
-| 4 | Drain: once the balance is below `AUTUMN_REQUIRED_BALANCE` (0.5 here), the NEXT call is refused with **HTTP 402 before any provider is touched** |
+| 4 | Drain: once the balance is below `PAB_REQUIRED_BALANCE` (0.5 here), the NEXT call is refused with **HTTP 402 before any provider is touched** |
 | 5 | Top-up via `POST /v1/customers/:id/balances` — the call a payment webhook would trigger — and the customer is admitted again |
 | 6 | The usage ledger: every call in the `events` table with token pools, base cost, markup, and final credits |
 
@@ -76,9 +76,9 @@ like `[usage: in=10000 out=2000 cache_read=8000]` (stripped from the reply).
 
 ## Knobs worth knowing
 
-- `litellm/.env` — all bridge config. `AUTUMN_REQUIRED_BALANCE` (minimum
-  headroom for admission), `AUTUMN_MODEL_ID_MAP` (LiteLLM alias →
-  Autumn-billable id), `AUTUMN_FAIL_MODE=open|closed` (an Autumn outage
+- `gateway/.env` — all bridge config. `PAB_REQUIRED_BALANCE` (minimum
+  headroom for admission), `PAB_MODEL_ID_MAP` (LiteLLM alias →
+  Autumn-billable id), `PAB_FAIL_MODE=open|closed` (an Autumn outage
   serves unbilled inference when `open`; use `closed` in production).
 - `demo/mock_llm.py` — add models/usage shapes freely; anything served here
   is billed through the exact same path as a real provider.
@@ -92,8 +92,8 @@ like `[usage: in=10000 out=2000 cache_read=8000]` (stripped from the reply).
    `None`. The bridge now reads `response_obj.usage` first.
 2. **Model id mapping** — LiteLLM passes bare aliases / provider-echoed
    names (`demo-gpt`, `gpt-4o-mini`); Autumn needs `<provider>/<model>` or
-   `custom/<name>`. New `AUTUMN_MODEL_ID_MAP` bridges them; unmapped ids pass
-   through. `AUTUMN_REQUIRED_BALANCE` likewise makes the headroom explicit.
+   `custom/<name>`. New `PAB_MODEL_ID_MAP` bridges them; unmapped ids pass
+   through. `PAB_REQUIRED_BALANCE` likewise makes the headroom explicit.
 3. **Redis v2 pool** — without `CACHE_V2_DRAGONFLY_URL`, the full-subject
    cache pool dials ioredis's default `127.0.0.1:6379` and every
    customer read sheds with 503. Added to `autumn/server/.env` +

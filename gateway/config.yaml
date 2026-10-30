@@ -22,13 +22,13 @@ litellm_settings:
   callbacks:
     # Must name an *instance*, not the class: LiteLLM's custom-callback loader
     # rejects a class (neither a CustomLogger instance nor a callable).
-    - "litellm.integrations.autumn_billing.proxy_handler_instance"
+    - "litellm.integrations.meterpal_billing.proxy_handler_instance"
 
   # Per-route overrides (optional)
   # success_callback:
-  #   - "litellm.integrations.autumn_billing.AutumnBillingBridge"
+  #   - "litellm.integrations.meterpal_billing.MeterPalBridge"
   # failure_callback:
-  #   - "litellm.integrations.autumn_billing.AutumnBillingBridge"
+  #   - "litellm.integrations.meterpal_billing.MeterPalBridge"
 
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY

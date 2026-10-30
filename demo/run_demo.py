@@ -30,7 +30,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 LITELLM = "http://localhost:4000"
 AUTUMN = "http://localhost:8080"
-PG_CONTAINER = "ai-billing-postgres-autumn"
+PG_CONTAINER = "meterpal-postgres-billing"
 PG_USER, PG_DB = "autumn", "autumn"
 
 FEATURE_ID = "ai_tokens"
@@ -54,9 +54,9 @@ def load_env(path: Path) -> dict[str, str]:
     return env
 
 
-ENV = load_env(ROOT / "litellm" / ".env")
+ENV = load_env(ROOT / "gateway" / ".env")
 MASTER_KEY = ENV.get("LITELLM_MASTER_KEY", "")
-AUTUMN_KEY = ENV.get("AUTUMN_API_KEY", "")
+AUTUMN_KEY = ENV.get("PAB_API_KEY") or ENV.get("AUTUMN_API_KEY", "")
 
 C = "\033[0m"
 B, CY, GR, YE, RD, DI = "\033[1m", "\033[1;36m", "\033[32m", "\033[33m", "\033[31m", "\033[2m"

@@ -1,18 +1,18 @@
-# tests/test_autumn_billing.py
+# tests/test_meterpal_billing.py
 #
-# Unit tests for the AutumnBillingBridge CustomLogger. Run with pytest.
+# Unit tests for the MeterPalBridge CustomLogger. Run with pytest.
 #
 # These tests do NOT need a live Autumn or Redis. They mock httpx so the
 # bridge's HTTP calls are deterministic. They verify:
 #   - admission short-circuit raises 402 when balance is exhausted
-#   - lock_id is plumbed through metadata when AUTUMN_USE_LOCK=true
+#   - lock_id is plumbed through metadata when PAB_USE_LOCK=true
 #   - success path commits the lock and calls track_tokens with the right shape
 #   - failure path releases the lock and calls track_tokens with status=failure
 #   - /check short-circuit cache works
 #   - customer_id extraction from kwargs / data / metadata
 #   - no hardcoded secrets in code
 #
-# Run:    pytest tests/test_autumn_billing.py -v
+# Run:    pytest tests/test_meterpal_billing.py -v
 # Run all: pytest tests/ -v
 
 from __future__ import annotations
@@ -28,23 +28,23 @@ import pytest
 
 @pytest.fixture
 def env(monkeypatch):
-    monkeypatch.setenv("AUTUMN_API_KEY", "am_sk_test_1234567890")
-    monkeypatch.setenv("AUTUMN_BASE_URL", "https://autumn.test/v1")
-    monkeypatch.setenv("AUTUMN_FEATURE_ID", "ai_tokens")
-    monkeypatch.setenv("AUTUMN_CUSTOMER_HEADER", "user")
-    monkeypatch.setenv("AUTUMN_ADMIT_MODE", "block")
-    monkeypatch.setenv("AUTUMN_TIMEOUT_SEC", "2.0")
-    monkeypatch.setenv("AUTUMN_FAIL_MODE", "open")
-    monkeypatch.setenv("AUTUMN_USE_LOCK", "true")
+    monkeypatch.setenv("PAB_API_KEY", "am_sk_test_1234567890")
+    monkeypatch.setenv("PAB_BASE_URL", "https://billing.test/v1")
+    monkeypatch.setenv("PAB_FEATURE_ID", "ai_tokens")
+    monkeypatch.setenv("PAB_CUSTOMER_HEADER", "user")
+    monkeypatch.setenv("PAB_ADMIT_MODE", "block")
+    monkeypatch.setenv("PAB_TIMEOUT_SEC", "2.0")
+    monkeypatch.setenv("PAB_FAIL_MODE", "open")
+    monkeypatch.setenv("PAB_USE_LOCK", "true")
     return monkeypatch
 
 
 @pytest.fixture
 def bridge(env):
     # Reload the module to pick up env vars
-    sys.modules.pop("litellm.integrations.autumn_billing", None)
-    mod = importlib.import_module("litellm.integrations.autumn_billing")
-    return mod.AutumnBillingBridge()
+    sys.modules.pop("litellm.integrations.meterpal_billing", None)
+    mod = importlib.import_module("litellm.integrations.meterpal_billing")
+    return mod.MeterPalBridge()
 
 
 @pytest.fixture
@@ -58,7 +58,7 @@ def mock_httpx():
         client.aclose = AsyncMock()
         return client
 
-    with patch("litellm.integrations.autumn_billing.httpx.AsyncClient", side_effect=make_client):
+    with patch("litellm.integrations.meterpal_billing.httpx.AsyncClient", side_effect=make_client):
         yield responses
 
 
@@ -123,14 +123,14 @@ async def test_check_short_circuit_cache(bridge, mock_httpx):
 
 
 @pytest.mark.asyncio
-async def test_check_fail_open_when_autumn_unreachable(env, mock_httpx):
-    """When AUTUMN_FAIL_MODE=open and /check raises, admission should still succeed."""
+async def test_check_fail_open_when_billing_unreachable(env, mock_httpx):
+    """When PAB_FAIL_MODE=open and /check raises, admission should still succeed."""
     import httpx
     mock_httpx.append(httpx.ConnectError("connection refused"))
 
-    sys.modules.pop("litellm.integrations.autumn_billing", None)
-    mod = importlib.import_module("litellm.integrations.autumn_billing")
-    b = mod.AutumnBillingBridge()
+    sys.modules.pop("litellm.integrations.meterpal_billing", None)
+    mod = importlib.import_module("litellm.integrations.meterpal_billing")
+    b = mod.MeterPalBridge()
     uak = MagicMock()
     uak.end_user_id = None
     data = {"user": "cus_degraded"}
@@ -307,17 +307,17 @@ async def test_customer_id_extraction_precedence(bridge, mock_httpx):
 
 def test_no_secrets_in_source():
     """Static guard against accidental secret commits."""
-    src_path = os.path.join(os.path.dirname(__file__), "..", "litellm", "integrations", "autumn_billing.py")
+    src_path = os.path.join(os.path.dirname(__file__), "..", "litellm", "integrations", "meterpal_billing.py")
     with open(src_path, encoding="utf-8") as f:
         src = f.read()
     forbidden = ["sk-live-", "sk_live_", "whsec_live_", "pk_live_"]
     for s in forbidden:
-        assert s not in src, f"Forbidden secret pattern {s!r} found in autumn_billing.py"
+        assert s not in src, f"Forbidden secret pattern {s!r} found in meterpal_billing.py"
 
 
 @pytest.mark.asyncio
 async def test_no_lock_mode_does_not_send_lock_param(bridge, mock_httpx):
-    """With AUTUMN_USE_LOCK=false, /check body must not include lock=true."""
+    """With PAB_USE_LOCK=false, /check body must not include lock=true."""
     bridge.use_lock = False
     mock_httpx.append({"body": {"allowed": True}})
 
@@ -343,18 +343,18 @@ async def test_no_lock_mode_does_not_send_lock_param(bridge, mock_httpx):
 
 
 def test_model_id_map_normalizes_aliases(env):
-    """LiteLLM sends bare aliases or deployment strings; AUTUMN_MODEL_ID_MAP
+    """LiteLLM sends bare aliases or deployment strings; PAB_MODEL_ID_MAP
     normalizes both to a billable "<provider>/<model>" id.  Unmapped ids pass
     through unchanged."""
     import json as _json
 
     env.setenv(
-        "AUTUMN_MODEL_ID_MAP",
+        "PAB_MODEL_ID_MAP",
         _json.dumps({"demo-gpt": "custom/demo-gpt", "gpt-4o-mini-mock": "openai/gpt-4o-mini"}),
     )
-    sys.modules.pop("litellm.integrations.autumn_billing", None)
-    mod = importlib.import_module("litellm.integrations.autumn_billing")
-    b = mod.AutumnBillingBridge()
+    sys.modules.pop("litellm.integrations.meterpal_billing", None)
+    mod = importlib.import_module("litellm.integrations.meterpal_billing")
+    b = mod.MeterPalBridge()
 
     assert b._model_id({"model": "demo-gpt"}) == "custom/demo-gpt"
     # deployment string falls back to the bare-name lookup
@@ -367,12 +367,12 @@ def test_model_id_map_normalizes_aliases(env):
 
 @pytest.mark.asyncio
 async def test_check_sends_required_balance(env, mock_httpx):
-    """The /check body carries AUTUMN_REQUIRED_BALANCE so admission demands
+    """The /check body carries PAB_REQUIRED_BALANCE so admission demands
     explicit headroom instead of relying on Autumn's server-side default."""
-    env.setenv("AUTUMN_REQUIRED_BALANCE", "0.5")
-    sys.modules.pop("litellm.integrations.autumn_billing", None)
-    mod = importlib.import_module("litellm.integrations.autumn_billing")
-    b = mod.AutumnBillingBridge()
+    env.setenv("PAB_REQUIRED_BALANCE", "0.5")
+    sys.modules.pop("litellm.integrations.meterpal_billing", None)
+    mod = importlib.import_module("litellm.integrations.meterpal_billing")
+    b = mod.MeterPalBridge()
     assert b.required_balance == 0.5
 
     captured = []
@@ -393,3 +393,21 @@ async def test_check_sends_required_balance(env, mock_httpx):
     await b.async_pre_call_hook(uak, MagicMock(), {"user": "cus_req"}, "completion")
     assert captured[0][0] == "/check"
     assert captured[0][1]["required_balance"] == 0.5
+
+def test_legacy_autumn_env_fallback(monkeypatch):
+    """Legacy AUTUMN_* env names still configure the bridge (PAB_* wins)."""
+    monkeypatch.delenv("PAB_API_KEY", raising=False)
+    monkeypatch.delenv("PAB_BASE_URL", raising=False)
+    monkeypatch.setenv("AUTUMN_API_KEY", "am_sk_test_legacy")
+    monkeypatch.setenv("AUTUMN_BASE_URL", "https://legacy.test/v1")
+    sys.modules.pop("litellm.integrations.meterpal_billing", None)
+    mod = importlib.import_module("litellm.integrations.meterpal_billing")
+    b = mod.MeterPalBridge()
+    assert b.api_key == "am_sk_test_legacy"
+    assert b.base_url == "https://legacy.test/v1"
+
+    # PAB_* takes precedence when both are present.
+    monkeypatch.setenv("PAB_API_KEY", "am_sk_test_new")
+    sys.modules.pop("litellm.integrations.meterpal_billing", None)
+    mod = importlib.import_module("litellm.integrations.meterpal_billing")
+    assert mod.MeterPalBridge().api_key == "am_sk_test_new"
