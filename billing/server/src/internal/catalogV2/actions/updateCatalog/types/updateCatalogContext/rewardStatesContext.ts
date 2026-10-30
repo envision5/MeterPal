@@ -1,0 +1,64 @@
+import type {
+	ApiCouponV0,
+	ApiFeatureGrantV0,
+	ApiReferralProgramV0,
+	RewardType,
+} from "@autumn/shared";
+
+/** The catalog states discount coupons; invoice credits are not statable. */
+export type CatalogCoupon = Omit<ApiCouponV0, "type"> & {
+	type: RewardType.PercentageDiscount | RewardType.FixedDiscount;
+};
+
+/** One reward the org holds, in the branch shape the config states. */
+export type RewardState = {
+	internalId: string;
+	id: string;
+	kind: "coupon";
+	coupon: CatalogCoupon;
+};
+
+export type FeatureGrantState = {
+	internalId: string;
+	id: string;
+	kind: "feature_grant";
+	featureGrant: ApiFeatureGrantV0;
+};
+
+export type CatalogRewardState = RewardState | FeatureGrantState;
+
+export type ReferralProgramState = {
+	internalId: string;
+	/** Stable id of the reward it links, so a removal can see the link. */
+	internalRewardId: string;
+	program: ApiReferralProgramV0;
+};
+
+/**
+ * Rewards the catalog can speak for. Free-product rewards are dropped at load,
+ * so nothing downstream can propose touching one; `unstatableIds` keeps their
+ * ids so a config claiming one is refused rather than silently overwriting.
+ */
+export type RewardStatesContext = {
+	/** Empty when the payload never stated rewards — absent means "not mine". */
+	rewards: CatalogRewardState[];
+	/** Ids held by rewards the config cannot express (free product, invoice credits). */
+	unstatableIds: Set<string>;
+	/** Stable ids of those rewards, so a config cannot claim one as foreign. */
+	unstatableInternalIds: Set<string>;
+	/** Empty when the payload never stated referral programs. */
+	programs: ReferralProgramState[];
+	/** Ids of programs the catalog hides because their reward is unstatable. */
+	hiddenProgramIds: Set<string>;
+	/** Stable ids of those programs, so a config cannot claim one as foreign. */
+	hiddenProgramInternalIds: Set<string>;
+};
+
+export const emptyRewardStatesContext = (): RewardStatesContext => ({
+	rewards: [],
+	unstatableIds: new Set(),
+	unstatableInternalIds: new Set(),
+	programs: [],
+	hiddenProgramIds: new Set(),
+	hiddenProgramInternalIds: new Set(),
+});

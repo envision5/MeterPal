@@ -1,0 +1,95 @@
+import { expect } from "bun:test";
+import {
+	type ApiCustomerV3,
+	type ApiEntityV0,
+	ApiVersion,
+	formatMs,
+	ms,
+} from "@autumn/shared";
+import {
+	type PollableExpectParams,
+	pollableCustomerExpect,
+} from "@tests/utils/pollableCustomerExpect.js";
+import { AutumnInt } from "@/external/autumn/autumnCli";
+
+const defaultAutumn = new AutumnInt({ version: ApiVersion.V1_2 });
+
+export const expectCustomerFeatureExists = async ({
+	customerId,
+	customer: providedCustomer,
+	featureId,
+}: {
+	customerId?: string;
+	customer?: ApiCustomerV3 | ApiEntityV0;
+	featureId: string;
+}) => {
+	const customer = providedCustomer
+		? providedCustomer
+		: await defaultAutumn.customers.get(customerId!);
+
+	const feature = customer.features?.[featureId];
+
+	expect(feature).toBeDefined();
+};
+
+const TEN_MINUTES_MS = 10 * 60 * 1000;
+
+type FeatureExpectParams = PollableExpectParams<ApiCustomerV3 | ApiEntityV0> & {
+	featureId: string;
+	includedUsage?: number;
+	balance?: number;
+	usage?: number;
+	resetsAt?: number;
+	toleranceMs?: number;
+};
+
+const assertCustomerFeatureCorrect = ({
+	customer,
+	featureId,
+	includedUsage,
+	balance,
+	usage,
+	resetsAt,
+	toleranceMs = TEN_MINUTES_MS + ms.hours(1),
+}: FeatureExpectParams & {
+	customer: ApiCustomerV3 | ApiEntityV0;
+}) => {
+	const feature = customer?.features?.[featureId];
+	expect(feature, `Feature ${featureId} not found`).toBeDefined();
+
+	if (includedUsage !== undefined) {
+		expect(feature?.included_usage).toBe(includedUsage);
+	}
+
+	if (balance !== undefined) {
+		expect(feature?.balance).toBe(balance);
+	}
+
+	if (usage !== undefined) {
+		expect(feature?.usage).toBe(usage);
+	}
+
+	if (resetsAt !== undefined) {
+		const actualResetsAt = feature?.next_reset_at ?? 0;
+		expect(actualResetsAt).toBeDefined();
+
+		const diff = Math.abs(actualResetsAt - resetsAt);
+
+		expect(
+			diff,
+			`resetsAt mismatch for ${featureId}: expected ${formatMs(resetsAt)}, got ${formatMs(actualResetsAt)} `,
+		).toBeLessThanOrEqual(toleranceMs);
+	}
+};
+
+/**
+ * Pass `customerId` (instead of a fetched `customer`) to poll until the feature
+ * settles — a tracked deduction reaches Postgres via Redis then the queue.
+ */
+export const expectCustomerFeatureCorrect = pollableCustomerExpect({
+	fetchCustomer: ({ customerId, autumn }: FeatureExpectParams) =>
+		(autumn ?? defaultAutumn).customers.get<ApiCustomerV3 | ApiEntityV0>(
+			customerId!,
+		),
+	assert: assertCustomerFeatureCorrect,
+});

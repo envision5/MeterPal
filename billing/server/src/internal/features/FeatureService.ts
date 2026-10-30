@@ -1,0 +1,248 @@
+import {
+	type AppEnv,
+	ErrCode,
+	type Feature,
+	FeatureAlreadyExistsError,
+	features,
+	RecaseError,
+} from "@autumn/shared";
+import type { DrizzleCli } from "@server/db/initDrizzle.js";
+import { notNullish } from "@server/utils/genUtils.js";
+import { and, eq, inArray } from "drizzle-orm";
+import type { Logger } from "@/external/logtail/logtailUtils.js";
+import { clearOrgCache } from "../orgs/orgUtils/clearOrgCache.js";
+
+export class FeatureService {
+	static async list({
+		db,
+		orgId,
+		env,
+		archived,
+	}: {
+		db: DrizzleCli;
+		orgId: string;
+		env: AppEnv;
+		archived?: boolean;
+	}) {
+		const features = await db.query.features.findMany({
+			where: (features, { eq, and }) =>
+				and(
+					eq(features.org_id, orgId),
+					eq(features.env, env),
+					notNullish(archived) ? eq(features.archived, archived!) : undefined,
+				),
+
+			orderBy: (features, { desc }) => [desc(features.internal_id)],
+		});
+
+		return features as Feature[]; // TODO: DRIZZLE TYPE REFACTOR
+	}
+
+	static async getFromReq(req: any) {
+		if (req.features) return req.features as Feature[];
+		const features = await FeatureService.list({
+			db: req.db,
+			orgId: req.orgId,
+			env: req.env,
+		});
+
+		return features as Feature[];
+	}
+
+	static async get({
+		db,
+		id,
+		orgId,
+		env,
+	}: {
+		db: DrizzleCli;
+		id: string;
+		orgId: string;
+		env: AppEnv;
+	}) {
+		const feature = await db.query.features.findFirst({
+			where: (features, { eq, and }) =>
+				and(
+					eq(features.id, id),
+					eq(features.org_id, orgId),
+					eq(features.env, env),
+				),
+		});
+		return feature as Feature;
+	}
+
+	static async update({
+		db,
+		id,
+		orgId,
+		env,
+		internalId,
+		updates,
+	}: {
+		db: DrizzleCli;
+		id?: string;
+		orgId?: string;
+		env?: AppEnv;
+		internalId?: string;
+		updates: any;
+	}) {
+		if (!id && !internalId) {
+			throw new RecaseError({
+				message: "id or internalId is required to update feature",
+				code: ErrCode.InternalError,
+				statusCode: 500,
+			});
+		}
+
+		if (id && (!orgId || !env)) {
+			throw new RecaseError({
+				message: "orgId and env are required to update feature by id",
+				code: ErrCode.InternalError,
+				statusCode: 500,
+			});
+		}
+
+		let updatedFeatures;
+		if (internalId) {
+			updatedFeatures = await db
+				.update(features)
+				.set(updates)
+				.where(eq(features.internal_id, internalId))
+				.returning();
+		} else {
+			updatedFeatures = await db
+				.update(features)
+				.set(updates)
+				.where(
+					and(
+						eq(features.id, id!),
+						eq(features.org_id, orgId!),
+						eq(features.env, env!),
+					),
+				)
+				.returning();
+		}
+
+		// The row may have been deleted between read and update (e.g. async
+		// display generation racing an org/feature teardown).
+		if (updatedFeatures.length === 0) return null;
+
+		await clearOrgCache({
+			db,
+			orgId: updatedFeatures[0].org_id!,
+			env: updatedFeatures[0].env as AppEnv,
+		});
+
+		return updatedFeatures[0] as Feature;
+	}
+
+	static async insert({
+		db,
+		data,
+		logger,
+	}: {
+		db: DrizzleCli;
+		data: Feature[] | Feature;
+		logger: Logger | Console;
+	}) {
+		try {
+			const insertedData = await db
+				.insert(features)
+				.values(data as any) // DRIZZLE TYPE REFACTOR
+				.returning();
+
+			if (insertedData && insertedData.length > 0) {
+				const orgId = insertedData[0].org_id;
+				await clearOrgCache({
+					db,
+					orgId: orgId!,
+					logger,
+				});
+			}
+			return insertedData as Feature[]; // DRIZZLE TYPE REFACTOR
+		} catch (error: any) {
+			if (error?.code === "23505") {
+				const id = Array.isArray(data)
+					? data.map((f) => f.id)?.join(",")
+					: data.id;
+				throw new FeatureAlreadyExistsError({
+					featureId: id,
+				});
+			}
+		}
+	}
+
+	static async delete({
+		db,
+		featureId,
+		orgId,
+		env,
+	}: {
+		db: DrizzleCli;
+		featureId: string;
+		orgId: string;
+		env: AppEnv;
+	}) {
+		const deletedFeatures = await db
+			.delete(features)
+			.where(
+				and(
+					eq(features.id, featureId),
+					eq(features.org_id, orgId),
+					eq(features.env, env),
+				),
+			)
+			.returning();
+
+		if (deletedFeatures.length === 0) {
+			return null;
+		}
+
+		await clearOrgCache({
+			db,
+			orgId,
+			env,
+		});
+		return deletedFeatures[0] as Feature;
+	}
+
+	static async deleteByOrgId({
+		db,
+		orgId,
+		env,
+	}: {
+		db: DrizzleCli;
+		orgId: string;
+		env: AppEnv;
+	}) {
+		await db
+			.delete(features)
+			.where(and(eq(features.org_id, orgId), eq(features.env, env)));
+	}
+
+	/** Deletes features in batches to avoid locking all rows at once. */
+	static async safeDeleteByOrgId({
+		db,
+		orgId,
+		env,
+		batchSize = 250,
+	}: {
+		db: DrizzleCli;
+		orgId: string;
+		env: AppEnv;
+		batchSize?: number;
+	}) {
+		while (true) {
+			const batch = await db
+				.select({ internal_id: features.internal_id })
+				.from(features)
+				.where(and(eq(features.org_id, orgId), eq(features.env, env)))
+				.limit(batchSize);
+
+			if (batch.length === 0) break;
+
+			const ids = batch.map((r) => r.internal_id);
+			await db.delete(features).where(inArray(features.internal_id, ids));
+		}
+	}
+}

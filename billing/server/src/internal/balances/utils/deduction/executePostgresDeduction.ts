@@ -1,0 +1,282 @@
+import {
+	ACTIVE_STATUSES,
+	type EntityRolloverBalance,
+	type FullCustomer,
+	InternalError,
+} from "@autumn/shared";
+import { sql } from "drizzle-orm";
+import { planetScaleTag } from "@/db/dbUtils.js";
+import { withLock } from "@/external/redis/utils/lockUtils/withLock.js";
+import { triggerAutoTopUp } from "@/internal/balances/autoTopUp/triggerAutoTopUp.js";
+import { rollbackDeduction } from "@/internal/balances/utils/paidAllocatedFeature/rollbackDeduction.js";
+import type { AutumnContext } from "../../../../honoUtils/HonoEnv.js";
+import { CusService } from "../../../customers/CusService.js";
+import type { EventInfo } from "../../events/initEvent.js";
+import { fireTrackWebhooks } from "../../trackWebhooks/fireTrackWebhooks.js";
+import { applyDeductionUpdateToFullCustomer } from "../../utils/deduction/applyDeductionUpdateToFullCustomer.js";
+import { saveLockReceipt } from "../../utils/lock/saveLockReceipt.js";
+import type { DeductionUpdate } from "../../utils/types/deductionUpdate.js";
+import type { FeatureDeduction } from "../../utils/types/featureDeduction.js";
+import type { MutationLogItem } from "../../utils/types/mutationLogItem.js";
+import { createAllocatedInvoice } from "../allocatedInvoice/createAllocatedInvoice.js";
+import type { DeductionOptions } from "../types/deductionTypes.js";
+import { applyRolloverUpdatesToFullCustomer } from "./applyRolloverUpdatesToFullCustomer.js";
+import { logDeductionUpdates } from "./logDeductionUpdates.js";
+import { mutationLogsToFeatures } from "./mutationLogsToFeatures.js";
+import { prepareDeductionOptions } from "./prepareDeductionOptions.js";
+import { prepareFeatureDeduction } from "./prepareFeatureDeduction.js";
+
+interface RolloverOverwrite {
+	id: string;
+	cus_ent_id: string;
+	balance: number;
+	usage: number;
+	entities: Record<string, EntityRolloverBalance>;
+}
+
+export const executePostgresDeduction = async ({
+	ctx,
+	fullCustomer,
+	customerId,
+	entityId,
+	deductions,
+	options = {},
+}: {
+	ctx: AutumnContext;
+	customerId: string;
+	entityId?: string;
+	fullCustomer?: FullCustomer; // if provided from function above!
+	deductions: FeatureDeduction[];
+	eventInfo?: EventInfo;
+	options?: DeductionOptions;
+}): Promise<{
+	oldFullCus: FullCustomer;
+	fullCus: FullCustomer | undefined;
+	updates: Record<string, DeductionUpdate>;
+	mutationLogs: MutationLogItem[];
+}> => {
+	const { db, org, env } = ctx;
+
+	ctx.logger.info(
+		`executing postgres deduction, deductions: ${JSON.stringify(
+			deductions.map((d) => ({
+				featureId: d.feature.id,
+				deduction: d.deduction,
+				targetBalance: d.targetBalance,
+			})),
+		)}`,
+	);
+
+	// Need to getOrCreateCustomer here too...
+	if (!fullCustomer) {
+		fullCustomer = await CusService.getFull({
+			ctx,
+			idOrInternalId: customerId,
+			inStatuses: ACTIVE_STATUSES,
+			entityId,
+			withSubs: true,
+		});
+	}
+	const oldFullCus = structuredClone(fullCustomer);
+
+	const resolvedOptions = prepareDeductionOptions({
+		options,
+		fullCustomer,
+		deductions,
+	});
+
+	if (resolvedOptions.paidAllocatedV1 && deductions.some((d) => d.lock)) {
+		throw new InternalError({
+			message: "Locks are not supported for paid allocated features",
+		});
+	}
+
+	const executeDeduction = async (): Promise<{
+		updates: Record<string, DeductionUpdate>;
+		mutationLogs: MutationLogItem[];
+	}> => {
+		let allUpdates: Record<string, DeductionUpdate> = {};
+		let allMutationLogs: MutationLogItem[] = [];
+
+		// Need to deduct from customer entitlement...
+		for (const deduction of deductions) {
+			const {
+				feature,
+				deduction: toDeduct,
+				targetBalance,
+				lockReceipt,
+				unwindValue,
+			} = deduction;
+
+			const {
+				customerEntitlementDeductions,
+				spendLimitByFeatureId,
+				usageBasedCusEntIdsByFeatureId,
+				rollovers,
+				customerEntitlements,
+				lock: preparedLock,
+			} = prepareFeatureDeduction({
+				ctx,
+				fullCustomer,
+				deduction,
+				options,
+			});
+
+			if (customerEntitlements.length === 0) {
+				continue;
+			}
+
+			// Call the stored function to deduct from entitlements with credit costs
+			const result = await db.execute(
+				sql`SELECT * FROM deduct_from_cus_ents(
+			${JSON.stringify({
+				sorted_entitlements: customerEntitlementDeductions,
+				spend_limit_by_feature_id: spendLimitByFeatureId ?? null,
+				usage_based_cus_ent_ids_by_feature_id:
+					usageBasedCusEntIdsByFeatureId ?? null,
+				amount_to_deduct: toDeduct ?? null,
+				target_balance: targetBalance ?? null,
+				lock_receipt: lockReceipt ?? null,
+				unwind_value: unwindValue ?? null,
+				target_entity_id: entityId || null,
+				rollovers: rollovers.length > 0 ? rollovers : null,
+				cus_ent_ids: customerEntitlements.map((ce) => ce.id),
+				skip_additional_balance: resolvedOptions.skipAdditionalBalance,
+				alter_granted_balance: resolvedOptions.alterGrantedBalance,
+				overage_behaviour: resolvedOptions.overageBehaviour,
+				feature_id: feature.id,
+			})}::jsonb
+		) ${planetScaleTag({ query: "deductFromCusEnts" })}`,
+			);
+
+			// Parse the JSONB result
+			const resultJson = result[0]?.deduct_from_cus_ents as {
+				updates: Record<string, DeductionUpdate>;
+				remaining: number;
+				rollover_updates: RolloverOverwrite[];
+				mutation_logs: MutationLogItem[];
+			};
+
+			if (!resultJson) {
+				throw new InternalError({
+					message: "Failed to deduct from entitlements",
+				});
+			}
+
+			const { updates, rollover_updates, mutation_logs } = resultJson;
+			logDeductionUpdates({
+				ctx,
+				fullCustomer,
+				updates,
+				source: "executePostgresDeduction",
+			});
+			allUpdates = { ...allUpdates, ...updates };
+			allMutationLogs = [...allMutationLogs, ...(mutation_logs ?? [])];
+
+			try {
+				applyRolloverUpdatesToFullCustomer({
+					fullCus: fullCustomer,
+					rolloverUpdates: Object.fromEntries(
+						(rollover_updates ?? []).map((rollover) => [
+							rollover.id,
+							{
+								balance: rollover.balance,
+								usage: rollover.usage,
+								entities: rollover.entities,
+							},
+						]),
+					),
+				});
+
+				for (const cusEntId of Object.keys(updates)) {
+					const update = updates[cusEntId];
+					const cusEnt = customerEntitlements.find((ce) => ce.id === cusEntId);
+
+					if (!cusEnt) continue;
+
+					await createAllocatedInvoice({
+						ctx,
+						customerEntitlement: cusEnt,
+						oldFullCustomer: oldFullCus,
+						update,
+					});
+
+					applyDeductionUpdateToFullCustomer({
+						fullCus: fullCustomer,
+						cusEntId,
+						update,
+					});
+				}
+
+				if (preparedLock?.enabled) {
+					await saveLockReceipt({
+						lock: preparedLock,
+						customerId: fullCustomer.id || customerId,
+						featureId: feature.id,
+						entityId,
+						items: mutation_logs ?? [],
+					});
+				}
+			} catch (error) {
+				if (error instanceof Error && !error?.message?.includes("declined")) {
+					ctx.logger.error(
+						`[deductFromCusEnts] Attempting rollback due to error: ${error}`,
+					);
+				}
+				await rollbackDeduction({
+					ctx,
+					oldFullCus,
+					updates,
+				});
+				throw error;
+			}
+
+			const featuresFromMutationLogs = mutationLogsToFeatures({
+				fullCustomer,
+				mutationLogs: mutation_logs ?? [],
+			});
+
+			fireTrackWebhooks({
+				ctx,
+				oldFullCus,
+				newFullCus: fullCustomer,
+				feature: deduction.feature,
+				entityId,
+				featuresFromMutationLogs,
+			});
+
+			if (resolvedOptions.triggerAutoTopUp) {
+				triggerAutoTopUp({
+					ctx,
+					newFullCus: fullCustomer,
+					feature: deduction.feature,
+				}).catch((error) => {
+					ctx.logger.error(
+						`[executePostgresDeduction] Failed to trigger auto top-up: ${error}`,
+					);
+				});
+			}
+		}
+
+		return {
+			updates: allUpdates,
+			mutationLogs: allMutationLogs,
+		};
+	};
+
+	const deductionResult = resolvedOptions.paidAllocatedV1
+		? await withLock({
+				lockKey: `lock:deduction:${org.id}:${env}:${customerId}`,
+				ttlMs: 60000,
+				errorMessage: `Deduction for paid feature ${deductions[0]?.feature?.name} already in progress for customer ${customerId}.`,
+				fn: executeDeduction,
+			})
+		: await executeDeduction();
+
+	return {
+		oldFullCus,
+		fullCus: fullCustomer,
+		updates: deductionResult.updates,
+		mutationLogs: deductionResult.mutationLogs,
+	};
+};

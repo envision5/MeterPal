@@ -1,0 +1,306 @@
+import {
+	CustomerFilterSchema,
+	CustomerListFiltersSchema,
+	customerProducts,
+	customers,
+	ErrCode,
+	MigrationItemKind,
+	products,
+	RELEVANT_STATUSES,
+	RecaseError,
+	Scopes,
+} from "@autumn/shared";
+import { and, eq, inArray } from "drizzle-orm";
+import { z } from "zod/v4";
+import type { DrizzleCli } from "@/db/initDrizzle.js";
+import { createRoute } from "@/honoMiddlewares/routeHandler.js";
+import { countCustomersCached } from "@/internal/migrations/v2/actions/countCustomersCached.js";
+import { getCustomerPage } from "@/internal/migrations/v2/filters/customers/filterCustomers.js";
+import type { IncludeProcessed } from "../filters/customers/buildCustomerSelect.js";
+import {
+	migrationItemRunRepo,
+	migrationRepo,
+	migrationRunRepo,
+} from "../repos/index.js";
+
+const DEFAULT_PAGE_SIZE = 50;
+
+const PreviewFilterBody = z.object({
+	filter: CustomerFilterSchema.optional().default({}),
+	search: z.string().optional().default(""),
+	customerFilters: CustomerListFiltersSchema.pick({
+		status: true,
+		version: true,
+		none: true,
+		processor: true,
+	}).optional(),
+	cursor: z.string().optional().default(""),
+	includeCount: z.boolean().optional().default(true),
+	countOnly: z.boolean().optional().default(false),
+	pageSize: z
+		.number()
+		.int()
+		.min(1)
+		.max(500)
+		.optional()
+		.default(DEFAULT_PAGE_SIZE),
+	migrationId: z.string().optional(),
+	source: z.enum(["filter", "item_runs"]).optional().default("filter"),
+	executionStatuses: z
+		.array(
+			z.enum([
+				"queued",
+				"running",
+				"succeeded",
+				"skipped",
+				"failed",
+				"not_run",
+			]),
+		)
+		.optional()
+		.default([]),
+	migrationRunId: z.string().optional(),
+	migrationRunDryRun: z.boolean().optional(),
+});
+
+/** POST /migrations.filter.preview — count + enriched paginated customers. */
+export const handlePreviewMigrationFilter = createRoute({
+	scopes: [Scopes.Migrations.Read],
+	body: PreviewFilterBody,
+	handler: async (c) => {
+		const ctx = c.get("ctx");
+		const {
+			filter,
+			search,
+			customerFilters,
+			cursor,
+			includeCount,
+			countOnly,
+			pageSize,
+			migrationId,
+			source,
+			executionStatuses,
+			migrationRunId,
+			migrationRunDryRun,
+		} = c.req.valid("json");
+
+		const searchTerm = search || undefined;
+		const sourceOnlyProcessed = source === "item_runs";
+		if (sourceOnlyProcessed && !migrationId) {
+			throw new RecaseError({
+				message: "filter preview with source item_runs requires migrationId",
+				code: ErrCode.InvalidRequest,
+				statusCode: 400,
+			});
+		}
+
+		// An empty customer scope compiles to nothing (wrapAnd throws). Treat "no
+		// active filter" as selecting nobody rather than 500ing the preview.
+		const hasAnyField = Object.values(filter ?? {}).some(
+			(v) => v !== undefined,
+		);
+		if (!hasAnyField && !sourceOnlyProcessed) {
+			return c.json({
+				count: includeCount ? 0 : null,
+				customers: [],
+				next_cursor: null,
+			});
+		}
+
+		let includeProcessed: IncludeProcessed | undefined;
+		let migrationInternalId: string | undefined;
+		if (migrationId) {
+			const migration = await migrationRepo.find({ ctx, id: migrationId });
+			migrationInternalId = migration.internal_id;
+			const needsActiveRun =
+				!sourceOnlyProcessed &&
+				executionStatuses.some((status) =>
+					["queued", "not_run"].includes(status),
+				);
+			const [activeRun] = needsActiveRun
+				? await migrationRunRepo.list({
+						ctx,
+						migrationInternalId: migration.internal_id,
+						active: true,
+					})
+				: [];
+			includeProcessed = {
+				migrationInternalId: migration.internal_id,
+				sourceOnlyProcessed,
+				executionFilter:
+					executionStatuses.length > 0
+						? {
+								statuses: executionStatuses,
+								migrationRunId,
+								dryRun: migrationRunDryRun,
+								queuedRun: activeRun
+									? {
+											migrationRunId: activeRun.internal_id,
+											dryRun: activeRun.dry_run,
+											onlyIds: activeRun.only_ids ?? undefined,
+											targetLimit: activeRun.target_limit ?? undefined,
+										}
+									: undefined,
+							}
+						: undefined,
+			};
+		}
+
+		const countPromise = includeCount
+			? countCustomersCached({
+					ctx,
+					filter,
+					search: searchTerm,
+					customerFilters,
+					includeProcessed,
+					cacheScope: {
+						migrationId,
+						source,
+						executionStatuses,
+						migrationRunId,
+						migrationRunDryRun,
+					},
+				})
+			: Promise.resolve(null);
+		const pagePromise = countOnly
+			? Promise.resolve({ rows: [], nextCursor: null })
+			: getCustomerPage({
+					ctx,
+					filter,
+					search: searchTerm,
+					customerFilters,
+					includeProcessed,
+					pageSize,
+					cursor,
+				});
+		const [count, pageResult] = await Promise.all([countPromise, pagePromise]);
+		const pageRows = pageResult.rows;
+
+		if (pageRows.length === 0) {
+			return c.json({
+				count,
+				customers: [],
+				next_cursor: null,
+			});
+		}
+
+		const enriched = await enrichCustomers(
+			ctx.db,
+			pageRows.map((r) => r.internal_id),
+		);
+		const itemRuns = migrationInternalId
+			? await migrationItemRunRepo.listForItems({
+					ctx,
+					migrationInternalId,
+					itemKind: MigrationItemKind.Customer,
+					itemIds: pageRows.map((r) => r.internal_id),
+					dryRun: false,
+				})
+			: [];
+		const itemRunsByCustomer = new Map(
+			itemRuns.map((run) => [run.item_id, run]),
+		);
+
+		// enrichCustomers returns join order — restore the page's cursor order.
+		const pageOrder = new Map(
+			pageRows.map((row, index) => [row.internal_id, index]),
+		);
+		const grouped = groupByCustomer(enriched)
+			.sort(
+				(a, b) =>
+					(pageOrder.get(a.internal_id as string) ?? 0) -
+					(pageOrder.get(b.internal_id as string) ?? 0),
+			)
+			.map((customer) => ({
+				...customer,
+				migration_item_run:
+					itemRunsByCustomer.get(customer.internal_id as string) ?? null,
+			}));
+
+		return c.json({
+			count,
+			customers: grouped,
+			next_cursor: pageResult.nextCursor,
+		});
+	},
+});
+
+async function enrichCustomers(db: DrizzleCli, ids: string[]) {
+	return db
+		.select({
+			internal_id: customers.internal_id,
+			id: customers.id,
+			name: customers.name,
+			email: customers.email,
+			created_at: customers.created_at,
+			org_id: customers.org_id,
+			env: customers.env,
+			fingerprint: customers.fingerprint,
+			metadata: customers.metadata,
+			processor: customers.processor,
+			processors: customers.processors,
+			send_email_receipts: customers.send_email_receipts,
+			auto_topups: customers.auto_topups,
+			spend_limits: customers.spend_limits,
+			usage_alerts: customers.usage_alerts,
+			overage_allowed: customers.overage_allowed,
+			config: customers.config,
+			customer_product: {
+				id: customerProducts.id,
+				internal_product_id: customerProducts.internal_product_id,
+				// Live plan id from the products join (stays correct across renames),
+				// not the denormalized customer_products.product_id snapshot.
+				product_id: products.id,
+				canceled_at: customerProducts.canceled_at,
+				status: customerProducts.status,
+				trial_ends_at: customerProducts.trial_ends_at,
+				created_at: customerProducts.created_at,
+			},
+			product: {
+				internal_id: products.internal_id,
+				id: products.id,
+				name: products.name,
+				version: products.version,
+				is_add_on: products.is_add_on,
+			},
+		})
+		.from(customers)
+		.leftJoin(
+			customerProducts,
+			and(
+				eq(customers.internal_id, customerProducts.internal_customer_id),
+				inArray(customerProducts.status, RELEVANT_STATUSES),
+			),
+		)
+		.leftJoin(
+			products,
+			eq(customerProducts.internal_product_id, products.internal_id),
+		)
+		.where(inArray(customers.internal_id, ids));
+}
+
+function groupByCustomer(rows: Array<Record<string, unknown>>) {
+	const map = new Map<string, Record<string, unknown>>();
+	for (const row of rows) {
+		const id = row.internal_id as string;
+		if (!map.has(id)) {
+			const {
+				customer_product: _customerProduct,
+				product: _product,
+				...customer
+			} = row;
+			map.set(id, { ...customer, customer_products: [] });
+		}
+		if (
+			row.customer_product &&
+			(row.customer_product as Record<string, unknown>).id
+		) {
+			const entry = map.get(id)!;
+			(entry.customer_products as unknown[]).push({
+				...(row.customer_product as Record<string, unknown>),
+				product: row.product,
+			});
+		}
+	}
+	return Array.from(map.values());
+}

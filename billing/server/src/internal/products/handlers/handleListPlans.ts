@@ -1,0 +1,85 @@
+import {
+	AffectedResource,
+	type ApiPlanV1,
+	applyResponseVersionChanges,
+	ListPlansQuerySchema,
+	Scopes,
+} from "@autumn/shared";
+import { createRoute } from "../../../honoMiddlewares/routeHandler";
+import { CusService } from "../../customers/CusService";
+import { ProductService } from "../ProductService";
+import { getPlanResponse } from "../productUtils/productResponseUtils/getPlanResponse";
+
+export const handleListPlans = createRoute({
+	scopes: [Scopes.Plans.Read],
+	query: ListPlansQuerySchema,
+	handler: async (c) => {
+		const ctx = c.get("ctx");
+		const { org, features, env, db } = ctx;
+		const query = c.req.valid("query");
+
+		const {
+			customer_id,
+			entity_id,
+			include_archived,
+			all_versions,
+			v1_schema,
+		} = query;
+
+		const startedAt = Date.now();
+
+		const [products, customer] = await Promise.all([
+			ProductService.listFull({
+				db,
+				orgId: org.id,
+				env,
+				archived: include_archived ? undefined : false,
+				returnAll: all_versions,
+			}),
+			customer_id
+				? CusService.getFull({
+						ctx,
+						idOrInternalId: customer_id,
+						entityId: entity_id,
+						withEntities: true,
+						withSubs: true,
+						allowNotFound: true,
+					})
+				: undefined,
+		]);
+
+		const endedAt = Date.now();
+		ctx.logger.debug(`[handleListPlans] query took ${endedAt - startedAt}ms`);
+
+		if (v1_schema) return c.json({ list: products });
+
+		const batchResponse = [];
+		for (const p of products) {
+			batchResponse.push(
+				getPlanResponse({
+					product: p,
+					features,
+					fullCus: customer ? customer : undefined,
+					ctx,
+					currency: org.default_currency || undefined,
+					resolveBaseFullProduct: false,
+				}),
+			);
+		}
+
+		const plansList = await Promise.all(batchResponse);
+		const res = plansList.map((p) => {
+			return applyResponseVersionChanges<ApiPlanV1>({
+				input: p,
+				targetVersion: ctx.apiVersion,
+				resource: AffectedResource.Product,
+				legacyData: {
+					features: ctx.features,
+				},
+				ctx,
+			});
+		});
+
+		return c.json({ list: res });
+	},
+});

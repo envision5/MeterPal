@@ -1,0 +1,138 @@
+import type { ApiEventsListItem, TrackDeduction } from "@autumn/shared";
+import {
+	epochToDateTime,
+	tinybirdTimestampToEpochMs,
+} from "@autumn/shared/api/common/epochUtils";
+import { getTinybirdPipes } from "@/external/tinybird/initTinybird.js";
+import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
+import { validatePropertyPathForJSON } from "@/internal/analytics/actions/eventValidationUtils.js";
+
+/** Lists events for the external API with offset-based pagination */
+export const listEvents = async ({
+	ctx,
+	params,
+}: {
+	ctx: AutumnContext;
+	params: {
+		customer_id?: string;
+		entity_id?: string;
+		feature_ids?: string[];
+		custom_range?: { start?: number; end?: number };
+		offset: number;
+		limit: number;
+		filter_by?: Record<string, string>;
+	};
+}) => {
+	const pipes = getTinybirdPipes();
+	const { org, env } = ctx;
+
+	// Convert epoch ms to DateTime strings (if provided)
+	const startDate = params.custom_range?.start
+		? epochToDateTime(params.custom_range.start)
+		: undefined;
+	const endDate = params.custom_range?.end
+		? epochToDateTime(params.custom_range.end)
+		: undefined;
+
+	// Fetch N+1 for has_more calculation
+	const fetchLimit = params.limit + 1;
+
+	ctx.logger.debug("Listing events for API via Tinybird", {
+		customerId: params.customer_id,
+		featureIds: params.feature_ids,
+		startDate,
+		endDate,
+		offset: params.offset,
+		limit: params.limit,
+	});
+
+	// Build filter_by indexed params
+	const filterParams: Record<string, string> = {};
+	if (params.filter_by) {
+		const entries = Object.entries(params.filter_by).slice(0, 5);
+		for (let i = 0; i < entries.length; i++) {
+			const [key, value] = entries[i];
+			validatePropertyPathForJSON({ propertyKey: key });
+			filterParams[`filter_key_${i}`] = key;
+			filterParams[`filter_value_${i}`] = value;
+		}
+	}
+
+	const startTime = performance.now();
+	const result = await pipes.listEventsPaginated({
+		org_id: org.id,
+		env,
+		start_date: startDate,
+		end_date: endDate,
+		customer_id: params.customer_id,
+		entity_id: params.entity_id,
+		event_names: params.feature_ids,
+		limit: fetchLimit,
+		offset: params.offset,
+		...filterParams,
+	});
+
+	const queryDuration = performance.now() - startTime;
+	const hasMore = result.data.length > params.limit;
+	const rows = hasMore ? result.data.slice(0, params.limit) : result.data;
+
+	// Transform to API format
+	const list: ApiEventsListItem[] = rows.map((row) => {
+		let properties = {};
+		if (row.properties) {
+			try {
+				properties = JSON.parse(row.properties);
+			} catch {
+				// Invalid JSON, use empty object
+			}
+		}
+
+		let deductions: TrackDeduction[] | null = null;
+		if (row.deductions) {
+			try {
+				const parsed = JSON.parse(row.deductions);
+				// Tinybird's JSON column re-encodes nested-object array items
+				// as strings; second parse brings them back to TrackDeduction.
+				const rawList = Array.isArray(parsed)
+					? parsed
+					: parsed && Array.isArray(parsed.list)
+						? parsed.list
+						: null;
+				if (rawList) {
+					deductions = rawList.map((item: unknown) => {
+						if (typeof item !== "string") return item as TrackDeduction;
+						try {
+							return JSON.parse(item) as TrackDeduction;
+						} catch {
+							return item as unknown as TrackDeduction;
+						}
+					});
+				}
+			} catch {}
+		}
+
+		return {
+			id: row.id,
+			timestamp: tinybirdTimestampToEpochMs(row.timestamp),
+			feature_id: row.event_name,
+			customer_id: row.customer_id,
+			value: row.value ?? 0,
+			properties,
+			deductions,
+		};
+	});
+
+	ctx.logger.debug("Events list result", {
+		queryMs: Math.round(queryDuration),
+		rowCount: list.length,
+		hasMore,
+	});
+
+	return {
+		list,
+		has_more: hasMore,
+		total: list.length,
+		offset: params.offset,
+		limit: params.limit,
+	};
+};

@@ -1,0 +1,315 @@
+import {
+	AllowanceType,
+	cusEntToStartingBalance,
+	deduplicateArray,
+	type FullCusEntWithFullCusProduct,
+	type FullSubject,
+	fullSubjectToCustomerEntitlements,
+	fullSubjectToOverageAllowedByFeatureId,
+	fullSubjectToSpendLimitByFeatureId,
+	fullSubjectToUsageBasedCusEntsByFeatureId,
+	getMaxOverage,
+	InsufficientBalanceError,
+	isAllocatedCustomerEntitlement,
+	isFreeCustomerEntitlement,
+	notNullish,
+	orgToInStatuses,
+	usageLimitFilterMatchesProperties,
+} from "@autumn/shared";
+import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
+import { getCheckSubject } from "@/internal/balances/check/getCheckSubject.js";
+import { isThresholdBillingProduct } from "@/internal/balances/thresholdBilling/isThresholdBillingProduct.js";
+import { buildLockReceiptKey } from "@/internal/balances/utils/lock/buildLockReceiptKey.js";
+import { resolveUsageWindowLimits } from "@/internal/balances/utils/usageWindows/resolveUsageWindowLimits.js";
+import { generateId } from "@/utils/genUtils.js";
+import { computeCreditCosts } from "../deduction/computeCreditCosts.js";
+import type {
+	CustomerEntitlementDeduction,
+	DeductionOptions,
+	PreparedFeatureDeduction,
+} from "../types/deductionTypes.js";
+import type { FeatureDeduction } from "../types/featureDeduction.js";
+
+/**
+ * Prepares all the inputs needed to execute a deduction for a single feature.
+ * Mirrors the legacy helper, but reads from FullSubject.
+ */
+export const prepareFeatureDeductionV2 = ({
+	ctx,
+	fullSubject,
+	deduction,
+	options = {},
+}: {
+	ctx: AutumnContext;
+	fullSubject: FullSubject;
+	deduction: FeatureDeduction;
+	options?: DeductionOptions;
+}): PreparedFeatureDeduction => {
+	const { org, env } = ctx;
+	const { feature, lock, targetBalance } = deduction;
+	const { overageBehaviour = "cap", customerEntitlementFilters } = options;
+	const hasPastDueProduct = fullSubject.customer_products.some(
+		(customerProduct) =>
+			customerProduct.status === "past_due" &&
+			!customerProduct.product.config?.ignore_past_due &&
+			isThresholdBillingProduct({ customerProduct }) &&
+			customerProduct.customer_entitlements.some(
+				(customerEntitlement) =>
+					customerEntitlement.entitlement.feature.id === feature.id,
+			),
+	);
+	const blockOverdueUsage =
+		(deduction.enforceOverdueBlock && org.config.block_overdue_entitlements) ||
+		hasPastDueProduct;
+	if (blockOverdueUsage) {
+		fullSubject = getCheckSubject({ ctx, fullSubject });
+	}
+
+	// Membership is per cusEnt (fundsFeatureId), not per catalog feature — a
+	// plan item's feature_override can add or remove the tracked feature from
+	// its credit system's schema. set_usage still targets only the feature.
+	const customerEntitlements = fullSubjectToCustomerEntitlements({
+		fullSubject,
+		...(notNullish(targetBalance)
+			? { featureIds: [feature.id] }
+			: { fundsFeatureId: feature.id }),
+		reverseOrder: org.config?.reverse_deduction_order,
+		inStatuses: orgToInStatuses({ org }),
+		customerEntitlementFilters,
+	});
+	const requiresEntitlement = blockOverdueUsage && deduction.deduction > 0;
+	if (requiresEntitlement && customerEntitlements.length === 0) {
+		throw new InsufficientBalanceError({
+			featureId: feature.id,
+			value: deduction.deduction,
+		});
+	}
+
+	const isUnlimitedCusEnt = (ce: FullCusEntWithFullCusProduct): boolean =>
+		ce.entitlement.allowance_type === AllowanceType.Unlimited ||
+		Boolean(ce.unlimited);
+
+	// Unlimited tracks never touch or enforce usage windows: when any relevant
+	// cusEnt is unlimited, no window limits are resolved or handed to the
+	// deduction script.
+	const hasUnlimitedCusEnt = customerEntitlements.some(isUnlimitedCusEnt);
+
+	// From the gathered cusEnts (not the catalog) so override-added credit
+	// systems get their spend limits / overage controls / windows respected.
+	const effectiveFeatureIds = deduplicateArray([
+		feature.id,
+		...customerEntitlements.map(
+			(customerEntitlement) => customerEntitlement.entitlement.feature.id,
+		),
+	]);
+	const spendLimitByFeatureId = fullSubjectToSpendLimitByFeatureId({
+		fullSubject,
+		featureIds: effectiveFeatureIds,
+	});
+	const usageBasedCusEntIdsByFeatureId =
+		fullSubjectToUsageBasedCusEntsByFeatureId({
+			fullSubject,
+			featureIds: effectiveFeatureIds,
+		});
+	const overageAllowedByFeatureId = fullSubjectToOverageAllowedByFeatureId({
+		fullSubject,
+		featureIds: effectiveFeatureIds,
+	});
+	// Resolve windows against the full relevant set (incl credit-system parents)
+	// even under set_usage, so a parent-feature cap can't be bypassed by set_usage
+	// on a member feature.
+	const fundingEntitlements = notNullish(targetBalance)
+		? fullSubjectToCustomerEntitlements({
+				fullSubject,
+				fundsFeatureId: feature.id,
+				inStatuses: orgToInStatuses({ org }),
+			})
+		: customerEntitlements;
+	const windowFeatureIds = deduplicateArray([
+		feature.id,
+		...fundingEntitlements.map(
+			(customerEntitlement) => customerEntitlement.entitlement.feature.id,
+		),
+	]);
+	const allUsageWindowLimits = resolveUsageWindowLimits({
+		ctx,
+		fullSubject,
+		featureIds: windowFeatureIds,
+	});
+
+	// Filtered limits only bind events whose properties match; the script never
+	// sees non-matching limits, so their counters stay untouched. Unlimited
+	// tracks bypass windows entirely, so the script never sees window limits.
+	const usageWindowLimits = hasUnlimitedCusEnt
+		? []
+		: allUsageWindowLimits.filter((windowLimit) =>
+				usageLimitFilterMatchesProperties({
+					filterProperties: windowLimit.filter_properties,
+					eventProperties: options.eventProperties,
+				}),
+			);
+
+	// Counters are customer-scoped: a null anchor only means calendar-aligned
+	// bounds with no provenance, not an unenforceable cap.
+	for (const windowLimit of usageWindowLimits) {
+		windowLimit.new_window_id = generateId("uw");
+		if (
+			windowLimit.anchor_mode === "billing_cycle" &&
+			windowLimit.anchor_customer_entitlement_id === null
+		) {
+			ctx.logger.warn(
+				`usage window for feature ${windowLimit.feature_id} has no anchor entitlement; using calendar-aligned bounds with no provenance.`,
+			);
+		}
+	}
+
+	const nativeUsageAllowedFeatureIds = new Set(
+		customerEntitlements
+			.filter((customerEntitlement) => customerEntitlement.usage_allowed)
+			.map((customerEntitlement) => customerEntitlement.entitlement.feature.id),
+	);
+
+	const getCreditCostForEnt = computeCreditCosts({
+		cusEnts: customerEntitlements,
+		deduction,
+		catalogFeatures: ctx.features,
+		eventProperties: options.eventProperties ?? undefined,
+	});
+
+	const customerEntitlementDeductions: CustomerEntitlementDeduction[] =
+		customerEntitlements.map((customerEntitlement) => {
+			const { creditCost, rateCard } = getCreditCostForEnt(
+				customerEntitlement.id,
+			);
+
+			const maxOverage = getMaxOverage({
+				cusEnt: customerEntitlement,
+			});
+			const isFreeAllocated =
+				isFreeCustomerEntitlement(customerEntitlement) &&
+				isAllocatedCustomerEntitlement(customerEntitlement);
+			const resetBalance = cusEntToStartingBalance({
+				cusEnt: customerEntitlement,
+			});
+			const isFreeAllocatedUsageAllowed =
+				isFreeAllocated && overageBehaviour !== "reject";
+			const overageAllowedControl =
+				overageAllowedByFeatureId[customerEntitlement.entitlement.feature.id];
+
+			let effectiveUsageAllowed =
+				customerEntitlement.usage_allowed || isFreeAllocatedUsageAllowed;
+
+			if (
+				overageAllowedControl?.enabled === true &&
+				!nativeUsageAllowedFeatureIds.has(
+					customerEntitlement.entitlement.feature.id,
+				)
+			) {
+				effectiveUsageAllowed = true;
+			} else if (overageAllowedControl?.enabled === false) {
+				effectiveUsageAllowed = false;
+			}
+
+			// Unlimited cusEnts are an infinite sink: always usage-allowed with no
+			// balance clamps in either direction, so the balance drifts negative as
+			// a usage counter and refunds can move it back up freely.
+			const isUnlimited = isUnlimitedCusEnt(customerEntitlement);
+
+			return {
+				customer_entitlement_id: customerEntitlement.id,
+				credit_cost: creditCost,
+				...(rateCard ? { rate_card: rateCard } : {}),
+				feature_id: customerEntitlement.entitlement.feature.id,
+				entity_feature_id:
+					customerEntitlement.entitlement.entity_feature_id ?? null,
+				usage_allowed: isUnlimited || effectiveUsageAllowed,
+				min_balance:
+					isUnlimited || !notNullish(maxOverage) ? undefined : -maxOverage,
+				max_balance: isUnlimited ? undefined : resetBalance,
+				...(isUnlimited ? { unlimited: true } : {}),
+			};
+		});
+
+	// The deduction sort only prefers unlimited within a tier (entity level and
+	// credit systems sort first/last regardless), but the sink contract is that
+	// an unlimited entitlement absorbs everything and finite siblings stay
+	// untouched — exactly what the pre-sink skip did. Hoist the first unlimited
+	// entry to the front so the scripts always see the sink lead.
+	const unlimitedEntryIndex = customerEntitlementDeductions.findIndex(
+		(deductionEntry) => deductionEntry.unlimited,
+	);
+	if (unlimitedEntryIndex > 0) {
+		const [unlimitedEntry] = customerEntitlementDeductions.splice(
+			unlimitedEntryIndex,
+			1,
+		);
+		customerEntitlementDeductions.unshift(unlimitedEntry);
+	}
+
+	const rolloverArrays = customerEntitlements.map((customerEntitlement) => {
+		const { creditCost, rateCard } = getCreditCostForEnt(
+			customerEntitlement.id,
+		);
+		return (customerEntitlement.rollovers || []).map((rollover) => ({
+			...rollover,
+			credit_cost: creditCost,
+			...(rateCard ? { rate_card: rateCard } : {}),
+		}));
+	});
+
+	const sortedRollovers = rolloverArrays.flat().sort((left, right) => {
+		if (left.expires_at && right.expires_at) {
+			return left.expires_at - right.expires_at;
+		}
+		if (left.expires_at && !right.expires_at) return -1;
+		if (!left.expires_at && right.expires_at) return 1;
+		return 0;
+	});
+
+	const oneDaySeconds = 24 * 60 * 60;
+	const oneHourSeconds = 60 * 60;
+
+	const preparedLock = lock
+		? {
+				...lock,
+				hashed_key: lock.hashed_key ?? Bun.hash(lock.lock_id!).toString(),
+				redis_receipt_key: buildLockReceiptKey({
+					orgId: org.id,
+					env,
+					lockKey: lock.hashed_key ?? Bun.hash(lock.lock_id!).toString(),
+				}),
+				created_at: Date.now(),
+				// Persisted so finalize can reuse the check's metadata and overage mode.
+				properties: options.eventProperties ?? null,
+				overage_behavior: overageBehaviour,
+				ttl_at: lock.expires_at
+					? Math.ceil(lock.expires_at / 1000) + oneHourSeconds
+					: Math.ceil(Date.now() / 1000) + oneDaySeconds,
+			}
+		: undefined;
+
+	return {
+		customerEntitlements,
+		customerEntitlementDeductions,
+		spendLimitByFeatureId:
+			Object.keys(spendLimitByFeatureId).length > 0
+				? spendLimitByFeatureId
+				: undefined,
+		usageBasedCusEntIdsByFeatureId:
+			Object.keys(usageBasedCusEntIdsByFeatureId).length > 0
+				? usageBasedCusEntIdsByFeatureId
+				: undefined,
+		usageWindowLimits:
+			usageWindowLimits.length > 0 ? usageWindowLimits : undefined,
+		usageWindowFeatureIds:
+			usageWindowLimits.length > 0
+				? [...new Set(usageWindowLimits.map((limit) => limit.feature_id))]
+				: undefined,
+		rollovers: sortedRollovers.map((rollover) => ({
+			id: rollover.id,
+			credit_cost: rollover.credit_cost,
+			...(rollover.rate_card ? { rate_card: rollover.rate_card } : {}),
+		})),
+		lock: preparedLock,
+	};
+};

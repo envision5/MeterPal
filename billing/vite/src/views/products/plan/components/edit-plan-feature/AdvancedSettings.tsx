@@ -1,0 +1,109 @@
+/** biome-ignore-all lint/a11y/noStaticElementInteractions: shush */
+import {
+	BillingInterval,
+	FeatureUsageType,
+	isAnyCreditSystem,
+	isFeaturePriceItem,
+	itemToBillingInterval,
+	UsageModel,
+} from "@autumn/shared";
+import { SheetAccordion, SheetAccordionItem } from "@autumn/ui";
+import { useProduct } from "@/components/v2/inline-custom-plan-editor/PlanEditorContext";
+import { useFeaturesQuery } from "@/hooks/queries/useFeaturesQuery";
+import {
+	getFeatureCreditSystem,
+	getFeatureUsageType,
+} from "@/utils/product/entitlementUtils";
+import { useProductItemContext } from "@/views/products/product/product-item/ProductItemContext";
+import { EntityFeatureConfig } from "./advanced-settings/EntityFeatureConfig";
+import { ExpiryConfig } from "./advanced-settings/ExpiryConfig";
+import { FeatureOverrideConfig } from "./advanced-settings/FeatureOverrideConfig";
+import { PooledBalanceConfig } from "./advanced-settings/PooledBalanceConfig";
+import { ProrationConfig } from "./advanced-settings/ProrationConfig";
+import { ResetIntervalConfig } from "./advanced-settings/ResetIntervalConfig";
+import { RolloverConfig } from "./advanced-settings/RolloverConfig";
+import { ThresholdBillingConfig } from "./advanced-settings/ThresholdBillingConfig";
+import { showsThresholdBilling } from "./advanced-settings/thresholdBillingItem";
+import { UsageLimit } from "./advanced-settings/UsageLimit";
+
+export function AdvancedSettings() {
+	const { features } = useFeaturesQuery();
+	const { item } = useProductItemContext();
+	const { product } = useProduct();
+
+	if (!item) return null;
+
+	const usageType = getFeatureUsageType({ item, features });
+	const hasCreditSystem = getFeatureCreditSystem({ item, features });
+	const isPriced = isFeaturePriceItem(item);
+	const isOneOff = itemToBillingInterval({ item }) === BillingInterval.OneOff;
+
+	const showUsageLimits = isPriced;
+	const showThresholdBilling = showsThresholdBilling({ item });
+	const showRollover = hasCreditSystem || usageType === FeatureUsageType.Single;
+	// Purchased credits only: the cadence of a recurring item already bounds it.
+	const showExpiry =
+		isPriced && item.usage_model === UsageModel.Prepaid && isOneOff;
+	const showFeatureOverride = isAnyCreditSystem(
+		features.find((feature) => feature.id === item.feature_id)?.type,
+	);
+	// Deprecated in favor of licenses. Surface it whenever any item in the plan
+	// uses an entity feature, so all items in such plans keep working.
+	const showEntityFeature =
+		item.entity_feature_id != null ||
+		(product?.items?.some((planItem) => planItem?.entity_feature_id != null) ??
+			false);
+	// Proration shows for prepaid or continuous use features (not consumable + pay-per-use).
+	// One-off items have no billing cycle to prorate against.
+	const showProration =
+		isPriced &&
+		!isOneOff &&
+		(item.usage_model === UsageModel.Prepaid ||
+			usageType === FeatureUsageType.Continuous);
+
+	// Consumable prepaid features can reset their granted balance on a different
+	// cycle to billing (continuous-use balances don't reset).
+	const showResetInterval =
+		isPriced &&
+		item.usage_model === UsageModel.Prepaid &&
+		usageType === FeatureUsageType.Single &&
+		!isOneOff;
+
+	return (
+		<SheetAccordion type="single" withSeparator={false} collapsible={true}>
+			<SheetAccordionItem
+				value="advanced"
+				title="Advanced"
+				// description="Additional configuration options for this feature"
+			>
+				<div className="flex flex-col gap-6 pt-2 pb-10 [>&_.advanced-input-width]:w-xs">
+					<PooledBalanceConfig />
+
+					{/* Usage Limits */}
+					{showUsageLimits && <UsageLimit />}
+
+					{/* Bill overage once it reaches a threshold */}
+					{showThresholdBilling && <ThresholdBillingConfig />}
+
+					{/* Rollover */}
+					{showRollover && <RolloverConfig />}
+
+					{/* Expiry on purchased credits */}
+					{showExpiry && <ExpiryConfig />}
+
+					{/* Credit rate card override */}
+					{showFeatureOverride && <FeatureOverrideConfig />}
+
+					{/* Entity Feature Config */}
+					{showEntityFeature && <EntityFeatureConfig />}
+
+					{/* Proration Config */}
+					{showProration && <ProrationConfig />}
+
+					{/* Reset Interval Config */}
+					{showResetInterval && <ResetIntervalConfig />}
+				</div>
+			</SheetAccordionItem>
+		</SheetAccordion>
+	);
+}

@@ -1,0 +1,128 @@
+import type {
+	Organization,
+	ScheduleMismatch,
+	SubscriptionMismatch,
+} from "@autumn/shared";
+import { fromUnixTime, isAfter } from "date-fns";
+import type Stripe from "stripe";
+import { similarUnix } from "@/internal/customers/attach/mergeUtils/phaseUtils/phaseUtils";
+import type {
+	CusPriceCatalog,
+	StoredPriceCatalog,
+} from "../compute/buildStoredPriceCatalog";
+import { evaluateItems } from "./evaluateItems";
+
+/** Evaluates actual Stripe schedule phases against the expected phases for a multi_phase scenario. */
+export const evaluateSchedulePhases = async ({
+	stripeCli,
+	sub,
+	scheduledPhases,
+	storedPriceCatalog,
+	cusPriceCatalog,
+	org,
+	strict,
+}: {
+	stripeCli: Stripe;
+	sub: Stripe.Subscription;
+	scheduledPhases: Stripe.SubscriptionScheduleUpdateParams.Phase[];
+	storedPriceCatalog: StoredPriceCatalog;
+	cusPriceCatalog: CusPriceCatalog;
+	org: Organization;
+	strict?: boolean;
+}): Promise<SubscriptionMismatch[]> => {
+	if (!sub.schedule) {
+		return [
+			{
+				type: "schedule_mismatch",
+				reason: "missing_schedule",
+				expected_phase_count: scheduledPhases.length,
+			} satisfies ScheduleMismatch,
+		];
+	}
+
+	const scheduleId =
+		typeof sub.schedule === "string" ? sub.schedule : sub.schedule.id;
+	const schedule = await stripeCli.subscriptionSchedules.retrieve(scheduleId, {
+		expand: ["phases.items.price"],
+	});
+
+	const mismatches: SubscriptionMismatch[] = [];
+
+	const now = new Date();
+	const livePhases = schedule.phases.filter(
+		(phase) =>
+			phase.end_date === null || isAfter(fromUnixTime(phase.end_date), now),
+	);
+
+	if (livePhases.length !== scheduledPhases.length) {
+		mismatches.push({
+			type: "schedule_mismatch",
+			reason: "phase_count_mismatch",
+			expected_phase_count: scheduledPhases.length,
+			actual_phase_count: livePhases.length,
+		});
+	}
+
+	const currentPhaseStart =
+		schedule.current_phase?.start_date ?? livePhases[0]?.start_date;
+	// One expected phase claims one actual phase, so a genuine extra phase can't
+	// hide behind a sibling that already matched within the day tolerance.
+	const claimedPhases = new Set<number>();
+	for (let i = 0; i < scheduledPhases.length; i++) {
+		const expectedPhase = scheduledPhases[i];
+		const expectedStartSeconds = expectedPhase.start_date as number;
+
+		const actualPhaseIndex = livePhases.findIndex(
+			(phase, phaseIndex) =>
+				!claimedPhases.has(phaseIndex) &&
+				(i === 0 && currentPhaseStart
+					? phase.start_date === currentPhaseStart
+					: similarUnix({
+							unix1: expectedStartSeconds * 1000,
+							unix2: phase.start_date * 1000,
+						})),
+		);
+		const actualPhase =
+			actualPhaseIndex === -1 ? undefined : livePhases[actualPhaseIndex];
+		if (actualPhaseIndex !== -1) claimedPhases.add(actualPhaseIndex);
+		// Phase 0 is the live phase, so its findings carry no future start.
+		const phaseStartsAt = i === 0 ? undefined : expectedStartSeconds;
+
+		if (!actualPhase) {
+			mismatches.push({
+				type: "schedule_mismatch",
+				reason: "phase_start_mismatch",
+				phase_starts_at: phaseStartsAt,
+			});
+			continue;
+		}
+
+		if (
+			(actualPhase.billing_cycle_anchor ?? undefined) !==
+			(expectedPhase.billing_cycle_anchor ?? undefined)
+		) {
+			mismatches.push({
+				type: "schedule_mismatch",
+				reason: "billing_cycle_anchor_mismatch",
+				phase_starts_at: phaseStartsAt,
+			});
+		}
+
+		// Phase 0's items are already checked against the live subscription items in verify.ts.
+		if (i === 0) continue;
+
+		mismatches.push(
+			...evaluateItems({
+				expectedRawItems: expectedPhase.items ?? [],
+				actualPhaseItems: actualPhase.items,
+				storedPriceCatalog,
+				cusPriceCatalog,
+				org,
+				phaseStartsAt: expectedStartSeconds,
+				strict,
+			}),
+		);
+	}
+
+	return mismatches;
+};

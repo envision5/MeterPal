@@ -1,0 +1,15 @@
+{
+	"watch": ["../shared", "src"],
+	"ext": "js,ts,lua",
+	"ignore": [
+		"../shared/dist/**/*.d.ts",
+		"../shared/node_modules",
+		"../shared/scripts",
+		"scripts",
+		"tests"
+	],
+	"exec": "bun src/index.ts",
+	"env": {
+		"NODE_ENV": "development"
+	}
+}

@@ -1,0 +1,176 @@
+import type {
+	BillingCycleResult,
+	ClickHouseResult,
+	FullCustomer,
+	RawEventFromClickHouse,
+} from "@autumn/shared";
+import { UTCDate } from "@date-fns/utc";
+import { sub } from "date-fns";
+import {
+	getTinybirdPipes,
+	type ListEventsPaginatedPipeRow,
+} from "@/external/tinybird/initTinybird.js";
+import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
+import {
+	getBillingCycleStartDate,
+	getStandardIntervalWindow,
+} from "../analyticsUtils.js";
+
+const DEFAULT_LIMIT = 1000;
+
+/** Lookback for ranges with no fixed window, e.g. billing-cycle ranges whose
+ * subscription lookup came up empty. */
+const FALLBACK_LOOKBACK_DAYS = 24;
+
+const formatJsDateToClickHouseDateTime = (date: Date): string => {
+	const year = date.getFullYear();
+	const month = String(date.getMonth() + 1).padStart(2, "0");
+	const day = String(date.getDate()).padStart(2, "0");
+	const hours = String(date.getHours()).padStart(2, "0");
+	const minutes = String(date.getMinutes()).padStart(2, "0");
+	const seconds = String(date.getSeconds()).padStart(2, "0");
+
+	return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+};
+
+const calculateStartDateFromInterval = ({
+	interval,
+	binSize,
+}: {
+	interval: string;
+	binSize?: string;
+}): UTCDate => {
+	const window = getStandardIntervalWindow({ interval, binSize });
+	return window?.start ?? sub(new UTCDate(), { days: FALLBACK_LOOKBACK_DAYS });
+};
+
+/** Converts pipe row to the expected ClickHouse format */
+const convertPipeRowToClickHouseFormat = (
+	row: ListEventsPaginatedPipeRow,
+): RawEventFromClickHouse => ({
+	id: row.id,
+	customer_id: row.customer_id,
+	event_name: row.event_name,
+	timestamp: row.timestamp,
+	value: row.value,
+	properties: row.properties,
+	idempotency_key: row.idempotency_key,
+	entity_id: row.entity_id,
+});
+
+export type ListRawEventsParams = {
+	customer_id?: string;
+	entity_id?: string;
+	interval?: string;
+	bin_size?: string;
+	custom_range?: { start: number; end: number };
+	customer?: FullCustomer;
+	aggregateAll?: boolean;
+	event_name?: string;
+	event_names?: string[];
+	limit?: number;
+};
+
+/** Lists raw events with optional filtering by customer and date range */
+export const listRawEvents = async ({
+	ctx,
+	params,
+}: {
+	ctx: AutumnContext;
+	params: ListRawEventsParams;
+}): Promise<ClickHouseResult<RawEventFromClickHouse>> => {
+	const pipes = getTinybirdPipes();
+	const { org, env, db } = ctx;
+
+	const intervalType = params.interval ?? "day";
+	const isBillingCycle = intervalType === "1bc" || intervalType === "3bc";
+
+	// Calculate billing cycle dates if needed
+	const billingCycleResult =
+		isBillingCycle && !params.aggregateAll && params.customer
+			? ((await getBillingCycleStartDate({
+					customer: params.customer,
+					db,
+					intervalType: intervalType as "1bc" | "3bc",
+					featureIds:
+						params.event_names ??
+						(params.event_name ? [params.event_name] : undefined),
+					ctx,
+				})) as BillingCycleResult | null)
+			: null;
+
+	// Calculate date range
+	const startDate = calculateStartDateFromInterval({
+		interval: intervalType,
+		binSize: params.bin_size,
+	});
+
+	const finalStartDate = params.custom_range
+		? formatJsDateToClickHouseDateTime(new UTCDate(params.custom_range.start))
+		: isBillingCycle && billingCycleResult?.startDate
+			? billingCycleResult.startDate
+			: formatJsDateToClickHouseDateTime(startDate);
+
+	const finalEndDate = params.custom_range
+		? formatJsDateToClickHouseDateTime(new UTCDate(params.custom_range.end))
+		: isBillingCycle && billingCycleResult?.endDate
+			? billingCycleResult.endDate
+			: formatJsDateToClickHouseDateTime(new UTCDate());
+
+	const eventNameFilter = (() => {
+		if (params.event_names && params.event_names.length > 0) {
+			return params.event_names;
+		}
+		if (params.event_name) {
+			return [params.event_name];
+		}
+		return undefined;
+	})();
+
+	const pipeParams = {
+		org_id: org.id,
+		env,
+		start_date: finalStartDate,
+		end_date: finalEndDate,
+		customer_id: params.aggregateAll ? undefined : params.customer_id,
+		entity_id: params.entity_id,
+		event_names: eventNameFilter,
+		limit: params.limit ?? DEFAULT_LIMIT,
+		offset: 0,
+	};
+
+	// ctx.logger.debug("Listing raw events via Tinybird pipe", {
+	// 	customerId: params.customer_id,
+	// 	aggregateAll: params.aggregateAll,
+	// 	startDate: finalStartDate,
+	// 	endDate: finalEndDate,
+	// 	limit: pipeParams.limit,
+	// });
+
+	const result = await pipes.listEventsPaginated(pipeParams);
+
+	// ctx.logger.debug("Raw events result", {
+	// 	queryMs: Math.round(performance.now() - startTime),
+	// 	rowCount: result.data.length,
+	// });
+
+	// Convert to ClickHouseResult format for backwards compatibility
+	const data = result.data.map(convertPipeRowToClickHouseFormat);
+
+	return {
+		meta: [
+			{ name: "id" },
+			{ name: "org_id" },
+			{ name: "env" },
+			{ name: "customer_id" },
+			{ name: "event_name" },
+			{ name: "timestamp" },
+			{ name: "value" },
+			{ name: "properties" },
+			{ name: "idempotency_key" },
+			{ name: "entity_id" },
+		],
+		rows: data.length,
+		data,
+	};
+};

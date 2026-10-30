@@ -1,0 +1,331 @@
+import dotenv from "dotenv";
+
+dotenv.config();
+
+import { AppEnv, FeatureUsageType } from "@autumn/shared";
+import {
+	constructAiCreditSystem,
+	constructBooleanFeature,
+	constructCreditSystem,
+	constructMeteredFeature,
+} from "@/internal/features/utils/constructFeatureUtils.js";
+
+export enum TestFeature {
+	Dashboard = "dashboard", // boolean feature
+	Messages = "messages", // single use (prepaid)
+	Users = "users", // cont use
+	Workflows = "workflows", // cont use
+	Admin = "admin", // cont use
+	AdminRights = "admin_rights", // cont use
+	Words = "words", // single use (pay per use)
+	Storage = "storage", // single use (prepaid)
+
+	Action1 = "action1", // single use (pay per use)
+	Action2 = "action2", // single use (pay per use)
+	Credits = "credits", // credit system
+
+	Action3 = "action3", // single use (pay per use)
+	Credits2 = "credits2", // credit system
+	TieredAction = "tiered_action",
+	TieredCredits = "tiered_credits",
+	InvoiceCredits = "invoice_credits",
+	DimensionAction = "dimension_action",
+	DimensionCredits = "dimension_credits",
+
+	Credits3 = "credits3", // credit system (overlaps with credits on action1)
+
+	AiCredits = "ai_credits", // AI credit system (models.dev pricing)
+	AiCredits2 = "ai_credits_2", // second AI credit system (for disambiguation tests)
+	AiCreditsTiered = "ai_credits_tiered", // AI credit system with global + provider markup tiers
+
+	Orbs = "orbs", // credit system that wraps an AI credit system (1000 orbs per $1)
+}
+
+export const getFeatures = ({ orgId }: { orgId: string }) => ({
+	[TestFeature.Dashboard]: constructBooleanFeature({
+		featureId: TestFeature.Dashboard,
+		orgId,
+		env: AppEnv.Sandbox,
+	}),
+	[TestFeature.Workflows]: constructMeteredFeature({
+		featureId: TestFeature.Workflows,
+		orgId,
+		env: AppEnv.Sandbox,
+		usageType: FeatureUsageType.Continuous,
+	}),
+	[TestFeature.AdminRights]: constructBooleanFeature({
+		featureId: TestFeature.AdminRights,
+		orgId,
+		env: AppEnv.Sandbox,
+	}),
+	[TestFeature.Messages]: constructMeteredFeature({
+		featureId: TestFeature.Messages,
+		orgId,
+		env: AppEnv.Sandbox,
+		usageType: FeatureUsageType.Single,
+	}),
+	[TestFeature.Admin]: constructMeteredFeature({
+		featureId: TestFeature.Admin,
+		orgId,
+		env: AppEnv.Sandbox,
+		usageType: FeatureUsageType.Continuous,
+	}),
+	[TestFeature.Users]: constructMeteredFeature({
+		featureId: TestFeature.Users,
+		orgId,
+		env: AppEnv.Sandbox,
+		usageType: FeatureUsageType.Continuous,
+	}),
+	[TestFeature.Words]: constructMeteredFeature({
+		featureId: TestFeature.Words,
+		orgId,
+		env: AppEnv.Sandbox,
+		usageType: FeatureUsageType.Single,
+	}),
+	[TestFeature.Storage]: constructMeteredFeature({
+		featureId: TestFeature.Storage,
+		orgId,
+		env: AppEnv.Sandbox,
+		usageType: FeatureUsageType.Single,
+	}),
+	[TestFeature.Action1]: constructMeteredFeature({
+		featureId: TestFeature.Action1,
+		orgId,
+		env: AppEnv.Sandbox,
+		usageType: FeatureUsageType.Single,
+		eventNames: ["action-event"],
+	}),
+	[TestFeature.Action2]: constructMeteredFeature({
+		featureId: TestFeature.Action2,
+		orgId,
+		env: AppEnv.Sandbox,
+		usageType: FeatureUsageType.Single,
+		// eventNames: ["action-event"],
+	}),
+	[TestFeature.Action3]: constructMeteredFeature({
+		featureId: TestFeature.Action3,
+		orgId,
+		env: AppEnv.Sandbox,
+		usageType: FeatureUsageType.Single,
+		eventNames: ["action-event"],
+	}),
+	[TestFeature.Credits]: constructCreditSystem({
+		featureId: TestFeature.Credits,
+		orgId,
+		env: AppEnv.Sandbox,
+		schema: [
+			{
+				metered_feature_id: TestFeature.Action1,
+				credit_cost: 0.2,
+			},
+			{
+				metered_feature_id: TestFeature.Action2,
+				credit_cost: 0.6,
+			},
+		],
+	}),
+	[TestFeature.Credits2]: constructCreditSystem({
+		featureId: TestFeature.Credits2,
+		orgId,
+		env: AppEnv.Sandbox,
+		schema: [
+			{
+				metered_feature_id: TestFeature.Action3,
+				credit_cost: 1.4,
+			},
+		],
+	}),
+	[TestFeature.TieredAction]: constructMeteredFeature({
+		featureId: TestFeature.TieredAction,
+		orgId,
+		env: AppEnv.Sandbox,
+		usageType: FeatureUsageType.Single,
+	}),
+	[TestFeature.TieredCredits]: {
+		...constructCreditSystem({
+			featureId: TestFeature.TieredCredits,
+			orgId,
+			env: AppEnv.Sandbox,
+			schema: [
+				{
+					metered_feature_id: TestFeature.TieredAction,
+					credit_cost: 1,
+				},
+			],
+		}),
+		config: {
+			usage_type: FeatureUsageType.Single,
+			invoice_credit: true,
+			schema: [
+				{
+					metered_feature_id: TestFeature.TieredAction,
+					feature_amount: 100,
+					tier_behavior: "graduated" as const,
+					tiers: [
+						{ to: 10_000, credit_amount: 1 },
+						{ to: 50_000, credit_amount: 0.8 },
+						{ to: "inf" as const, credit_amount: 0.5 },
+					],
+				},
+			],
+		},
+	},
+	[TestFeature.DimensionAction]: constructMeteredFeature({
+		featureId: TestFeature.DimensionAction,
+		orgId,
+		env: AppEnv.Sandbox,
+		usageType: FeatureUsageType.Single,
+	}),
+	[TestFeature.DimensionCredits]: {
+		...constructCreditSystem({
+			featureId: TestFeature.DimensionCredits,
+			orgId,
+			env: AppEnv.Sandbox,
+			schema: [
+				{
+					metered_feature_id: TestFeature.DimensionAction,
+					credit_cost: 1,
+				},
+			],
+		}),
+		config: {
+			usage_type: FeatureUsageType.Single,
+			invoice_credit: true,
+			schema: [
+				{
+					metered_feature_id: TestFeature.DimensionAction,
+					credit_amount: 1,
+					dimensions: {
+						size_large: { match: { size: "large" }, credit_amount: 16 },
+						size_large_region_eu: {
+							match: { size: "large", region: "eu" },
+							credit_amount: 20,
+						},
+						size_xl: {
+							match: { size: "xl" },
+							tier_behavior: "graduated" as const,
+							tiers: [
+								{ to: 5, credit_amount: 2 },
+								{ to: "inf" as const, credit_amount: 1 },
+							],
+						},
+					},
+					multipliers: {
+						lifecycle_spot: { match: { lifecycle: "spot" }, factor: 0.3 },
+					},
+				},
+			],
+		},
+	},
+	[TestFeature.InvoiceCredits]: {
+		...constructCreditSystem({
+			featureId: TestFeature.InvoiceCredits,
+			orgId,
+			env: AppEnv.Sandbox,
+			schema: [
+				{
+					metered_feature_id: TestFeature.Action1,
+					credit_cost: 0.2,
+				},
+				{
+					metered_feature_id: TestFeature.Action2,
+					credit_cost: 0.6,
+				},
+			],
+		}),
+		config: {
+			usage_type: FeatureUsageType.Single,
+			invoice_credit: true,
+			schema: [
+				{
+					metered_feature_id: TestFeature.Action1,
+					feature_amount: 1,
+					credit_amount: 0.2,
+				},
+				{
+					metered_feature_id: TestFeature.Action2,
+					feature_amount: 1,
+					credit_amount: 0.6,
+				},
+			],
+		},
+	},
+	// Overlaps with Credits on action1, and is seeded after it in the catalog
+	[TestFeature.Credits3]: constructCreditSystem({
+		featureId: TestFeature.Credits3,
+		orgId,
+		env: AppEnv.Sandbox,
+		schema: [
+			{
+				metered_feature_id: TestFeature.Action1,
+				credit_cost: 2,
+			},
+		],
+	}),
+	[TestFeature.AiCredits]: constructAiCreditSystem({
+		featureId: TestFeature.AiCredits,
+		orgId,
+		env: AppEnv.Sandbox,
+		modelMarkups: {
+			"anthropic/claude-sonnet-4-20250514": {
+				markup: 0,
+			},
+			"anthropic/claude-3-5-haiku-20241022": {
+				markup: 20,
+			},
+			"custom/internal-model": {
+				markup: 0,
+				input_cost: 5,
+				output_cost: 15,
+			},
+			"custom/marked-up-model": {
+				markup: 50,
+				input_cost: 10,
+				output_cost: 30,
+			},
+		},
+	}),
+	[TestFeature.AiCredits2]: constructAiCreditSystem({
+		featureId: TestFeature.AiCredits2,
+		orgId,
+		env: AppEnv.Sandbox,
+		modelMarkups: {
+			"anthropic/claude-sonnet-4-20250514": {
+				markup: 10,
+			},
+		},
+	}),
+	[TestFeature.AiCreditsTiered]: constructAiCreditSystem({
+		featureId: TestFeature.AiCreditsTiered,
+		orgId,
+		env: AppEnv.Sandbox,
+		defaultMarkup: 10,
+		providerMarkups: {
+			custom: { markup: 30 },
+		},
+		modelMarkups: {
+			// Per-model override wins over provider/global.
+			"custom/override-model": {
+				markup: 5,
+				input_cost: 10,
+				output_cost: 20,
+			},
+			// No markup -> inherits the "custom" provider markup (30%).
+			"custom/provider-fallback-model": {
+				input_cost: 10,
+				output_cost: 20,
+			},
+		},
+	}),
+	[TestFeature.Orbs]: constructCreditSystem({
+		featureId: TestFeature.Orbs,
+		orgId,
+		env: AppEnv.Sandbox,
+		schema: [
+			{
+				metered_feature_id: TestFeature.AiCredits,
+				credit_cost: 1000, // 1000 orbs per $1 of AI usage
+			},
+		],
+	}),
+});

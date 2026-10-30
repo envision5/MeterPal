@@ -1,0 +1,141 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+log() { echo "[agent-services] $*"; }
+
+OS="$(uname -s)"
+
+# =============================================================
+# 1. Start postgres + redis + clickhouse (OS-specific)
+# =============================================================
+log "Starting system services"
+
+if [ "$OS" = "Darwin" ]; then
+  brew services start postgresql@18  >/dev/null 2>&1 || true
+  brew services start redis-stack    >/dev/null 2>&1 || true
+  brew services start clickhouse     >/dev/null 2>&1 || true
+else
+  sudo service postgresql            start >/dev/null 2>&1 || true
+  sudo service clickhouse-server     start >/dev/null 2>&1 || true
+
+  # redis-stack-server ships a systemd unit but no SysV init script.
+  # Try `service` first (works when systemd is the init), then fall back
+  # to invoking the binary directly (works in containers without systemd).
+  if ! redis-cli -p 6379 PING >/dev/null 2>&1; then
+    if ! sudo service redis-stack-server start >/dev/null 2>&1; then
+      REDIS_LOG_DIR="${HOME}/.autumn-agent/logs"
+      mkdir -p "$REDIS_LOG_DIR"
+      log "Starting redis-stack-server manually"
+      nohup /opt/redis-stack/bin/redis-stack-server \
+        >"$REDIS_LOG_DIR/redis-stack.log" 2>&1 &
+      disown || true
+      for i in $(seq 1 30); do
+        redis-cli -p 6379 PING >/dev/null 2>&1 && break
+        sleep 0.2
+      done
+    fi
+  fi
+fi
+
+# =============================================================
+# 2. ElasticMQ (cross-platform, per-user dir)
+# =============================================================
+ELASTICMQ_DIR="${HOME}/.autumn-agent/elasticmq"
+ELASTICMQ_JAR="${ELASTICMQ_DIR}/elasticmq.jar"
+ELASTICMQ_CONF="${ELASTICMQ_DIR}/elasticmq.conf"
+ELASTICMQ_LOG_DIR="${HOME}/.autumn-agent/logs"
+mkdir -p "$ELASTICMQ_LOG_DIR"
+
+wait_elasticmq() {
+  local i
+  for i in $(seq 1 30); do
+    if curl -sf -o /dev/null 'http://localhost:9324/?Action=ListQueues&Version=2012-11-05'; then
+      return 0
+    fi
+    sleep 0.5
+  done
+  return 1
+}
+
+if ! pgrep -f 'elasticmq.*\.jar' >/dev/null 2>&1; then
+  log "Starting ElasticMQ on :9324"
+  nohup java \
+    -Dconfig.file="$ELASTICMQ_CONF" \
+    -jar "$ELASTICMQ_JAR" \
+    >"$ELASTICMQ_LOG_DIR/elasticmq.log" 2>&1 &
+  disown || true
+  log "Waiting for ElasticMQ to be ready"
+  if ! wait_elasticmq; then
+    echo "[agent-services] ERROR: ElasticMQ did not become ready after 15s. Check $ELASTICMQ_LOG_DIR/elasticmq.log" >&2
+    exit 1
+  fi
+fi
+
+# Self-heal queues: snapshot conf may only have autumn.fifo. Copying conf
+# does not reload a running JVM — CreateQueue is what actually adds them.
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+if [ -f "$ROOT/scripts/setup/elasticmq.conf" ]; then
+  cp "$ROOT/scripts/setup/elasticmq.conf" "$ELASTICMQ_CONF"
+fi
+if ! wait_elasticmq; then
+  echo "[agent-services] WARN: ElasticMQ not ready; skipping CreateQueue" >&2
+else
+  log "Ensuring ElasticMQ queues (autumn.fifo + track + stripe webhook)"
+  fifo_attrs="&Attribute.1.Name=FifoQueue&Attribute.1.Value=true&Attribute.2.Name=ContentBasedDeduplication&Attribute.2.Value=true"
+  create_q() {
+    local name="$1"
+    local extra="$2"
+    curl -sf -o /dev/null \
+      "http://localhost:9324/?Action=CreateQueue&QueueName=${name}&Version=2012-11-05${extra}" \
+      || true
+  }
+  create_q "autumn.fifo" "$fifo_attrs"
+  create_q "autumn-track.fifo" "$fifo_attrs"
+  create_q "autumn-track-async" ""
+  create_q "autumn-stripe-webhook.fifo" "$fifo_attrs"
+fi
+
+# =============================================================
+# 3. Ensure Postgres DB + role + pg_trgm
+# =============================================================
+DB_NAME="autumn"
+
+if [ "$OS" = "Darwin" ]; then
+  # macOS: brew's postgres runs as the current user, no 'postgres' role by default
+  psql -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname = '$DB_NAME'" 2>/dev/null \
+    | grep -q 1 || createdb "$DB_NAME"
+  psql -d postgres -c "DO \$\$ BEGIN CREATE ROLE postgres WITH LOGIN SUPERUSER PASSWORD 'postgres'; EXCEPTION WHEN duplicate_object THEN ALTER ROLE postgres WITH LOGIN SUPERUSER PASSWORD 'postgres'; END \$\$;" >/dev/null 2>&1 || true
+  psql -d "$DB_NAME" -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;" >/dev/null 2>&1 || true
+else
+  sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname = '$DB_NAME'" 2>/dev/null \
+    | grep -q 1 || sudo -u postgres createdb "$DB_NAME"
+  sudo -u postgres psql -c "ALTER USER postgres WITH PASSWORD 'postgres';" >/dev/null 2>&1 || true
+  sudo -u postgres psql -d "$DB_NAME" -c "CREATE EXTENSION IF NOT EXISTS pg_trgm;" >/dev/null 2>&1 || true
+fi
+
+# =============================================================
+# 4. Write env files (no-op if server/.env already exists)
+# =============================================================
+bun scripts/setup/writeAgentEnv.ts
+
+# =============================================================
+# 5. DB migrations
+# =============================================================
+log "Running migrations"
+# Always local postgres. `bun dw` is wrapped in `infisical run`, so an inherited
+# DATABASE_URL would migrate PlanetScale instead of this box.
+# --bootstrap: empty Cloud postgres has 72 CREATE INDEX without CONCURRENTLY.
+export AUTUMN_DB_DIRECT=1
+export DATABASE_URL="postgresql://postgres:postgres@localhost:5432/autumn"
+export DATABASE_CRITICAL_URL="$DATABASE_URL"
+bun db generate >/dev/null 2>&1 || true
+bun db migrate --bootstrap
+
+# Stored procedures (balance sync/deduction) are not migrations. Without them
+# Redis -> Postgres balance sync fails ("function sync_balances_v2 does not exist").
+# Import the loader directly: migrate-functions.ts force-loads server/.env.local,
+# which in a Neon worktree would retarget the DATABASE_URL exported above.
+log "Loading DB functions"
+bun -e 'const { initializeDatabaseFunctions } = await import("./server/src/db/initializeDatabaseFunctions.ts"); await initializeDatabaseFunctions(); process.exit(0);'
+
+log "All services ready"

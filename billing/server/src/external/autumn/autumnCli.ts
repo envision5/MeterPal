@@ -1,0 +1,1592 @@
+/** biome-ignore-all lint/suspicious/noExplicitAny: AutumnInt is used for internal testing & scripts */
+import dotenv from "dotenv";
+
+dotenv.config();
+
+import {
+	type ApiBaseEntity,
+	type ApiCusFeatureV3,
+	type ApiCusProductV3,
+	type ApiCustomerV3,
+	type ApiEntityBillingControlsParams,
+	type ApiEntityV0,
+	type AttachBodyV0,
+	type AttachLicenseParamsV0,
+	type AttachParamsV0Input,
+	type BillingDetailsParams,
+	type CancelBody,
+	type CatalogPreviewUpdateResponse,
+	type CatalogUpdateParamsInput,
+	type CatalogUpdateResponse,
+	type CheckoutParamsV0,
+	type CheckoutResponseV0,
+	type CheckParams,
+	type CheckQuery,
+	type CheckResponseV1,
+	type CreateBalanceParamsV0,
+	type CreateCustomerInternalOptions,
+	type CreateCustomerParamsV0Input,
+	type CreatedAtRange,
+	type CreateEntityParams,
+	type CreateRewardProgram,
+	type CreateScheduleParamsV0Input,
+	type CreateScheduleResponse,
+	type CustomerBillingControlsParams,
+	type CustomerData,
+	CustomerExpand,
+	type CustomerListFilters,
+	type DeleteBalanceParamsV0,
+	EntityExpand,
+	ErrCode,
+	type FinalizeLockParamsV0,
+	type GetCatalogParams,
+	type GetCatalogResponse,
+	type LegacyVersion,
+	type ListEntitiesParams,
+	type Migration,
+	type MigrationFilter,
+	type MigrationItemRun,
+	type MigrationRun,
+	type MigrationStatus,
+	type MultiUpdateParamsV0Input,
+	type Operations,
+	type OrgConfig,
+	type PlanUpdatePreview,
+	type PreviewUpdateCatalogResponse,
+	type PreviewUpdatePlanParamsV2Input,
+	type ProductItem,
+	type RecalculateBalanceParamsV0,
+	type RecalculateBalancePreview,
+	type ReleaseLicenseParamsV0,
+	type RestoreParamsV1,
+	type RestoreResponse,
+	type RewardRedemption,
+	type SetUsageParams,
+	type SetupPaymentParamsV1,
+	type TrackParams,
+	type UpdateBalanceParamsV0,
+	type UpdateCatalogParamsInput,
+	type UpdateCatalogResponse,
+	type UpdateSubscriptionV0Params,
+	type UpdateSubscriptionV1Params,
+	type UsageLimitUpdate,
+} from "@autumn/shared";
+import { defaultApiVersion } from "@tests/constants.js";
+import { timeout } from "@tests/utils/genUtils";
+import type { TinybirdMigrationItemEvent } from "@/external/tinybird/migrations/migrationItemEventsDataSource.js";
+import type { PrepareResponse } from "@/internal/migrations/v2/prepare/types";
+
+export type MigrationListItem = Migration & {
+	status: MigrationStatus;
+	blocked_by: string | null;
+	has_live_runs: boolean;
+	batch_eligible: boolean;
+};
+
+export type MigrationRunItemCounts = {
+	total: number;
+	running: number;
+	succeeded: number;
+	skipped: number;
+	failed: number;
+	completed: number;
+};
+
+export type MigrationRunsListResponse = {
+	list: (MigrationRun & { item_run_counts: MigrationRunItemCounts })[];
+	status: MigrationStatus;
+	blocked_by: string | null;
+};
+
+export type MigrationFilterPreviewParams = {
+	filter?: MigrationFilter["customer"];
+	search?: string;
+	customerFilters?: Pick<
+		CustomerListFilters,
+		"status" | "version" | "none" | "processor"
+	>;
+	cursor?: string;
+	pageSize?: number;
+	includeCount?: boolean;
+	countOnly?: boolean;
+	migrationId?: string;
+	source?: "filter" | "item_runs";
+	executionStatuses?: (
+		| "queued"
+		| "running"
+		| "succeeded"
+		| "skipped"
+		| "failed"
+		| "not_run"
+	)[];
+	migrationRunId?: string;
+	migrationRunDryRun?: boolean;
+};
+
+export type MigrationFilterPreviewResponse = {
+	count: number | null;
+	customers: (Record<string, unknown> & {
+		internal_id: string;
+		id: string | null;
+		migration_item_run: MigrationItemRun | null;
+	})[];
+	next_cursor: string | null;
+};
+
+/** Update-request billing controls: usage limits may be counter-only writes. */
+type WritableBillingControls<T extends { usage_limits?: unknown }> = Omit<
+	T,
+	"usage_limits"
+> & { usage_limits?: UsageLimitUpdate[] };
+
+export default class AutumnError extends Error {
+	message: string;
+	code: string;
+	statusCode?: number;
+
+	constructor({
+		message,
+		code,
+		statusCode,
+	}: {
+		message: string;
+		code: string;
+		statusCode?: number;
+	}) {
+		super(message);
+		this.message = message;
+		this.code = code;
+		this.statusCode = statusCode;
+	}
+
+	toString(): string {
+		return `${this.message} (code: ${this.code})`;
+	}
+}
+
+export class AutumnInt {
+	private apiKey: string;
+	public headers: Record<string, string>;
+	public baseUrl: string;
+
+	constructor({
+		apiKey,
+		secretKey,
+		baseUrl,
+		version,
+		orgConfig,
+		liveUrl = false,
+		skipCacheDeletion = false,
+	}: {
+		apiKey?: string;
+		secretKey?: string;
+		baseUrl?: string;
+		version?: string | LegacyVersion;
+		orgConfig?: Partial<OrgConfig>;
+		liveUrl?: boolean;
+		skipCacheDeletion?: boolean;
+	} = {}) {
+		// this.apiKey = apiKey || process.env.AUTUMN_API_KEY || "";
+		this.apiKey =
+			apiKey || secretKey || process.env.UNIT_TEST_AUTUMN_SECRET_KEY || "";
+
+		this.headers = {
+			Authorization: `Bearer ${this.apiKey}`,
+			"Content-Type": "application/json",
+		};
+
+		if (version) {
+			this.headers["x-api-version"] = version.toString() || defaultApiVersion;
+		}
+
+		if (orgConfig) {
+			this.headers["org-config"] = JSON.stringify(orgConfig);
+		}
+
+		const envBase = process.env.AUTUMN_TEST_BASE_URL;
+		const envBaseUrl = envBase ? `${envBase.replace(/\/$/, "")}/v1` : null;
+		this.baseUrl =
+			baseUrl ||
+			envBaseUrl ||
+			(liveUrl ? "https://api.useautumn.com/v1" : "http://localhost:8080/v1");
+
+		if (skipCacheDeletion) {
+			this.headers["x-skip-cache-deletion"] = "true";
+		}
+	}
+
+	async get(path: string, headers?: Record<string, string>) {
+		const response = await fetch(`${this.baseUrl}${path}`, {
+			headers: { ...this.headers, ...headers },
+		});
+
+		if (response.status !== 200) {
+			// Handle rate limit errors
+			if (response.status === 429) {
+				throw new AutumnError({
+					message: `request failed, rate limit exceeded`,
+					code: "rate_limit_exceeded",
+				});
+			}
+
+			let error: any;
+			try {
+				error = await response.json();
+			} catch (error) {
+				throw new AutumnError({
+					message: `request failed, error: ${error}`,
+					code: ErrCode.InternalError,
+				});
+			}
+
+			throw new AutumnError({
+				message: error.message,
+				code: error.code,
+			});
+		}
+
+		return response.json();
+	}
+
+	async post(path: string, body: any, headers?: Record<string, string>) {
+		const response = await fetch(`${this.baseUrl}${path}`, {
+			method: "POST",
+			headers: { ...this.headers, ...headers },
+			body: JSON.stringify(body),
+		});
+
+		// Any 2xx is a success — async/queued endpoints respond 202/204.
+		if (response.ok) {
+			const rawBody = await response.text();
+			return rawBody ? JSON.parse(rawBody) : null;
+		}
+
+		// Handle rate limit errors
+		if (response.status === 429) {
+			throw new AutumnError({
+				message: `request failed, rate limit exceeded`,
+				code: "rate_limit_exceeded",
+			});
+		}
+
+		// Read the raw body once. Some upstream failures (timeouts, 5xx from
+		// infra) return non-JSON or empty bodies — surface the snippet so the
+		// caller's log isn't a bare "Failed to parse JSON".
+		const rawBody = await response.text();
+		let parsed: any;
+		try {
+			parsed = rawBody ? JSON.parse(rawBody) : null;
+		} catch {
+			parsed = null;
+		}
+
+		if (parsed && typeof parsed === "object") {
+			throw new AutumnError({
+				message: parsed.message ?? `request failed (status ${response.status})`,
+				code: parsed.code ?? ErrCode.InternalError,
+			});
+		}
+
+		throw new AutumnError({
+			message: `request failed (status ${response.status}, ${path}): ${rawBody.slice(0, 200) || "<empty body>"}`,
+			code: ErrCode.InternalError,
+		});
+	}
+	async patch(path: string, body: any) {
+		const response = await fetch(`${this.baseUrl}${path}`, {
+			method: "PATCH",
+			headers: this.headers,
+			body: JSON.stringify(body),
+		});
+
+		if (response.status !== 200) {
+			// Handle rate limit errors
+			if (response.status === 429) {
+				throw new AutumnError({
+					message: `request failed, rate limit exceeded`,
+					code: "rate_limit_exceeded",
+				});
+			}
+
+			let error: any;
+			try {
+				error = await response.json();
+			} catch (error) {
+				throw new AutumnError({
+					message: `request failed, error: ${error}`,
+					code: ErrCode.InternalError,
+				});
+			}
+
+			throw new AutumnError({
+				message: error.message,
+				code: error.code,
+			});
+		}
+
+		return response.json();
+	}
+
+	async delete(
+		path: string,
+		{
+			deleteInStripe = false,
+		}: {
+			deleteInStripe?: boolean;
+		} = {},
+	) {
+		const response = await fetch(
+			`${this.baseUrl}${path}?${deleteInStripe ? "delete_in_stripe=true" : ""}`,
+			{
+				method: "DELETE",
+				headers: this.headers,
+			},
+		);
+
+		if (response.status !== 200) {
+			let error: any;
+			try {
+				error = await response.json();
+			} catch (error) {
+				throw new AutumnError({
+					message: `AutumnInt delete request failed, error: ${error}`,
+					code: ErrCode.InternalError,
+				});
+			}
+
+			throw new AutumnError({
+				message: error.message,
+				code: error.code,
+			});
+		}
+
+		return response.json();
+	}
+
+	async createCustomer({
+		id,
+		email,
+		name,
+		fingerprint,
+	}: {
+		id: string;
+		email: string;
+		name: string;
+		fingerprint?: string;
+	}) {
+		const data = await this.post("/customers", {
+			id,
+			email,
+			name,
+			fingerprint,
+		});
+
+		return data;
+	}
+
+	async attach<TInput = AttachBodyV0>(
+		params: TInput,
+		{
+			skipWebhooks,
+			idempotencyKey,
+			timeout,
+		}: {
+			skipWebhooks?: boolean;
+			idempotencyKey?: string;
+			timeout?: number;
+		} = {},
+	): Promise<any> {
+		const headers: Record<string, string> = {};
+		if (skipWebhooks !== undefined) {
+			headers["x-skip-webhooks"] = skipWebhooks ? "true" : "false";
+		}
+		if (idempotencyKey !== undefined) {
+			headers["idempotency-key"] = idempotencyKey;
+		}
+
+		const data = await this.post(
+			`/attach`,
+			params,
+			Object.keys(headers).length > 0 ? headers : undefined,
+		);
+
+		const concurrency = Number(process.env.TEST_FILE_CONCURRENCY || "0");
+		const defaultTimeout = concurrency > 1 ? 5000 : 4000;
+		const finalTimeout = timeout ?? defaultTimeout;
+		if (finalTimeout) {
+			await new Promise((resolve) => setTimeout(resolve, finalTimeout));
+		}
+
+		return data;
+	}
+
+	async updateCusEnt({
+		customerId,
+		customerEntitlementId,
+		updates,
+	}: {
+		customerId: string;
+		customerEntitlementId: string;
+		updates: {
+			balance?: number;
+			next_reset_at?: number;
+			entity_id?: string;
+		};
+	}) {
+		const data = await this.post(
+			`/customers/${customerId}/entitlements/${customerEntitlementId}`,
+			updates,
+		);
+		return data;
+	}
+
+	async checkout(
+		params: CheckoutParamsV0 & { invoice?: boolean; force_checkout?: boolean },
+	) {
+		const data = await this.post(`/checkout`, params);
+
+		return data as CheckoutResponseV0;
+	}
+	async transfer(
+		customerId: string,
+		params: {
+			from_entity_id?: string;
+			to_entity_id?: string;
+			product_id: string;
+			customer_product_id?: string;
+		},
+	) {
+		const data = await this.post(`/customers/${customerId}/transfer`, params);
+
+		return data;
+	}
+
+	async sendEvent({
+		customerId,
+		eventName,
+		properties,
+		customer_data,
+		idempotency_key,
+	}: {
+		customerId: string;
+		eventName: string;
+		properties?: any;
+		customer_data?: any;
+		idempotency_key?: string;
+	}) {
+		const data = await this.post(`/events`, {
+			customer_id: customerId,
+			event_name: eventName,
+			properties,
+			customer_data,
+			idempotency_key,
+		});
+
+		return data;
+	}
+
+	async entitled({
+		customerId,
+		featureId,
+		quantity,
+		customer_data,
+	}: {
+		customerId: string;
+		featureId: string;
+		quantity?: number;
+		customer_data?: any;
+	}) {
+		const data = await this.post(`/entitled`, {
+			customer_id: customerId,
+			feature_id: featureId,
+			quantity,
+			customer_data,
+		});
+
+		return data;
+	}
+
+	customers = {
+		list: async (params?: {
+			limit?: number;
+			offset?: number;
+			keepInternalFields?: boolean;
+		}) => {
+			const { keepInternalFields, ...listParams } = params || {};
+			const headers: Record<string, string> = {};
+			if (keepInternalFields) {
+				headers["x-strip-internal"] = "false";
+			}
+
+			const data = await this.get(
+				`/customers?${new URLSearchParams(listParams as Record<string, string>).toString()}`,
+				Object.keys(headers).length > 0 ? headers : undefined,
+			);
+			return data;
+		},
+
+		listV2: async (params?: {
+			limit?: number;
+			offset?: number;
+			start_cursor?: string;
+			search?: string;
+			plans?: Array<{ id: string; versions?: number[] }>;
+			subscription_status?: string[];
+			processors?: Array<"stripe" | "revenuecat" | "vercel">;
+			sort_order?: "asc" | "desc";
+			created_at_range?: CreatedAtRange;
+			keepInternalFields?: boolean;
+		}) => {
+			const { keepInternalFields, ...listParams } = params || {};
+			const headers: Record<string, string> = {};
+			if (keepInternalFields) {
+				headers["x-strip-internal"] = "false";
+			}
+
+			const data = await this.post(
+				`/customers/list`,
+				listParams,
+				Object.keys(headers).length > 0 ? headers : undefined,
+			);
+			return data;
+		},
+
+		get: async <
+			T = ApiCustomerV3 & {
+				invoices: any[];
+				autumn_id?: string;
+				entities?: ApiBaseEntity[];
+			},
+		>(
+			customerId: string,
+			params?: {
+				expand?: CustomerExpand[];
+				skip_cache?: string;
+				with_autumn_id?: boolean;
+				keepInternalFields?: boolean;
+			},
+		): Promise<T> => {
+			const { keepInternalFields, ...queryParamsInput } = params || {};
+			const queryParams = new URLSearchParams();
+			const headers: Record<string, string> = {};
+			const defaultParams = {
+				expand: [CustomerExpand.Invoices],
+			};
+
+			if (keepInternalFields) {
+				headers["x-strip-internal"] = "false";
+			}
+
+			const finalParams = { ...defaultParams, ...queryParamsInput };
+			if (finalParams.expand) {
+				queryParams.append("expand", finalParams.expand.join(","));
+			}
+			if (finalParams.skip_cache) {
+				queryParams.append("skip_cache", finalParams.skip_cache);
+			}
+			if (finalParams.with_autumn_id) {
+				queryParams.append(
+					"with_autumn_id",
+					finalParams.with_autumn_id ? "true" : "false",
+				);
+			}
+			const data = await this.get(
+				`/customers/${customerId}?${queryParams.toString()}`,
+				Object.keys(headers).length > 0 ? headers : undefined,
+			);
+			return data;
+		},
+
+		create: async ({
+			withAutumnId = true,
+			expand = [],
+			internalOptions = {
+				disable_defaults: true,
+			},
+			skipWebhooks,
+			...customerData
+		}: {
+			withAutumnId?: boolean;
+			expand?: CustomerExpand[];
+			internalOptions?: CreateCustomerInternalOptions;
+			skipWebhooks?: boolean;
+		} & Omit<CreateCustomerParamsV0Input, "internal_options">) => {
+			const headers: Record<string, string> = {};
+			if (skipWebhooks !== undefined) {
+				headers["x-skip-webhooks"] = skipWebhooks ? "true" : "false";
+			}
+
+			const data = await this.post(
+				`/customers?with_autumn_id=${withAutumnId ? "true" : "false"}${expand && expand.length > 0 ? `&expand=${expand.join(",")}` : ""}`,
+				{
+					...customerData,
+					internal_options: internalOptions,
+				},
+				Object.keys(headers).length > 0 ? headers : undefined,
+			);
+			return data;
+		},
+		delete: async (
+			customerId: string,
+			{
+				deleteInStripe = false,
+			}: {
+				deleteInStripe?: boolean;
+			} = {},
+		) => {
+			const data = await this.delete(`/customers/${customerId}`, {
+				deleteInStripe,
+			});
+			return data;
+		},
+
+		update: async (
+			customerId: string,
+			updates: {
+				name?: string;
+				email?: string;
+				stripe_id?: string | null;
+				send_email_receipts?: boolean;
+				metadata?: Record<string, unknown>;
+				billing_controls?: WritableBillingControls<CustomerBillingControlsParams>;
+				billing_details?: BillingDetailsParams;
+				config?: CustomerData["config"];
+			},
+		) => {
+			const data = await this.patch(`/customers/${customerId}`, updates);
+
+			if (updates.billing_controls?.auto_topups) {
+				await timeout(2000);
+			}
+			return data;
+		},
+
+		/** Uses the RPC route POST /customers.update (handleUpdateCustomerV2) */
+		updateRpc: async (
+			customerId: string,
+			updates: {
+				new_customer_id?: string;
+				name?: string;
+				email?: string;
+				send_email_receipts?: boolean;
+				metadata?: Record<string, unknown>;
+				billing_controls?: WritableBillingControls<CustomerBillingControlsParams>;
+				billing_details?: BillingDetailsParams;
+				config?: CustomerData["config"];
+			},
+		) => {
+			const data = await this.post(`/customers.update`, {
+				customer_id: customerId,
+				...updates,
+			});
+			return data;
+		},
+
+		setBalance: async ({
+			customerId,
+			balances,
+			entityId,
+		}: {
+			customerId: string;
+			balances: Array<{ feature_id: string; balance: number }>;
+			entityId?: string;
+		}) => {
+			const data = await this.post(`/customers/${customerId}/balances`, {
+				balances,
+				entity_id: entityId,
+			});
+			return data;
+		},
+	};
+
+	entities = {
+		get: async <
+			T = ApiEntityV0 & {
+				features: Record<string, ApiCusFeatureV3>;
+				products: ApiCusProductV3[];
+			},
+		>(
+			customerId: string,
+			entityId: string,
+			params?: {
+				expand?: EntityExpand[];
+				skip_cache?: string;
+				keepInternalFields?: boolean;
+			},
+		): Promise<T> => {
+			const { keepInternalFields, ...queryParamsInput } = params || {};
+			const queryParams = new URLSearchParams();
+			const headers: Record<string, string> = {};
+			const defaultParams = {
+				expand: [EntityExpand.Invoices],
+			};
+
+			if (keepInternalFields) {
+				headers["x-strip-internal"] = "false";
+			}
+
+			const finalParams = { ...defaultParams, ...queryParamsInput };
+			if (finalParams.expand) {
+				queryParams.append("expand", finalParams.expand.join(","));
+			}
+			if (finalParams.skip_cache) {
+				queryParams.append("skip_cache", finalParams.skip_cache);
+			}
+
+			const data = await this.get(
+				`/customers/${customerId}/entities/${entityId}?${queryParams.toString()}`,
+				Object.keys(headers).length > 0 ? headers : undefined,
+			);
+			return data as T;
+		},
+
+		create: async (
+			customerId: string,
+			entity: CreateEntityParams | CreateEntityParams[],
+		) => {
+			// let entities = Array.isArray(entity) ? entity : [entity];
+			const data = await this.post(
+				`/customers/${customerId}/entities?with_autumn_id=true`,
+				entity,
+			);
+
+			return data;
+		},
+
+		list: async (customerId: string): Promise<ApiEntityV0[]> => {
+			const data = await this.get(`/customers/${customerId}/entities`);
+			return data;
+		},
+
+		delete: async (customerId: string, entityId: string) => {
+			const data = await this.delete(
+				`/customers/${customerId}/entities/${entityId}`,
+			);
+			return data;
+		},
+
+		update: async (
+			customerId: string,
+			entityId: string,
+			updates: {
+				billing_controls?: WritableBillingControls<ApiEntityBillingControlsParams>;
+			},
+		) => {
+			const data = await this.post(`/entities.update`, {
+				customer_id: customerId,
+				entity_id: entityId,
+				...updates,
+			});
+			return data;
+		},
+	};
+
+	entitiesV2 = {
+		list: async <TResponse = any>(
+			params?: Partial<ListEntitiesParams> & {
+				keepInternalFields?: boolean;
+			},
+		) => {
+			const { keepInternalFields, ...listParams } = params ?? {};
+			const headers: Record<string, string> = {};
+			if (keepInternalFields) {
+				headers["x-strip-internal"] = "false";
+			}
+
+			return (await this.post(
+				`/entities.list`,
+				listParams,
+				Object.keys(headers).length > 0 ? headers : undefined,
+			)) as TResponse;
+		},
+
+		create: async ({
+			customer_id,
+			entity_id,
+			name,
+			feature_id,
+			billing_controls,
+			customer_data,
+		}: {
+			customer_id: string;
+			entity_id: string;
+			name?: string | null;
+			feature_id: string;
+			billing_controls?: ApiEntityBillingControlsParams;
+			customer_data?: CreateEntityParams["customer_data"];
+		}) => {
+			return await this.post(`/entities.create`, {
+				customer_id,
+				entity_id,
+				name,
+				feature_id,
+				billing_controls,
+				customer_data,
+			});
+		},
+	};
+
+	products = {
+		update: async <TResponse = any, TInput = any>(
+			productId: string,
+			product: TInput,
+		): Promise<TResponse> => {
+			const data = await this.patch(`/products/${productId}`, product);
+			return data as TResponse;
+		},
+
+		get: async <T = any>(
+			productId: string,
+			{ v1Schema = false }: { v1Schema?: boolean } = {},
+		): Promise<T> => {
+			const data = await this.get(
+				`/products/${productId}?${v1Schema ? "schemaVersion=1" : ""}`,
+			);
+			return data as T;
+		},
+
+		list: async <T = any[]>({
+			customer_id,
+			all_versions,
+		}: {
+			customer_id?: string;
+			all_versions?: boolean;
+		} = {}): Promise<{ list: T }> => {
+			const params = new URLSearchParams();
+			if (customer_id) params.set("customer_id", customer_id);
+			if (all_versions) params.set("all_versions", "true");
+			const query = params.toString();
+			const data = await this.get(`/products${query ? `?${query}` : ""}`);
+			return data as { list: T };
+		},
+
+		create: async <TResponse = any, TInput = any>(
+			product: TInput,
+		): Promise<TResponse> => {
+			const data = await this.post(`/products`, product);
+			return data as TResponse;
+		},
+
+		delete: async (productId: string) => {
+			const data = await this.delete(`/products/${productId}`);
+			return data;
+		},
+	};
+
+	plans = {
+		previewUpdate: async <
+			TResponse = PlanUpdatePreview,
+			TInput = PreviewUpdatePlanParamsV2Input,
+		>(
+			params: TInput,
+		): Promise<TResponse> => {
+			const data = await this.post(`/plans.preview_update`, params);
+			return data as TResponse;
+		},
+
+		createVariant: async <TResponse = any>(params: {
+			base_plan_id: string;
+			variant_plan_id: string;
+			name: string;
+		}): Promise<TResponse> => {
+			const data = await this.post(`/plans.create_variant`, params);
+			return data as TResponse;
+		},
+	};
+
+	catalog = {
+		previewUpdate: async <
+			TResponse = CatalogPreviewUpdateResponse,
+			TInput = CatalogUpdateParamsInput,
+		>(
+			params: TInput,
+		): Promise<TResponse> => {
+			const data = await this.post(`/catalog.preview_update`, params);
+			return data as TResponse;
+		},
+
+		update: async <
+			TResponse = CatalogUpdateResponse,
+			TInput = CatalogUpdateParamsInput,
+		>(
+			params: TInput,
+		): Promise<TResponse> => {
+			const data = await this.post(`/catalog.update`, params);
+			return data as TResponse;
+		},
+	};
+
+	catalogV2 = {
+		get: async <TResponse = GetCatalogResponse>(
+			params?: GetCatalogParams,
+		): Promise<TResponse> => {
+			const data = await this.post(`/catalogV2.get`, params ?? {});
+			return data as TResponse;
+		},
+
+		previewUpdate: async <
+			TResponse = PreviewUpdateCatalogResponse,
+			TInput = UpdateCatalogParamsInput,
+		>(
+			params: TInput,
+		): Promise<TResponse> => {
+			const data = await this.post(`/catalogV2.preview_update`, params);
+			return data as TResponse;
+		},
+
+		update: async <
+			TResponse = UpdateCatalogResponse,
+			TInput = UpdateCatalogParamsInput,
+		>(
+			params: TInput,
+		): Promise<TResponse> => {
+			const data = await this.post(`/catalogV2.update`, params);
+			return data as TResponse;
+		},
+	};
+
+	rewards = {
+		get: async (rewardId: string) => {
+			const data = await this.get(`/rewards/${rewardId}`);
+			return data;
+		},
+
+		create: async (reward: any) => {
+			const data = await this.post(`/rewards?legacyStripe=true`, reward);
+			return data;
+		},
+
+		update: async ({
+			internalId,
+			reward,
+		}: {
+			internalId: string;
+			reward: any;
+		}) => {
+			const data = await this.post(
+				`/rewards/${internalId}?legacyStripe=true`,
+				reward,
+			);
+			return data;
+		},
+
+		delete: async (rewardId: string) => {
+			const data = await this.delete(`/rewards/${rewardId}`);
+			return data;
+		},
+
+		redeem: async ({
+			code,
+			customerId,
+		}: {
+			code: string;
+			customerId: string;
+		}) => {
+			const data = await this.post("/rewards.redeem", {
+				code,
+				customer_id: customerId,
+			});
+			return data;
+		},
+
+		list: async () => {
+			const data = await this.post("/rewards.list", {});
+			return data;
+		},
+	};
+
+	rewardPrograms = {
+		create: async (rewardProgram: CreateRewardProgram) => {
+			const data = await this.post(`/reward_programs`, rewardProgram);
+			return data;
+		},
+	};
+
+	referrals = {
+		createCode: async ({
+			customerId,
+			referralId,
+		}: {
+			customerId: string;
+			referralId: string;
+		}) => {
+			const data = await this.post(`/referrals/code`, {
+				customer_id: customerId,
+				program_id: referralId,
+			});
+			return data;
+		},
+		redeem: async ({
+			customerId,
+			code,
+		}: {
+			customerId: string;
+			code: string;
+		}) => {
+			const data = await this.post(`/referrals/redeem`, {
+				customer_id: customerId,
+				code,
+			});
+			return data;
+		},
+	};
+
+	redemptions = {
+		get: async (redemptionId: string) => {
+			const data = await this.get(`/redemptions/${redemptionId}`);
+			return data as RewardRedemption;
+		},
+	};
+
+	events = {
+		send: async ({
+			customerId,
+			featureId,
+			value,
+			properties,
+		}: {
+			customerId: string;
+			featureId: string;
+			value: number;
+			properties?: any;
+		}) => {
+			const data = await this.post(`/events`, {
+				customer_id: customerId,
+				feature_id: featureId,
+				value,
+				properties,
+			});
+			return data;
+		},
+
+		list: async (params: { customer_id: string; entity_id?: string }) => {
+			const data = await this.post(`/events/list`, params);
+			return data;
+		},
+
+		aggregate: async (params: {
+			// Optional so the "aggregate_on without a customer" rejection is callable.
+			customer_id?: string;
+			entity_id?: string;
+			feature_id?: string | string[];
+			group_by?: string;
+			range?: string;
+			custom_range?: { start: number; end: number };
+			bin_size?: string;
+			max_groups?: number;
+			aggregate_on?: "deducted";
+		}) => {
+			const data = await this.post(`/events/aggregate`, params);
+			return data;
+		},
+
+		query: async (params: {
+			customer_id: string;
+			entity_id?: string;
+			feature_id?: string;
+		}) => {
+			const data = await this.post(`/query`, params);
+			return data;
+		},
+	};
+
+	stripe = {
+		connect: async (params: {
+			secret_key: string;
+			success_url: string;
+			default_currency: string;
+		}) => {
+			const data = await this.post(`/organization/stripe`, params);
+			return data;
+		},
+
+		delete: async () => {
+			const data = await this.delete(`/organization/stripe`);
+			return data;
+		},
+	};
+
+	organization = {
+		resetDefaultAccount: async () => {
+			const data = await this.post(`/organization/reset_default_account`, {});
+			return data;
+		},
+	};
+
+	track = async (
+		params: TrackParams,
+		{
+			skipCache = false,
+			timeout,
+			headers,
+		}: {
+			skipCache?: boolean;
+			timeout?: number;
+			headers?: Record<string, string>;
+		} = {},
+	) => {
+		const queryParams = new URLSearchParams();
+		if (skipCache) {
+			queryParams.append("skip_cache", "true");
+		}
+
+		const data = await this.post(
+			`/track?${queryParams.toString()}`,
+			params,
+			headers,
+		);
+
+		if (timeout) {
+			await new Promise((resolve) => setTimeout(resolve, timeout));
+		}
+		return data;
+	};
+
+	usage = async (params: SetUsageParams) => {
+		const data = await this.post(`/usage`, params);
+		return data;
+	};
+
+	check = async <T = CheckResponseV1>(
+		params: CheckParams & CheckQuery & { skip_event?: boolean },
+		{ headers }: { headers?: Record<string, string> } = {},
+	): Promise<T> => {
+		const queryParams = new URLSearchParams();
+		if (params.skip_cache) {
+			queryParams.append("skip_cache", "true");
+		}
+
+		const data = await this.post(
+			`/check?${queryParams.toString()}`,
+			params,
+			headers,
+		);
+		return data;
+	};
+
+	attachPreview = async (params: AttachBodyV0) => {
+		const data = await this.post(`/attach/preview`, params);
+		return data;
+	};
+
+	cancel = async (params: CancelBody) => {
+		const data = await this.post(`/cancel`, params);
+		return data;
+	};
+
+	migrate = async (params: {
+		from_product_id: string;
+		to_product_id: string;
+		from_version: number;
+		to_version: number;
+	}) => {
+		const data = await this.post(`/migrations`, params);
+		return data;
+	};
+
+	migrationsV2 = {
+		create: async (params: {
+			id: string;
+			filter?: MigrationFilter | null;
+			operations?: Operations | null;
+			no_billing_changes?: boolean;
+		}): Promise<Migration> => {
+			const data = await this.post(`/migrations.create`, params);
+			return data as Migration;
+		},
+		list: async (): Promise<{ list: MigrationListItem[] }> => {
+			const data = await this.post(`/migrations.list`, {});
+			return data as { list: MigrationListItem[] };
+		},
+		update: async (params: {
+			id: string;
+			updates: {
+				id?: string;
+				filter?: MigrationFilter | null;
+				operations?: Operations | null;
+				no_billing_changes?: boolean;
+				archived?: boolean;
+			};
+		}): Promise<Migration> => {
+			const data = await this.post(`/migrations.update`, params);
+			return data as Migration;
+		},
+		delete: async (params: { id: string }): Promise<Migration> => {
+			const data = await this.post(`/migrations.delete`, params);
+			return data as Migration;
+		},
+		deleteAndCreate: async (params: {
+			id: string;
+			filter?: MigrationFilter | null;
+			operations?: Operations | null;
+			no_billing_changes?: boolean;
+		}): Promise<Migration> => {
+			try {
+				await this.post(`/migrations.delete`, { id: params.id });
+			} catch {}
+			const data = await this.post(`/migrations.create`, params);
+			return data as Migration;
+		},
+		prepare: async (params: {
+			id: string;
+			dry_run: boolean;
+		}): Promise<PrepareResponse> => {
+			const data = await this.post(`/migrations.prepare`, params);
+			return data as PrepareResponse;
+		},
+		run: async (params: {
+			id: string;
+			dry_run?: boolean;
+			only?: string[];
+			limit?: number;
+			/** @deprecated Migration concurrency is fleet-managed. */
+			concurrency?: number;
+			lazy_run?: boolean;
+			retry_item_statuses?: ("failed" | "skipped")[];
+		}): Promise<{
+			migration_id: string;
+			dry_run: boolean;
+			lazy_run: boolean;
+			concurrency?: number;
+			run_id: string;
+		}> => {
+			const data = await this.post(`/migrations.run`, params);
+			return data as {
+				migration_id: string;
+				dry_run: boolean;
+				lazy_run: boolean;
+				concurrency?: number;
+				run_id: string;
+			};
+		},
+		lazyRun: async (params: {
+			id: string;
+		}): Promise<{
+			migration_id: string;
+			run_id: string;
+		}> => {
+			const data = await this.post(`/migrations.lazy_run`, params);
+			return data as { migration_id: string; run_id: string };
+		},
+		cancelRun: async (params: {
+			id: string;
+		}): Promise<{
+			migration_id: string;
+			run_id: string;
+			canceled: boolean;
+		}> => {
+			const data = await this.post(`/migrations.cancel_run`, params);
+			return data as {
+				migration_id: string;
+				run_id: string;
+				canceled: boolean;
+			};
+		},
+		filterPreview: async (
+			params: MigrationFilterPreviewParams,
+		): Promise<MigrationFilterPreviewResponse> => {
+			const data = await this.post(`/migrations.filter.preview`, params);
+			return data as MigrationFilterPreviewResponse;
+		},
+		listRuns: async (params: {
+			migrationId: string;
+		}): Promise<MigrationRunsListResponse> => {
+			const data = await this.post(`/migrations.runs.list`, params);
+			return data as MigrationRunsListResponse;
+		},
+		listItemEvents: async (params: {
+			migrationId: string;
+			migrationRunId?: string;
+		}): Promise<{ list: TinybirdMigrationItemEvent[] }> => {
+			const data = await this.post(`/migrations.item_events.list`, params);
+			return data as { list: TinybirdMigrationItemEvent[] };
+		},
+	};
+
+	balances = {
+		create: async (params: CreateBalanceParamsV0) => {
+			const data = await this.post(`/balances/create`, params);
+			return data;
+		},
+		list: async (params: { customer_id: string }) => {
+			const data = await this.get(
+				`/balances/list?customer_id=${params.customer_id}`,
+			);
+			return data;
+		},
+		update: async (
+			params: UpdateBalanceParamsV0,
+			{ headers }: { headers?: Record<string, string> } = {},
+		) => {
+			const data = await this.post(`/balances/update`, params, headers);
+			return data;
+		},
+		delete: async (params: DeleteBalanceParamsV0) => {
+			const data = await this.post(`/balances.delete`, params);
+			return data;
+		},
+		recalculate: async (params: RecalculateBalanceParamsV0) => {
+			const data = await this.post(`/balances.recalculate`, params);
+			return data;
+		},
+		previewRecalculate: async (
+			params: RecalculateBalanceParamsV0,
+		): Promise<RecalculateBalancePreview> => {
+			const data = await this.post(`/balances.preview_recalculate`, params);
+			return data as RecalculateBalancePreview;
+		},
+		finalize: async (
+			params: FinalizeLockParamsV0,
+			{
+				skipCache = false,
+				headers,
+			}: {
+				skipCache?: boolean;
+				headers?: Record<string, string>;
+			} = {},
+		) => {
+			const data = await this.post(`/balances.finalize`, params, {
+				...(skipCache ? { "x-skip-cache": "true" } : {}),
+				...headers,
+			});
+			return data;
+		},
+	};
+
+	subscriptions = {
+		update: async <TInput = UpdateSubscriptionV0Params>(
+			params: TInput,
+			{
+				timeout,
+				skipWebhooks,
+			}: { timeout?: number; skipWebhooks?: boolean } = {},
+		): Promise<any> => {
+			const headers: Record<string, string> = {};
+			if (skipWebhooks !== undefined) {
+				headers["x-skip-webhooks"] = skipWebhooks ? "true" : "false";
+			}
+
+			const data = await this.post(
+				`/billing.update`,
+				params,
+				Object.keys(headers).length > 0 ? headers : undefined,
+			);
+			if (timeout) {
+				await new Promise((resolve) => setTimeout(resolve, timeout));
+			}
+			return data;
+		},
+
+		previewUpdate: async <TInput = UpdateSubscriptionV0Params>(
+			params: TInput,
+		): Promise<any> => {
+			const data = await this.post(`/billing.preview_update`, params);
+			return data;
+		},
+	};
+
+	licenses = {
+		/** Provisions seats: upserts entities and assigns one seat each. */
+		attach: async <TInput = AttachLicenseParamsV0>(
+			params: TInput,
+		): Promise<{ success: true }> => {
+			return await this.post(`/licenses.attach`, params);
+		},
+
+		/** Releases each entity's seat back to its pool for reuse. */
+		release: async <TInput = ReleaseLicenseParamsV0>(
+			params: TInput,
+		): Promise<{ success: true }> => {
+			return await this.post(`/licenses.release`, params);
+		},
+	};
+
+	billing = {
+		attach: async <
+			TInput = Omit<AttachParamsV0Input, "items"> & {
+				items?: ProductItem[];
+			},
+		>(
+			params: TInput,
+			{
+				skipWebhooks,
+				idempotencyKey,
+				timeout,
+			}: {
+				skipWebhooks?: boolean;
+				idempotencyKey?: string;
+				timeout?: number;
+			} = {},
+		): Promise<any> => {
+			const headers: Record<string, string> = {};
+			if (skipWebhooks !== undefined) {
+				headers["x-skip-webhooks"] = skipWebhooks ? "true" : "false";
+			}
+			if (idempotencyKey !== undefined) {
+				headers["idempotency-key"] = idempotencyKey;
+			}
+
+			const data = await this.post(
+				`/billing.attach`,
+				{ redirect_mode: "if_required", ...params },
+				Object.keys(headers).length > 0 ? headers : undefined,
+			);
+
+			const concurrency = Number(process.env.TEST_FILE_CONCURRENCY || "0");
+			const defaultTimeout = concurrency > 1 ? 5000 : 4000;
+			const finalTimeout = timeout ?? defaultTimeout;
+			if (finalTimeout) {
+				await new Promise((resolve) => setTimeout(resolve, finalTimeout));
+			}
+			return data;
+		},
+
+		previewAttach: async <
+			TInput = Omit<AttachParamsV0Input, "items"> & {
+				items?: ProductItem[];
+			},
+		>(
+			params: TInput,
+		): Promise<any> => {
+			const data = await this.post(`/billing.preview_attach`, {
+				...params,
+				redirect_mode: "if_required",
+			});
+			return data;
+		},
+
+		update: async <TInput = UpdateSubscriptionV1Params>(
+			params: TInput,
+			{
+				timeout,
+				skipWebhooks,
+			}: { timeout?: number; skipWebhooks?: boolean } = {},
+		): Promise<any> => {
+			const headers: Record<string, string> = {};
+			if (skipWebhooks !== undefined) {
+				headers["x-skip-webhooks"] = skipWebhooks ? "true" : "false";
+			}
+
+			const data = await this.post(
+				`/billing.update`,
+				params,
+				Object.keys(headers).length > 0 ? headers : undefined,
+			);
+			if (timeout) {
+				await new Promise((resolve) => setTimeout(resolve, timeout));
+			}
+			return data;
+		},
+
+		previewUpdate: async <TInput = UpdateSubscriptionV1Params>(
+			params: TInput,
+		): Promise<any> => {
+			const data = await this.post(`/billing.preview_update`, params);
+			return data;
+		},
+
+		setupPayment: async (params: SetupPaymentParamsV1) => {
+			const data = await this.post(`/billing.setup_payment`, params);
+			return data;
+		},
+
+		/** Create a billing schedule through the internal RPC API. */
+		createSchedule: async <
+			TInput = CreateScheduleParamsV0Input,
+			TResponse = CreateScheduleResponse,
+		>(
+			params: TInput,
+			{ timeout }: { timeout?: number } = {},
+		): Promise<TResponse> => {
+			const data = await this.post(`/billing.create_schedule`, params);
+
+			const concurrency = Number(process.env.TEST_FILE_CONCURRENCY || "0");
+			const defaultTimeout = concurrency > 1 ? 5000 : 4000;
+			const finalTimeout = timeout ?? defaultTimeout;
+			if (finalTimeout) {
+				await new Promise((resolve) => setTimeout(resolve, finalTimeout));
+			}
+
+			return data;
+		},
+
+		multiAttach: async (
+			params: any,
+			{
+				skipWebhooks,
+				timeout,
+			}: {
+				skipWebhooks?: boolean;
+				timeout?: number;
+			} = {},
+		): Promise<any> => {
+			const headers: Record<string, string> = {};
+			if (skipWebhooks !== undefined) {
+				headers["x-skip-webhooks"] = skipWebhooks ? "true" : "false";
+			}
+
+			const data = await this.post(
+				`/billing.multi_attach`,
+				{ redirect_mode: "if_required", ...params },
+				Object.keys(headers).length > 0 ? headers : undefined,
+			);
+
+			const concurrency = Number(process.env.TEST_FILE_CONCURRENCY || "0");
+			const defaultTimeout = concurrency > 1 ? 5000 : 4000;
+			const finalTimeout = timeout ?? defaultTimeout;
+			if (finalTimeout) {
+				await new Promise((resolve) => setTimeout(resolve, finalTimeout));
+			}
+			return data;
+		},
+
+		previewMultiAttach: async (params: any): Promise<any> => {
+			const data = await this.post(`/billing.preview_multi_attach`, {
+				...params,
+				redirect_mode: "if_required",
+			});
+			return data;
+		},
+
+		multiUpdate: async <TInput = MultiUpdateParamsV0Input>(
+			params: TInput,
+			{
+				skipWebhooks,
+				timeout,
+			}: {
+				skipWebhooks?: boolean;
+				timeout?: number;
+			} = {},
+		): Promise<any> => {
+			const headers: Record<string, string> = {};
+			if (skipWebhooks !== undefined) {
+				headers["x-skip-webhooks"] = skipWebhooks ? "true" : "false";
+			}
+
+			const data = await this.post(
+				`/billing.multi_update`,
+				params,
+				Object.keys(headers).length > 0 ? headers : undefined,
+			);
+
+			const concurrency = Number(process.env.TEST_FILE_CONCURRENCY || "0");
+			const defaultTimeout = concurrency > 1 ? 5000 : 4000;
+			const finalTimeout = timeout ?? defaultTimeout;
+			if (finalTimeout) {
+				await new Promise((resolve) => setTimeout(resolve, finalTimeout));
+			}
+			return data;
+		},
+
+		previewMultiUpdate: async <TInput = MultiUpdateParamsV0Input>(
+			params: TInput,
+		): Promise<any> => {
+			const data = await this.post(`/billing.preview_multi_update`, params);
+			return data;
+		},
+
+		restore: async (params: RestoreParamsV1): Promise<RestoreResponse> => {
+			return await this.post(`/billing.restore`, params);
+		},
+	};
+}

@@ -1,0 +1,191 @@
+name: Build and Push to ECR
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+      - dev
+      
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Manual deploy'
+        required: false
+        default: 'manual'
+
+# Cancel an older in-progress build on the same branch when a newer commit
+# lands, so the latest commit is the one that builds + deploys.
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # ECR region is selected per-branch in the "Extract metadata" step:
+  #   prod repo (autumn)         -> us-east-2
+  #   staging repo (autumn-staging) -> us-east-1
+  # Branches allowed to deploy to staging via workflow_dispatch with tag=deploy-staging.
+  # Add short-lived PR branches here when you need staging without merging to dev.
+  STAGING_DEPLOY_BRANCH_ALLOWLIST: stack/cleanups stack/check-fail-open main dev feat/past-due-cancel-immediate-void feat/gate-cluster-wide feat/redis-monitor-fix feat/firelens-log-transport-v2 fix/dragonfly-resize-reconnect capy/standby-dragonfly-connection
+
+jobs:
+  checks:
+    name: Type Check
+    runs-on: blacksmith-8vcpu-ubuntu-2404
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      
+      - name: Run TypeScript type check
+        run: |
+          bun ts
+
+  build-and-push:
+    name: Build and Push Docker Image
+    needs: checks
+    runs-on: blacksmith-16vcpu-ubuntu-2404
+    
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: read
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Extract metadata for Docker
+        id: meta
+        env:
+          REQUESTED_STAGING_DEPLOY: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag == 'deploy-staging' }}
+        run: |
+          BRANCH_NAME=${GITHUB_REF#refs/heads/}
+          COMMIT_SHA=${GITHUB_SHA::8}
+          DEPLOY_STAGING_OVERRIDE="false"
+          
+          # Sanitize branch name for Docker tag (replace / with -)
+          SAFE_BRANCH=$(echo $BRANCH_NAME | sed 's/\//-/g')
+
+          if [ "$REQUESTED_STAGING_DEPLOY" = "true" ]; then
+            for ALLOWED_BRANCH in $STAGING_DEPLOY_BRANCH_ALLOWLIST; do
+              if [ "$BRANCH_NAME" = "$ALLOWED_BRANCH" ]; then
+                DEPLOY_STAGING_OVERRIDE="true"
+                break
+              fi
+            done
+
+            if [ "$DEPLOY_STAGING_OVERRIDE" != "true" ]; then
+              echo "::error::Branch '$BRANCH_NAME' is not allowed to deploy to staging. Add it to STAGING_DEPLOY_BRANCH_ALLOWLIST in .github/workflows/build.yml."
+              exit 1
+            fi
+          fi
+
+          if [ "$DEPLOY_STAGING_OVERRIDE" = "true" ]; then
+            # deployStaging expects the staging ECR image tag to be dev-<sha>.
+            IMAGE_BRANCH="dev"
+          else
+            IMAGE_BRANCH="$SAFE_BRANCH"
+          fi
+          
+          echo "branch=$IMAGE_BRANCH" >> $GITHUB_OUTPUT
+          echo "sha=$COMMIT_SHA" >> $GITHUB_OUTPUT
+          echo "deploy_staging_override=$DEPLOY_STAGING_OVERRIDE" >> $GITHUB_OUTPUT
+          
+          # Only an explicitly requested and allowlisted staging deploy uses staging ECR.
+          if [ "$DEPLOY_STAGING_OVERRIDE" = "true" ]; then
+            echo "ecr_repo=autumn-staging" >> $GITHUB_OUTPUT
+            echo "region=us-east-1" >> $GITHUB_OUTPUT
+          else
+            echo "ecr_repo=autumn" >> $GITHUB_OUTPUT
+            echo "region=us-east-2" >> $GITHUB_OUTPUT
+          fi
+          
+          # Set custom tag if provided
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.tag }}" ]; then
+            echo "custom_tag=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ steps.meta.outputs.region }}
+      
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      
+      - name: Set up Blacksmith Docker builder
+        uses: useblacksmith/setup-docker-builder@v1
+      
+      - name: Build and push Docker image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ steps.meta.outputs.ecr_repo }}
+          IMAGE_TAG_SHA: ${{ steps.meta.outputs.sha }}
+          IMAGE_TAG_BRANCH: ${{ steps.meta.outputs.branch }}
+        run: |
+          # Build single combined tag: branch-sha
+          COMBINED_TAG="${IMAGE_TAG_BRANCH}-${IMAGE_TAG_SHA}"
+          TAGS="${ECR_REGISTRY}/${ECR_REPOSITORY}:${COMBINED_TAG}"
+          
+          # Layer + cache-mount persistence is handled by the Blacksmith sticky
+          # disk mounted at /var/lib/buildkit, so no registry cache-from/to.
+          docker buildx build \
+            --platform linux/amd64 \
+            --push \
+            --provenance=false \
+            --sbom=false \
+            --tag ${TAGS//,/ --tag } \
+            -f docker/Dockerfile \
+            .
+      
+      - name: Output image details
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ steps.meta.outputs.ecr_repo }}
+          IMAGE_TAG_SHA: ${{ steps.meta.outputs.sha }}
+          IMAGE_TAG_BRANCH: ${{ steps.meta.outputs.branch }}
+        run: |
+          COMBINED_TAG="${IMAGE_TAG_BRANCH}-${IMAGE_TAG_SHA}"
+          echo "Image pushed successfully!"
+          echo "Repository: ${ECR_REGISTRY}/${ECR_REPOSITORY}"
+          echo "Tag: ${COMBINED_TAG}"
+
+      - name: Auto-deploy production
+        if: github.ref == 'refs/heads/main' && steps.meta.outputs.deploy_staging_override != 'true'
+        env:
+          DEPLOY_URL: ${{ secrets.DEPLOY_URL }}
+          DEPLOY_SECRET: ${{ secrets.DEPLOY_SECRET }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          echo "Triggering production auto-deploy for $COMMIT_SHA..."
+          curl --fail-with-body -X POST "$DEPLOY_URL/api/deploy/github" \
+            -H "Content-Type: application/json" \
+            -H "x-deploy-secret: $DEPLOY_SECRET" \
+            -d "{\"commitSha\": \"$COMMIT_SHA\"}"
+          echo "Auto-deploy triggered!"
+
+      - name: Auto-deploy staging
+        if: steps.meta.outputs.deploy_staging_override == 'true'
+        env:
+          DEPLOY_URL: ${{ secrets.DEPLOY_URL }}
+          DEPLOY_SECRET: ${{ secrets.DEPLOY_SECRET }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          echo "Deploying to staging..."
+          curl --fail-with-body -X POST "$DEPLOY_URL/api/deploy/github/staging" \
+            -H "Content-Type: application/json" \
+            -H "x-deploy-secret: $DEPLOY_SECRET" \
+            -d "{\"commitSha\": \"$COMMIT_SHA\"}"
+          echo "Staging deploy triggered!"

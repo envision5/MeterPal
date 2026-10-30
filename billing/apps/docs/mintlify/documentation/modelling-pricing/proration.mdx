@@ -1,0 +1,176 @@
+---
+title: Proration
+description: Handle mid-cycle plan changes with prorated billing
+---
+
+Proration adjusts billing when a customer changes their subscription mid-cycle. That could be an upgrade, a downgrade, or a change to the quantity of a prepaid item like seats. Autumn works out the prorated amount and either charges or credits the customer.
+
+> **Example** <br />
+> A customer on a \$20/month plan upgrades to a \$50/month plan halfway through the billing cycle. They're charged \$15 (the prorated difference for the remaining half of the month).
+
+## Setting up
+
+<Tabs>
+<Tab title="CLI">
+
+Add a `proration` config to a priced plan item:
+
+```ts autumn.config.ts
+import { atmn, feature, plan } from "atmn";
+
+export const seats = feature({
+  featureId: "seats",
+  name: "Seats",
+  type: "metered",
+  consumable: false,
+});
+
+export const pro = plan({
+  planId: "pro",
+  versionSlug: "v1",
+  active: true,
+  name: "Pro",
+  price: { amount: 20, interval: "month" },
+  items: [
+    {
+      featureId: seats.featureId,
+      included: 5,
+      price: {
+        amount: 10,
+        interval: "month",
+        billingUnits: 1,
+        billingMethod: "prepaid",
+      },
+      proration: {
+        onIncrease: "prorate_immediately",
+        onDecrease: "prorate_immediately",
+      },
+    },
+  ],
+});
+
+export default atmn({ features: [seats], plans: [pro] });
+```
+
+Preview with `atmn push`, then apply with `atmn push --yes`.
+
+</Tab>
+<Tab title="Dashboard">
+
+1. Navigate to **Plans** and edit a plan
+2. Select a **prepaid** priced item (e.g., seats)
+3. Under **Advanced**, configure **Proration Behavior**:
+   - **On Increase**: what happens when the customer adds more units
+   - **On Decrease**: what happens when the customer removes units
+4. Save the plan
+
+</Tab>
+</Tabs>
+
+## Proration options
+
+### On Increase
+
+| Option | Behavior |
+|--------|----------|
+| `prorate_immediately` | Charge the prorated difference immediately |
+| `bill_immediately` | Charge the full unit price immediately (no proration) |
+| `prorate_next_cycle` | Add the prorated difference to the next invoice |
+| `bill_next_cycle` | Charge the full unit price on the next invoice |
+
+### On Decrease
+
+| Option | Behavior |
+|--------|----------|
+| `prorate_immediately` | Credit the prorated difference immediately |
+| `prorate_next_cycle` | Credit the prorated difference on the next invoice |
+| `no_prorations` | No credit or refund. The change takes effect at the next billing cycle |
+
+<Note>
+Item-level proration only applies to prepaid items. It decides how to bill a change in the quantity a customer bought, like seats or workspaces. Usage-based items are billed on what was used, so quantity changes don't apply.
+</Note>
+
+## Plan-level proration
+
+When a customer switches between plans (upgrade or downgrade), Autumn prorates automatically:
+
+- **Upgrades**: the customer is charged the prorated difference between the old and new plan prices for the remainder of the billing cycle. This happens immediately.
+- **Downgrades**: the plan change is **scheduled** to take effect at the end of the current billing period. The customer continues on their current plan until then.
+
+<Info>
+**Example**
+
+A customer is on a \$20/month plan and upgrades to a \$50/month plan on day 15 of a 30-day cycle.
+
+- Old plan credit: $20 × (15/30) = $10 credit
+- New plan charge: $50 × (15/30) = $25 charge
+- Net charge: $25 - $10 = **$15**
+</Info>
+
+### Controlling proration in attach
+
+By default, plan switches prorate immediately. You can override this behavior using the `proration_behavior` parameter in `billing.attach`:
+
+| Value | Behavior |
+|-------|----------|
+| `prorate_immediately` | **(default)** Charges or credits the prorated difference immediately |
+| `none` | Skips proration — no charges or credits are created for the plan change |
+
+<CodeGroup>
+```typescript TypeScript
+await autumn.billing.attach({
+  customerId: "user_123",
+  planId: "enterprise",
+  prorationBehavior: "none",
+});
+```
+
+```python Python
+autumn.billing.attach(
+  customer_id="user_123",
+  plan_id="enterprise",
+  proration_behavior="none",
+)
+```
+
+```bash cURL
+curl -X POST https://api.useautumn.com/v2/billing/attach \
+  -H "Authorization: Bearer am_sk_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customer_id": "user_123",
+    "plan_id": "enterprise",
+    "proration_behavior": "none"
+  }'
+```
+</CodeGroup>
+
+<Warning>
+`proration_behavior: "none"` cannot be used when:
+- Upgrading from a **free** plan to a **paid** plan
+- Removing an active **free trial**
+- Any transition that would result in a new charge
+
+In these cases, Autumn requires immediate billing and will return an error.
+</Warning>
+
+### Custom line items
+
+If you need full control over what the customer is charged during a plan switch, you can pass `custom_line_items` to replace the auto-generated proration invoice entirely. This is only valid for immediate plan changes (e.g. upgrades).
+
+```typescript
+await autumn.billing.attach({
+  customerId: "user_123",
+  planId: "enterprise",
+  customLineItems: [
+    { amount: 25, description: "Prorated upgrade credit" },
+    { amount: -10, description: "Loyalty discount" },
+  ],
+});
+```
+
+When `custom_line_items` is provided, Autumn skips its own proration calculation and creates an invoice with exactly the line items you specified. Amounts can be negative to represent credits.
+
+## Stripe integration
+
+Autumn uses Stripe's proration system under the hood. Prorated amounts appear as line items on the customer's next invoice (or are charged immediately, depending on configuration).

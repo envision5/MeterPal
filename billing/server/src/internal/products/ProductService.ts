@@ -1,0 +1,895 @@
+import {
+	type AppEnv,
+	customerProducts,
+	customers,
+	ErrCode,
+	entitlements,
+	type FullProduct,
+	freeTrials,
+	type Product,
+	ProductNotFoundError,
+	planLicenses,
+	prices,
+	products,
+} from "@autumn/shared";
+import type { DrizzleCli } from "@server/db/initDrizzle";
+import RecaseError from "@server/utils/errorUtils";
+import { notNullish } from "@server/utils/genUtils";
+import {
+	and,
+	desc,
+	eq,
+	exists,
+	gt,
+	inArray,
+	isNull,
+	ne,
+	or,
+	sql,
+} from "drizzle-orm";
+import { StatusCodes } from "http-status-codes";
+import {
+	buildAllVersionsProductsCacheKey,
+	buildProductsCacheKey,
+	getCachedProducts,
+	setCachedProducts,
+} from "@/external/redis/actions/productsCache/productsCache.js";
+import { getActiveProducts, isFreeProduct } from "./productUtils";
+import { sortFullProducts } from "./productUtils/sortProductUtils";
+import {
+	deleteProductRowAndHandoffActive,
+	type ProductWriteDb,
+} from "./repos/activateHighestRemainingProduct";
+import { liveProductWhere } from "./repos/liveProductWhere";
+import {
+	composeFullProductQuery,
+	composeProductWithLicensesQuery,
+	normalizeFullProductLicenses,
+	type ProductWithLicenseRelations,
+} from "./repos/utils/composeFullProductQuery";
+
+const parseFreeTrials = ({
+	products,
+	product,
+}: {
+	products?: FullProduct[];
+	product?: FullProduct;
+}) => {
+	if (products) {
+		for (const prod of products) {
+			prod.free_trial =
+				prod.free_trials && prod.free_trials.length > 0
+					? prod.free_trials[0]
+					: null;
+		}
+	} else if (product) {
+		product!.free_trial =
+			product!.free_trials && product!.free_trials.length > 0
+				? product!.free_trials[0]
+				: null;
+	}
+	return product;
+};
+
+const parseRelatedFreeTrials = ({ product }: { product: FullProduct }) => {
+	if (product.base_product) {
+		parseFreeTrials({ product: product.base_product });
+	}
+	if (product.variants) {
+		parseFreeTrials({ products: product.variants });
+	}
+	for (const link of product.parent_plan_licenses ?? []) {
+		parseFreeTrials({ product: link.product });
+	}
+};
+
+export class ProductService {
+	static async getByFeature({
+		db,
+		internalFeatureId,
+	}: {
+		db: DrizzleCli;
+		internalFeatureId: string;
+	}) {
+		const fullProducts = (await db.query.products.findMany({
+			where: exists(
+				db
+					.select()
+					.from(entitlements)
+					.where(
+						and(
+							eq(entitlements.internal_product_id, products.internal_id),
+							eq(entitlements.internal_feature_id, internalFeatureId),
+						),
+					),
+			),
+			with: {
+				entitlements: {
+					with: {
+						feature: true,
+					},
+				},
+				prices: { where: eq(prices.is_custom, false) },
+				free_trials: { where: eq(freeTrials.is_custom, false) },
+			},
+			orderBy: [desc(products.version)],
+		})) as FullProduct[];
+
+		parseFreeTrials({ products: fullProducts });
+
+		return getActiveProducts(fullProducts);
+	}
+
+	static async getByStripeProductIds({
+		db,
+		stripeProductIds,
+		orgId,
+		env,
+	}: {
+		db: DrizzleCli;
+		stripeProductIds: string[];
+		orgId: string;
+		env: AppEnv;
+	}) {
+		if (!stripeProductIds || stripeProductIds.length === 0)
+			return {} as Record<string, Product>;
+
+		const rows = (await db.query.products.findMany({
+			where: and(
+				sql`${products.processor} ->> 'id' = ANY(ARRAY[${sql.join(
+					stripeProductIds.map((id) => sql`${id}`),
+					sql`, `,
+				)}])`,
+				eq(products.org_id, orgId),
+				eq(products.env, env),
+			),
+		})) as Product[];
+
+		const byStripeProductId: Record<string, Product> = {};
+		for (const row of rows) {
+			const stripeId = row.processor?.id;
+			if (stripeId) byStripeProductId[stripeId] = row;
+		}
+		return byStripeProductId;
+	}
+
+	static async getByInternalId({
+		db,
+		internalId,
+	}: {
+		db: DrizzleCli;
+		internalId: string;
+	}) {
+		return (await db.query.products.findFirst({
+			where: eq(products.internal_id, internalId),
+		})) as Product;
+	}
+
+	static async listByIds({
+		db,
+		orgId,
+		env,
+		ids,
+	}: {
+		db: DrizzleCli;
+		orgId: string;
+		env: AppEnv;
+		ids: string[];
+	}) {
+		if (ids.length === 0) return [] as Product[];
+		return (await db.query.products.findMany({
+			where: and(
+				eq(products.org_id, orgId),
+				eq(products.env, env),
+				inArray(products.id, ids),
+			),
+		})) as Product[];
+	}
+
+	static async listByInternalIds({
+		db,
+		internalIds,
+	}: {
+		db: DrizzleCli;
+		internalIds: string[];
+	}) {
+		return (await db.query.products.findMany({
+			where: inArray(products.internal_id, internalIds),
+			with: {
+				entitlements: {
+					with: {
+						feature: true,
+					},
+				},
+				prices: { where: eq(prices.is_custom, false) },
+			},
+		})) as FullProduct[];
+	}
+
+	static async listByPriceIds({
+		db,
+		orgId,
+		env,
+		priceIds,
+	}: {
+		db: DrizzleCli;
+		orgId: string;
+		env: AppEnv;
+		priceIds: string[];
+	}): Promise<FullProduct[]> {
+		if (priceIds.length === 0) return [];
+
+		const priceRows = await db.query.prices.findMany({
+			where: inArray(prices.id, priceIds),
+			columns: { internal_product_id: true },
+		});
+		const internalProductIds = [
+			...new Set(
+				priceRows
+					.map((p) => p.internal_product_id)
+					.filter((id): id is string => Boolean(id)),
+			),
+		];
+
+		if (internalProductIds.length === 0) return [];
+
+		const data = (await db.query.products.findMany({
+			where: and(
+				eq(products.org_id, orgId),
+				eq(products.env, env),
+				inArray(products.internal_id, internalProductIds),
+			),
+			with: {
+				entitlements: {
+					with: { feature: true },
+					where: eq(entitlements.is_custom, false),
+				},
+				prices: { where: eq(prices.is_custom, false) },
+				free_trials: { where: eq(freeTrials.is_custom, false) },
+			},
+		})) as FullProduct[];
+
+		parseFreeTrials({ products: data });
+		return data;
+	}
+
+	static async listDefault({
+		db,
+		orgId,
+		env,
+		group,
+		inIds,
+		onlyFree = false,
+	}: {
+		db: DrizzleCli;
+		orgId: string;
+		env: AppEnv;
+		group?: string;
+		inIds?: string[];
+		onlyFree?: boolean;
+	}) {
+		const rows = (await db.query.products.findMany({
+			where: and(
+				eq(products.org_id, orgId),
+				eq(products.env, env),
+				eq(products.is_default, true),
+				ne(products.archived, true),
+				group === "" || group === null
+					? or(isNull(products.group), eq(products.group, ""))
+					: notNullish(group)
+						? eq(products.group, group)
+						: undefined,
+				inIds ? inArray(products.id, inIds) : undefined,
+			),
+			// A default plan is applied with initFullCustomerProduct, which reads its
+			// license links — a plan loaded without them applies with no seats.
+			with: composeProductWithLicensesQuery(),
+		})) as ProductWithLicenseRelations[];
+
+		const prods = rows.map((product) =>
+			normalizeFullProductLicenses({ product }),
+		);
+		parseFreeTrials({ products: prods });
+
+		const activeProducts = getActiveProducts(prods);
+
+		if (onlyFree) {
+			return activeProducts.filter((p) =>
+				isFreeProduct(p.prices),
+			) as FullProduct[];
+		}
+
+		return activeProducts as FullProduct[];
+	}
+
+	static async insert({ db, product }: { db: DrizzleCli; product: Product }) {
+		// Dual-write version identity; omit-version reads resolve `active`.
+		// A row only self-activates when no higher version exists.
+		const row = {
+			...product,
+			version_slug: product.version_slug ?? `v${product.version}`,
+		};
+		const samePlan = and(
+			eq(products.org_id, row.org_id),
+			eq(products.id, row.id),
+			eq(products.env, row.env),
+		);
+
+		const prod = await db.transaction(async (tx) => {
+			let activate = false;
+			if (product.active) {
+				const higherVersion = await tx
+					.select({ internal_id: products.internal_id })
+					.from(products)
+					.where(and(samePlan, gt(products.version, row.version)))
+					.limit(1);
+				activate = higherVersion.length === 0;
+			}
+			if (activate) {
+				await tx
+					.update(products)
+					.set({ active: false })
+					.where(and(samePlan, eq(products.active, true)));
+			}
+			return await tx
+				.insert(products)
+				.values({ ...row, active: activate })
+				.returning();
+		});
+
+		if (!prod || prod.length === 0) {
+			throw new RecaseError({
+				message: "Failed to create product",
+				code: ErrCode.InternalError,
+				statusCode: StatusCodes.INTERNAL_SERVER_ERROR,
+			});
+		}
+
+		return prod[0] as Product;
+	}
+
+	static async get({
+		db,
+		id,
+		orgId,
+		env,
+		version,
+	}: {
+		db: DrizzleCli;
+		id: string;
+		orgId: string;
+		env: AppEnv;
+		version?: number;
+	}) {
+		return await db.query.products.findFirst({
+			where: and(
+				eq(products.id, id),
+				eq(products.org_id, orgId),
+				eq(products.env, env),
+				liveProductWhere,
+				version ? eq(products.version, version) : eq(products.active, true),
+			),
+			orderBy: [desc(products.version)],
+		});
+	}
+
+	static async listCachedAllVersions({
+		db,
+		orgId,
+		env,
+	}: {
+		db: DrizzleCli;
+		orgId: string;
+		env: AppEnv;
+	}): Promise<
+		Array<{
+			internal_id: string;
+			id: string;
+			name: string | null;
+			version: number;
+		}>
+	> {
+		type ProductVersionRow = {
+			internal_id: string;
+			id: string;
+			name: string | null;
+			version: number;
+		};
+		const cacheKey = buildAllVersionsProductsCacheKey({ orgId, env });
+
+		const cached = await getCachedProducts<ProductVersionRow[]>({
+			cacheKey,
+		});
+		if (cached) return cached;
+
+		const rows = await db
+			.select({
+				internal_id: products.internal_id,
+				id: products.id,
+				name: products.name,
+				version: products.version,
+			})
+			.from(products)
+			.where(and(eq(products.org_id, orgId), eq(products.env, env)));
+
+		await setCachedProducts({ cacheKey, value: rows });
+		return rows;
+	}
+
+	static async listFull({
+		db,
+		orgId,
+		env,
+		inIds,
+		returnAll = false,
+		version,
+		archived,
+		skipCache = false,
+		includeDeleted = false,
+	}: {
+		db: DrizzleCli;
+		orgId: string;
+		env: AppEnv;
+		inIds?: string[];
+		returnAll?: boolean;
+		version?: number;
+		archived?: boolean;
+		/** Read straight from the DB — for writes deciding off the result. */
+		skipCache?: boolean;
+		/** Occupancy / mint max — include tombstoned rows. */
+		includeDeleted?: boolean;
+	}): Promise<FullProduct[]> {
+		// Use caching for simple queries (no inIds, returnAll, or version)
+		const canCache =
+			!inIds && !returnAll && !version && !skipCache && !includeDeleted;
+
+		if (canCache) {
+			const cacheKey = buildProductsCacheKey({
+				orgId,
+				env,
+				queryParams: { archived },
+			});
+
+			const cached = await getCachedProducts<FullProduct[]>({ cacheKey });
+			if (cached) return cached;
+
+			const fullProducts = await ProductService._listFullQuery({
+				db,
+				orgId,
+				env,
+				archived,
+			});
+			await setCachedProducts({ cacheKey, value: fullProducts });
+			return fullProducts;
+		}
+
+		return ProductService._listFullQuery({
+			db,
+			orgId,
+			env,
+			inIds,
+			returnAll,
+			version,
+			archived,
+			includeDeleted,
+		});
+	}
+
+	private static async _listFullQuery({
+		db,
+		orgId,
+		env,
+		inIds,
+		returnAll = false,
+		version,
+		archived,
+		includeDeleted = false,
+	}: {
+		db: DrizzleCli;
+		orgId: string;
+		env: AppEnv;
+		inIds?: string[];
+		returnAll?: boolean;
+		version?: number;
+		archived?: boolean;
+		includeDeleted?: boolean;
+	}): Promise<FullProduct[]> {
+		const rows = (await db.query.products.findMany({
+			where: and(
+				eq(products.org_id, orgId),
+				eq(products.env, env),
+				inIds ? inArray(products.id, inIds) : undefined,
+				version ? eq(products.version, version) : undefined,
+				!returnAll && !version ? eq(products.active, true) : undefined,
+				includeDeleted ? undefined : liveProductWhere,
+			),
+			with: composeFullProductQuery(),
+		})) as ProductWithLicenseRelations[];
+
+		const data = rows.map((product) =>
+			normalizeFullProductLicenses({ product }),
+		);
+
+		parseFreeTrials({ products: data });
+		for (const product of data) {
+			parseRelatedFreeTrials({ product });
+		}
+
+		if (returnAll) {
+			return notNullish(archived)
+				? data.filter((p) => p.archived === archived)
+				: data;
+		}
+
+		const latestProducts: FullProduct[] = getActiveProducts(data);
+
+		if (inIds) {
+			const newProducts: FullProduct[] = [];
+			for (const id of inIds) {
+				const prod = latestProducts.find((prod) => prod.id === id);
+				if (!prod) {
+					throw new ProductNotFoundError({ productId: id });
+				}
+				newProducts.push(prod);
+			}
+			return newProducts;
+		}
+
+		const result = notNullish(archived)
+			? latestProducts.filter((p) => p.archived === archived)
+			: latestProducts;
+
+		sortFullProducts({ products: result });
+		return result;
+	}
+
+	static async listVariantsByParent({
+		db,
+		baseInternalProductIds,
+		orgId,
+		env,
+		returnAll = false,
+	}: {
+		db: DrizzleCli;
+		baseInternalProductIds: string[];
+		orgId: string;
+		env: AppEnv;
+		returnAll?: boolean;
+	}): Promise<FullProduct[]> {
+		if (baseInternalProductIds.length === 0) return [];
+
+		const data = (await db.query.products.findMany({
+			where: and(
+				eq(products.org_id, orgId),
+				eq(products.env, env),
+				ne(products.archived, true),
+				inArray(products.base_internal_product_id, baseInternalProductIds),
+				returnAll ? undefined : eq(products.active, true),
+			),
+			with: composeProductWithLicensesQuery(),
+		})) as ProductWithLicenseRelations[];
+
+		const variants = data.map((product) => {
+			const normalized = normalizeFullProductLicenses({ product });
+			parseFreeTrials({ product: normalized });
+			return normalized;
+		});
+
+		return returnAll ? variants : getActiveProducts(variants);
+	}
+
+	static async getFull({
+		db,
+		idOrInternalId,
+		orgId,
+		env,
+		version,
+		allowNotFound = false,
+	}: {
+		db: DrizzleCli;
+		idOrInternalId: string;
+		orgId: string;
+		env: AppEnv;
+		version?: number;
+		allowNotFound?: boolean;
+	}) {
+		const data = (await db.query.products.findFirst({
+			where: and(
+				or(
+					eq(products.id, idOrInternalId),
+					eq(products.internal_id, idOrInternalId),
+				),
+				eq(products.org_id, orgId),
+				eq(products.env, env),
+				liveProductWhere,
+				version ? eq(products.version, version) : undefined,
+				!version
+					? or(
+							eq(products.internal_id, idOrInternalId),
+							eq(products.active, true),
+						)
+					: undefined,
+			),
+			orderBy: [desc(products.version)],
+			with: composeFullProductQuery(),
+		})) as ProductWithLicenseRelations | undefined;
+
+		if (!data) {
+			if (allowNotFound) return null as unknown as FullProduct;
+			throw new ProductNotFoundError({ productId: idOrInternalId, version });
+		}
+
+		const product = normalizeFullProductLicenses({ product: data });
+		parseFreeTrials({ product });
+		parseRelatedFreeTrials({ product });
+		return product;
+	}
+
+	static async getProductVersionCount({
+		db,
+		productId,
+		orgId,
+		env,
+	}: {
+		db: DrizzleCli;
+		productId: string;
+		orgId: string;
+		env: AppEnv;
+	}) {
+		const data = await db.query.products.findMany({
+			columns: {
+				version: true,
+			},
+			limit: 1,
+			where: and(
+				eq(products.id, productId),
+				eq(products.org_id, orgId),
+				eq(products.env, env),
+			),
+			orderBy: [desc(products.version)],
+		});
+
+		if (data.length === 0) {
+			throw new ProductNotFoundError({ productId: productId });
+		}
+
+		return data[0].version;
+	}
+
+	// UPDATES
+	static async updateByInternalId({
+		db,
+		internalId,
+		update,
+	}: {
+		db: DrizzleCli;
+		internalId: string;
+		update: any;
+	}) {
+		await db
+			.update(products)
+			.set(update)
+			.where(eq(products.internal_id, internalId));
+	}
+
+	// DELETES
+
+	static async archiveByInternalId({
+		db,
+		internalId,
+		orgId,
+		env,
+	}: {
+		db: ProductWriteDb;
+		internalId: string;
+		orgId: string;
+		env: AppEnv;
+	}) {
+		await db
+			.update(products)
+			.set({ archived: true })
+			.where(
+				and(
+					eq(products.internal_id, internalId),
+					eq(products.org_id, orgId),
+					eq(products.env, env),
+				),
+			);
+	}
+
+	static async tombstoneByInternalId({
+		db,
+		internalId,
+		orgId,
+		env,
+		previousVersionSlug,
+	}: {
+		db: ProductWriteDb;
+		internalId: string;
+		orgId: string;
+		env: AppEnv;
+		previousVersionSlug: string | null;
+	}) {
+		await db
+			.update(products)
+			.set({
+				deleted_at: Date.now(),
+				previous_version_slug: previousVersionSlug,
+				version_slug: null,
+				active: false,
+			})
+			.where(
+				and(
+					eq(products.internal_id, internalId),
+					eq(products.org_id, orgId),
+					eq(products.env, env),
+				),
+			);
+	}
+
+	static async deleteByInternalId({
+		db,
+		internalId,
+		orgId,
+		env,
+	}: {
+		db: DrizzleCli;
+		internalId: string;
+		orgId: string;
+		env: AppEnv;
+	}) {
+		await db.transaction(async (tx) => {
+			await deleteProductRowAndHandoffActive({
+				db: tx,
+				internalId,
+				orgId,
+				env,
+			});
+		});
+	}
+
+	static async deleteByProductId({
+		db,
+		productId,
+		orgId,
+		env,
+	}: {
+		db: DrizzleCli;
+		productId: string;
+		orgId: string;
+		env: AppEnv;
+	}) {
+		const res = await db
+			.select()
+			.from(products)
+			.where(
+				and(
+					eq(products.id, productId),
+					eq(products.org_id, orgId),
+					eq(products.env, env),
+				),
+			);
+
+		const internalIds = res.map((r) => r.internal_id);
+
+		if (internalIds.length === 0) return;
+		if (internalIds.length > 500) {
+			throw new RecaseError({
+				message: "Cannot delete more than 500 products at once",
+				code: ErrCode.InternalError,
+				statusCode: StatusCodes.INTERNAL_SERVER_ERROR,
+			});
+		}
+
+		// license_entitlements/license_prices RESTRICT item rows; drop plan_license first.
+		await db
+			.delete(planLicenses)
+			.where(
+				or(
+					inArray(planLicenses.parent_internal_product_id, internalIds),
+					inArray(planLicenses.license_internal_product_id, internalIds),
+				),
+			);
+
+		await db.delete(products).where(inArray(products.internal_id, internalIds));
+	}
+
+	static async deleteByOrgId({
+		db,
+		orgId,
+		env,
+	}: {
+		db: DrizzleCli;
+		orgId: string;
+		env: AppEnv;
+	}) {
+		await db
+			.delete(products)
+			.where(and(eq(products.org_id, orgId), eq(products.env, env)));
+	}
+
+	/** Deletes products in batches to avoid locking all rows at once. */
+	static async safeDeleteByOrgId({
+		db,
+		orgId,
+		env,
+		batchSize = 250,
+	}: {
+		db: DrizzleCli;
+		orgId: string;
+		env: AppEnv;
+		batchSize?: number;
+	}) {
+		while (true) {
+			const batch = await db
+				.select({ internal_id: products.internal_id })
+				.from(products)
+				.where(and(eq(products.org_id, orgId), eq(products.env, env)))
+				.limit(batchSize);
+
+			if (batch.length === 0) break;
+
+			const ids = batch.map((r) => r.internal_id);
+			await db.delete(products).where(inArray(products.internal_id, ids));
+		}
+	}
+
+	static async getDeletionText({
+		db,
+		productId,
+		orgId,
+		env,
+	}: {
+		db: DrizzleCli;
+		productId: string;
+		orgId: string;
+		env: AppEnv;
+	}) {
+		const internalProductIds = (
+			await db
+				.select({
+					internal_product_id: products.internal_id,
+				})
+				.from(products)
+				.where(
+					and(
+						eq(products.id, productId),
+						eq(products.org_id, orgId),
+						eq(products.env, env),
+					),
+				)
+		).map((r) => r.internal_product_id);
+
+		const res = await db
+			.select({
+				internal_customer_id: customerProducts.internal_customer_id,
+				name: customers.name,
+				id: customers.id,
+				email: customers.email,
+				totalCount: sql<number>`COUNT(*) OVER ()`,
+			})
+			.from(customerProducts)
+			.innerJoin(
+				customers,
+				eq(customerProducts.internal_customer_id, customers.internal_id),
+			)
+			.where(
+				and(
+					inArray(customerProducts.internal_product_id, internalProductIds),
+					eq(customers.env, env),
+					eq(customers.org_id, orgId),
+				),
+			)
+			.orderBy(desc(customers.created_at))
+			.groupBy(
+				customerProducts.internal_customer_id,
+				customers.name,
+				customers.created_at,
+				customers.id,
+				customers.email,
+			);
+		// .limit(1);
+
+		return res;
+	}
+}

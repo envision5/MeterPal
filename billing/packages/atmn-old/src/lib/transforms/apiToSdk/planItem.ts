@@ -1,0 +1,113 @@
+import type { PlanItem } from "../../../compose/models/planModels.js";
+import type { ApiPlanItem } from "../../api/types/index.js";
+import { createTransformer } from "./Transformer.js";
+
+/** Maps API plan items to SDK config while omitting redundant reset cycles. */
+export const planItemTransformer = createTransformer<ApiPlanItem, PlanItem>({
+	// rename: maps api snake_case field -> sdk camelCase field (shallow copy)
+	rename: {
+		feature_id: "featureId",
+		entity_feature_id: "entityFeatureId",
+	},
+
+	// Only persist unlimited/pooled when true (false is implicit default)
+	copy: ["unlimited", "pooled"],
+	swapFalse: ["unlimited", "pooled"],
+
+	// Computed fields
+	compute: {
+		// Only include included if not unlimited
+		included: (api) => (api.unlimited ? undefined : api.included),
+
+		reset: (api) => {
+			if (!api.reset) return undefined;
+			const matchesPrice =
+				String(api.reset.interval) === String(api.price?.interval) &&
+				(api.reset.interval_count ?? 1) === (api.price?.interval_count ?? 1);
+			if (matchesPrice) return undefined;
+			return {
+				interval: api.reset.interval,
+				...(api.reset.interval_count !== undefined && {
+					intervalCount: api.reset.interval_count,
+				}),
+			};
+		},
+
+		// Transform price object with camelCase fields
+		price: (api) => {
+			if (!api.price) return undefined;
+
+			return {
+				amount: api.price.amount,
+				tiers: api.price.tiers?.map((tier) => {
+					const t = tier as {
+						to: number | "inf";
+						amount: number;
+						flat_amount?: number;
+						additional_currencies?: Array<{
+							currency: string;
+							amount?: number;
+							flat_amount?: number;
+						}>;
+					};
+					return {
+						to: t.to,
+						amount: t.amount,
+						...(t.flat_amount !== undefined && { flatAmount: t.flat_amount }),
+						...(t.additional_currencies?.length && {
+							additionalCurrencies: t.additional_currencies.map((entry) => ({
+								currency: entry.currency,
+								...(entry.amount !== undefined && { amount: entry.amount }),
+								...(entry.flat_amount !== undefined && {
+									flatAmount: entry.flat_amount,
+								}),
+							})),
+						}),
+					};
+				}),
+				...(api.price.additional_currencies?.length && {
+					additionalCurrencies: api.price.additional_currencies,
+				}),
+				billingUnits: api.price.billing_units,
+				maxPurchase: api.price.max_purchase ?? undefined,
+				billingMethod: api.price.billing_method,
+				tierBehavior: api.price.tier_behavior,
+				// Map API price.interval directly to SDK price.interval
+				interval: api.price.interval,
+				...(api.price.interval_count !== undefined && {
+					intervalCount: api.price.interval_count,
+				}),
+			};
+		},
+
+		// Transform proration object to camelCase
+		proration: (api) =>
+			api.proration
+				? {
+						onIncrease: api.proration.on_increase,
+						onDecrease: api.proration.on_decrease,
+					}
+				: undefined,
+
+		// Transform rollover object to camelCase
+		rollover: (api) =>
+			api.rollover
+				? {
+						...(api.rollover.max_percentage == null && {
+							max: api.rollover.max ?? 0,
+						}),
+						...(api.rollover.max_percentage != null && {
+							maxPercentage: api.rollover.max_percentage,
+						}),
+						expiryDurationType: api.rollover.expiry_duration_type,
+						...(api.rollover.expiry_duration_length !== undefined && {
+							expiryDurationLength: api.rollover.expiry_duration_length,
+						}),
+					}
+				: undefined,
+	},
+});
+
+export function transformApiPlanItem(apiPlanItem: ApiPlanItem): PlanItem {
+	return planItemTransformer.transform(apiPlanItem);
+}

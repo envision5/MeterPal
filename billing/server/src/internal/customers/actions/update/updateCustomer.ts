@@ -1,0 +1,297 @@
+import {
+	type Customer,
+	CustomerAlreadyExistsError,
+	CustomerNotFoundError,
+	ErrCode,
+	notNullish,
+	ProcessorType,
+	RecaseError,
+	shouldForwardCustomerMetadata,
+	stripAutoTopupCountsForStorage,
+	type UpdateCustomerParamsV1,
+} from "@autumn/shared";
+import type Stripe from "stripe";
+import type { DrizzleCli } from "@/db/initDrizzle.js";
+import { createStripeCli } from "@/external/connect/createStripeCli";
+import { updateStripeBillingDetails } from "@/external/stripe/customers/billingDetails/operations/updateStripeBillingDetails.js";
+import { assertBillingDetailsWritable } from "@/external/stripe/customers/billingDetails/utils/assertBillingDetailsWritable.js";
+import {
+	autumnToStripeCustomerMetadata,
+	STRIPE_MAX_KEY_LENGTH,
+} from "@/external/stripe/customers/utils/autumnToStripeMetadata";
+import type { AutumnContext } from "@/honoUtils/HonoEnv";
+import { triggerAutoTopUpsOnEnabled } from "@/internal/balances/autoTopUp/triggerAutoTopUpsOnEnabled";
+import { assertCustomerUsageLimitAlertsResolvable } from "@/internal/balances/usageAlerts/validate/assertCustomerUsageLimitAlertsResolvable";
+import { CusService } from "@/internal/customers/CusService";
+import { invalidateCachedFullSubject } from "../../cache/fullSubject/index.js";
+import { usageWindowRepo } from "../../usageWindows/repos/index.js";
+import { getApiCustomerByRollout } from "../getApiCustomerByRollout";
+import { getUsageLimitConfigUpdate } from "./getUsageLimitConfigUpdate.js";
+import { prepareUsageLimitUsage } from "./prepareUsageLimitUsage.js";
+import {
+	syncAutoTopupPurchaseLimitCounts,
+	validateAutoTopupPurchaseLimitCounts,
+} from "./syncAutoTopupPurchaseLimitCounts";
+
+export const updateCustomer = async ({
+	ctx,
+	params,
+}: {
+	ctx: AutumnContext;
+	params: UpdateCustomerParamsV1;
+}): Promise<{
+	oldCustomer: Customer;
+	apiCustomer: Record<string, unknown>;
+}> => {
+	const { db, org, env, logger } = ctx;
+	const {
+		customer_id: customerId,
+		new_customer_id: newCustomerId,
+		billing_controls,
+		billing_details: billingDetails,
+		config,
+		...newCusData
+	} = params;
+
+	const originalCustomer = await CusService.get({
+		db,
+		idOrInternalId: customerId,
+		orgId: org.id,
+		env,
+	});
+
+	if (!originalCustomer) {
+		throw new CustomerNotFoundError({ customerId });
+	}
+
+	validateAutoTopupPurchaseLimitCounts({
+		autoTopups: billing_controls?.auto_topups ?? [],
+	});
+
+	if (newCustomerId === null) {
+		throw new RecaseError({
+			message: "Customer ID cannot be set to null",
+			statusCode: 400,
+		});
+	}
+
+	if (notNullish(newCustomerId) && originalCustomer.id !== newCustomerId) {
+		// Fetch for existing customer
+		const existingCustomer = await CusService.get({
+			db,
+			idOrInternalId: newCustomerId,
+			orgId: org.id,
+			env,
+		});
+
+		if (existingCustomer) {
+			throw new CustomerAlreadyExistsError({
+				message: `Customer with ID ${newCustomerId} already exists, can't change to this ID`,
+				customerId: newCustomerId,
+			});
+		}
+	}
+
+	const configUsageLimits = getUsageLimitConfigUpdate({
+		usageLimits: billing_controls?.usage_limits,
+	});
+	const usageWindows = await prepareUsageLimitUsage({
+		ctx,
+		customerId,
+		usageLimits: billing_controls?.usage_limits,
+		configUsageLimits,
+	});
+
+	await assertCustomerUsageLimitAlertsResolvable({
+		ctx,
+		customer: originalCustomer,
+		billingControls: billing_controls
+			? { ...billing_controls, usage_limits: configUsageLimits }
+			: undefined,
+	});
+
+	// Try to update stripe ID. Distinguish omitted (undefined -> leave as is)
+	// from explicitly cleared (null/"" -> unlink the Stripe customer).
+	let stripeId = originalCustomer.processor?.id;
+	const newStripeId = newCusData.stripe_id;
+	const clearStripeId = newStripeId === null || newStripeId === "";
+
+	if (clearStripeId) {
+		stripeId = undefined;
+	} else if (newStripeId && stripeId !== newStripeId) {
+		const stripeCli = createStripeCli({ org, env });
+		await stripeCli.customers.retrieve(newStripeId);
+
+		stripeId = newStripeId;
+		logger.info(
+			`Updating customer's Stripe ID from ${originalCustomer.processor?.id} to ${stripeId}`,
+		);
+	}
+
+	// Billing details go first: Stripe is most likely to reject them (e.g. a bad VAT).
+	if (billingDetails) {
+		assertBillingDetailsWritable({ ctx });
+		if (!stripeId) {
+			throw new RecaseError({
+				message: `Customer ${customerId} isn't linked to a Stripe customer, so its billing details can't be saved (they're stored in Stripe). Link one with stripe_id, or create the customer in Stripe first.`,
+				code: ErrCode.InvalidRequest,
+				statusCode: 400,
+			});
+		}
+		await updateStripeBillingDetails({
+			ctx,
+			stripeCustomerId: stripeId,
+			billingDetails,
+		});
+	}
+
+	const oldMetadata = originalCustomer.metadata || {};
+	const newMetadata = newCusData.metadata || {};
+	const deletedMetadataKeys: string[] = [];
+	for (const key in newMetadata) {
+		if (newMetadata[key] === null) {
+			deletedMetadataKeys.push(key);
+			delete newMetadata[key];
+			delete oldMetadata[key];
+		}
+	}
+	const mergedMetadata = { ...oldMetadata, ...newMetadata };
+
+	const hasMetadataChanges =
+		Object.keys(newMetadata).length > 0 || deletedMetadataKeys.length > 0;
+	const forwardMetadata =
+		shouldForwardCustomerMetadata({ org }) && hasMetadataChanges;
+
+	const stripeMetadataDeletions: Record<string, ""> = {};
+	for (const key of deletedMetadataKeys) {
+		if (!key.startsWith("autumn_"))
+			stripeMetadataDeletions[key.slice(0, STRIPE_MAX_KEY_LENGTH)] = "";
+	}
+
+	const stripeUpdate: Stripe.CustomerUpdateParams = {
+		email:
+			originalCustomer.email !== newCusData.email &&
+			notNullish(newCusData.email)
+				? newCusData.email
+				: undefined,
+		name:
+			originalCustomer.name !== newCusData.name && notNullish(newCusData.name)
+				? newCusData.name
+				: undefined,
+		...(forwardMetadata && {
+			metadata: {
+				...autumnToStripeCustomerMetadata({ metadata: mergedMetadata }),
+				...stripeMetadataDeletions,
+			},
+		}),
+	};
+
+	if (Object.keys(stripeUpdate).length > 0 && stripeId) {
+		const stripeCli = createStripeCli({ org, env });
+		await stripeCli.customers.update(stripeId, stripeUpdate);
+	}
+
+	// Prepare update data — only include defined billing control fields
+	const billingControlUpdates: Partial<Customer> = {};
+	if (billing_controls) {
+		if (billing_controls.auto_topups !== undefined) {
+			billingControlUpdates.auto_topups =
+				stripAutoTopupCountsForStorage(billing_controls.auto_topups) ?? [];
+		}
+		if (billing_controls.spend_limits !== undefined)
+			billingControlUpdates.spend_limits = billing_controls.spend_limits;
+		if (configUsageLimits !== undefined)
+			billingControlUpdates.usage_limits = configUsageLimits;
+		if (billing_controls.usage_alerts !== undefined)
+			billingControlUpdates.usage_alerts = billing_controls.usage_alerts;
+		if (billing_controls.overage_allowed !== undefined)
+			billingControlUpdates.overage_allowed = billing_controls.overage_allowed;
+	}
+
+	// Merge config partially so omitted keys don't clobber existing ones
+	const configUpdate = config
+		? {
+				config: {
+					...(originalCustomer.config ?? {}),
+					...(config.disable_pooled_balance !== undefined && {
+						disable_pooled_balance: config.disable_pooled_balance,
+					}),
+					...(config.disable_overage_billing !== undefined && {
+						disable_overage_billing: config.disable_overage_billing,
+					}),
+				},
+			}
+		: {};
+
+	const updateData: Partial<Customer> = {
+		...newCusData,
+		id: newCustomerId,
+		metadata: mergedMetadata,
+		...billingControlUpdates,
+		...configUpdate,
+	};
+
+	if (newStripeId) {
+		updateData.processor = { id: newStripeId, type: ProcessorType.Stripe };
+	} else if (clearStripeId) {
+		updateData.processor = null;
+	}
+
+	if (!notNullish(newCustomerId) || originalCustomer.id === newCustomerId) {
+		// Remove id from update if not changing
+		delete updateData.id;
+	}
+
+	await db.transaction(async (tx) => {
+		const txCtx = { ...ctx, db: tx as unknown as DrizzleCli };
+
+		if (billing_controls?.auto_topups !== undefined) {
+			await syncAutoTopupPurchaseLimitCounts({
+				ctx: txCtx,
+				customer: originalCustomer,
+				autoTopups: billing_controls.auto_topups,
+			});
+		}
+
+		await usageWindowRepo.setWindows({ db: txCtx.db, windows: usageWindows });
+
+		await CusService.update({
+			ctx: txCtx,
+			idOrInternalId: originalCustomer.id || originalCustomer.internal_id,
+			update: updateData,
+		});
+	});
+
+	ctx.skipCache = true;
+	const resolvedCustomerId = newCustomerId ?? customerId;
+	if (usageWindows.length > 0) {
+		await invalidateCachedFullSubject({
+			ctx,
+			customerId: resolvedCustomerId,
+			source: "updateCustomer:usage",
+		});
+	}
+
+	const apiCustomer = await getApiCustomerByRollout({
+		disableReplicaRead: true,
+		ctx,
+		customerId: resolvedCustomerId,
+		source: "updateCustomer",
+	});
+
+	if (billing_controls?.auto_topups) {
+		triggerAutoTopUpsOnEnabled({
+			ctx,
+			oldCustomer: originalCustomer,
+			newAutoTopups: billing_controls.auto_topups,
+			customerId: resolvedCustomerId,
+		}).catch((err) =>
+			ctx.logger.error("triggerAutoTopUpsOnEnabled failed: ", { error: err }),
+		);
+	}
+
+	return {
+		oldCustomer: originalCustomer,
+		apiCustomer,
+	};
+};

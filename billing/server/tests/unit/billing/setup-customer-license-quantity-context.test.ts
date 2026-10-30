@@ -1,0 +1,159 @@
+import { describe, expect, test } from "bun:test";
+import type {
+	FullCusProduct,
+	FullCustomerLicense,
+	FullPlanLicense,
+	FullProduct,
+} from "@autumn/shared";
+import { setupCustomerLicenseQuantityContext } from "@/internal/billing/v2/setup/setupCustomerLicenseQuantityContext";
+
+const planLicense = ({
+	id,
+	group,
+	included,
+}: {
+	id: string;
+	group: string;
+	included: number;
+}) =>
+	({
+		included,
+		product: { id, group },
+	}) as FullPlanLicense;
+
+const customerLicense = ({
+	planLicense,
+	paidQuantity,
+	usage,
+}: {
+	planLicense: FullPlanLicense;
+	paidQuantity: number;
+	usage: number;
+}) =>
+	({
+		license_internal_product_id: planLicense.product.internal_id,
+		granted: planLicense.included + paidQuantity,
+		remaining: planLicense.included + paidQuantity - usage,
+		paid_quantity: paidQuantity,
+		planLicense,
+	}) as FullCustomerLicense;
+
+const setupContext = ({
+	params = {},
+	outgoingLicense,
+	incomingLicenses,
+}: {
+	params?: {
+		license_quantities?: { license_plan_id: string; quantity: number }[];
+	};
+	outgoingLicense: FullCustomerLicense;
+	incomingLicenses: FullPlanLicense[];
+}) =>
+	setupCustomerLicenseQuantityContext({
+		params,
+		customerProduct: {
+			customer_licenses: [outgoingLicense],
+		} as FullCusProduct,
+		fullProduct: { licenses: incomingLicenses } as FullProduct,
+	});
+
+describe("setupCustomerLicenseQuantityContext", () => {
+	test("rebases omitted quantities when included seats increase", () => {
+		const outgoingPlanLicense = planLicense({
+			id: "seat_a",
+			group: "team_seat",
+			included: 1,
+		});
+		const incomingPlanLicense = planLicense({
+			id: "seat_b",
+			group: "team_seat",
+			included: 10,
+		});
+
+		expect(
+			setupContext({
+				outgoingLicense: customerLicense({
+					planLicense: outgoingPlanLicense,
+					paidQuantity: 1,
+					usage: 2,
+				}),
+				incomingLicenses: [incomingPlanLicense],
+			}),
+		).toEqual([{ licensePlanId: "seat_b", totalQuantity: 10 }]);
+	});
+
+	test("rebases omitted quantities when included seats decrease", () => {
+		const outgoingPlanLicense = planLicense({
+			id: "seat_a",
+			group: "team_seat",
+			included: 10,
+		});
+		const incomingPlanLicense = planLicense({
+			id: "seat_b",
+			group: "team_seat",
+			included: 3,
+		});
+
+		expect(
+			setupContext({
+				outgoingLicense: customerLicense({
+					planLicense: outgoingPlanLicense,
+					paidQuantity: 0,
+					usage: 5,
+				}),
+				incomingLicenses: [incomingPlanLicense],
+			}),
+		).toEqual([{ licensePlanId: "seat_b", totalQuantity: 5 }]);
+	});
+
+	test("preserves paid capacity when included seats do not change", () => {
+		const outgoingPlanLicense = planLicense({
+			id: "seat_a",
+			group: "team_seat",
+			included: 1,
+		});
+		const incomingPlanLicense = planLicense({
+			id: "seat_b",
+			group: "team_seat",
+			included: 1,
+		});
+
+		expect(
+			setupContext({
+				outgoingLicense: customerLicense({
+					planLicense: outgoingPlanLicense,
+					paidQuantity: 2,
+					usage: 2,
+				}),
+				incomingLicenses: [incomingPlanLicense],
+			}),
+		).toEqual([{ licensePlanId: "seat_b", totalQuantity: 3 }]);
+	});
+
+	test("does not carry over an explicitly requested zero", () => {
+		const outgoingPlanLicense = planLicense({
+			id: "seat_a",
+			group: "team_seat",
+			included: 0,
+		});
+		const incomingPlanLicense = planLicense({
+			id: "seat_b",
+			group: "team_seat",
+			included: 0,
+		});
+
+		expect(
+			setupContext({
+				params: {
+					license_quantities: [{ license_plan_id: "seat_b", quantity: 0 }],
+				},
+				outgoingLicense: customerLicense({
+					planLicense: outgoingPlanLicense,
+					paidQuantity: 3,
+					usage: 2,
+				}),
+				incomingLicenses: [incomingPlanLicense],
+			}),
+		).toEqual([{ licensePlanId: "seat_b", totalQuantity: 0 }]);
+	});
+});

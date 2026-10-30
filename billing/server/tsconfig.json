@@ -1,0 +1,49 @@
+{
+	"ts-node": {
+		"esm": true,
+		"experimentalSpecifier": true
+	},
+	"compilerOptions": {
+		"lib": ["ES2021", "DOM", "DOM.Iterable"],
+		"target": "ES2020",
+		"moduleResolution": "bundler",
+		"module": "Preserve",
+
+		"typeRoots": ["./node_modules/@types", "../node_modules/@types"],
+    "types": ["bun", "node"],
+		// "declaration": true,
+		"jsx": "react-jsx",
+		"outDir": "./dist",
+		"strict": true,
+		"esModuleInterop": true,
+		"allowSyntheticDefaultImports": true,
+		"skipLibCheck": true,
+		"forceConsistentCasingInFileNames": true,
+		"paths": {
+			"@/*": ["./src/*"],
+			"@server/*": ["./src/*"],
+			"@shared/*": ["../shared/*"],
+			"@scripts/*": ["./scripts/*"],
+			"@lua/*": ["./src/_luaScripts/*"],
+			"@tests/*": ["./tests/*"],
+			"autumn-js": ["../packages/autumn-js/src/sdk/index.ts"],
+			"autumn-js/backend/hono": ["../packages/autumn-js/src/backend/adapters/hono.ts"],
+			"@useautumn/sdk": ["../packages/sdk/src/index.ts"],
+			"@useautumn/sdk/*": ["../packages/sdk/src/*"],
+
+			// From shared package?
+			"@autumn/ksuid": ["../packages/ksuid/src/index.ts"],
+			"@autumn/shared": ["../shared/index.ts"],
+			"@autumn/shared/*": ["../shared/*"],
+			"@api/*": ["../shared/api/*"],
+			"@models/*": ["../shared/models/*"],
+			"@utils/*": ["../shared/utils/*"],
+
+			// Explicitly set drizzle-orm path to avoid monorepo issues
+			"drizzle-orm": ["../node_modules/drizzle-orm"],
+			"drizzle-orm/*": ["../node_modules/drizzle-orm/*"]
+		}
+	},
+	"include": ["src", "tests", "scripts", "experiments", "perf"],
+	"exclude": ["node_modules", "dist", "tests/archives"]
+}

@@ -1,0 +1,128 @@
+import {
+	CreateEntityParamsV1Schema,
+	DeleteEntityParamsV0Schema,
+	GetEntityParamsV0Schema,
+	ListEntitiesParamsSchema,
+	UpdateEntityParamsSchema,
+} from "@autumn/shared";
+import { createJSDocDescription, example } from "../../utils/jsDocs/index.js";
+
+export const createEntityJsDoc = createJSDocDescription({
+	description:
+		"Creates an entity for a customer and feature, then returns the entity with balances and subscriptions.",
+	whenToUse:
+		"Use entities when usage and access must be scoped to sub-resources (for example seats, projects, or workspaces) instead of only the customer.",
+	body: CreateEntityParamsV1Schema,
+	examples: [
+		example({
+			description: "Create a seat entity",
+			values: {
+				customerId: "cus_123",
+				entityId: "seat_42",
+				featureId: "seats",
+				name: "Seat 42",
+			},
+		}),
+	],
+	methodName: "entities.create",
+	returns:
+		"The created entity object including its current subscriptions, purchases, and balances.",
+});
+
+export const getEntityJsDoc = createJSDocDescription({
+	description: "Fetches an entity by its ID.",
+	whenToUse:
+		"Use this to read one entity's current state. Pass customerId when you want to scope the lookup to a specific customer.",
+	body: GetEntityParamsV0Schema,
+	examples: [
+		example({
+			description: "Fetch a seat entity",
+			values: {
+				entityId: "seat_42",
+			},
+		}),
+		example({
+			description: "Fetch a seat entity for a specific customer",
+			values: {
+				customerId: "cus_123",
+				entityId: "seat_42",
+			},
+		}),
+	],
+	methodName: "entities.get",
+	returns:
+		"The entity object including its current subscriptions, purchases, and balances.",
+});
+
+export const listEntityJsDoc = createJSDocDescription({
+	description:
+		"Lists entities across the organization with pagination and optional filters.",
+	whenToUse:
+		"Use this to page through entities globally, including filtering by plans inherited from parent customers or attached directly to entities.",
+	body: ListEntitiesParamsSchema,
+	examples: [
+		example({
+			description: "List entities on a plan",
+			values: {
+				plans: [{ id: "pro_plan" }],
+				limit: 10,
+				offset: 0,
+			},
+		}),
+		example({
+			description: "Search entities by ID or name",
+			values: {
+				search: "workspace",
+			},
+		}),
+	],
+	methodName: "entities.list",
+	returns:
+		"A paginated list of entity objects including their current subscriptions, purchases, balances, and flags.",
+});
+
+export const deleteEntityJsDoc = createJSDocDescription({
+	description: "Deletes an entity by entity ID.",
+	whenToUse:
+		"Use this when the underlying resource is removed and you no longer want entity-scoped balances or subscriptions tracked for it.",
+	body: DeleteEntityParamsV0Schema,
+	examples: [
+		example({
+			description: "Delete a seat entity",
+			values: {
+				entityId: "seat_42",
+			},
+		}),
+	],
+	methodName: "entities.delete",
+	returns: "A success flag indicating the entity was deleted.",
+});
+
+export const updateEntityJsDoc = createJSDocDescription({
+	description:
+		"Updates an existing entity and returns the refreshed entity object.",
+	whenToUse:
+		"Use this to change entity billing controls or other mutable entity fields after the entity has already been created.",
+	body: UpdateEntityParamsSchema,
+	examples: [
+		example({
+			description: "Update a seat entity's billing controls",
+			values: {
+				customerId: "cus_123",
+				entityId: "seat_42",
+				billingControls: {
+					spendLimits: [
+						{
+							featureId: "messages",
+							enabled: true,
+							overageLimit: 25,
+						},
+					],
+				},
+			},
+		}),
+	],
+	methodName: "entities.update",
+	returns:
+		"The updated entity object including its current subscriptions, purchases, and balances.",
+});

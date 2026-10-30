@@ -1,0 +1,124 @@
+import {
+	ErrCode,
+	RecaseError,
+	type ReferralCode,
+	type Reward,
+	type RewardProgram,
+	type RewardRedemption,
+} from "@autumn/shared";
+import { StatusCodes } from "http-status-codes";
+import type Stripe from "stripe";
+import { createStripeCli } from "@/external/connect/createStripeCli.js";
+import { getOrCreateStripeCustomer } from "@/external/stripe/customers";
+import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
+import { CusService } from "@/internal/customers/CusService.js";
+import { redemptionRepo } from "@/internal/rewards/repos/index.js";
+import {
+	receivedByRedeemer,
+	receivedByReferrer,
+} from "@/internal/rewards/rewardUtils.js";
+
+/** Apply a Stripe coupon discount to referrer/redeemer */
+export const triggerDiscount = async ({
+	ctx,
+	referralCode,
+	reward,
+	redemption,
+}: {
+	ctx: AutumnContext;
+	referralCode: ReferralCode & { reward_program: RewardProgram };
+	reward: Reward;
+	redemption: RewardRedemption;
+}) => {
+	const { db, org, env, logger } = ctx;
+
+	logger.info(
+		`Triggering redemption ${redemption.id} for referral code ${referralCode.code}`,
+	);
+
+	const referrer = await CusService.getByInternalId({
+		db,
+		internalId: referralCode.internal_customer_id,
+	});
+
+	const redeemer = await CusService.getByInternalId({
+		db,
+		internalId: redemption.internal_customer_id,
+	});
+
+	const rewardProgram = referralCode.reward_program;
+
+	if (!rewardProgram) {
+		throw new RecaseError({
+			message: `Reward program ${referralCode.internal_reward_program_id} not found`,
+			code: ErrCode.RewardProgramNotFound,
+			statusCode: StatusCodes.NOT_FOUND,
+		});
+	}
+
+	let applied = false;
+	let redeemerApplied = false;
+	for (let i = 0; i < 2; i++) {
+		const customer = i === 0 ? referrer : redeemer;
+
+		if (i === 0 && !receivedByReferrer(rewardProgram.received_by)) {
+			continue;
+		} else if (i === 1 && !receivedByRedeemer(rewardProgram.received_by)) {
+			continue;
+		}
+
+		if (!customer) {
+			throw new RecaseError({
+				message: `Customer ${i === 0 ? "referrer" : "redeemer"} not found`,
+				code: ErrCode.CustomerNotFound,
+				statusCode: StatusCodes.NOT_FOUND,
+			});
+		}
+
+		const stripeCli = createStripeCli({
+			org,
+			env,
+			legacyVersion: true,
+		});
+
+		await getOrCreateStripeCustomer({
+			ctx,
+			customer,
+		});
+
+		const stripeCusId = customer.processor.id;
+		const stripeCus = (await stripeCli.customers.retrieve(
+			stripeCusId,
+		)) as Stripe.Customer;
+
+		if (!stripeCus.discount) {
+			await stripeCli.customers.update(stripeCusId, {
+				// Stripe legacy API accepts coupon as string but types don't reflect this
+				// @ts-expect-error — legacy Stripe API accepts coupon ID as string
+				coupon: reward.id,
+			});
+
+			if (i === 0) {
+				applied = true;
+			} else {
+				redeemerApplied = true;
+			}
+
+			logger.info(`Applied coupon to customer in Stripe`);
+		}
+	}
+
+	const updatedRedemption = await redemptionRepo.update({
+		db,
+		id: redemption.id,
+		updates: {
+			applied,
+			redeemer_applied: redeemerApplied,
+			triggered: true,
+		},
+	});
+
+	logger.info(`Successfully triggered redemption, applied: ${applied}`);
+
+	return updatedRedemption;
+};

@@ -1,0 +1,115 @@
+import { afterEach, describe, expect, test } from "bun:test";
+import { ALLOWED_ORIGINS, isAllowedOrigin } from "@/utils/corsOrigins.js";
+
+describe("isAllowedOrigin", () => {
+	const originalNodeEnv = process.env.NODE_ENV;
+
+	afterEach(() => {
+		process.env.NODE_ENV = originalNodeEnv;
+	});
+
+	describe("production", () => {
+		test("allows hardcoded production origins", () => {
+			process.env.NODE_ENV = "production";
+			for (const origin of ALLOWED_ORIGINS) {
+				expect(isAllowedOrigin(origin)).toBe(origin);
+			}
+		});
+
+		test("rejects arbitrary localhost ports", () => {
+			process.env.NODE_ENV = "production";
+			expect(isAllowedOrigin("http://localhost:3100")).toBeUndefined();
+			expect(isAllowedOrigin("http://localhost:8180")).toBeUndefined();
+			expect(isAllowedOrigin("http://localhost:9999")).toBeUndefined();
+		});
+
+		test("rejects external origins", () => {
+			process.env.NODE_ENV = "production";
+			expect(isAllowedOrigin("https://evil.com")).toBeUndefined();
+			expect(isAllowedOrigin("https://fake.useautumn.com")).toBeUndefined();
+			expect(
+				isAllowedOrigin("https://autumn-wt1-c27c45.ngrok.app"),
+			).toBeUndefined();
+		});
+	});
+
+	describe("non-production", () => {
+		test("allows hardcoded origins", () => {
+			process.env.NODE_ENV = "development";
+			for (const origin of ALLOWED_ORIGINS) {
+				expect(isAllowedOrigin(origin)).toBe(origin);
+			}
+		});
+
+		test("allows any localhost port (worktree offsets)", () => {
+			process.env.NODE_ENV = "development";
+			expect(isAllowedOrigin("http://localhost:3100")).toBe(
+				"http://localhost:3100",
+			);
+			expect(isAllowedOrigin("http://localhost:8180")).toBe(
+				"http://localhost:8180",
+			);
+			expect(isAllowedOrigin("http://localhost:3200")).toBe(
+				"http://localhost:3200",
+			);
+		});
+
+		test("allows *.localhost subdomains (portless aliases)", () => {
+			process.env.NODE_ENV = "development";
+			expect(isAllowedOrigin("https://wt8.localhost")).toBe(
+				"https://wt8.localhost",
+			);
+			expect(isAllowedOrigin("https://wt17-api.localhost")).toBe(
+				"https://wt17-api.localhost",
+			);
+			expect(isAllowedOrigin("https://google.emulate.localhost")).toBe(
+				"https://google.emulate.localhost",
+			);
+		});
+
+		test("allows ngrok app hosts", () => {
+			process.env.NODE_ENV = "development";
+			expect(isAllowedOrigin("https://autumn-wt1-c27c45.ngrok.app")).toBe(
+				"https://autumn-wt1-c27c45.ngrok.app",
+			);
+			expect(isAllowedOrigin("https://foo.ngrok-free.app")).toBe(
+				"https://foo.ngrok-free.app",
+			);
+		});
+
+		test("allows autumnworktree tunnel hosts", () => {
+			process.env.NODE_ENV = "development";
+			expect(
+				isAllowedOrigin("https://autumn-wt45-ee5aa7.autumnworktree.com"),
+			).toBe("https://autumn-wt45-ee5aa7.autumnworktree.com");
+		});
+
+		test("allows capysandbox hosts", () => {
+			process.env.NODE_ENV = "development";
+			expect(isAllowedOrigin("https://capy-1.capysandbox.net")).toBe(
+				"https://capy-1.capysandbox.net",
+			);
+		});
+
+		test("rejects external origins", () => {
+			process.env.NODE_ENV = "development";
+			expect(isAllowedOrigin("https://evil.com")).toBeUndefined();
+			expect(isAllowedOrigin("http://evil.com:3000")).toBeUndefined();
+			expect(
+				isAllowedOrigin("https://evil.ngrok.app.evil.com"),
+			).toBeUndefined();
+		});
+
+		test("rejects localhost with path or query", () => {
+			process.env.NODE_ENV = "development";
+			expect(isAllowedOrigin("http://localhost:3000/evil")).toBeUndefined();
+			expect(isAllowedOrigin("http://localhost:3000?x=1")).toBeUndefined();
+		});
+
+		test("rejects look-alike domains posing as localhost", () => {
+			process.env.NODE_ENV = "development";
+			expect(isAllowedOrigin("https://localhost.evil.com")).toBeUndefined();
+			expect(isAllowedOrigin("https://wt8.localhost.evil.com")).toBeUndefined();
+		});
+	});
+});

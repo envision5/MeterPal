@@ -1,0 +1,573 @@
+import {
+	ACTIVE_STATUSES,
+	type ApiVersion,
+	BillingVersion,
+	CollectionMethod,
+	type CusProduct,
+	CusProductStatus,
+	type Customer,
+	type CustomerEntitlement,
+	type CustomerPrice,
+	type FeatureOptions,
+	type FreeTrial,
+	type FullCusProduct,
+	type FullProduct,
+	type InsertCustomerEntitlement,
+	type InsertReplaceable,
+	type Price,
+	ProcessorType,
+	type ProductOptions,
+} from "@autumn/shared";
+import type { DrizzleCli } from "@/db/initDrizzle.js";
+import type { RepoContext } from "@/db/repoContext.js";
+import {
+	getCustomerRedisRoutingId,
+	resolveCustomerRedisRouting,
+} from "@/external/redis/customerRedisRouting.js";
+import { addProductsUpdatedWebhookTask } from "@/internal/analytics/handlers/handleProductsUpdated.js";
+import { searchCusProducts } from "@/internal/customers/cusProducts/cusProductUtils.js";
+import { getEntRelatedPrice } from "@/internal/products/entitlements/entitlementUtils.js";
+import { freeTrialToStripeTimestamp } from "@/internal/products/free-trials/freeTrialUtils.js";
+import { getEntOptions } from "@/internal/products/prices/priceUtils.js";
+import { isFreeProduct, isOneOff } from "@/internal/products/productUtils.js";
+import { generateId, notNullish, nullish } from "@/utils/genUtils.js";
+import type { InsertCusProductParams } from "../cusProducts/AttachParams.js";
+import { CusProductService } from "../cusProducts/CusProductService.js";
+import { CusEntService } from "../cusProducts/cusEnts/CusEntitlementService.js";
+import { addExistingUsagesToCusEnts } from "../cusProducts/cusEnts/cusEntUtils/getExistingUsage.js";
+import { getNewProductRollovers } from "../cusProducts/cusEnts/cusRollovers/getNewProductRollovers.js";
+import { RolloverService } from "../cusProducts/cusEnts/cusRollovers/RolloverService.js";
+import { RepService } from "../cusProducts/cusEnts/RepService.js";
+import { CusPriceService } from "../cusProducts/cusPrices/CusPriceService.js";
+import { getExistingCusProducts } from "../cusProducts/cusProductUtils/getExistingCusProducts.js";
+import { updateOneTimeCusProduct } from "./createOneTimeCusProduct.js";
+import { initCusEntitlement } from "./initCusEnt.js";
+
+const initCusPrice = ({
+	price,
+	customer,
+	cusProductId,
+}: {
+	price: Price;
+	customer: Customer;
+	cusProductId: string;
+}) => {
+	const cusPrice: CustomerPrice = {
+		id: generateId("cus_price"),
+		internal_customer_id: customer.internal_id,
+		customer_product_id: cusProductId,
+		created_at: Date.now(),
+
+		price_id: price.id || null,
+	};
+
+	return cusPrice;
+};
+
+const initCusProduct = ({
+	customer,
+	product,
+	// subscriptionId,
+	// subscriptionScheduleId,
+	// lastInvoiceId,
+	cusProdId,
+	startsAt,
+	optionsList,
+	freeTrial,
+	trialEndsAt,
+	subscriptionStatus,
+	canceledAt,
+	endedAt,
+	createdAt,
+	collectionMethod,
+	subscriptionIds,
+	subscriptionScheduleIds,
+	isCustom,
+	entityId,
+	internalEntityId,
+	apiVersion,
+	quantity,
+	processor = ProcessorType.Stripe,
+}: {
+	customer: Customer;
+	product: FullProduct;
+	// subscriptionId: string | undefined | null;
+	// subscriptionScheduleId?: string | null;
+	// lastInvoiceId?: string | null;
+	cusProdId: string;
+	startsAt?: number;
+	optionsList: FeatureOptions[];
+	freeTrial: FreeTrial | null;
+	trialEndsAt?: number | null;
+	subscriptionStatus?: CusProductStatus;
+	canceledAt?: number | null;
+	endedAt?: number | null;
+	createdAt?: number | null;
+	collectionMethod?: CollectionMethod;
+	subscriptionIds?: string[];
+	subscriptionScheduleIds?: string[];
+	isCustom?: boolean;
+	entityId?: string;
+	internalEntityId?: string;
+	apiVersion?: ApiVersion;
+	quantity?: number;
+	processor?: ProcessorType;
+}) => {
+	const isFuture = startsAt && startsAt > Date.now();
+
+	let trialEnds = trialEndsAt;
+	if (!trialEndsAt && freeTrial) {
+		trialEnds = freeTrialToStripeTimestamp({ freeTrial })! * 1000;
+	}
+
+	const now = Date.now();
+	const created = createdAt || now;
+
+	return {
+		id: cusProdId,
+		internal_customer_id: customer.internal_id,
+		customer_id: customer.id,
+		internal_product_id: product.internal_id,
+		product_id: product.id,
+		created_at: created,
+		updated_at: created,
+		canceled: notNullish(canceledAt),
+		ended_at: endedAt,
+		status: subscriptionStatus
+			? subscriptionStatus
+			: isFuture
+				? CusProductStatus.Scheduled
+				: CusProductStatus.Active,
+
+		processor: {
+			type: processor ?? ProcessorType.Stripe,
+			// subscription_id: subscriptionId,
+			// subscription_schedule_id: subscriptionScheduleId,
+			// last_invoice_id: lastInvoiceId,
+		},
+
+		starts_at: startsAt || now,
+		trial_ends_at: trialEnds,
+		options: optionsList || [],
+		free_trial_id: freeTrial?.id || null,
+		canceled_at: canceledAt,
+		collection_method: collectionMethod || CollectionMethod.ChargeAutomatically,
+		subscription_ids: subscriptionIds,
+		scheduled_ids: subscriptionScheduleIds,
+		is_custom: isCustom || false,
+		quantity: quantity || 1,
+		internal_entity_id: internalEntityId,
+		entity_id: entityId,
+		api_semver: apiVersion || null,
+		billing_version: BillingVersion.V1,
+		external_id: null,
+	};
+};
+
+const insertFullCusProduct = async ({
+	ctx,
+	cusProd,
+	cusEnts,
+	cusPrices,
+	replaceables,
+}: {
+	ctx: RepoContext;
+	cusProd: CusProduct;
+	cusEnts: CustomerEntitlement[];
+	cusPrices: CustomerPrice[];
+	replaceables: InsertReplaceable[];
+}) => {
+	const { db } = ctx;
+	await CusProductService.insert({
+		db,
+		data: cusProd,
+	});
+
+	await CusEntService.insert({
+		ctx,
+		data: cusEnts as InsertCustomerEntitlement[],
+	});
+
+	await CusPriceService.insert({
+		db,
+		data: cusPrices,
+	});
+
+	await RepService.insert({
+		ctx,
+		data: replaceables,
+	});
+};
+
+const expireOrDeleteCusProduct = async ({
+	ctx,
+	startsAt,
+	product,
+	cusProducts,
+	internalEntityId,
+}: {
+	ctx: RepoContext;
+	startsAt?: number;
+	product: FullProduct;
+	cusProducts?: FullCusProduct[];
+	internalEntityId?: string;
+}) => {
+	// 1. If startsAt
+	if (startsAt && startsAt > Date.now()) {
+		const curScheduledProduct = cusProducts?.find(
+			(cp) =>
+				cp.product.group === product.group &&
+				cp.status === CusProductStatus.Scheduled &&
+				(internalEntityId
+					? cp.internal_entity_id === internalEntityId
+					: nullish(cp.internal_entity_id)),
+		);
+
+		if (curScheduledProduct) {
+			await CusProductService.delete({
+				ctx,
+				cusProductId: curScheduledProduct.id,
+			});
+		}
+	} else {
+		const { curMainProduct } = getExistingCusProducts({
+			product,
+			cusProducts: cusProducts as FullCusProduct[],
+			internalEntityId,
+		});
+
+		if (curMainProduct) {
+			await CusProductService.update({
+				ctx,
+				cusProductId: curMainProduct.id,
+				updates: {
+					status: CusProductStatus.Expired,
+				},
+			});
+		}
+	}
+};
+
+const getExistingCusProduct = async ({
+	db,
+	cusProducts,
+	product,
+	internalCustomerId,
+	internalEntityId,
+}: {
+	db: DrizzleCli;
+	cusProducts?: FullCusProduct[];
+	product: FullProduct;
+	internalCustomerId: string;
+	internalEntityId?: string;
+}) => {
+	if (!cusProducts) {
+		cusProducts = await CusProductService.list({
+			db,
+			internalCustomerId,
+			inStatuses: [
+				CusProductStatus.Active,
+				CusProductStatus.PastDue,
+				CusProductStatus.Scheduled,
+			],
+		});
+	}
+
+	const { curMainProduct } = getExistingCusProducts({
+		product,
+		cusProducts: cusProducts as FullCusProduct[],
+		internalEntityId,
+	});
+
+	if (product.is_add_on) return undefined;
+
+	return curMainProduct;
+};
+
+export const createFullCusProduct = async ({
+	db,
+	attachParams,
+	startsAt,
+	nextResetAt,
+	disableFreeTrial = false,
+	productOptions,
+	trialEndsAt,
+	subscriptionStatus,
+	canceledAt = null,
+	endedAt,
+	createdAt = null,
+	subscriptionIds = [],
+	subscriptionScheduleIds = [],
+	anchorToUnix,
+	carryExistingUsages = false,
+	carryOverTrial = false,
+	isDowngrade = false,
+	scenario = "default",
+	sendWebhook = true,
+	logger,
+	processorType = ProcessorType.Stripe,
+}: {
+	db: DrizzleCli;
+	attachParams: InsertCusProductParams;
+	startsAt?: number;
+	nextResetAt?: number;
+	billLaterOnly?: boolean;
+	disableFreeTrial?: boolean;
+	productOptions?: ProductOptions;
+	trialEndsAt?: number;
+	subscriptionStatus?: CusProductStatus;
+	canceledAt?: number | null;
+	endedAt?: number | null;
+	createdAt?: number | null;
+	subscriptionIds?: string[];
+	subscriptionScheduleIds?: string[];
+	keepResetIntervals?: boolean;
+	anchorToUnix?: number;
+	carryExistingUsages?: boolean;
+	carryOverTrial?: boolean;
+	isDowngrade?: boolean;
+	scenario?: string;
+	sendWebhook?: boolean;
+	logger: any;
+	processorType?: ProcessorType;
+}) => {
+	disableFreeTrial = attachParams.disableFreeTrial || disableFreeTrial;
+
+	let { customer, product, prices, entitlements, optionsList, org, freeTrial } =
+		attachParams;
+
+	// Try to get current cus product or set to null...
+	const curCusProduct = await getExistingCusProduct({
+		db,
+		cusProducts: attachParams.cusProducts,
+		product,
+		internalCustomerId: customer.internal_id,
+		internalEntityId: attachParams.internalEntityId,
+	});
+
+	freeTrial = disableFreeTrial ? null : freeTrial;
+
+	if (carryOverTrial && curCusProduct?.free_trial) {
+		freeTrial = curCusProduct.free_trial;
+		trialEndsAt = curCusProduct.trial_ends_at || undefined;
+	}
+
+	const attachReplaceables = attachParams.replaceables || [];
+
+	const existingCusProduct = searchCusProducts({
+		internalProductId: product.internal_id,
+		cusProducts: attachParams.cusProducts!,
+		status: CusProductStatus.Active,
+		internalEntityId: attachParams.internalEntityId,
+	});
+
+	const repoContext: RepoContext = {
+		db,
+		org: {
+			id: customer.org_id,
+		},
+		env: customer.env,
+		logger,
+		redisV2: resolveCustomerRedisRouting({
+			org,
+			customerId: getCustomerRedisRoutingId({ customer }),
+		}).redis,
+	};
+
+	if (
+		(isOneOff(prices) || (isFreeProduct(prices) && product.is_add_on)) &&
+		notNullish(existingCusProduct) &&
+		!attachParams.isCustom &&
+		!existingCusProduct.is_custom &&
+		product.version === existingCusProduct.product.version &&
+		ACTIVE_STATUSES.includes(existingCusProduct.status)
+	) {
+		await updateOneTimeCusProduct({
+			ctx: repoContext,
+			attachParams,
+		});
+
+		return;
+	}
+
+	const cusProdId = generateId("cus_prod");
+	logger.info(`Inserting cus product ${product.id} for ${customer.name}`, {
+		data: {
+			cusProductId: cusProdId,
+			productOptions: productOptions || undefined,
+		},
+	});
+
+	// 1. create customer entitlements
+	const cusEnts: CustomerEntitlement[] = [];
+	const newReplaceables: InsertReplaceable[] = [];
+
+	for (const entitlement of entitlements) {
+		const options = getEntOptions(optionsList, entitlement);
+		const relatedPrice = getEntRelatedPrice(entitlement, prices);
+
+		const cusEnt = initCusEntitlement({
+			entitlement,
+			customer,
+			cusProductId: cusProdId,
+			options: options || undefined,
+			nextResetAt,
+			freeTrial,
+			relatedPrice,
+			trialEndsAt,
+			anchorToUnix,
+			entities: attachParams.entities || [],
+			carryExistingUsages,
+			curCusProduct: curCusProduct as FullCusProduct,
+			replaceables: attachReplaceables,
+			now: attachParams.now,
+			productOptions: productOptions || undefined,
+		});
+
+		cusEnts.push(cusEnt);
+
+		const newReplaceables_ = attachReplaceables
+			.filter((r) => r.ent.id === entitlement.id)
+			.map((r) => ({
+				...r,
+				cus_ent_id: cusEnt.id,
+			}));
+
+		newReplaceables.push(...newReplaceables_);
+	}
+
+	const deductedCusEnts = addExistingUsagesToCusEnts({
+		cusEnts: cusEnts,
+		entitlements: entitlements,
+		curCusProduct: curCusProduct as FullCusProduct,
+		carryExistingUsages,
+		isDowngrade,
+		entities: attachParams.entities,
+		features: attachParams.features,
+		prices,
+	});
+
+	// 4. Get new rollovers
+	const rolloverOps = await getNewProductRollovers({
+		db,
+		curCusProduct: curCusProduct as FullCusProduct,
+		cusEnts,
+		entitlements,
+		logger,
+	});
+
+	// 4. create customer prices
+	const cusPrices: CustomerPrice[] = [];
+
+	for (const price of prices) {
+		const cusPrice: CustomerPrice = initCusPrice({
+			price,
+			customer,
+			cusProductId: cusProdId,
+		});
+
+		cusPrices.push(cusPrice);
+	}
+
+	// let entityId = customer.entity?.id;
+	const cusProd = initCusProduct({
+		cusProdId,
+		customer,
+		processor: processorType ?? ProcessorType.Stripe,
+		product,
+		startsAt,
+		optionsList,
+		freeTrial: disableFreeTrial ? null : freeTrial,
+		trialEndsAt,
+		subscriptionStatus,
+		canceledAt,
+		createdAt,
+		collectionMethod: attachParams.invoiceOnly
+			? CollectionMethod.SendInvoice
+			: CollectionMethod.ChargeAutomatically,
+		subscriptionIds,
+		subscriptionScheduleIds,
+		isCustom: attachParams.isCustom || false,
+		internalEntityId: attachParams.internalEntityId,
+		entityId: attachParams.entityId,
+		apiVersion: attachParams.apiVersion,
+		quantity: productOptions?.quantity ?? undefined,
+		endedAt,
+	});
+
+	if (!isOneOff(prices) && !product.is_add_on) {
+		await expireOrDeleteCusProduct({
+			ctx: repoContext,
+			startsAt,
+			product,
+			cusProducts: attachParams.cusProducts,
+			internalEntityId: attachParams.internalEntityId,
+		});
+	}
+
+	await insertFullCusProduct({
+		ctx: repoContext,
+		cusProd,
+		cusEnts: deductedCusEnts,
+		cusPrices,
+		replaceables: newReplaceables,
+	});
+
+	const rolloverInserts: any = [];
+
+	for (const operation of rolloverOps) {
+		rolloverInserts.push(
+			RolloverService.insert({
+				ctx: repoContext,
+				rows: operation.toInsert,
+				fullCusEnt: operation.cusEnt,
+			}),
+		);
+	}
+
+	const finalRollovers = (await Promise.all(rolloverInserts)).flat();
+
+	// Get rollovers for each entitlement
+	const cusEntsWithRollovers = await Promise.all(
+		cusEnts.map(async (ce) => ({
+			...ce,
+			entitlement: entitlements.find((e) => e.id === ce.entitlement_id)!,
+			replaceables: newReplaceables
+				.filter((r) => r.cus_ent_id === ce.id)
+				.map((r) => ({
+					...r,
+					delete_next_cycle: r.delete_next_cycle || false,
+				})),
+			rollovers: finalRollovers.filter((r) => r.cus_ent_id === ce.id),
+		})),
+	);
+
+	const fullCusProduct = {
+		...cusProd,
+		product,
+		customer_entitlements: cusEntsWithRollovers,
+		customer_prices: cusPrices.map((cp) => ({
+			...cp,
+			price: prices.find((p) => p.id === cp.price_id)!,
+		})),
+	};
+
+	try {
+		if (sendWebhook && !attachParams.fromMigration) {
+			await addProductsUpdatedWebhookTask({
+				ctx: attachParams.req,
+				internalCustomerId: customer.internal_id,
+				org,
+				env: customer.env,
+				customerId: customer.id || null,
+				cusProduct: isDowngrade ? curCusProduct! : fullCusProduct,
+				scheduledCusProduct: isDowngrade ? fullCusProduct : undefined,
+				scenario,
+			});
+		}
+	} catch (_error) {
+		logger.error("Failed to add products updated webhook task to queue");
+	}
+
+	return fullCusProduct;
+};

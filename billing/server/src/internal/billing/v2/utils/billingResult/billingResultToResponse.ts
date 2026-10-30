@@ -1,0 +1,61 @@
+import type { BillingContext, BillingResult } from "@autumn/shared";
+import {
+	type BillingResponse,
+	type Checkout,
+	CheckoutAction,
+	checkoutToUrl,
+	stripeToAtmnAmount,
+} from "@autumn/shared";
+
+const isLongLivedCheckout = (checkout: Checkout) =>
+	checkout.action === CheckoutAction.Attach &&
+	"long_lived_checkout" in checkout.params &&
+	checkout.params.long_lived_checkout === true;
+
+export const billingResultToResponse = ({
+	billingContext,
+	billingResult,
+}: {
+	billingContext: BillingContext;
+	billingResult: BillingResult;
+}): BillingResponse => {
+	const { fullCustomer } = billingContext;
+
+	const customerId = fullCustomer.id ?? fullCustomer.internal_id;
+
+	const stripeInvoice = billingResult.stripe.stripeInvoice;
+	const stripeCheckoutSession = billingResult.stripe.stripeCheckoutSession;
+	const autumnCheckout = billingResult.autumn?.checkout;
+
+	// Autumn checkout URL takes priority, then Stripe checkout session, then invoice hosted URL
+	const paymentUrl = autumnCheckout
+		? checkoutToUrl({
+				action: autumnCheckout.action,
+				checkoutId: autumnCheckout.id,
+				longLived: isLongLivedCheckout(autumnCheckout),
+			})
+		: stripeCheckoutSession?.url
+			? stripeCheckoutSession.url
+			: stripeInvoice?.status === "open" && stripeInvoice.hosted_invoice_url
+				? stripeInvoice.hosted_invoice_url
+				: null;
+
+	return {
+		customer_id: customerId,
+		entity_id: fullCustomer.entity?.id ?? undefined,
+		invoice: stripeInvoice
+			? {
+					status: stripeInvoice.status,
+					stripe_id: stripeInvoice.id,
+					total: stripeToAtmnAmount({
+						amount: stripeInvoice.total,
+						currency: stripeInvoice.currency,
+					}),
+					currency: stripeInvoice.currency,
+					hosted_invoice_url: stripeInvoice.hosted_invoice_url ?? null,
+				}
+			: undefined,
+		payment_url: paymentUrl,
+		required_action: billingResult.stripe.requiredAction,
+	} satisfies BillingResponse;
+};

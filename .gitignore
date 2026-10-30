@@ -1,0 +1,30 @@
+# dependencies / builds
+node_modules/
+dist/
+build/
+*.tsbuildinfo
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# env & secrets — never commit
+.env
+.env.*
+!.env.example
+
+# caches & runtime state
+.cache/
+*.log
+logs/
+.DS_Store
+Thumbs.db
+
+# tooling
+.idea/
+.vscode/*
+!.vscode/extensions.json

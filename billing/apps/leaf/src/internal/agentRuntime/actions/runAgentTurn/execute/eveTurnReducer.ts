@@ -1,0 +1,592 @@
+import type { CatalogPlanPreview } from "@autumn/shared";
+import { GATED_WRITES } from "../../../../../../agent/lib/gatedWrites.js";
+import { logger } from "../../../../../lib/logger.js";
+import { WAITING_FOR_INPUT_MESSAGE } from "../../../../../ui/messages.js";
+import type { RunStopReason } from "../../../../runs/runRegistry.js";
+import type { AgentApprovalRequest } from "../../../domain/agentTurn.js";
+import type { AgentActionProgress } from "../../../domain/agentTurnContext.js";
+import { isEmptyDelivery } from "../../../eve/emptyDelivery.js";
+import type { EveEvent } from "../../../eve/eveEventSchemas.js";
+import {
+	approvalOptionIds,
+	displayEveToolLabel,
+	isPreviewToolName,
+	labelForResult,
+	textForInputRequests,
+} from "../../../eve/events.js";
+import {
+	type ChainedPendingRequest,
+	childSessionIdsToolArgs,
+	classifyParkedEveInput,
+	type PendingQuestion,
+	pendingGatedRequests,
+	siblingRequestIdsToolArgs,
+	type WithheldWrite,
+	withheldWritesToolArgs,
+} from "../../../eve/parkedInput.js";
+import {
+	type CapturedPreview,
+	previewForParkedWrite,
+} from "../../../eve/parkedWritePreview.js";
+import type { EvePendingRequest } from "../../../eve/types.js";
+import {
+	isSilentTool,
+	normalizeToolName,
+	toolGerund,
+} from "../../../tools/toolPolicy.js";
+import { catalogPlanNeedingDecision } from "../../resolveCatalogDecision/catalogDecisionPolicy.js";
+
+export type EveTurnOutcome =
+	| { kind: "answered"; catalogDecision?: CatalogPlanPreview; text: string }
+	| { kind: "parked"; question?: PendingQuestion; text: string }
+	/** `declined`: the model chose to say nothing (empty-delivery marker). */
+	| { declined?: boolean; kind: "silent" }
+	| { kind: "stopped"; stopReason: RunStopReason; text: string }
+	| { approval: AgentApprovalRequest; kind: "suspended"; text: string }
+	| { kind: "unreachable" };
+
+export type RecordedWrite = Readonly<{
+	callId: string;
+	input: Record<string, unknown>;
+	toolName: string;
+}>;
+
+export type EveTurnProgress = Readonly<{
+	/** The model answered with the empty-delivery marker: nothing to post. */
+	declinedReply: boolean;
+	finalText: string;
+	/** Gated writes the model called this turn; the approval is assembled from
+	 * these when the turn ends. */
+	recordedWrites: ReadonlyArray<RecordedWrite>;
+	lastPreview?: CapturedPreview;
+	pendingText: string;
+	reasoningStreamId?: string;
+	subagentChildSessionIds: ReadonlySet<string>;
+	subagentStartedAtByCallId: ReadonlyMap<string, number>;
+	toolInputs: ReadonlyMap<string, Record<string, unknown>>;
+	toolLabels: ReadonlyMap<string, string>;
+	turnStarted: boolean;
+}>;
+
+export type EveTurnEffect =
+	| Readonly<{ kind: "action"; progress: AgentActionProgress }>
+	| Readonly<{ kind: "delete_session" }>
+	| Readonly<{ id: string; kind: "reasoning"; text: string }>
+	| Readonly<{
+			kind: "save_session";
+			pendingRequests?: ReadonlyArray<EvePendingRequest>;
+	  }>
+	| Readonly<{ kind: "status"; text: string }>
+	| Readonly<{ kind: "thinking" }>
+	| Readonly<{ kind: "throw"; message: string }>;
+
+export type EveTurnTransition = Readonly<{
+	effects: ReadonlyArray<EveTurnEffect>;
+	outcome?: EveTurnOutcome;
+	progress: EveTurnProgress;
+}>;
+
+export const createEveTurnProgress = (): EveTurnProgress => ({
+	declinedReply: false,
+	finalText: "",
+	pendingText: "",
+	recordedWrites: [],
+	subagentChildSessionIds: new Set(),
+	subagentStartedAtByCallId: new Map(),
+	toolInputs: new Map(),
+	toolLabels: new Map(),
+	turnStarted: false,
+});
+
+export const eveTurnProducedOutput = ({
+	catalogDecision,
+	text,
+}: {
+	catalogDecision?: unknown;
+	text?: string;
+}) => Boolean(text?.trim() || catalogDecision);
+
+const isTurnActivityEvent = (event: EveEvent) =>
+	event.type === "step.started" ||
+	event.type === "input.requested" ||
+	event.type === "subagent.called" ||
+	event.type === "subagent.completed";
+
+const GATED_WRITE_TOOLS: ReadonlySet<string> = new Set(
+	GATED_WRITES.map((write) => write.toolName),
+);
+
+const isGatedWriteTool = (toolName?: string) =>
+	Boolean(toolName && GATED_WRITE_TOOLS.has(normalizeToolName(toolName)));
+
+/** One approval per turn: the first recorded write is the primary and the rest
+ * ride as grouped writes, so a multi-change request stays one card. */
+const approvalForRecordedWrites = ({
+	writes,
+	progress,
+}: {
+	progress: EveTurnProgress;
+	writes: ReadonlyArray<RecordedWrite>;
+}): AgentApprovalRequest | undefined => {
+	const [primary, ...grouped] = writes;
+	if (!primary) return undefined;
+	return {
+		toolCallId: primary.callId,
+		toolName: primary.toolName,
+		toolArgs: {
+			...primary.input,
+			...withheldWritesToolArgs(
+				grouped.map((write) => ({
+					input: write.input,
+					requestId: write.callId,
+					toolName: write.toolName,
+				})),
+			),
+		},
+		preview: previewForParkedWrite({
+			captured: progress.lastPreview,
+			input: primary.input,
+			toolName: primary.toolName,
+		}),
+	};
+};
+
+const approvalForGatedWrite = ({
+	chained,
+	progress,
+	siblingRequestIds,
+	withheld,
+}: {
+	chained: ChainedPendingRequest;
+	progress: EveTurnProgress;
+	siblingRequestIds: ReadonlyArray<string>;
+	withheld: ReadonlyArray<WithheldWrite>;
+}): AgentApprovalRequest => {
+	const options = approvalOptionIds(chained.options);
+	return {
+		toolCallId: chained.requestId,
+		toolName: chained.toolName,
+		toolArgs: {
+			...(chained.input ?? {}),
+			_eveApproveOptionId: options.approve,
+			_eveDenyOptionId: options.deny,
+			// A proxied approval executes inside the delegated child session, so
+			// the resume verifies the write from the child's stream.
+			...childSessionIdsToolArgs([...progress.subagentChildSessionIds]),
+			...siblingRequestIdsToolArgs(siblingRequestIds),
+			...withheldWritesToolArgs(withheld),
+		},
+		preview: previewForParkedWrite({
+			captured: progress.lastPreview,
+			input: chained.input,
+			toolName: chained.toolName,
+		}),
+	};
+};
+
+const reduceRequestedActions = ({
+	event,
+	progress,
+}: {
+	event: Extract<EveEvent, { type: "actions.requested" }>;
+	progress: EveTurnProgress;
+}): EveTurnTransition => {
+	const toolInputs = new Map(progress.toolInputs);
+	const toolLabels = new Map(progress.toolLabels);
+	const effects: EveTurnEffect[] = [];
+	for (const action of event.actions) {
+		const label = displayEveToolLabel(action);
+		if (
+			progress.turnStarted &&
+			!(action.toolName && isSilentTool(action.toolName))
+		) {
+			effects.push({
+				kind: "action",
+				progress: {
+					label,
+					phase: "started",
+					toolName: action.toolName,
+				},
+			});
+		}
+		if (!action.callId) continue;
+		toolLabels.set(action.callId, label);
+		if (action.input) toolInputs.set(action.callId, action.input);
+	}
+	return {
+		effects,
+		progress: {
+			...progress,
+			toolInputs,
+			toolLabels,
+		},
+	};
+};
+
+const reduceActionResult = ({
+	capturedPreview,
+	event,
+	progress,
+}: {
+	capturedPreview?: CapturedPreview;
+	event: Extract<EveEvent, { type: "action.result" }>;
+	progress: EveTurnProgress;
+}): EveTurnTransition => {
+	const result = event.result;
+	const lastPreview =
+		result?.toolName && isPreviewToolName(result.toolName)
+			? capturedPreview
+			: progress.lastPreview;
+	if (!result?.callId) {
+		return { effects: [], progress: { ...progress, lastPreview } };
+	}
+	// A write the agent process refused (thrown tool error → "failed") or eve
+	// denied ("rejected") never ran, so it has nothing to approve.
+	const writeCompleted =
+		event.status === undefined || event.status === "completed";
+	const recordedWrites =
+		isGatedWriteTool(result.toolName) && writeCompleted
+			? [
+					...progress.recordedWrites,
+					{
+						callId: result.callId,
+						input: progress.toolInputs.get(result.callId) ?? {},
+						toolName: normalizeToolName(result.toolName ?? ""),
+					},
+				]
+			: progress.recordedWrites;
+	logger.info("Eve tool completed", {
+		event: "leaf.eve_tool_completed",
+		data: {
+			call_id: result.callId,
+			status: event.status,
+			tool: result.toolName,
+		},
+	});
+	const effects: EveTurnEffect[] = [];
+	if (
+		progress.turnStarted &&
+		!(result.toolName && isSilentTool(result.toolName))
+	) {
+		effects.push({
+			kind: "action",
+			progress: {
+				label:
+					progress.toolLabels.get(result.callId) ??
+					displayEveToolLabel(labelForResult(result)),
+				output: result.output,
+				phase: "completed",
+				status: event.status,
+				toolName: result.toolName,
+			},
+		});
+	}
+	const toolLabels = new Map(progress.toolLabels);
+	toolLabels.delete(result.callId);
+	return {
+		effects,
+		progress: { ...progress, lastPreview, recordedWrites, toolLabels },
+	};
+};
+
+const reduceMessageDelta = ({
+	createReasoningId,
+	event,
+	progress,
+}: {
+	createReasoningId: () => string;
+	event: Extract<EveEvent, { type: "message.appended" }>;
+	progress: EveTurnProgress;
+}): EveTurnTransition => {
+	const pendingText =
+		typeof event.messageSoFar === "string"
+			? event.messageSoFar
+			: `${progress.pendingText}${event.messageDelta}`;
+	const reasoningStreamId = progress.reasoningStreamId ?? createReasoningId();
+	return {
+		effects: [
+			{
+				id: reasoningStreamId,
+				kind: "reasoning",
+				// The empty-delivery marker is not something to show as progress.
+				text: isEmptyDelivery(pendingText) ? "" : pendingText,
+			},
+		],
+		progress: { ...progress, pendingText, reasoningStreamId },
+	};
+};
+
+const reduceCompletedMessage = ({
+	createReasoningId,
+	event,
+	progress,
+}: {
+	createReasoningId: () => string;
+	event: Extract<EveEvent, { type: "message.completed" }>;
+	progress: EveTurnProgress;
+}): EveTurnTransition => {
+	const declined =
+		event.message === null ||
+		isEmptyDelivery(event.message || progress.pendingText);
+	const message = declined ? "" : event.message || progress.pendingText;
+	if (event.finishReason === "tool-calls") {
+		const id = progress.reasoningStreamId ?? createReasoningId();
+		return {
+			effects: [{ id, kind: "reasoning", text: message }],
+			progress: { ...progress, pendingText: "", reasoningStreamId: undefined },
+		};
+	}
+	return {
+		effects: progress.reasoningStreamId
+			? [{ id: progress.reasoningStreamId, kind: "reasoning", text: "" }]
+			: [],
+		progress: {
+			...progress,
+			declinedReply: declined,
+			finalText: message,
+			pendingText: "",
+			reasoningStreamId: undefined,
+		},
+	};
+};
+
+const reduceInputRequest = ({
+	event,
+	progress,
+}: {
+	event: Extract<EveEvent, { type: "input.requested" }>;
+	progress: EveTurnProgress;
+}): EveTurnTransition => {
+	const parked = classifyParkedEveInput({ requests: event.requests });
+	logger.info("Eve parked input", {
+		event: "leaf.eve_input_parked",
+		data: {
+			kind: parked?.kind,
+			request_count: event.requests.length,
+			tools: event.requests.map((request) => request.action?.toolName),
+		},
+	});
+	if (parked?.kind === "gated") {
+		return {
+			effects: [
+				{
+					kind: "save_session",
+					pendingRequests: pendingGatedRequests(parked),
+				},
+			],
+			outcome: {
+				approval: approvalForGatedWrite({
+					chained: parked.chained,
+					progress,
+					siblingRequestIds: parked.siblingRequestIds,
+					withheld: parked.withheld,
+				}),
+				kind: "suspended",
+				text: progress.finalText,
+			},
+			progress,
+		};
+	}
+	const accumulatedText = progress.pendingText || progress.finalText;
+	const text = eveTurnProducedOutput({ text: accumulatedText })
+		? accumulatedText
+		: textForInputRequests(event.requests) || WAITING_FOR_INPUT_MESSAGE;
+	return {
+		effects: [
+			{
+				kind: "save_session",
+				pendingRequests: event.requests.flatMap((request) =>
+					request.requestId
+						? [{ kind: "question" as const, requestId: request.requestId }]
+						: [],
+				),
+			},
+		],
+		outcome: {
+			kind: "parked",
+			question: parked?.kind === "question" ? parked.question : undefined,
+			text,
+		},
+		progress,
+	};
+};
+
+export const STEERED_TURN_STATUS = "Re-planning with your latest message";
+
+/** A steer cancelled the turn: eve discards its unfinished output and starts
+ * a replacement turn that has every buffered message in context. Text the
+ * cancelled turn streamed is not a reply, so it goes; writes it completed
+ * stay recorded — eve does not roll side effects back. Clearing `turnStarted`
+ * makes the `session.waiting` that follows a cancel a boundary to read past,
+ * not a turn end; the replacement's own `turn.started` re-arms the reducer. */
+const reduceCancelledTurn = ({
+	progress,
+}: {
+	progress: EveTurnProgress;
+}): EveTurnTransition => ({
+	effects: [
+		...(progress.reasoningStreamId
+			? [
+					{
+						id: progress.reasoningStreamId,
+						kind: "reasoning" as const,
+						text: "",
+					},
+				]
+			: []),
+		{ kind: "status", text: STEERED_TURN_STATUS },
+	],
+	progress: {
+		...progress,
+		declinedReply: false,
+		finalText: "",
+		pendingText: "",
+		reasoningStreamId: undefined,
+		turnStarted: false,
+	},
+});
+
+const reduceTerminalEvent = ({
+	progress,
+}: {
+	progress: EveTurnProgress;
+}): EveTurnTransition => {
+	const text = progress.pendingText || progress.finalText;
+	const approval = approvalForRecordedWrites({
+		progress,
+		writes: progress.recordedWrites,
+	});
+	if (approval) {
+		return {
+			effects: [{ kind: "save_session" }],
+			outcome: { approval, kind: "suspended", text },
+			progress,
+		};
+	}
+	const catalogDecision = catalogPlanNeedingDecision(
+		progress.lastPreview?.preview,
+	);
+	return {
+		effects: [{ kind: "save_session" }],
+		outcome: eveTurnProducedOutput({ catalogDecision, text })
+			? { catalogDecision, kind: "answered", text }
+			: { declined: progress.declinedReply, kind: "silent" },
+		progress,
+	};
+};
+
+export const reduceEveTurnEvent = ({
+	capturedPreview,
+	createReasoningId = () => crypto.randomUUID(),
+	event,
+	progress,
+}: {
+	capturedPreview?: CapturedPreview;
+	createReasoningId?: () => string;
+	event: EveEvent;
+	progress: EveTurnProgress;
+}): EveTurnTransition => {
+	if (event.type === "turn.started") {
+		return {
+			effects: [],
+			progress: {
+				...progress,
+				lastPreview: undefined,
+				turnStarted: true,
+			},
+		};
+	}
+	if (event.type === "actions.requested") {
+		return reduceRequestedActions({ event, progress });
+	}
+	if (event.type === "action.result") {
+		return reduceActionResult({ capturedPreview, event, progress });
+	}
+	if (event.type === "turn.cancelled") {
+		return progress.turnStarted
+			? reduceCancelledTurn({ progress })
+			: { effects: [], progress };
+	}
+	if (!(progress.turnStarted || isTurnActivityEvent(event))) {
+		return { effects: [], progress };
+	}
+
+	switch (event.type) {
+		case "subagent.called": {
+			const name = event.name ?? event.toolName ?? "subagent";
+			const subagentChildSessionIds = event.childSessionId
+				? new Set([...progress.subagentChildSessionIds, event.childSessionId])
+				: progress.subagentChildSessionIds;
+			logger.info("Eve subagent called", {
+				event: "leaf.eve_subagent_called",
+				data: { child_session_id: event.childSessionId, subagent: name },
+			});
+			return {
+				effects: [
+					{
+						kind: "action",
+						progress: {
+							label: toolGerund(name),
+							phase: "started",
+							toolName: name,
+						},
+					},
+				],
+				progress: {
+					...progress,
+					subagentChildSessionIds,
+					subagentStartedAtByCallId: event.callId
+						? new Map([
+								...progress.subagentStartedAtByCallId,
+								[event.callId, Date.now()],
+							])
+						: progress.subagentStartedAtByCallId,
+				},
+			};
+		}
+		case "subagent.completed": {
+			const startedAt = event.callId
+				? progress.subagentStartedAtByCallId.get(event.callId)
+				: undefined;
+			logger.info("Eve subagent completed", {
+				event: "leaf.eve_subagent_completed",
+				data: {
+					duration_ms:
+						startedAt === undefined ? undefined : Date.now() - startedAt,
+					subagent: event.subagentName ?? "subagent",
+				},
+			});
+			return { effects: [], progress };
+		}
+		case "step.started":
+			return { effects: [{ kind: "thinking" }], progress };
+		case "message.appended":
+			return reduceMessageDelta({ createReasoningId, event, progress });
+		case "message.completed":
+			return reduceCompletedMessage({ createReasoningId, event, progress });
+		case "input.requested":
+			return reduceInputRequest({ event, progress });
+		case "session.failed":
+			return {
+				effects: [
+					{ kind: "save_session" },
+					{ kind: "delete_session" },
+					{ kind: "throw", message: event.message },
+				],
+				progress,
+			};
+		case "turn.failed":
+			return {
+				effects: [
+					{ kind: "save_session" },
+					{ kind: "throw", message: event.message },
+				],
+				progress,
+			};
+		case "session.waiting":
+		case "session.completed":
+			return reduceTerminalEvent({ progress });
+		default:
+			return { effects: [], progress };
+	}
+};

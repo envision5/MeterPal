@@ -1,0 +1,73 @@
+DESCRIPTION >
+    Lists raw events with offset-based pagination for external API.
+    Customer-scoped queries read the customer-sorted events source; org-wide queries use
+    events_by_timestamp_mv. Supports event_names and optional date-range filtering.
+
+TOKEN "list_events_paginated_read" READ
+
+NODE endpoint
+TYPE endpoint
+SQL >
+    %
+    {% set use_customer_source = defined(customer_id) and String(customer_id, '') != '' %}
+
+    WITH coalesce(toString(properties), '') AS serialized_properties
+    SELECT
+        id,
+        org_id,
+        env,
+        customer_id,
+        event_name,
+        timestamp,
+        value,
+        serialized_properties as properties,
+        idempotency_key,
+        coalesce(entity_id, '') as entity_id,
+        toString(deductions) as deductions
+    FROM
+        {% if use_customer_source %}
+        events
+        {% else %}
+        events_by_timestamp_mv
+        {% end %}
+    WHERE
+        org_id = {{ String(org_id, '') }}
+        AND env = {{ String(env, 'test') }}
+        {% if defined(start_date) and String(start_date, '') != '' %}
+        AND timestamp >= toDateTime64({{ String(start_date) }}, 6)
+        {% end %}
+        {% if defined(end_date) and String(end_date, '') != '' %}
+        AND timestamp <= toDateTime64({{ String(end_date) }}, 6)
+        {% end %}
+        {% if defined(customer_id) and String(customer_id, '') != '' %}
+        AND customer_id = {{ String(customer_id) }}
+        {% end %}
+        {% if defined(event_names) %}
+        AND event_name IN {{ Array(event_names, 'String') }}
+        {% end %}
+        {% if defined(entity_id) and String(entity_id, '') != '' %}
+        AND entity_id = {{ String(entity_id) }}
+        {% end %}
+        {% if defined(filter_key_0) and String(filter_key_0, '') != '' %}
+        AND JSON_EXISTS(serialized_properties, concat('$.', {{ String(filter_key_0, '') }}))
+        AND JSON_VALUE(serialized_properties, concat('$.', {{ String(filter_key_0, '') }})) = {{ String(filter_value_0, '') }}
+        {% end %}
+        {% if defined(filter_key_1) and String(filter_key_1, '') != '' %}
+        AND JSON_EXISTS(serialized_properties, concat('$.', {{ String(filter_key_1, '') }}))
+        AND JSON_VALUE(serialized_properties, concat('$.', {{ String(filter_key_1, '') }})) = {{ String(filter_value_1, '') }}
+        {% end %}
+        {% if defined(filter_key_2) and String(filter_key_2, '') != '' %}
+        AND JSON_EXISTS(serialized_properties, concat('$.', {{ String(filter_key_2, '') }}))
+        AND JSON_VALUE(serialized_properties, concat('$.', {{ String(filter_key_2, '') }})) = {{ String(filter_value_2, '') }}
+        {% end %}
+        {% if defined(filter_key_3) and String(filter_key_3, '') != '' %}
+        AND JSON_EXISTS(serialized_properties, concat('$.', {{ String(filter_key_3, '') }}))
+        AND JSON_VALUE(serialized_properties, concat('$.', {{ String(filter_key_3, '') }})) = {{ String(filter_value_3, '') }}
+        {% end %}
+        {% if defined(filter_key_4) and String(filter_key_4, '') != '' %}
+        AND JSON_EXISTS(serialized_properties, concat('$.', {{ String(filter_key_4, '') }}))
+        AND JSON_VALUE(serialized_properties, concat('$.', {{ String(filter_key_4, '') }})) = {{ String(filter_value_4, '') }}
+        {% end %}
+    ORDER BY timestamp DESC, id DESC
+    LIMIT {{ Int32(limit, 101) }}
+    OFFSET {{ Int32(offset, 0) }}

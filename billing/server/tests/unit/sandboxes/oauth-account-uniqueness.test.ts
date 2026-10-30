@@ -1,0 +1,95 @@
+import { beforeEach, describe, expect, test } from "bun:test";
+import type { Context } from "hono";
+import type { HonoEnv } from "@/honoUtils/HonoEnv.js";
+
+const state = {
+	accountId: "acct_regression_a",
+	existingOrg: null as null | Record<string, unknown>,
+	updateConnectCalls: [] as Array<Record<string, unknown>>,
+};
+
+// Spread the real module so every export stays defined — a partial factory
+// poisons later files in the same process with missing-export link errors.
+const realInitDrizzle = await import("@/db/initDrizzle.js");
+await mockModuleWithRestore("@/db/initDrizzle.js", () => ({
+	...realInitDrizzle,
+	db: {},
+	initDrizzle: () => ({ db: {} }),
+}));
+await mockModuleWithRestore(
+	"@/internal/platform/platformBeta/utils/oauthStateUtils.js",
+	() => ({
+		consumeOAuthState: async () => ({
+			organization_slug: "target-sandbox",
+			env: "sandbox",
+			redirect_uri: "http://localhost:3000/cb",
+			master_org_id: "org_master",
+		}),
+	}),
+);
+await mockModuleWithRestore("@/external/connect/initStripeCli.js", () => ({
+	initMasterStripe: () => ({
+		balance: { retrieve: async () => ({}) },
+		oauth: { token: async () => ({ stripe_user_id: state.accountId }) },
+	}),
+}));
+await mockModuleWithRestore("@/internal/orgs/OrgService.js", () => ({
+	OrgService: {
+		getBySlug: async () => ({
+			id: "org_target",
+			created_by: "org_master",
+			slug: "target-sandbox",
+			name: "Target Sandbox",
+		}),
+		findByStripeAccountId: async () => state.existingOrg,
+		updateStripeConnect: async (args: Record<string, unknown>) => {
+			state.updateConnectCalls.push(args);
+		},
+	},
+}));
+
+import { handleOAuthCallback } from "@/internal/orgs/handlers/stripeHandlers/handleOAuthCallback.js";
+
+import { mockModuleWithRestore } from "../utils/mockModuleWithRestore.js";
+
+const runCallback = async () => {
+	let redirectedTo = "";
+	const c = {
+		req: { query: () => ({ code: "ac_test", state: "st_test" }) },
+		redirect: (url: string) => {
+			redirectedTo = url;
+			return new Response(null, { status: 302 });
+		},
+	} as unknown as Context<HonoEnv>;
+	await handleOAuthCallback(c);
+	return redirectedTo;
+};
+
+beforeEach(() => {
+	state.existingOrg = null;
+	state.updateConnectCalls = [];
+});
+
+describe("handleOAuthCallback enforces a 1-1 Stripe account to org link", () => {
+	test("rejects an account already connected to another org and does not link it", async () => {
+		state.existingOrg = {
+			id: "org_other",
+			name: "Other Org",
+			slug: "other-org",
+		};
+		const redirectedTo = await runCallback();
+		expect(redirectedTo).toContain("account_already_connected");
+		expect(state.updateConnectCalls.length).toBe(0);
+	});
+
+	test("links the account when it is not connected anywhere else", async () => {
+		state.existingOrg = null;
+		const redirectedTo = await runCallback();
+		expect(state.updateConnectCalls.length).toBe(1);
+		expect(state.updateConnectCalls[0]).toMatchObject({
+			orgId: "org_target",
+			accountId: state.accountId,
+		});
+		expect(redirectedTo).toContain("success");
+	});
+});

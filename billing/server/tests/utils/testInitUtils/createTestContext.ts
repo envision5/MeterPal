@@ -1,0 +1,193 @@
+import { fileURLToPath } from "node:url";
+
+const __filename = fileURLToPath(import.meta.url);
+
+import {
+	ApiVersionClass,
+	AppEnv,
+	AuthType,
+	type Feature,
+	LATEST_VERSION,
+	type Organization,
+} from "@autumn/shared";
+import type Stripe from "stripe";
+import { type DrizzleCli, initDrizzle } from "@/db/initDrizzle.js";
+import { createStripeCli } from "@/external/connect/createStripeCli.js";
+import { resolveRedisV2 } from "@/external/redis/resolveRedisV2.js";
+import { FeatureService } from "@/internal/features/FeatureService.js";
+import { OrgService } from "@/internal/orgs/OrgService.js";
+import { ensureV2Features } from "@tests/utils/setup/setupOrg.js";
+import {
+	type Logger,
+	logger,
+} from "../../../src/external/logtail/logtailUtils.js";
+import type { AutumnContext } from "../../../src/honoUtils/HonoEnv.js";
+import { generateId } from "../../../src/utils/genUtils.js";
+
+const DEFAULT_ENV = AppEnv.Sandbox;
+
+// Retry transient DB/network failures during worker preload. Many workers
+// open pools simultaneously, occasionally tripping connection limits or
+// cold-start blips against PlanetScale.
+const withRetry = async <T>(
+	fn: () => Promise<T>,
+	{ label }: { label: string },
+): Promise<T> => {
+	const delays = [100, 300, 700];
+	let lastErr: unknown;
+	for (let attempt = 0; attempt <= delays.length; attempt++) {
+		try {
+			return await fn();
+		} catch (err) {
+			lastErr = err;
+			const message = err instanceof Error ? err.message : String(err);
+			const transient =
+				/ECONNRESET|ETIMEDOUT|ENETUNREACH|ECONNREFUSED|EAI_AGAIN|socket hang up|Connection terminated|pool|timeout/i.test(
+					message,
+				);
+			if (!transient || attempt === delays.length) throw err;
+			console.warn(
+				`[createTestContext] transient failure on "${label}" (attempt ${attempt + 1}): ${message}`,
+			);
+			await new Promise((r) => setTimeout(r, delays[attempt]));
+		}
+	}
+	throw lastErr;
+};
+
+export interface TestContext extends AutumnContext {
+	org: Organization;
+	env: AppEnv;
+	stripeCli: Stripe;
+	db: DrizzleCli;
+	orgSecretKey: string;
+	features: Feature[];
+	logger: Logger;
+}
+
+export const createTestContext = async () => {
+	const { db } = initDrizzle();
+
+	// TESTS_ORG is set by the test runner (per parallel group).
+	const orgSlug = process.env.TESTS_ORG;
+	if (!orgSlug) {
+		throw new Error(
+			"TESTS_ORG environment variable is required (set by test runner)",
+		);
+	}
+
+	const org = await withRetry(
+		() => OrgService.getBySlug({ db, slug: orgSlug }),
+		{ label: "OrgService.getBySlug" },
+	);
+	if (!org) {
+		throw new Error(`Org with slug "${orgSlug}" not found`);
+	}
+
+	const env = DEFAULT_ENV;
+	const stripeCli = createStripeCli({ org, env });
+	await withRetry(
+		() => ensureV2Features({ db, orgId: org.id, env }),
+		{ label: "ensureV2Features" },
+	);
+	const features = await withRetry(
+		() => FeatureService.list({ db, orgId: org.id, env }),
+		{ label: "FeatureService.list" },
+	);
+
+	// Org secret key, set by test runner.
+	const orgSecretKey = process.env.UNIT_TEST_AUTUMN_SECRET_KEY || "";
+	if (!orgSecretKey) {
+		throw new Error(
+			`No secret key found for org "${orgSlug}" in environment "${env}". ` +
+				`Make sure UNIT_TEST_AUTUMN_SECRET_KEY is set or org has secret_keys.${env}`,
+		);
+	}
+
+	return {
+		org,
+		env,
+		stripeCli,
+		db,
+		dbGeneral: db,
+		features,
+		logger,
+		redisV2: resolveRedisV2(),
+		orgSecretKey,
+
+		id: generateId("test"),
+		isPublic: false,
+		authType: AuthType.Unknown,
+		apiVersion: new ApiVersionClass(LATEST_VERSION),
+		timestamp: Date.now(),
+		scopes: [],
+		skipCache: false,
+		expand: [],
+		extraLogs: {},
+	} satisfies TestContext;
+};
+
+/**
+ * Lazy default export. The real TestContext is built once by the preload
+ * (`setup-integration-tests.ts`) and stashed on `globalThis`. The Proxy
+ * defers the lookup until first property access, sidestepping the
+ * import-order race (preload imports this module before populating the
+ * stash) and the top-level-await TDZ from a prior implementation.
+ *
+ * Unit tests that hit this throw a clear "preload did not run" error.
+ */
+const lazyDefaultCtx = new Proxy({} as TestContext, {
+	get(_target, prop, _receiver) {
+		const ctx = (globalThis as { __autumnTestContext?: TestContext | null })
+			.__autumnTestContext;
+		if (ctx == null) {
+			throw new Error(
+				`Default TestContext is not initialized. The integration test ` +
+					`preload (server/tests/setup-integration-tests.ts) did not ` +
+					`populate globalThis.__autumnTestContext before "${String(prop)}" ` +
+					`was accessed. This usually means a unit test is reaching for ` +
+					`the default ctx, or the preload was bypassed.`,
+			);
+		}
+		return Reflect.get(ctx, prop);
+	},
+	set(_target, prop, value, _receiver) {
+		const ctx = (globalThis as { __autumnTestContext?: TestContext | null })
+			.__autumnTestContext;
+		if (ctx == null) {
+			throw new Error(
+				`Default TestContext is not initialized. The integration test ` +
+					`preload (server/tests/setup-integration-tests.ts) did not ` +
+					`populate globalThis.__autumnTestContext before "${String(prop)}" ` +
+					`was assigned.`,
+			);
+		}
+		return Reflect.set(ctx, prop, value);
+	},
+	has(_target, prop) {
+		const ctx = (globalThis as { __autumnTestContext?: TestContext | null })
+			.__autumnTestContext;
+		return ctx != null && prop in ctx;
+	},
+	ownKeys(_target) {
+		const ctx = (globalThis as { __autumnTestContext?: TestContext | null })
+			.__autumnTestContext;
+		return ctx == null ? [] : Reflect.ownKeys(ctx);
+	},
+	getOwnPropertyDescriptor(_target, prop) {
+		const ctx = (globalThis as { __autumnTestContext?: TestContext | null })
+			.__autumnTestContext;
+		if (ctx == null) return undefined;
+		const descriptor = Reflect.getOwnPropertyDescriptor(ctx, prop);
+		if (!descriptor) return undefined;
+
+		return {
+			configurable: true,
+			enumerable: descriptor.enumerable,
+			writable: true,
+			value: Reflect.get(ctx, prop),
+		};
+	},
+});
+
+export default lazyDefaultCtx;

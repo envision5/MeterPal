@@ -1,0 +1,231 @@
+import {
+	type ApiFreeTrial,
+	ApiFreeTrialSchema,
+	ApiProductItemV0Schema,
+	ApiProductPropertiesSchema,
+	ApiProductSchema,
+	AttachScenario,
+	BillingInterval,
+	billingControlsFromColumns,
+	type Feature,
+	type FeatureOptions,
+	type FullCustomer,
+	type FullProduct,
+	getProductItemDisplay,
+	isFreeProduct,
+	isOneOffProduct,
+	isPrepaidPrice,
+	type Price,
+	type ProductItem,
+	productToEffectivePrices,
+	sortProductItems,
+	toApiFeature,
+	UsageModel,
+} from "@autumn/shared";
+import type { DrizzleCli } from "@/db/initDrizzle.js";
+import { notNullish } from "@/utils/genUtils.js";
+import { getFreeTrialAfterFingerprint } from "../../free-trials/freeTrialUtils.js";
+import { getLargestInterval } from "../../prices/priceUtils/priceIntervalUtils.js";
+import { getItemType } from "../../product-items/productItemUtils/getItemType.js";
+import { itemToPriceOrTiers } from "../../product-items/productItemUtils.js";
+import { mapToProductItems } from "../../productV2Utils.js";
+import { getAttachScenario } from "./getAttachScenario.js";
+import { resolveTrialCardRequired } from "./resolveTrialCardRequired.js";
+
+export const getProductItemResponse = ({
+	item,
+	features,
+	currency,
+	withDisplay = true,
+	options,
+	isMainPrice = false,
+}: {
+	item: ProductItem;
+	features: Feature[];
+	currency?: string | null;
+	withDisplay?: boolean;
+	options?: FeatureOptions[];
+	isMainPrice?: boolean;
+}) => {
+	// 1. Get item type
+	const type = getItemType(item);
+
+	// 2. Get display
+	const display = getProductItemDisplay({
+		item,
+		features,
+		currency,
+		fullDisplay: isMainPrice,
+	});
+
+	const priceData = itemToPriceOrTiers({ item });
+
+	let quantity: number | undefined;
+	let upcomingQuantity: number | undefined;
+
+	if (item.usage_model === UsageModel.Prepaid && notNullish(options)) {
+		const option = options!.find((o) => o.feature_id === item.feature_id);
+		quantity = option?.quantity
+			? option?.quantity * (item.billing_units ?? 1)
+			: undefined;
+
+		upcomingQuantity = option?.upcoming_quantity
+			? option?.upcoming_quantity * (item.billing_units ?? 1)
+			: undefined;
+	}
+
+	const feature = features.find((f) => f.id === item.feature_id);
+	return ApiProductItemV0Schema.parse({
+		type,
+		...item,
+		feature: feature ? toApiFeature({ feature }) : null,
+		display: withDisplay ? display : undefined,
+		...priceData,
+		quantity,
+		next_cycle_quantity: upcomingQuantity,
+	});
+};
+
+const getFreeTrialResponse = async ({
+	db,
+	product,
+	fullCus,
+	attachScenario,
+}: {
+	db?: DrizzleCli;
+	product: FullProduct;
+	fullCus?: FullCustomer;
+	attachScenario: AttachScenario;
+}) => {
+	const cardRequired = resolveTrialCardRequired({ product });
+
+	if (!db) {
+		return product.free_trial
+			? { ...product.free_trial, card_required: cardRequired }
+			: product.free_trial;
+	}
+
+	if (product.free_trial && fullCus) {
+		let trial = await getFreeTrialAfterFingerprint({
+			db,
+			freeTrial: product.free_trial,
+			fingerprint: fullCus.fingerprint,
+			internalCustomerId: fullCus.internal_id,
+			internalEntityId: fullCus.entity?.internal_id,
+			multipleAllowed: false,
+			productId: product.id,
+		});
+
+		if (attachScenario === AttachScenario.Downgrade) trial = null;
+		return ApiFreeTrialSchema.parse({
+			duration: product.free_trial?.duration,
+			length: product.free_trial?.length,
+			unique_fingerprint: product.free_trial?.unique_fingerprint,
+			trial_available: notNullish(trial) ? true : false,
+			card_required: cardRequired,
+		});
+	}
+
+	if (product.free_trial) {
+		return ApiFreeTrialSchema.parse({
+			duration: product.free_trial?.duration,
+			length: product.free_trial?.length,
+			unique_fingerprint: product.free_trial?.unique_fingerprint,
+			card_required: cardRequired,
+		});
+	}
+
+	return null;
+};
+
+const getProductProperties = ({
+	product,
+	freeTrial,
+}: {
+	product: FullProduct;
+	freeTrial?: ApiFreeTrial | null;
+}) => {
+	const effectivePrices = productToEffectivePrices({ product });
+	const largestInterval = getLargestInterval({
+		prices: effectivePrices,
+		excludeOneOff: true,
+	});
+
+	const hasFreeTrial =
+		notNullish(freeTrial) && freeTrial?.trial_available !== false;
+
+	return ApiProductPropertiesSchema.parse({
+		is_free: isFreeProduct({ product }),
+		is_one_off: isOneOffProduct({ product }),
+		interval_group: largestInterval?.interval,
+		has_trial: hasFreeTrial,
+		updateable: (product.prices ?? []).some(
+			(p: Price) =>
+				isPrepaidPrice(p) && p.config.interval !== BillingInterval.OneOff,
+		),
+	});
+};
+
+export const getProductResponse = async ({
+	product,
+	features,
+	fullCus,
+	currency,
+	db,
+	withDisplay = true,
+	options,
+}: {
+	product: FullProduct;
+	features: Feature[];
+	fullCus?: FullCustomer;
+	currency?: string | null;
+	db?: DrizzleCli;
+	withDisplay?: boolean;
+	options?: FeatureOptions[];
+}) => {
+	// 1. Get items with display
+	const rawItems = mapToProductItems({
+		prices: product.prices ?? [],
+		entitlements: product.entitlements ?? [],
+		features: features,
+	});
+
+	// Sort raw items first
+	const sortedItems = sortProductItems(rawItems, features);
+
+	// Transform sorted items
+	const items = sortedItems.map((item, index) => {
+		return getProductItemResponse({
+			item,
+			features,
+			currency,
+			withDisplay,
+			options,
+			isMainPrice: index === 0,
+		});
+	});
+
+	// 2. Get product properties
+	const attachScenario = getAttachScenario({
+		fullCus,
+		fullProduct: product,
+	});
+
+	const freeTrial = (await getFreeTrialResponse({
+		db: db as DrizzleCli,
+		product,
+		fullCus,
+		attachScenario,
+	})) as ApiFreeTrial;
+
+	return ApiProductSchema.parse({
+		...product,
+		name: product.name || null,
+		group: product.group || null,
+		items: items,
+		free_trial: freeTrial || null,
+		billing_controls: billingControlsFromColumns(product),
+		scenario: attachScenario,
+		properties: getProductProperties({ product, freeTrial }),
+	});
+};

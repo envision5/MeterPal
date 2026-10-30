@@ -1,0 +1,222 @@
+import {
+	AllowanceType,
+	cusEntToStartingBalance,
+	deduplicateArray,
+	type FullCusEntWithFullCusProduct,
+	type FullCustomer,
+	fullCustomerToCustomerEntitlements,
+	fullCustomerToOverageAllowedByFeatureId,
+	fullCustomerToSpendLimitByFeatureId,
+	fullCustomerToUsageBasedCusEntsByFeatureId,
+	getMaxOverage,
+	isAllocatedCustomerEntitlement,
+	isFreeCustomerEntitlement,
+	notNullish,
+	orgToInStatuses,
+} from "@autumn/shared";
+import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
+import { buildLockReceiptKey } from "@/internal/balances/utils/lock/buildLockReceiptKey.js";
+import type {
+	CustomerEntitlementDeduction,
+	DeductionOptions,
+	PreparedFeatureDeduction,
+} from "../types/deductionTypes.js";
+import type { FeatureDeduction } from "../types/featureDeduction.js";
+import { computeCreditCosts } from "./computeCreditCosts.js";
+
+/**
+ * Prepares all the inputs needed to execute a deduction for a single feature.
+ * Shared by both Redis (Lua) and Postgres (SQL) deduction paths.
+ */
+export const prepareFeatureDeduction = ({
+	ctx,
+	fullCustomer,
+	deduction,
+	options = {},
+}: {
+	ctx: AutumnContext;
+	fullCustomer: FullCustomer;
+	deduction: FeatureDeduction;
+	options?: DeductionOptions;
+}): PreparedFeatureDeduction => {
+	const { org } = ctx;
+	const { env } = ctx;
+	const { feature, lock, targetBalance } = deduction;
+
+	const { overageBehaviour = "cap", customerEntitlementFilters } = options;
+
+	// Membership is per cusEnt (fundsFeatureId), not per catalog feature — a
+	// plan item's feature_override can add or remove the tracked feature from
+	// its credit system's schema. set_usage still targets only the feature.
+	const cusEnts = fullCustomerToCustomerEntitlements({
+		fullCustomer,
+		...(notNullish(targetBalance)
+			? { featureIds: [feature.id] }
+			: { fundsFeatureId: feature.id }),
+		reverseOrder: org.config?.reverse_deduction_order,
+		entity: fullCustomer.entity,
+		inStatuses: orgToInStatuses({ org }),
+		customerEntitlementFilters,
+	});
+
+	const isUnlimitedCusEnt = (ce: FullCusEntWithFullCusProduct): boolean =>
+		ce.entitlement.allowance_type === AllowanceType.Unlimited ||
+		Boolean(ce.unlimited);
+
+	// From the gathered cusEnts (not the catalog) so override-added credit
+	// systems get their spend limits / overage controls respected.
+	const effectiveFeatureIds = deduplicateArray([
+		feature.id,
+		...cusEnts.map((ce) => ce.entitlement.feature.id),
+	]);
+	const spendLimitByFeatureId = fullCustomerToSpendLimitByFeatureId({
+		fullCustomer,
+		featureIds: effectiveFeatureIds,
+	});
+	const usageBasedCusEntIdsByFeatureId =
+		fullCustomerToUsageBasedCusEntsByFeatureId({
+			fullCustomer,
+			featureIds: effectiveFeatureIds,
+		});
+	const overageAllowedByFeatureId = fullCustomerToOverageAllowedByFeatureId({
+		fullCustomer,
+		featureIds: effectiveFeatureIds,
+	});
+
+	// For each feature, check if any cusEnt already has native usage_allowed
+	// (from pay-per-use pricing). If so, overage_allowed: enabled: true
+	// should NOT force usage_allowed on other cusEnts — the native overage
+	// mechanism (with max_purchase) already handles it.
+	const nativeUsageAllowedFeatureIds = new Set(
+		cusEnts
+			.filter((ce) => ce.usage_allowed)
+			.map((ce) => ce.entitlement.feature.id),
+	);
+
+	const getCreditCostForEnt = computeCreditCosts({
+		cusEnts,
+		deduction,
+		catalogFeatures: ctx.features,
+		eventProperties: options?.eventProperties ?? undefined,
+	});
+
+	// Build input for each customer entitlement
+	const customerEntitlementDeductions: CustomerEntitlementDeduction[] =
+		cusEnts.map((ce) => {
+			const { creditCost, rateCard } = getCreditCostForEnt(ce.id);
+			const maxOverage = getMaxOverage({ cusEnt: ce });
+
+			const isFreeAllocated =
+				isFreeCustomerEntitlement(ce) && isAllocatedCustomerEntitlement(ce);
+
+			const resetBalance = cusEntToStartingBalance({ cusEnt: ce });
+
+			const isFreeAllocatedUsageAllowed =
+				isFreeAllocated && overageBehaviour !== "reject";
+
+			const overageAllowedControl =
+				overageAllowedByFeatureId[ce.entitlement.feature.id];
+
+			let effectiveUsageAllowed =
+				ce.usage_allowed || isFreeAllocatedUsageAllowed;
+
+			if (
+				overageAllowedControl?.enabled === true &&
+				!nativeUsageAllowedFeatureIds.has(ce.entitlement.feature.id)
+			) {
+				effectiveUsageAllowed = true;
+			} else if (overageAllowedControl?.enabled === false) {
+				effectiveUsageAllowed = false;
+			}
+
+			// Unlimited cusEnts are an infinite sink: always usage-allowed with no
+			// balance clamps in either direction, so the balance drifts negative as
+			// a usage counter and refunds can move it back up freely.
+			const isUnlimited = isUnlimitedCusEnt(ce);
+
+			return {
+				customer_entitlement_id: ce.id,
+				credit_cost: creditCost,
+				...(rateCard ? { rate_card: rateCard } : {}),
+				feature_id: ce.entitlement.feature.id,
+				entity_feature_id: ce.entitlement.entity_feature_id ?? null,
+				usage_allowed: isUnlimited || effectiveUsageAllowed,
+				min_balance:
+					isUnlimited || !notNullish(maxOverage) ? undefined : -maxOverage,
+				max_balance: isUnlimited ? undefined : resetBalance,
+				...(isUnlimited ? { unlimited: true } : {}),
+			};
+		});
+
+	// The deduction sort only prefers unlimited within a tier (entity level and
+	// credit systems sort first/last regardless), but the sink contract is that
+	// an unlimited entitlement absorbs everything and finite siblings stay
+	// untouched — exactly what the pre-sink skip did. Hoist the first unlimited
+	// entry to the front so the scripts always see the sink lead.
+	const unlimitedEntryIndex = customerEntitlementDeductions.findIndex(
+		(deductionEntry) => deductionEntry.unlimited,
+	);
+	if (unlimitedEntryIndex > 0) {
+		const [unlimitedEntry] = customerEntitlementDeductions.splice(
+			unlimitedEntryIndex,
+			1,
+		);
+		customerEntitlementDeductions.unshift(unlimitedEntry);
+	}
+
+	// Collect and sort rollovers by expires_at (oldest first), including credit_cost from parent entitlement
+	const sortedRollovers = cusEnts
+		.flatMap((ce) => {
+			const { creditCost, rateCard } = getCreditCostForEnt(ce.id);
+			return (ce.rollovers || []).map((r) => ({
+				...r,
+				credit_cost: creditCost,
+				...(rateCard ? { rate_card: rateCard } : {}),
+			}));
+		})
+		.sort((a, b) => {
+			if (a.expires_at && b.expires_at) return a.expires_at - b.expires_at;
+			if (a.expires_at && !b.expires_at) return -1;
+			if (!a.expires_at && b.expires_at) return 1;
+			return 0;
+		});
+
+	const ONE_DAY_S = 24 * 60 * 60;
+	const ONE_HOUR_S = 60 * 60;
+
+	const preparedLock = lock
+		? {
+				...lock,
+				hashed_key: lock.hashed_key ?? Bun.hash(lock.lock_id!).toString(),
+				redis_receipt_key: buildLockReceiptKey({
+					orgId: org.id,
+					env,
+					lockKey: lock.hashed_key ?? Bun.hash(lock.lock_id!).toString(),
+				}),
+				created_at: Date.now(),
+				// TTL: expires_at + 1 hour (in seconds), or now + 1 day
+				ttl_at: lock.expires_at
+					? Math.ceil(lock.expires_at / 1000) + ONE_HOUR_S
+					: Math.ceil(Date.now() / 1000) + ONE_DAY_S,
+			}
+		: undefined;
+
+	return {
+		customerEntitlements: cusEnts,
+		customerEntitlementDeductions,
+		spendLimitByFeatureId:
+			Object.keys(spendLimitByFeatureId).length > 0
+				? spendLimitByFeatureId
+				: undefined,
+		usageBasedCusEntIdsByFeatureId:
+			Object.keys(usageBasedCusEntIdsByFeatureId).length > 0
+				? usageBasedCusEntIdsByFeatureId
+				: undefined,
+		rollovers: sortedRollovers.map((r) => ({
+			id: r.id,
+			credit_cost: r.credit_cost,
+			...(r.rate_card ? { rate_card: r.rate_card } : {}),
+		})),
+		lock: preparedLock,
+	};
+};

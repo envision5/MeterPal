@@ -1,0 +1,280 @@
+import { ceBalancesCache } from "@autumn/shared";
+import {
+	type DuckDBDatabase,
+	drizzle,
+	isPool,
+} from "@duckdbfan/drizzle-duckdb";
+import { SpanKind } from "@opentelemetry/api";
+import { withActiveSpan } from "@/utils/otel/withActiveSpan.js";
+import { logger } from "../logtail/logtailUtils.js";
+import { registerMdPool, startMdPoolMonitor } from "./mdPoolMonitor.js";
+
+const mdSchema = { ceBalancesCache };
+
+export type MotherDuckDb = DuckDBDatabase<typeof mdSchema>;
+
+const DEFAULT_POOL_SIZE = 4;
+// v2 is a TRANSIENT database (no historical snapshots, 1-day failsafe):
+// CREATE OR REPLACE churn on the old lake_cache parked every prior version in
+// a 7-day failsafe window and billed it. This is a cache rebuilt from Iceberg;
+// nothing in it ever needs recovery.
+const DEFAULT_DATABASE = "lake_cache_v2";
+/** Shed to the caller's unavailable-path instead of queueing behind a
+ * saturated pool — a lesson from the PgBouncer era. */
+const ACQUIRE_TIMEOUT_MS = 2_000;
+const MAX_WAITING_REQUESTS = 50;
+/** Also the backstop that reaps connections whose query outlived the
+ * wall-clock race in `runMdWithTimeout` (node-api has no clean interrupt). */
+const CONNECTION_MAX_LIFETIME_MS = 10 * 60_000;
+const IDLE_TIMEOUT_MS = 60_000;
+
+export const MOTHERDUCK_QUERY_TIMEOUT_MS = 5_000;
+/** The MD extension handshake has no interrupt; a network blip once serialized
+ * every balance request behind a 100s init. Fail into the PG fallbacks instead. */
+const INIT_TIMEOUT_MS = 15_000;
+
+const poolSizeFromEnv = (): number => {
+	const parsed = Number(process.env.MOTHERDUCK_POOL_MAX);
+	return Number.isInteger(parsed) && parsed > 0 ? parsed : DEFAULT_POOL_SIZE;
+};
+
+/** MotherDuck meters concurrent queries account-wide; DuckDB runs one query
+ * per pooled connection, so fleet ceiling = processes x pool size. */
+const MD_ACCOUNT_CONCURRENCY_CEILING = Number(
+	process.env.MOTHERDUCK_MAX_CONCURRENT ?? 32,
+);
+
+export const computeMotherDuckPoolWarning = ({
+	poolSize,
+	fleetProcesses,
+}: {
+	poolSize: number;
+	fleetProcesses: number;
+}): string | null => {
+	const fleetConnections = fleetProcesses * poolSize;
+	if (fleetConnections <= MD_ACCOUNT_CONCURRENCY_CEILING) return null;
+	return `[initMotherDuck] potential fleet concurrency (${fleetConnections}) exceeds MOTHERDUCK_MAX_CONCURRENT (${MD_ACCOUNT_CONCURRENCY_CEILING}) — pools are lazy so this only bites if every process serves balance sorts; lower MOTHERDUCK_POOL_MAX or raise the ceiling to match the MotherDuck plan.`;
+};
+
+export const initMotherDuck = async ({
+	token,
+	poolSize = poolSizeFromEnv(),
+	database = DEFAULT_DATABASE,
+}: {
+	token: string;
+	poolSize?: number;
+	database?: string;
+}): Promise<MotherDuckDb> => {
+	// attach_mode=single skips attaching the rest of the workspace (cuts cold
+	// start); the TTL keeps the cached instance reusable across idle gaps.
+	// No session_name on purpose: unnamed connections spread across read
+	// replicas; a shared name would pin the whole pool to one duckling.
+	return await drizzle({
+		connection: {
+			path: `md:${database}?attach_mode=single&dbinstance_inactivity_ttl=1h`,
+			options: { motherduck_token: token },
+		},
+		pool: {
+			size: poolSize,
+			acquireTimeout: ACQUIRE_TIMEOUT_MS,
+			maxWaitingRequests: MAX_WAITING_REQUESTS,
+			maxLifetimeMs: CONNECTION_MAX_LIFETIME_MS,
+			idleTimeoutMs: IDLE_TIMEOUT_MS,
+		},
+		schema: mdSchema,
+	});
+};
+
+/** Lake-backed sorts/filters (feature_balance, balance > x) are unavailable
+ * without a token — dev/staging without MotherDuck keeps every PG-only sort. */
+export const isMotherDuckConfigured = (): boolean =>
+	Boolean(process.env.MOTHERDUCK_TOKEN);
+
+let resolverDbPromise: Promise<MotherDuckDb> | null = null;
+let resolverDbState: "uninitialized" | "initializing" | "ready" =
+	"uninitialized";
+
+/** A timed-out init can't be interrupted — close its connection when it
+ * eventually lands so the retry's pool is the only one standing. */
+const raceInitTimeout = async ({
+	init,
+}: {
+	init: Promise<MotherDuckDb>;
+}): Promise<MotherDuckDb> => {
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	const timeout = new Promise<never>((_, reject) => {
+		timer = setTimeout(() => {
+			init.then((db) => db.close()).catch(() => {});
+			reject(
+				new Error(
+					`[initMotherDuck] resolver init exceeded ${INIT_TIMEOUT_MS}ms`,
+				),
+			);
+		}, INIT_TIMEOUT_MS);
+	});
+	try {
+		return await Promise.race([init, timeout]);
+	} finally {
+		clearTimeout(timer);
+	}
+};
+
+/** Boot-time warm-up: pay the MD handshake before the first dashboard request
+ * instead of inside it. Fire-and-forget — failure just means lazy init later. */
+export const prewarmMotherDuckResolver = (): void => {
+	if (!isMotherDuckConfigured()) return;
+	getMotherDuckResolverDb().catch((error) => {
+		logger.warn(`[initMotherDuck] resolver pre-warm failed: ${error}`);
+	});
+};
+
+/** Lazy pooled singleton on the read-only token: only processes that actually
+ * serve balance sorts open MotherDuck connections. */
+export const getMotherDuckResolverDb = (): Promise<MotherDuckDb> => {
+	const token = process.env.MOTHERDUCK_TOKEN;
+	if (!token) {
+		return Promise.reject(
+			new Error("[initMotherDuck] MOTHERDUCK_TOKEN is not configured"),
+		);
+	}
+
+	const initialState = resolverDbState;
+	return withActiveSpan({
+		name: "motherduck.resolver.get",
+		attributes: {
+			"motherduck.resolver.initial_state": initialState,
+		},
+		fn: async (span) => {
+			if (!resolverDbPromise) {
+				const poolSize = poolSizeFromEnv();
+				const warning = computeMotherDuckPoolWarning({
+					poolSize,
+					fleetProcesses: Number(process.env.MOTHERDUCK_FLEET_PROCESSES ?? 20),
+				});
+				if (warning) logger.warn(warning);
+
+				resolverDbState = "initializing";
+				resolverDbPromise = withActiveSpan({
+					name: "motherduck.resolver.initialize",
+					attributes: {
+						"db.namespace": DEFAULT_DATABASE,
+						"motherduck.pool.max": poolSize,
+					},
+					fn: async (initializeSpan) => {
+						const db = await raceInitTimeout({
+							init: initMotherDuck({ token, poolSize }),
+						});
+						const pooled = isPool(db.$client);
+						initializeSpan.setAttribute("motherduck.pool.enabled", pooled);
+						if (pooled) {
+							registerMdPool({
+								pool: db.$client,
+								name: "md-resolver",
+								max: poolSize,
+							});
+							startMdPoolMonitor();
+						}
+						resolverDbState = "ready";
+						return db;
+					},
+				}).catch((error) => {
+					resolverDbPromise = null;
+					resolverDbState = "uninitialized";
+					throw error;
+				});
+			}
+			const db = await resolverDbPromise;
+			span.setAttribute("motherduck.resolver.final_state", resolverDbState);
+			return db;
+		},
+	});
+};
+
+export const closeMotherDuckResolverDb = async (): Promise<void> => {
+	const pending = resolverDbPromise;
+	resolverDbPromise = null;
+	resolverDbState = "uninitialized";
+	if (!pending) return;
+	const db = await pending.catch(() => null);
+	await db?.close();
+	resolverDbState = "uninitialized";
+};
+
+/** One-shot RW session for the cache refresh cron: single connection,
+ * created per run and always closed — the writer holds no standing pool. */
+export const withMotherDuckRw = async <T>({
+	run,
+	database = DEFAULT_DATABASE,
+}: {
+	run: (db: MotherDuckDb) => Promise<T>;
+	database?: string;
+}): Promise<T> => {
+	const token = process.env.MOTHERDUCK_RW_TOKEN;
+	if (!token) {
+		throw new Error("[initMotherDuck] MOTHERDUCK_RW_TOKEN is not configured");
+	}
+
+	const db = await initMotherDuck({ token, poolSize: 1, database });
+	try {
+		return await run(db);
+	} finally {
+		await db.close();
+	}
+};
+
+/** Wall-clock guard for resolver queries: node-api can't interrupt a running
+ * query, so a loser keeps its connection busy until maxLifetime reaps it. */
+export const runMdWithTimeout = async <T>({
+	run,
+	timeoutMs = MOTHERDUCK_QUERY_TIMEOUT_MS,
+	label,
+}: {
+	run: () => Promise<T>;
+	timeoutMs?: number;
+	label: string;
+}): Promise<T> => {
+	return withActiveSpan({
+		name: "motherduck.query",
+		kind: SpanKind.CLIENT,
+		attributes: {
+			"db.system": "duckdb",
+			"db.namespace": DEFAULT_DATABASE,
+			"motherduck.query.label": label,
+			"motherduck.query.timeout_ms": timeoutMs,
+		},
+		fn: async (span) => {
+			let timer: ReturnType<typeof setTimeout> | undefined;
+			const timeout = new Promise<never>((_, reject) => {
+				timer = setTimeout(
+					() =>
+						reject(
+							new Error(
+								`[motherduck] ${label} exceeded ${timeoutMs}ms timeout`,
+							),
+						),
+					timeoutMs,
+				);
+			});
+			try {
+				const result = await Promise.race([run(), timeout]);
+				const rows = Array.isArray(result)
+					? result
+					: result && typeof result === "object" && "rows" in result
+						? result.rows
+						: null;
+				if (Array.isArray(rows)) {
+					span.setAttribute("db.response.returned_rows", rows.length);
+				}
+				return result;
+			} catch (error) {
+				span.setAttribute(
+					"motherduck.query.timed_out",
+					error instanceof Error && error.message.includes("exceeded"),
+				);
+				throw error;
+			} finally {
+				clearTimeout(timer);
+			}
+		},
+	});
+};

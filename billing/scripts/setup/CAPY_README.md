@@ -1,0 +1,141 @@
+# Capy v2 development environment
+
+Autumn runs end-to-end in Capy v2 VMs using project-level **Setup**. Capy owns
+the VM lifecycle, Docker provides local infrastructure, and Neon provides an
+isolated database branch for each VM.
+
+## Setup lifecycle
+
+Configure this repository under **Settings → Project → Dev environment**:
+
+| Lifecycle | Command | Responsibility |
+| --- | --- | --- |
+| Initialize | `bash scripts/setup/capy-init.sh` | installs workspace dependencies, refreshes repo-pinned AI skills in `.agents/skills/`, installs `neonctl` and the pinned Stripe CLI, then pulls the Autumn and Trigger.dev infrastructure images for snapshot reuse |
+| Update after checkout | `bash scripts/setup/capy-init.sh` | re-runs the same deterministic refresh so reused or snapshotted VMs pick up pinned skills and tooling after checkout |
+| Startup | `bash scripts/setup/capy-startup.sh` | idempotently starts local infrastructure, provisions or resumes the VM's Neon branch, applies pending migrations and SQL functions, and writes local env files |
+| App | `bun capy` | runs Startup if needed and starts the app in a detached tmux session |
+
+Initialize does not start services or create per-VM state, so it is safe to run
+during a snapshot build. Startup is blocking but bounded: its containers detach,
+its readiness checks finish, and the script exits as required by Capy v2.
+
+The old `.capy/settings.json` terminals and previews are intentionally gone.
+Project Setup is authoritative in v2, and Capy discovers listening HTTP services
+automatically.
+
+## Required environment variable
+
+Add this under **Settings → Project → Environment variables**:
+
+| Name | Used by | Required |
+| --- | --- | --- |
+| `NEON_API_KEY` | `neonctl` in `scripts/capy/provision.ts` | yes |
+
+Use a shared value when Startup must work for every team member and snapshot-
+restored VM. Keep the value in Capy's environment settings; never put it in a
+Setup command or repository file.
+
+Optional integration variables such as `STRIPE_SANDBOX_SECRET_KEY`,
+`STRIPE_SANDBOX_WEBHOOK_SECRET`, `STRIPE_SANDBOX_CLIENT_ID`,
+`ANTHROPIC_API_KEY`, `RESEND_API_KEY`, `POSTHOG_API_KEY`, and
+`SLACK_BOT_TOKEN` pass through when configured. `STRIPE_SANDBOX_SECRET_KEY`
+authenticates the Stripe CLI without interactive login.
+
+## Runtime services
+
+Startup launches Autumn's `scripts/setup/dw.compose.yml` services and the
+Trigger.dev control plane in `scripts/setup/trigger.compose.yml`:
+
+| Port | Service |
+| --- | --- |
+| 6379 | Dragonfly |
+| 8000 | DynamoDB Local |
+| 8030 | Trigger.dev webapp and API |
+| 9324 | ElasticMQ |
+
+Trigger.dev runs a control plane matching the exact `trigger.dev` version in
+the root `package.json`. Startup creates its datastore credentials in
+`~/.autumn-capy/trigger.env`, seeds the matching Autumn project, and writes
+`TRIGGER_API_URL`, `TRIGGER_ACCESS_TOKEN`, and `TRIGGER_SERVER_SECRET_KEY` into
+`server/.env.local`. `bun dev` therefore keeps using the repository's existing
+local Trigger worker, but its queues and run data are isolated to this VM
+instead of the shared Trigger.dev cloud project.
+The control plane uses about 2 GB of RAM after startup on the standard 16 GB
+Capy VM; the source worker and application stack bring steady-state use to
+about 9 GB on the current image.
+
+The application remains opt-in. Run the Setup command `dev` or `bun dev` when a
+task needs the full stack:
+
+| Port | Application |
+| --- | --- |
+| 3000 | Vite dashboard |
+| 3001 | Checkout |
+| 3099 | Leaf/chat |
+| 8080 | Autumn server |
+
+Capy v2 no longer reserves port 8080 for the desktop. The generated env files
+therefore use Autumn's standard `http://localhost:8080` and
+`http://localhost:3000` URLs. Capy's Desktop services menu detects these ports
+without repository preview configuration.
+
+## Provisioning model
+
+`scripts/capy/provision.ts` mints a random machine id on first run, persists it
+to `~/.autumn-capy/machine-id`, and hashes it into a `capy-<hash>` Neon branch
+name. Non-secret branch metadata plus generated local auth secrets live in the
+mode-`0600` file `~/.autumn-capy/state.json`. A resumed VM keeps its minted id
+and reuses that branch; a fresh filesystem mints a new id and derives a new
+branch. Hostnames are not used: VMs cloned from one image share a hostname,
+which previously collapsed every machine onto one shared branch.
+
+The script writes managed values into:
+
+- `server/.env.local`
+- `vite/.env.local`
+- `apps/checkout/.env.local`
+
+The Bun preload in `scripts/preload-env.ts` loads those files for direct commands,
+so Capy does not need Infisical for the local stack.
+
+## Logs
+
+Startup appends all output to `~/.autumn-capy/startup.log` (or
+`$CAPY_PREFIX/startup.log` when `CAPY_PREFIX` is set). Each run has a UTC
+delimiter, including failures before tmux or the application starts. The app
+process writes to `~/.autumn-capy/app.log` (or `$CAPY_PREFIX/app.log`), which is
+truncated only when a new app session launches. Both files are mode `0600`.
+
+Use `bun capy logs` to print the Startup log followed by the app log. It works
+after a Startup failure before the tmux session exists; when `app.log` is absent,
+it uses tmux's capture pane only as a fallback.
+
+## Troubleshooting
+
+Inspect local infrastructure with:
+
+```bash
+docker compose -f scripts/setup/dw.compose.yml -p autumn-capy ps
+docker compose -f scripts/setup/dw.compose.yml -p autumn-capy logs
+docker compose --env-file ~/.autumn-capy/trigger.env \
+  -f scripts/setup/trigger.compose.yml -p autumn-capy-trigger ps
+docker compose --env-file ~/.autumn-capy/trigger.env \
+  -f scripts/setup/trigger.compose.yml -p autumn-capy-trigger logs
+```
+
+Re-run Startup to repair stopped containers and refresh env files:
+
+```bash
+bash scripts/setup/capy-startup.sh
+```
+
+To force a fresh local provisioning record, remove the state file and rerun
+Startup. This does not delete the old Neon branch:
+
+```bash
+rm -f ~/.autumn-capy/state.json
+bash scripts/setup/capy-startup.sh
+```
+
+Delete the old branch separately with `neonctl branches delete capy-<hash>` when
+it is no longer needed.

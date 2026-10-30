@@ -1,0 +1,59 @@
+import { getAutumnEnv } from "@autumn/env";
+import { AppEnv, ErrCode, RecaseError, Scopes } from "@autumn/shared";
+import { z } from "zod/v4";
+import { createRoute } from "@/honoMiddlewares/routeHandler.js";
+import { generateOAuthState } from "@/internal/platform/platformBeta/utils/oauthStateUtils.js";
+
+export const handleGetOAuthUrl = createRoute({
+	scopes: [Scopes.Organisation.Write],
+	query: z.object({
+		redirect_url: z.string().optional(),
+	}),
+	handler: async (c) => {
+		const { redirect_url } = c.req.query();
+		const ctx = c.get("ctx");
+		const { org, env } = ctx;
+
+		const clientId =
+			env === AppEnv.Live
+				? process.env.STRIPE_LIVE_CLIENT_ID
+				: process.env.STRIPE_SANDBOX_CLIENT_ID;
+
+		if (!clientId) {
+			throw new RecaseError({
+				message: `Stripe ${env} client ID not configured`,
+				code: ErrCode.InternalError,
+				statusCode: 500,
+			});
+		}
+
+		// Generate OAuth state and store in Redis
+		const frontendUrl = process.env.CLIENT_URL || "http://localhost:5173";
+		const envPath = env === AppEnv.Sandbox ? "/sandbox" : "";
+
+		const redirectUri =
+			redirect_url || `${frontendUrl}${envPath}/settings?tab=stripe`;
+
+		const stateKey = await generateOAuthState({
+			organizationSlug: org.slug,
+			env,
+			redirectUri,
+			masterOrgId: null, // null for standard flow
+		});
+
+		const baseUrl = new URL(
+			`https://connect.stripe.com/oauth/v2/authorize?response_type=code&client_id=${clientId}&scope=read_write`,
+		);
+
+		// Add state + redirect_uri
+		baseUrl.searchParams.set("state", stateKey);
+		baseUrl.searchParams.set(
+			"redirect_uri",
+			`${getAutumnEnv().AUTUMN_PUBLIC_API_URL}/stripe/oauth_callback`,
+		);
+
+		return c.json({
+			oauth_url: baseUrl.toString(),
+		});
+	},
+});

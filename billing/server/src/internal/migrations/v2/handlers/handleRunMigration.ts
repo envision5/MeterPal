@@ -1,0 +1,190 @@
+import { ErrCode, RecaseError, Scopes } from "@autumn/shared";
+import { auth } from "@trigger.dev/sdk/v3";
+import { z } from "zod/v4";
+import { createRoute } from "@/honoMiddlewares/routeHandler";
+import { withMigrationRunClaim } from "@/internal/migrations/v2/actions/migrationRun/index.js";
+import { prepare } from "@/internal/migrations/v2/prepare/index.js";
+import { migrationRepo } from "@/internal/migrations/v2/repos/index.js";
+import { runMigrationInChunks } from "@/internal/migrations/v2/run/runMigrationInChunks.js";
+import type { RunMigrationPayload } from "@/internal/migrations/v2/run/types/migrationRunPayloads.js";
+import {
+	LAZY_MIGRATION_RUNS_DISABLED,
+	MIGRATION_RUN_CUSTOMER_CONCURRENCY,
+} from "@/internal/migrations/v2/run/utils/migrationRunConstants.js";
+import { RETRYABLE_MIGRATION_ITEM_RUN_STATUSES } from "@/internal/migrations/v2/run/utils/retryItemStatuses.js";
+import { shouldRunMigrationInline } from "@/internal/migrations/v2/utils/shouldRunMigrationInline.js";
+import { MAX_MIGRATION_WEBHOOK_CONCURRENCY } from "@/internal/migrations/v2/webhookDelivery/webhookDeliveryConstants.js";
+import {
+	getMigrationTriggerOptions,
+	migrationRunConcurrencyKey,
+	migrationRunTag,
+} from "@/trigger/migrations/migrationTaskQueue.js";
+import { runMigrationTask } from "@/trigger/migrations/runMigrationTask/runMigrationTask.js";
+
+const LEGACY_MAX_REQUESTED_CONCURRENCY = 100;
+
+const RunMigrationBody = z.object({
+	id: z.string(),
+	dry_run: z.boolean().default(false),
+	limit: z.number().int().min(1).optional(),
+	only: z.array(z.string()).optional(),
+	/** Accepted for backward compatibility; migration concurrency is fleet-managed. */
+	concurrency: z
+		.number()
+		.int()
+		.min(1)
+		.max(LEGACY_MAX_REQUESTED_CONCURRENCY)
+		.optional()
+		.describe("Deprecated: migration concurrency is fleet-managed"),
+	retry_item_statuses: z
+		.array(z.enum(RETRYABLE_MIGRATION_ITEM_RUN_STATUSES))
+		.optional(),
+	/** Lazy runs share one run row with the sweeper and enqueue request-path customer work.
+	 * Targeted `only` is incompatible because lazy matching happens on customer reads. */
+	lazy_run: z.boolean().default(false),
+	/** Omitted → resolved from scope size (bulk runs default off). */
+	send_webhooks: z.boolean().optional(),
+	webhook_concurrency: z
+		.number()
+		.int()
+		.min(1)
+		.max(MAX_MIGRATION_WEBHOOK_CONCURRENCY)
+		.optional(),
+});
+
+export const handleRunMigration = createRoute({
+	scopes: [Scopes.Migrations.Write],
+	body: RunMigrationBody,
+	handler: async (c) => {
+		const ctx = c.get("ctx");
+		const {
+			id,
+			dry_run: dryRun,
+			limit,
+			only,
+			retry_item_statuses: retryItemStatuses,
+			lazy_run: lazyRun,
+			send_webhooks: sendWebhooks,
+			webhook_concurrency: webhookConcurrency,
+		} = c.req.valid("json");
+
+		const migration = await migrationRepo.find({ ctx, id });
+
+		if (!migration.operations)
+			throw new RecaseError({
+				message: `Migration ${id} has no operations to run`,
+				code: ErrCode.InvalidRequest,
+				statusCode: 400,
+			});
+
+		if (lazyRun && LAZY_MIGRATION_RUNS_DISABLED) {
+			throw new RecaseError({
+				message: "Lazy migration runs are disabled.",
+				code: ErrCode.InvalidRequest,
+				statusCode: 400,
+			});
+		}
+
+		if (lazyRun && only && only.length > 0) {
+			throw new RecaseError({
+				message:
+					"Migration lazy_run cannot be combined with only. Run targeted customers without lazy_run.",
+				code: ErrCode.InvalidRequest,
+				statusCode: 400,
+			});
+		}
+
+		const isDev = process.env.NODE_ENV === "development";
+		const runInline = shouldRunMigrationInline();
+		let inlinePayload: RunMigrationPayload | undefined;
+		const { migrationRunId, triggerRunId } = await withMigrationRunClaim({
+			ctx,
+			migration,
+			dryRun,
+			lazyRun,
+			onlyIds: only,
+			targetLimit: limit,
+			claimed: async (migrationRunId) => {
+				if (lazyRun && !dryRun) {
+					await prepare({ ctx, migration, dryRun: false });
+				}
+				const payload: RunMigrationPayload = {
+					orgId: ctx.org.id,
+					env: ctx.env,
+					migrationId: id,
+					migrationRunId,
+					dryRun,
+					lazyRun,
+					controls: {
+						limit,
+						only,
+						retryItemStatuses,
+						webhooks: { sendWebhooks, webhookConcurrency },
+					},
+				};
+				if (runInline) {
+					inlinePayload = payload;
+					return {};
+				}
+				const handle = await runMigrationTask.trigger(payload, {
+					...getMigrationTriggerOptions({ isDev }),
+					tags: [migrationRunTag({ migrationRunId })],
+					// One live run per key: a second migration in the same org
+					// queues behind the first instead of racing it.
+					concurrencyKey: migrationRunConcurrencyKey({
+						orgId: ctx.org.id,
+						env: ctx.env,
+						dryRun,
+					}),
+				});
+				return { triggerRunId: handle.id };
+			},
+		});
+
+		if (inlinePayload) {
+			const payload = inlinePayload;
+			ctx.logger.warn(
+				"run-migration: trigger.dev not configured — running migration inline",
+				{ data: { migrationRunId } },
+			);
+			const inlineCtx = { ...ctx, insideTriggerTask: true };
+			void runMigrationInChunks({
+				ctx: inlineCtx,
+				migration,
+				migrationRunId: payload.migrationRunId,
+				dryRun: payload.dryRun,
+				lazyRun: payload.lazyRun,
+				controls: payload.controls,
+			}).catch((error) => {
+				ctx.logger.error("run-migration: inline execution failed", {
+					data: {
+						migrationRunId,
+						error: error instanceof Error ? error.message : String(error),
+					},
+				});
+			});
+		}
+
+		let publicAccessToken: string | undefined;
+		if (triggerRunId) {
+			try {
+				publicAccessToken = await auth.createPublicToken({
+					scopes: { read: { runs: [triggerRunId] } },
+					expirationTime: "1hr",
+				});
+			} catch {
+				ctx.logger.warn("run-migration: failed to create public access token");
+			}
+		}
+
+		return c.json({
+			migration_id: id,
+			dry_run: dryRun,
+			lazy_run: lazyRun,
+			concurrency: MIGRATION_RUN_CUSTOMER_CONCURRENCY,
+			run_id: migrationRunId,
+			trigger_run_id: triggerRunId,
+			public_access_token: publicAccessToken,
+		});
+	},
+});

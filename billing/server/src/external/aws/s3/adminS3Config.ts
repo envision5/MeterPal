@@ -1,0 +1,142 @@
+export const ADMIN_REQUEST_BLOCK_CONFIG_KEY = "admin/request-block-config.json";
+export const ADMIN_ROLLOUT_CONFIG_KEY = "admin/rollout-config.json";
+export const ADMIN_FEATURE_FLAGS_CONFIG_KEY = "admin/feature-flags-config.json";
+export const ADMIN_CUSTOMER_BLOCK_CONFIG_KEY =
+	"admin/customer-block-config.json";
+export const ADMIN_ORG_LIMITS_CONFIG_KEY = "admin/org-limits-config.json";
+export const ADMIN_RATE_LIMIT_OVERRIDES_CONFIG_KEY =
+	"admin/rate-limit-overrides-config.json";
+export const ADMIN_RATE_LIMIT_REDIS_ALLOWLIST_CONFIG_KEY =
+	"admin/rate-limit-redis-allowlist-config.json";
+export const ADMIN_AGENT_PROVISION_RATE_LIMIT_CONFIG_KEY =
+	"admin/agent-provision-rate-limit-config.json";
+export const ADMIN_REDIS_V2_CACHE_CONFIG_KEY =
+	"admin/redis-v2-cache-config.json";
+export const ADMIN_MAIN_REDIS_CACHE_CONFIG_KEY =
+	"admin/main-redis-cache-config.json";
+export const ADMIN_CACHE_V2_RAMP_CONFIG_KEY = "admin/cache-v2-ramp-config.json";
+export const ADMIN_JOB_QUEUE_CONFIG_KEY = "admin/job-queue-config.json";
+export const ADMIN_BATCH_RESET_CONFIG_KEY = "admin/batch-reset-config.json";
+export const ADMIN_RESET_JOB_CONFIG_KEY = "admin/reset-job-config.json";
+export const ADMIN_RESET_JOB_V2_CONFIG_KEY = "admin/reset-job-v2-config.json";
+export const ADMIN_MISCELLANEOUS_EDGE_CONFIG_KEY =
+	"admin/miscellaneous-edge-config.json";
+export const ADMIN_FULL_SUBJECT_GATE_CONFIG_KEY =
+	"admin/full-subject-gate-config.json";
+export const ADMIN_ASYNC_BALANCE_UPDATE_CONFIG_KEY =
+	"admin/async-balance-update-config.json";
+export const ADMIN_ASYNC_TRACK_CONFIG_KEY = "admin/async-track-config.json";
+export const ADMIN_EDGE_CONFIG_TIMESTAMP_KEY =
+	"admin/edge-config-timestamp.json";
+export const BLUE_GREEN_ACTIVE_SLOT_KEY = "admin/blue-green-active-slot.json";
+export const BLUE_GREEN_CRON_ACTIVE_SLOT_KEY =
+	"admin/blue-green-cron-active-slot.json";
+export const BLUE_GREEN_HEARTBEAT_KEY_PREFIX = "admin/blue-green-heartbeats";
+
+const bucket = process.env.S3_BUCKET || "autumn-prod-server";
+const region = process.env.S3_REGION || "us-east-2";
+
+export const getAdminS3Config = () => {
+	return {
+		bucket,
+		region,
+	};
+};
+
+export const getAdminEdgeConfigSources = () => ({
+	...getAdminS3Config(),
+	configs: [
+		{
+			id: "request-block",
+			label: "Request Blocking",
+			key: ADMIN_REQUEST_BLOCK_CONFIG_KEY,
+		},
+		{ id: "rollouts", label: "Rollouts", key: ADMIN_ROLLOUT_CONFIG_KEY },
+		{
+			id: "feature-flags",
+			label: "Feature Flags",
+			key: ADMIN_FEATURE_FLAGS_CONFIG_KEY,
+		},
+		{
+			id: "customer-block",
+			label: "Customer Blocking",
+			key: ADMIN_CUSTOMER_BLOCK_CONFIG_KEY,
+		},
+		{ id: "org-limits", label: "Org Limits", key: ADMIN_ORG_LIMITS_CONFIG_KEY },
+		{
+			id: "rate-limit-overrides",
+			label: "Rate Limit Overrides",
+			key: ADMIN_RATE_LIMIT_OVERRIDES_CONFIG_KEY,
+		},
+		{
+			id: "rate-limit-redis-allowlist",
+			label: "Rate Limit Redis Allowlist",
+			key: ADMIN_RATE_LIMIT_REDIS_ALLOWLIST_CONFIG_KEY,
+		},
+		{
+			id: "agent-provision-rate-limit",
+			label: "Agent Provision Rate Limit",
+			key: ADMIN_AGENT_PROVISION_RATE_LIMIT_CONFIG_KEY,
+		},
+		{
+			id: "redis-v2-cache",
+			label: "V2 Redis Instance",
+			key: ADMIN_REDIS_V2_CACHE_CONFIG_KEY,
+		},
+		{
+			id: "misc-redis",
+			label: "Misc Redis",
+			key: ADMIN_MAIN_REDIS_CACHE_CONFIG_KEY,
+		},
+		{
+			id: "cache-v2-ramp",
+			label: "Cache V2 Ramp",
+			key: ADMIN_CACHE_V2_RAMP_CONFIG_KEY,
+		},
+		{
+			id: "job-queues",
+			label: "Job Queues",
+			key: ADMIN_JOB_QUEUE_CONFIG_KEY,
+		},
+		{
+			id: "batch-resets",
+			label: "Lazy Batch Resets",
+			key: ADMIN_BATCH_RESET_CONFIG_KEY,
+		},
+		{
+			id: "reset-job",
+			label: "Reset Job",
+			key: ADMIN_RESET_JOB_CONFIG_KEY,
+		},
+		{
+			id: "reset-job-v2",
+			label: "Reset Job V2",
+			key: ADMIN_RESET_JOB_V2_CONFIG_KEY,
+		},
+		{
+			id: "miscellaneous",
+			label: "Miscellaneous",
+			key: ADMIN_MISCELLANEOUS_EDGE_CONFIG_KEY,
+		},
+		{
+			id: "full-subject-gate",
+			label: "FullSubject Concurrency Gate",
+			key: ADMIN_FULL_SUBJECT_GATE_CONFIG_KEY,
+		},
+		{
+			id: "async-balance-update",
+			label: "Async Balance Update",
+			key: ADMIN_ASYNC_BALANCE_UPDATE_CONFIG_KEY,
+		},
+		{
+			id: "async-track",
+			label: "Async Track",
+			key: ADMIN_ASYNC_TRACK_CONFIG_KEY,
+		},
+		{
+			id: "stripe-sync",
+			label: "Stripe Sync",
+			key: "admin/stripe-sync-config.json",
+		},
+	],
+});

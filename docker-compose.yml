@@ -1,0 +1,80 @@
+# docker-compose.yml
+#
+# One-command local stack for the LiteLLM + Autumn billing bridge.
+#
+#   docker compose up -d
+#
+# Brings up:
+#   - postgres-autumn  (Autumn billing DB)
+#   - postgres-litellm (LiteLLM proxy DB)
+#   - redis-autumn     (Autumn hot path)
+#   - redis-litellm    (LiteLLM spend counters)
+#
+# Then run:
+#   cd autumn && bun install && bun run db:migrate && bun run dev
+#   cd litellm && pip install -e . && litellm --config config.yaml
+
+version: "3.9"
+
+services:
+  postgres-autumn:
+    image: postgres:16-alpine
+    container_name: ai-billing-postgres-autumn
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: autumn
+      POSTGRES_PASSWORD: autumn_dev_only
+      POSTGRES_DB: autumn
+    ports:
+      - "5433:5432"
+    volumes:
+      - autumn_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U autumn -d autumn"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  postgres-litellm:
+    image: postgres:16-alpine
+    container_name: ai-billing-postgres-litellm
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: litellm
+      POSTGRES_PASSWORD: litellm_dev_only
+      POSTGRES_DB: litellm
+    ports:
+      - "5434:5432"
+    volumes:
+      - litellm_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U litellm -d litellm"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis-autumn:
+    image: redis:7-alpine
+    container_name: ai-billing-redis-autumn
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass autumn_dev_only
+    ports:
+      - "6380:6379"
+    volumes:
+      - autumn_redis:/data
+
+  redis-litellm:
+    image: redis:7-alpine
+    container_name: ai-billing-redis-litellm
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass litellm_dev_only
+    ports:
+      - "6381:6379"
+    volumes:
+      - litellm_redis:/data
+
+volumes:
+  autumn_pg:
+  litellm_pg:
+  autumn_redis:
+  litellm_redis:

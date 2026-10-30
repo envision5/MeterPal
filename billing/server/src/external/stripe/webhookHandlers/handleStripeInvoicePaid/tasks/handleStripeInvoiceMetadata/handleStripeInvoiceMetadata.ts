@@ -1,0 +1,75 @@
+import { MetadataType } from "@autumn/shared";
+import { handleInvoiceActionRequiredCompleted } from "@/external/stripe/webhookHandlers/handleStripeInvoicePaid/tasks/handleStripeInvoiceMetadata/handleInvoiceActionRequiredCompleted.js";
+import { handleInvoiceCheckoutPaid } from "@/external/stripe/webhookHandlers/handleStripeInvoicePaid/tasks/handleStripeInvoiceMetadata/handleInvoiceCheckoutPaid.js";
+import type { StripeWebhookContext } from "@/external/stripe/webhookMiddlewares/stripeWebhookContext.js";
+import { executeDeferredBillingPlan } from "@/internal/billing/v2/execute/executeDeferredBillingPlan.js";
+import type { AttachParams } from "@/internal/customers/cusProducts/AttachParams.js";
+import { deleteCachedFullCustomer } from "@/internal/customers/cusUtils/fullCustomerCacheUtils/deleteCachedFullCustomer.js";
+import { MetadataService } from "@/internal/metadata/MetadataService.js";
+import type { StripeInvoicePaidContext } from "../../setupStripeInvoicePaidContext.js";
+
+export const handleStripeInvoiceMetadata = async ({
+	ctx,
+	invoicePaidContext,
+}: {
+	ctx: StripeWebhookContext;
+	invoicePaidContext: StripeInvoicePaidContext;
+}) => {
+	const { stripeInvoice, stripeSubscription } = invoicePaidContext;
+	const metadataId = stripeInvoice.metadata?.autumn_metadata_id;
+
+	if (!metadataId) return;
+
+	const metadata = await MetadataService.get({
+		db: ctx.db,
+		id: metadataId,
+	});
+
+	if (!metadata) return;
+
+	// Handle deferred billing plan (v2 flow)
+	if (metadata.type === MetadataType.DeferredInvoice) {
+		await executeDeferredBillingPlan({
+			ctx,
+			metadata,
+			stripeSubscription,
+			stripeInvoice,
+		});
+		invoicePaidContext.results.appliedBillingPlan = true;
+
+		return;
+	}
+
+	// Legacy v1 flows below
+	const data = metadata.data as unknown as AttachParams;
+	const reqMatch =
+		data.org?.id === ctx.org.id && data.customer?.env === ctx.env;
+
+	if (!reqMatch) return;
+
+	if (metadata.type === MetadataType.InvoiceActionRequired) {
+		await handleInvoiceActionRequiredCompleted({
+			ctx,
+			stripeInvoice,
+			metadata,
+		});
+		invoicePaidContext.results.appliedBillingPlan = true;
+		await deleteCachedFullCustomer({
+			ctx,
+			customerId: data.customer.id ?? "",
+			source: "handleStripeInvoiceMetadata",
+		});
+		return;
+	}
+
+	await handleInvoiceCheckoutPaid({
+		ctx,
+		metadata,
+	});
+	invoicePaidContext.results.appliedBillingPlan = true;
+	await deleteCachedFullCustomer({
+		ctx,
+		customerId: data.customer.id ?? "",
+		source: "handleStripeInvoiceMetadata",
+	});
+};

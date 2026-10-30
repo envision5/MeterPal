@@ -1,0 +1,43 @@
+{
+	"name": "@autumn/scripts",
+	"version": "1.0.0",
+	"type": "module",
+	"private": true,
+	"scripts": {
+		"setup": "tsx setup/setup.js",
+		"setup-test": "tsx setup/setup-test.ts",
+		"replicate": "bun run db/replicate.ts",
+		"ts": "bunx tsgo --build --noEmit"
+	},
+	"dependencies": {
+		"@autumn/env": "workspace:*",
+		"@autumn/shared": "workspace:*",
+		"@aws-sdk/client-dynamodb": "^3.1095.0",
+		"@aws-sdk/client-s3": "^3.1017.0",
+		"@opentui/core": "^0.4.1",
+		"@opentui/react": "^0.4.1",
+		"@tinybirdco/sdk": "^0.0.69",
+		"@vercel/sandbox": "^2.2.1",
+		"chalk": "^5.3.0",
+		"dotenv": "^16.5.0",
+		"drizzle-orm": "catalog:",
+		"freestyle": "0.1.63",
+		"ink": "^6.6.0",
+		"inquirer": "^12.6.3",
+		"ioredis": "^5.10.0",
+		"modal": "^0.8.0",
+		"p-limit": "^7.2.0",
+		"pg": "8.20.0",
+		"playwright-core": "^1.58.2",
+		"react": "catalog:",
+		"stripe": "catalog:"
+	},
+	"devDependencies": {
+		"@types/bun": "1.3.14",
+		"@types/pg": "8.20.0",
+		"@types/react": "^19.2.1",
+		"@typescript/native-preview": "7.0.0-dev.20260511.1",
+		"tsx": "^4.19.2",
+		"typescript": "^5.7.3"
+	}
+}

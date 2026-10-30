@@ -1,0 +1,269 @@
+import {
+	type AutumnBillingPlan,
+	CusProductStatus,
+	cp,
+	type FullCusProduct,
+	findMainActiveCustomerProductByGroup,
+	isCustomerProductCanceling,
+	isCustomerProductRevertingTrial,
+	isFutureStartDate,
+	ms,
+	nullish,
+	type UpdateSubscriptionBillingContext,
+} from "@autumn/shared";
+import type { AutumnContext } from "@/honoUtils/HonoEnv";
+import { applyUncancelToPlan } from "@/internal/billing/v2/actions/updateSubscription/compute/cancel/applyUncancelToPlan";
+import { applyCancelPlan } from "./applyCancelPlan";
+import { computeCancelLineItems } from "./computeCancelLineItems";
+import { computeCancelUpdates } from "./computeCancelUpdates";
+import { computeCustomerProductToDelete } from "./computeCustomerProductToDelete";
+import { computeDefaultCustomerProduct } from "./computeDefaultCustomerProduct";
+import { computeEndOfCycleMs } from "./computeEndOfCycleMs";
+
+const computeScheduledAddOnsToDelete = ({
+	billingContext,
+}: {
+	billingContext: UpdateSubscriptionBillingContext;
+}): FullCusProduct[] => {
+	// Immediate main-plan cancellation invalidates future add-on phases in the same scope.
+	const { cancelAction, customerProduct, fullCustomer } = billingContext;
+	if (cancelAction !== "cancel_immediately") return [];
+	if (!cp(customerProduct).main().recurring().valid) return [];
+
+	const internalEntityId =
+		customerProduct.internal_entity_id ??
+		fullCustomer.entity?.internal_id ??
+		undefined;
+
+	return fullCustomer.customer_products.filter((candidateProduct) => {
+		if (candidateProduct.id === customerProduct.id) return false;
+
+		return cp(candidateProduct)
+			.addOn()
+			.scheduled()
+			.recurring()
+			.onEntity({ internalEntityId }).valid;
+	});
+};
+
+const shouldDeleteCustomerProductBeforeBillingStarts = ({
+	customerProduct,
+	currentEpochMs,
+}: {
+	customerProduct: FullCusProduct;
+	currentEpochMs: number;
+}): boolean => {
+	if (customerProduct.status === CusProductStatus.Scheduled) return true;
+
+	const hasStripeSchedule = (customerProduct.scheduled_ids?.length ?? 0) > 0;
+	const hasStripeSubscription =
+		(customerProduct.subscription_ids?.length ?? 0) > 0;
+
+	return (
+		hasStripeSchedule &&
+		!hasStripeSubscription &&
+		isFutureStartDate(customerProduct.starts_at, currentEpochMs)
+	);
+};
+
+// Schedule phases stamp the successor's start with second precision, so the two
+// timestamps can sit just under a second apart.
+const HANDOVER_TOLERANCE_MS = ms.seconds(1);
+
+/**
+ * The active plan is only ending so the scheduled one can take over — either
+ * cancelled into it, or handed off at a schedule phase boundary, which sets
+ * ended_at without ever marking the plan cancelled.
+ */
+const isEndingForHandover = ({
+	activeCustomerProduct,
+	scheduledCustomerProduct,
+}: {
+	activeCustomerProduct: FullCusProduct;
+	scheduledCustomerProduct: FullCusProduct;
+}) => {
+	if (isCustomerProductCanceling(activeCustomerProduct)) return true;
+
+	const endedAt = activeCustomerProduct.ended_at;
+	if (nullish(endedAt)) return false;
+
+	return (
+		Math.abs(endedAt - scheduledCustomerProduct.starts_at) <=
+		HANDOVER_TOLERANCE_MS
+	);
+};
+
+const computeScheduledCancelPlan = ({
+	billingContext,
+	plan,
+}: {
+	billingContext: UpdateSubscriptionBillingContext;
+	plan: AutumnBillingPlan;
+}): AutumnBillingPlan => {
+	const { customerProduct, fullCustomer } = billingContext;
+
+	const activeCustomerProduct = findMainActiveCustomerProductByGroup({
+		fullCus: fullCustomer,
+		productGroup: customerProduct.product.group,
+		internalEntityId: customerProduct.internal_entity_id ?? undefined,
+	});
+
+	const scheduledCancelPlan: AutumnBillingPlan = {
+		...plan,
+		updateCustomerProduct: undefined,
+		deleteCustomerProduct: customerProduct,
+	};
+
+	if (
+		!activeCustomerProduct ||
+		activeCustomerProduct.id === customerProduct.id ||
+		!isEndingForHandover({
+			activeCustomerProduct,
+			scheduledCustomerProduct: customerProduct,
+		})
+	) {
+		return scheduledCancelPlan;
+	}
+
+	return {
+		...scheduledCancelPlan,
+		updateCustomerProduct: {
+			customerProduct: activeCustomerProduct,
+			updates: {
+				canceled: false,
+				canceled_at: null,
+				ended_at: null,
+			},
+		},
+	};
+};
+
+/**
+ * When cancelling a revert trial, unpause the previous plan by adding
+ * an update to restore its status to Active.
+ */
+const applyRevertTrialUnpause = ({
+	billingContext,
+	plan,
+}: {
+	billingContext: UpdateSubscriptionBillingContext;
+	plan: AutumnBillingPlan;
+}): AutumnBillingPlan => {
+	const { customerProduct, fullCustomer } = billingContext;
+	const isRevertTrial = isCustomerProductRevertingTrial(customerProduct);
+	const hasPreviousProduct = !!customerProduct.previous_customer_product_id;
+
+	if (!isRevertTrial || !hasPreviousProduct) return plan;
+
+	const previousCusProduct = fullCustomer.customer_products.find(
+		(cp) => cp.id === customerProduct.previous_customer_product_id,
+	);
+
+	const canRestore = previousCusProduct?.status === CusProductStatus.Paused;
+
+	if (!canRestore) return plan;
+
+	return {
+		...plan,
+		updateCustomerProducts: [
+			...(plan.updateCustomerProducts ?? []),
+			{
+				customerProduct: previousCusProduct,
+				updates: { status: CusProductStatus.Active },
+			},
+		],
+	};
+};
+
+/**
+ * Computes and applies the cancel plan for a subscription.
+ *
+ * Handles two cancel actions:
+ * - 'cancel_end_of_cycle': Schedule cancellation at cycle end, insert scheduled default product
+ * - 'cancel_immediately': Cancel now, insert active default product
+ */
+export const computeCancelPlan = ({
+	ctx,
+	billingContext,
+	plan,
+}: {
+	ctx: AutumnContext;
+	billingContext: UpdateSubscriptionBillingContext;
+	plan: AutumnBillingPlan;
+}): AutumnBillingPlan => {
+	if (!billingContext.cancelAction) return plan;
+
+	if (billingContext.cancelAction === "uncancel") {
+		return applyUncancelToPlan({
+			billingContext,
+			plan,
+		});
+	}
+
+	if (
+		shouldDeleteCustomerProductBeforeBillingStarts({
+			customerProduct: billingContext.customerProduct,
+			currentEpochMs: billingContext.currentEpochMs,
+		})
+	) {
+		return computeScheduledCancelPlan({
+			billingContext,
+			plan,
+		});
+	}
+
+	// Step 1: Calculate when the subscription ends
+	const endOfCycleMs = computeEndOfCycleMs({ billingContext });
+
+	ctx.logger.debug(
+		`[computeCancelPlan] ${billingContext.cancelAction}: end of cycle at ${endOfCycleMs}`,
+	);
+
+	// Step 2: Build cancel updates for customer product
+	const cancelUpdates = computeCancelUpdates({ billingContext, endOfCycleMs });
+
+	// Step 3: Find existing scheduled products to delete
+	const productToDelete = computeCustomerProductToDelete({ billingContext });
+	const productsToDelete = computeScheduledAddOnsToDelete({ billingContext });
+
+	// Step 4: Create default product (if applicable)
+	// Skip when cancelling a revert trial — the previous plan will be restored instead.
+	const isRevertTrialCancel = isCustomerProductRevertingTrial(
+		billingContext.customerProduct,
+	);
+	const defaultCustomerProduct = isRevertTrialCancel
+		? undefined
+		: computeDefaultCustomerProduct({
+				ctx,
+				billingContext,
+				endOfCycleMs,
+				deletedCustomerProducts: [
+					...(productToDelete ? [productToDelete] : []),
+					...productsToDelete,
+				],
+			});
+
+	ctx.logger.debug(
+		`[computeCancelPlan] default customer product: ${defaultCustomerProduct?.product.name}`,
+	);
+
+	// Step 5: Compute prorated refund line items for immediate cancellation
+	const cancelLineItems = computeCancelLineItems({ ctx, billingContext });
+
+	// Apply all computed values to the plan
+	const cancelledPlan = applyCancelPlan({
+		plan,
+		cancelUpdates,
+		defaultCustomerProduct,
+		productToDelete,
+		productsToDelete,
+		cancelLineItems,
+		existingCustomerProduct: billingContext.customerProduct,
+	});
+
+	// If this is a revert trial being cancelled, unpause the previous plan
+	return applyRevertTrialUnpause({
+		billingContext,
+		plan: cancelledPlan,
+	});
+};

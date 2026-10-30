@@ -1,0 +1,153 @@
+import { member, organizations, Scopes, user } from "@autumn/shared";
+import {
+	and,
+	desc,
+	eq,
+	gt,
+	gte,
+	ilike,
+	inArray,
+	isNotNull,
+	isNull,
+	lt,
+	or,
+} from "drizzle-orm";
+import { createRoute } from "../../honoMiddlewares/routeHandler";
+import { getRequestBlockConfigFromSource } from "../misc/requestBlocks/requestBlockStore.js";
+
+export const handleListAdminOrgs = createRoute({
+	scopes: [Scopes.Superuser],
+	handler: async (c) => {
+		const ctx = c.get("ctx");
+		const { db } = ctx;
+
+		const {
+			search,
+			platform,
+			after: afterQuery,
+			before: beforeQuery,
+		} = c.req.query();
+		const trimmedSearch = search?.trim();
+		const searchTerm = trimmedSearch ? trimmedSearch : undefined;
+		const isPlatformSearch = String(platform) === "true";
+
+		let after:
+			| {
+					id: string;
+					createdAt: Date;
+			  }
+			| undefined;
+		let before:
+			| {
+					id: string;
+					createdAt: Date;
+			  }
+			| undefined;
+
+		if (afterQuery) {
+			after = {
+				id: afterQuery.split(",")[0],
+				createdAt: new Date(afterQuery.split(",")[1]),
+			};
+		} else if (beforeQuery) {
+			before = {
+				id: beforeQuery.split(",")[0],
+				createdAt: new Date(beforeQuery.split(",")[1]),
+			};
+		}
+
+		const orgs = await db
+			.select()
+			.from(organizations)
+			.where(
+				and(
+					isPlatformSearch
+						? isNotNull(organizations.created_by)
+						: isNull(organizations.created_by),
+					searchTerm
+						? or(
+								eq(organizations.id, searchTerm),
+								ilike(organizations.name, `%${searchTerm}%`),
+								ilike(organizations.slug, `%${searchTerm}%`),
+							)
+						: undefined,
+					after
+						? or(
+								lt(organizations.createdAt, after.createdAt),
+								or(
+									and(
+										eq(organizations.createdAt, after.createdAt),
+										lt(organizations.id, after.id),
+									),
+								),
+							)
+						: undefined,
+					before
+						? or(
+								gte(organizations.createdAt, before.createdAt),
+								or(
+									and(
+										eq(organizations.createdAt, before.createdAt),
+										gt(organizations.id, before.id),
+									),
+								),
+							)
+						: undefined,
+				),
+			)
+			.orderBy(desc(organizations.createdAt), desc(organizations.id))
+			.limit(21);
+
+		const orgIds = orgs.map((org) => org.id);
+		let requestBlockConfig = {
+			orgs: {} as Record<
+				string,
+				{ blockAll: boolean; blockedEndpoints: unknown[] }
+			>,
+		};
+
+		try {
+			requestBlockConfig = await getRequestBlockConfigFromSource();
+		} catch {
+			// Admin list should still render even if S3 is unavailable.
+		}
+
+		const memberships = await db
+			.select()
+			.from(member)
+			.leftJoin(user, eq(member.userId, user.id))
+			.where(inArray(member.organizationId, orgIds));
+
+		return c.json({
+			rows: orgs.slice(0, 20).map((org) => {
+				// claim_token_hash never leaves the server — the admin list only needs
+				// claim_state to flag orgs an agent provisioned but nobody claimed yet.
+				const {
+					redis_config: rawRedisConfig,
+					claim_token_hash: _claimTokenHash,
+					...rest
+				} = org;
+				return {
+					...rest,
+					// Redact encrypted connection string from admin list — UI only
+					// needs host + percent for the table column.
+					redis_config: rawRedisConfig
+						? {
+								url: rawRedisConfig.url,
+								migrationPercent: rawRedisConfig.migrationPercent,
+							}
+						: null,
+					users: memberships
+						.filter((membership) => membership.member.organizationId === org.id)
+						.map((membership) => membership.user),
+					requestBlockSummary: {
+						blockAll: requestBlockConfig.orgs[org.id]?.blockAll ?? false,
+						ruleCount:
+							requestBlockConfig.orgs[org.id]?.blockedEndpoints.length ?? 0,
+					},
+				};
+			}),
+			hasNextPage: orgs.length > 20,
+		});
+	},
+});

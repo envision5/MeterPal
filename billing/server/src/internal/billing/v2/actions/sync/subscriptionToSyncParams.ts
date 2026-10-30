@@ -1,0 +1,163 @@
+import {
+	type FullCusProduct,
+	type FullProduct,
+	type SyncParamsV1,
+	type SyncPhase,
+	type SyncPlanInstance,
+	secondsToMs,
+} from "@autumn/shared";
+import type Stripe from "stripe";
+import { createStripeCli } from "@/external/connect/createStripeCli";
+import { getStripeActiveSubscriptionSchedule } from "@/external/stripe/subscriptionSchedules";
+import { stripeSubscriptionToScheduleId } from "@/external/stripe/subscriptions/utils/convertStripeSubscription";
+import type { AutumnContext } from "@/honoUtils/HonoEnv";
+import { fetchStripeSyncSubscription } from "@/internal/billing/v2/providers/stripe/utils/sync/fetchStripeSyncObjects";
+import { STRIPE_SYNC_SCHEDULE_EXPAND } from "@/internal/billing/v2/providers/stripe/utils/sync/stripeItemSnapshot/stripeSyncExpand";
+import { CusService } from "@/internal/customers/CusService";
+import { buildFeatureQuantities } from "./buildSyncParams/buildFeatureQuantities";
+import { detectSubscriptionMatch } from "./detect/detectSubscriptionMatch";
+import type {
+	ItemDiff,
+	MatchedPlan,
+	PhaseMatch,
+	SubscriptionMatch,
+} from "./detect/types";
+import { stampEntityFromExistingLinks } from "./scope/stampEntityFromExistingLinks";
+
+const matchedPlanToSyncPlan = ({
+	matchedPlan,
+	itemDiffs,
+}: {
+	matchedPlan: MatchedPlan;
+	itemDiffs: ItemDiff[];
+}): SyncPlanInstance => {
+	const featureQuantities = buildFeatureQuantities({ matchedPlan, itemDiffs });
+	// Licenses whose Stripe item carries a non-catalog price sync as custom
+	// definitions via customize.upsert_licenses (same semantics as attach).
+	const upsertLicenses = matchedPlan.licenses?.flatMap(
+		({ license_plan_id, customize }) =>
+			customize ? [{ license_plan_id, customize }] : [],
+	);
+	const customize = upsertLicenses?.length
+		? { ...matchedPlan.customize, upsert_licenses: upsertLicenses }
+		: matchedPlan.customize;
+	return {
+		plan_id: matchedPlan.product.id,
+		version: matchedPlan.product.version,
+		quantity: matchedPlan.quantity,
+		customize,
+		expire_previous: true,
+		feature_quantities:
+			featureQuantities.length > 0 ? featureQuantities : undefined,
+		license_quantities: matchedPlan.licenses?.map(
+			({ license_plan_id, quantity }) => ({ license_plan_id, quantity }),
+		),
+	};
+};
+
+const phaseMatchToSyncPhase = ({
+	phaseMatch,
+}: {
+	phaseMatch: PhaseMatch;
+}): SyncPhase => ({
+	// PhaseMatch.start_date is Stripe-native (seconds). SyncPhase.starts_at
+	// is ms epoch (or the "now" sentinel for the immediate phase).
+	starts_at: phaseMatch.is_current ? "now" : secondsToMs(phaseMatch.start_date),
+	plans: phaseMatch.plans.map((matchedPlan) =>
+		matchedPlanToSyncPlan({
+			matchedPlan,
+			itemDiffs: phaseMatch.item_diffs,
+		}),
+	),
+});
+
+/**
+ * Run subscription detection and shape the result into a `SyncParamsV1`
+ * draft. Returns BOTH the raw `SubscriptionMatch` (for eligibility checks
+ * and proposal display extras) and the derived params.
+ *
+ * Single canonical path used by:
+ *   - `syncProposalsV2` — surfaces `params` to the dashboard for editing
+ *   - `autoSyncFromSubscription` — feeds `params` into `syncV2` when
+ *     `canAutoSync` says yes.
+ */
+export const subscriptionToSyncParams = async ({
+	ctx,
+	customerId,
+	subscription,
+	schedule,
+	customerProducts,
+	fullProducts,
+}: {
+	ctx: AutumnContext;
+	customerId: string;
+	subscription?: Stripe.Subscription;
+	/** Optional pre-fetched schedule. When omitted and `subscription` references
+	 * a schedule, it's fetched with schedule item prices expanded. */
+	schedule?: Stripe.SubscriptionSchedule;
+	/** Optional pre-fetched customer products (callers that already loaded the
+	 * full customer pass these to avoid a redundant fetch). Used to restore the
+	 * entity binding of products already linked to this subscription. */
+	customerProducts?: FullCusProduct[];
+	/** Optional pre-fetched catalog, forwarded to detection (callers matching
+	 * many subscriptions pass this to avoid a per-call fetch). */
+	fullProducts?: FullProduct[];
+}): Promise<{
+	match: SubscriptionMatch;
+	params: SyncParamsV1;
+	schedule: Stripe.SubscriptionSchedule | null;
+}> => {
+	const stripeCli = createStripeCli({ org: ctx.org, env: ctx.env });
+	const resolvedSubscription =
+		(await fetchStripeSyncSubscription({
+			stripeCli,
+			subscriptionId: subscription?.id,
+		})) ?? undefined;
+	const needsCustomer = customerProducts === undefined || !resolvedSubscription;
+	const fullCustomer = needsCustomer
+		? await CusService.getFull({ ctx, idOrInternalId: customerId })
+		: undefined;
+	const resolvedCustomerProducts =
+		customerProducts ?? fullCustomer?.customer_products ?? [];
+
+	let resolvedSchedule = schedule;
+	if (!resolvedSchedule) {
+		const scheduleId = stripeSubscriptionToScheduleId({
+			stripeSubscription: resolvedSubscription,
+		});
+		if (scheduleId) {
+			resolvedSchedule = await getStripeActiveSubscriptionSchedule({
+				stripeClient: stripeCli,
+				subscriptionScheduleId: scheduleId,
+				expand: STRIPE_SYNC_SCHEDULE_EXPAND,
+			});
+		}
+	}
+
+	const match = await detectSubscriptionMatch({
+		ctx,
+		subscription: resolvedSubscription,
+		schedule: resolvedSchedule,
+		billingCurrency: fullCustomer?.currency,
+		fullProducts,
+	});
+
+	const detectedPhases: SyncPhase[] = match.phaseMatches
+		.filter((phase) => phase.plans.length > 0)
+		.map((phaseMatch) => phaseMatchToSyncPhase({ phaseMatch }));
+
+	const phases = stampEntityFromExistingLinks({
+		phases: detectedPhases,
+		subscription: resolvedSubscription,
+		customerProducts: resolvedCustomerProducts,
+	});
+
+	const params: SyncParamsV1 = {
+		customer_id: customerId,
+		stripe_subscription_id: resolvedSubscription?.id,
+		stripe_schedule_id: match.stripe_schedule_id ?? undefined,
+		phases,
+	};
+
+	return { match, params, schedule: resolvedSchedule ?? null };
+};

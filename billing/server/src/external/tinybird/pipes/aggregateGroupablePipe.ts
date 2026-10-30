@@ -1,0 +1,70 @@
+import type { Tinybird } from "@chronark/zod-bird";
+import { z } from "../tinybirdZod.js";
+
+/** Response schema for the aggregate_groupable pipe */
+export const aggregateGroupablePipeResponseSchema = z.object({
+	period: z.string(),
+	event_name: z.string(),
+	group_value: z.string(),
+	total_value: z.number(),
+	// Optional: deployments predating the count column omit it, and the
+	// completeness check degrades to a sum-only comparison when absent.
+	event_count: z.number().optional(),
+	_truncated: z
+		.union([z.boolean(), z.number()])
+		.transform((v) => Boolean(v))
+		.optional(),
+});
+
+export type AggregateGroupablePipeRow = z.infer<
+	typeof aggregateGroupablePipeResponseSchema
+>;
+
+/** Parameters schema for the aggregate_groupable pipe */
+export const aggregateGroupablePipeParamsSchema = z.object({
+	org_id: z.string(),
+	env: z.string(),
+	event_names: z.array(z.string()),
+	start_date: z.string(),
+	end_date: z.string(),
+	bin_size: z.string(),
+	timezone: z.string(),
+	customer_id: z.string().optional(),
+	entity_id: z.string().optional(),
+	group_column: z
+		.enum(["property", "customer_id", "entity_id", "plan_id"])
+		.default("property"),
+	property_key: z.string().optional(), // the property name without 'properties.' prefix (not needed when group_column is "customer_id" or "entity_id")
+	filter_key_0: z.string().optional(),
+	filter_value_0: z.string().optional(),
+	filter_key_1: z.string().optional(),
+	filter_value_1: z.string().optional(),
+	filter_key_2: z.string().optional(),
+	filter_value_2: z.string().optional(),
+	filter_key_3: z.string().optional(),
+	filter_value_3: z.string().optional(),
+	filter_key_4: z.string().optional(),
+	filter_value_4: z.string().optional(),
+	max_groups: z.number().int().min(1).max(250).optional(),
+	use_daily_rollup: z.enum(["0", "1"]).optional(),
+	// UTC month bins over a window with at least one complete calendar month:
+	// complete months come from the monthly rollups, the partial edges stay hourly.
+	use_monthly_rollup: z.enum(["0", "1"]).optional(),
+	use_org_dimension_rollup: z.enum(["0", "1"]).optional(),
+	use_org_property_rollup: z.enum(["0", "1"]).optional(),
+	// "1" forces the ungated events_hourly_mv path when the property key is
+	// absent from events_property_mv (its value-shape gate drops UUID values)
+	skip_property_rollup: z.enum(["0", "1"]).optional(),
+});
+
+export type AggregateGroupablePipeParams = z.infer<
+	typeof aggregateGroupablePipeParamsSchema
+>;
+
+/** Creates the aggregate_groupable pipe caller */
+export const createAggregateGroupablePipe = (tb: Tinybird) =>
+	tb.buildPipe({
+		pipe: "aggregate_groupable",
+		parameters: aggregateGroupablePipeParamsSchema,
+		data: aggregateGroupablePipeResponseSchema,
+	});

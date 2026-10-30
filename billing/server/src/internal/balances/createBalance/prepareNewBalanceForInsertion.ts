@@ -1,0 +1,108 @@
+import {
+	apiPlanItem,
+	type CreateBalanceParamsV0,
+	type CustomerEntitlement,
+	createBalanceParamsV0ToPlanItemV0,
+	type Entitlement,
+	enrichEntitlementWithFeature,
+	type Feature,
+	type FullCustomer,
+	fullCustomerToCustomerEntitlements,
+} from "@autumn/shared";
+import type { AutumnContext } from "@/honoUtils/HonoEnv";
+import { validateInvoiceCreditBalanceMutationForFeature } from "@/internal/balances/utils/validateInvoiceCreditBalanceMutation.js";
+import { initCustomerEntitlement } from "@/internal/billing/v2/utils/initFullCustomerProduct/initCustomerEntitlement/initCustomerEntitlement";
+import { toFeature } from "@/internal/products/product-items/productItemUtils/itemToPriceAndEnt";
+
+export const prepareNewBalanceForInsertion = async ({
+	ctx,
+	fullCustomer,
+	feature,
+	params,
+}: {
+	ctx: AutumnContext;
+	feature: Feature;
+	fullCustomer: FullCustomer;
+	params: CreateBalanceParamsV0;
+}): Promise<{
+	newEntitlement: Entitlement;
+	newCustomerEntitlement: CustomerEntitlement;
+}> => {
+	validateInvoiceCreditBalanceMutationForFeature({
+		customerEntitlements: fullCustomerToCustomerEntitlements({
+			fullCustomer,
+			featureId: feature.id,
+		}),
+		featureId: feature.id,
+	});
+
+	const planItem = createBalanceParamsV0ToPlanItemV0({
+		ctx,
+		params,
+	});
+
+	const inputAsItem = apiPlanItem.map.v0ToProductItem({
+		ctx,
+		planItem,
+	});
+
+	const { ent: newEntitlement } = toFeature({
+		item: inputAsItem,
+		orgId: ctx.org.id,
+		isCustom: true,
+		internalFeatureId: feature.internal_id!,
+	});
+
+	const entity = fullCustomer.entity;
+
+	// NOTE: We do NOT set entity_feature_id here. That field means "per-entity balances"
+	// (e.g., 10 messages per seat). For entity-scoped loose balances, we only set
+	// internal_entity_id on the cusEnt to scope the balance to a specific entity.
+
+	const newEntitlementWithFeature = enrichEntitlementWithFeature({
+		entitlement: newEntitlement,
+		feature,
+	});
+	const now = Date.now();
+
+	const newCustomerEntitlement = initCustomerEntitlement({
+		initContext: {
+			fullCustomer,
+			featureQuantities: [],
+			resetCycleAnchor: now,
+			freeTrial: null,
+			now,
+		},
+		entitlement: newEntitlementWithFeature,
+		cusProductId: null,
+	});
+
+	// If entity is provided, assign balance to entity instead of customer-level
+	if (entity) {
+		newCustomerEntitlement.internal_entity_id = entity.internal_id;
+	}
+
+	// Set expiry if provided (mutually exclusive with reset interval)
+	if (params.expires_at) {
+		newCustomerEntitlement.expires_at = params.expires_at ?? null;
+		// Clear next_reset_at since expiring entitlements don't reset
+		newCustomerEntitlement.next_reset_at = null;
+		newCustomerEntitlement.reset_cycle_anchor = null;
+	}
+
+	// Apply an explicit first reset boundary if provided. This overrides the
+	// derived next_reset_at (and the null set above when expires_at is present),
+	// allowing a custom first period that resets up until expiry.
+	if (params.next_reset_at !== undefined) {
+		newCustomerEntitlement.next_reset_at = params.next_reset_at;
+	}
+
+	if (params.balance_id) {
+		newCustomerEntitlement.external_id = params.balance_id;
+	}
+
+	return {
+		newEntitlement,
+		newCustomerEntitlement,
+	};
+};

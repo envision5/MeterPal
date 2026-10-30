@@ -1,0 +1,29 @@
+# Preload env override for all bun runs (from workspace root)
+preload = ["./scripts/preload-env.ts"]
+
+[loader]
+".lua" = "text"
+
+[test]
+preload = ["./scripts/preload-env.ts", "./server/tests/setup-integration-tests.ts"]
+timeout = 0
+
+[test.env]
+NODE_ENV = "test"
+
+[install]
+# Only install package versions published at least 3 days ago
+minimumReleaseAge = 259200 # seconds
+# Newly released dependencies we intentionally pin; exempt from the age gate.
+minimumReleaseAgeExcludes = [
+	"ai",
+	"eve",
+	"@ai-sdk/harness",
+	"@ai-sdk/harness-claude-code",
+	"@ai-sdk/sandbox-vercel",
+	"@ai-sdk/provider-utils",
+	"@ai-sdk/gateway",
+	"@vercel/sandbox",
+	"drizzle-orm",
+	"scraps-ui",
+]

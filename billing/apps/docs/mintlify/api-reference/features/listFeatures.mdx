@@ -1,0 +1,219 @@
+---
+title: "List Features"
+openapi: "openapi POST /v1/features.list"
+---
+
+import { DynamicParamField } from "/snippets/dynamic-param-field.jsx";
+import { DynamicResponseField } from "/snippets/dynamic-response-field.jsx";
+import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
+
+
+### Response
+
+<DynamicResponseField name="list" type="object[]">
+  <Expandable title="properties">
+    <DynamicResponseField name="id" type="string">
+      The unique identifier for this feature, used in /check and /track calls.
+    </DynamicResponseField>
+
+    <DynamicResponseField name="name" type="string">
+      Human-readable name displayed in the dashboard and billing UI.
+    </DynamicResponseField>
+
+    <DynamicResponseField name="type" type="'boolean' | 'metered' | 'credit_system' | 'ai_credit_system'">
+      Feature type: 'boolean' for on/off access, 'metered' for usage-tracked features, 'credit_system' for unified credit pools, 'ai_credit_system' for model-based token pricing.
+    </DynamicResponseField>
+
+    <DynamicResponseField name="consumable" type="boolean">
+      For metered features: true if usage resets periodically (API calls, credits), false if allocated persistently (seats, storage).
+    </DynamicResponseField>
+
+    <DynamicResponseField name="event_names" type="string[]">
+      Event names that trigger this feature's balance. Allows multiple features to respond to a single event.
+    </DynamicResponseField>
+
+    <DynamicResponseField name="credit_schema" type="object | object | object[]">
+      For classic credit systems: maps metered features to flat or graduated credit costs.
+      <Expandable title="properties">
+        <DynamicResponseField name="metered_feature_id" type="string | any">
+          ID of the metered feature that draws from this credit system.
+        </DynamicResponseField>
+
+        <DynamicResponseField name="billing_units" type="number">
+          Number of metered-feature units priced together. Defaults to one when omitted.
+        </DynamicResponseField>
+
+        <DynamicResponseField name="dimensions.{key}" type="object">
+          Named rates chosen by event properties. The most specific match sets the rate; with no match the item's own rate applies.
+          <Expandable title="properties">
+            <DynamicResponseField name="match.{key}" type="string">
+              Event properties this entry applies to. Every key must equal the tracked property, compared as strings.
+            </DynamicResponseField>
+
+            <DynamicResponseField name="priority" type="integer">
+              Breaks ties between dimensions that match the same number of keys. Higher wins.
+            </DynamicResponseField>
+
+            <DynamicResponseField name="tier_behavior" type="any" />
+
+            <DynamicResponseField name="tiers" type="object[]">
+              <Expandable title="properties">
+                <DynamicResponseField name="to" type="number">
+                  Inclusive upper usage boundary for this graduated tier. The final tier must be 'inf'.
+                </DynamicResponseField>
+
+                <DynamicResponseField name="credit_cost" type="number">
+                  Credits consumed per billing-unit group within this tier.
+                </DynamicResponseField>
+
+              </Expandable>
+            </DynamicResponseField>
+
+          </Expandable>
+        </DynamicResponseField>
+
+        <DynamicResponseField name="multipliers.{key}" type="object">
+          Named adjustments chosen by event properties. Every match applies: factors multiply, then adds are summed.
+          <Expandable title="properties">
+            <DynamicResponseField name="match.{key}" type="string">
+              Event properties this entry applies to. Every key must equal the tracked property, compared as strings.
+            </DynamicResponseField>
+
+            <DynamicResponseField name="factor" type="number">
+              Multiplies the matched rate. All matching multipliers stack.
+            </DynamicResponseField>
+
+            <DynamicResponseField name="add" type="number">
+              Added to the rate after every factor is applied, in credits per billing-unit group.
+            </DynamicResponseField>
+
+          </Expandable>
+        </DynamicResponseField>
+
+        <DynamicResponseField name="tier_behavior" type="any" />
+
+        <DynamicResponseField name="tiers" type="object[]">
+          <Expandable title="properties">
+            <DynamicResponseField name="to" type="number">
+              Inclusive upper usage boundary for this graduated tier. The final tier must be 'inf'.
+            </DynamicResponseField>
+
+            <DynamicResponseField name="credit_cost" type="number">
+              Credits consumed per billing-unit group within this tier.
+            </DynamicResponseField>
+
+          </Expandable>
+        </DynamicResponseField>
+
+        <DynamicResponseField name="credit_cost" type="number">
+          Credits consumed per billing-unit group.
+        </DynamicResponseField>
+
+      </Expandable>
+    </DynamicResponseField>
+
+    <DynamicResponseField name="model_markups.{key}" type="object | null">
+      Per-model markup overrides for AI credit systems.
+      <Expandable title="properties">
+        <DynamicResponseField name="markup" type="number" />
+
+        <DynamicResponseField name="input_cost" type="number" />
+
+        <DynamicResponseField name="output_cost" type="number" />
+
+      </Expandable>
+    </DynamicResponseField>
+
+    <DynamicResponseField name="default_markup" type="number">
+      Default percentage markup for AI credit systems. Use -100 to make usage free.
+    </DynamicResponseField>
+
+    <DynamicResponseField name="provider_markups.{key}" type="object | null">
+      Per-provider default markup percentages for AI credit systems.
+      <Expandable title="properties">
+        <DynamicResponseField name="markup" type="number" />
+
+      </Expandable>
+    </DynamicResponseField>
+
+    <DynamicResponseField name="display" type="object">
+      Display names for the feature in billing UI and customer-facing components.
+      <Expandable title="properties">
+        <DynamicResponseField name="singular" type="string | null">
+          Singular form for UI display (e.g., 'API call', 'seat').
+        </DynamicResponseField>
+
+        <DynamicResponseField name="plural" type="string | null">
+          Plural form for UI display (e.g., 'API calls', 'seats').
+        </DynamicResponseField>
+
+      </Expandable>
+    </DynamicResponseField>
+
+    <DynamicResponseField name="archived" type="boolean">
+      Whether the feature is archived and hidden from the dashboard.
+    </DynamicResponseField>
+
+    <DynamicResponseField name="processors" type="object">
+      Processor mappings for this feature. Present when a Stripe product or meter is set.
+      <Expandable title="properties">
+        <DynamicResponseField name="stripe" type="object">
+          <Expandable title="properties">
+            <DynamicResponseField name="product_id" type="string">
+              Stripe product ID this feature's usage prices bill under.
+            </DynamicResponseField>
+
+            <DynamicResponseField name="meter_id" type="string">
+              Stripe meter ID used to create this feature's metered price.
+            </DynamicResponseField>
+
+          </Expandable>
+        </DynamicResponseField>
+
+      </Expandable>
+    </DynamicResponseField>
+
+  </Expandable>
+</DynamicResponseField>
+
+
+<ResponseExample>
+```json 200
+{
+  "list": [
+    {
+      "id": "api-calls",
+      "name": "API Calls",
+      "type": "metered",
+      "consumable": true,
+      "archived": false,
+      "display": {
+        "singular": "API call",
+        "plural": "API calls"
+      }
+    },
+    {
+      "id": "credits",
+      "name": "Credits",
+      "type": "credit_system",
+      "consumable": true,
+      "archived": false,
+      "credit_schema": [
+        {
+          "metered_feature_id": "api-calls",
+          "credit_cost": 1
+        },
+        {
+          "metered_feature_id": "image-generations",
+          "credit_cost": 10
+        }
+      ],
+      "display": {
+        "singular": "credit",
+        "plural": "credits"
+      }
+    }
+  ]
+}
+```
+</ResponseExample>

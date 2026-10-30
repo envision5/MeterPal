@@ -1,0 +1,17 @@
+set -e
+
+# The Infisical CLI is a system binary (brew), not a node_modules one — `bun
+# infisical` cannot resolve it and fails the whole hook.
+infisical scan git-changes --staged --redact --verbose --silent --telemetry=false
+
+changed_files="$(git diff --cached --name-only)"
+
+bunx turbo run knip
+
+if printf '%s\n' "$changed_files" | grep -q '^server/'; then
+	bunx turbo run ts --filter=@autumn/server
+fi
+
+if printf '%s\n' "$changed_files" | grep -q '^vite/'; then
+	bunx turbo run ts --filter=@autumn/vite
+fi

@@ -1,0 +1,57 @@
+/**
+ * atmn crud/plans — default plan / auto enable
+ *
+ * One line of plans/atmn-v3/07_tests.md. [a, b] is a matrix looped INSIDE this file.
+ */
+
+import { expect, test } from "bun:test";
+import { configBody } from "@tests/utils/atmnUtils/baseConfigs.js";
+import { expectRoundTrip } from "@tests/utils/atmnUtils/expectRoundTrip.js";
+import { initAtmnScenario } from "@tests/utils/atmnUtils/initAtmnScenario.js";
+import { s } from "@tests/utils/testInitUtils/initScenario.js";
+import { uniqueTestId } from "../../../catalog-v2/utils/uniqueTestId.js";
+
+test.concurrent("default plan / auto enable", async () => {
+	const scenario = await initAtmnScenario({
+		setup: [
+			s.platform.create({ userEmail: `${uniqueTestId("atmn")}@autumn.test` }),
+		],
+		config: configBody({
+			plans: `
+		plan({
+			active: true,
+			planId: "starter",
+			name: "Starter",
+			versionSlug: "v1",
+			autoEnable: true,
+			items: [],
+		}),
+		plan({
+			active: true,
+			planId: "pro",
+			name: "Pro",
+			versionSlug: "v1",
+			price: { amount: 49, interval: "month" },
+			// A paid auto-enable plan needs a cardless trial to pass the default-plan rule.
+			freeTrial: { durationLength: 14, durationType: "day", cardRequired: false },
+			autoEnable: true,
+			items: [],
+		}),`,
+		}),
+	});
+
+	try {
+		const { freshFiles, freshWire } = await expectRoundTrip({ scenario });
+		const plans = freshWire.plans as Array<Record<string, unknown>>;
+		const starter = plans.find((plan) => plan.plan_id === "starter");
+		const pro = plans.find((plan) => plan.plan_id === "pro");
+		expect(starter).toEqual(expect.objectContaining({ auto_enable: true }));
+		expect(pro).toEqual(expect.objectContaining({ auto_enable: true }));
+		// The deprecated twin never reaches a fixture; the stated flag does.
+		const config = freshFiles.get("plans.ts") ?? "";
+		expect(config).not.toContain("isDefault");
+		expect(config.match(/autoEnable: true/g)).toHaveLength(2);
+	} finally {
+		scenario.cleanup();
+	}
+});

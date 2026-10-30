@@ -1,0 +1,143 @@
+{
+	"$schema": "https://unpkg.com/knip@6/schema.json",
+	"exclude": [
+		"dependencies",
+		"unlisted",
+		"unresolved",
+		"binaries",
+		"catalog",
+		"exports",
+		"types",
+		"enumMembers",
+		"duplicates"
+	],
+	"ignoreWorkspaces": [
+		"packages/atmn",
+		"packages/atmn-old",
+		"packages/atmn-generator",
+		"packages/autumn-js",
+		"packages/mcp",
+		"packages/openapi",
+		"packages/sdk"
+	],
+	"workspaces": {
+		".": {
+			"entry": ["apps/scope-picker/**/*", "trigger.config.ts"],
+			"project": ["apps/scope-picker/**/*"]
+		},
+		"server": {
+			"entry": [
+				"src/workers.ts",
+				"src/ducklake.ts",
+				"src/internal/customers/cusUtils/createNewCustomer.ts",
+				"src/utils/importUtils/addProductFromSubs.ts",
+				"src/utils/scriptUtils/readOnlyStripe.ts",
+				"src/utils/scriptUtils/scriptUtils.ts",
+				"src/utils/scriptUtils/getAll/getAllAutumnCustomers.ts",
+				"src/utils/scriptUtils/getAll/getAllOrgs.ts",
+				"src/internal/billing/v2/providers/stripe/utils/sync/**/*.ts",
+				"tests/**/*.ts"
+			],
+			"project": ["src/**/*.ts", "tests/**/*.ts"],
+			"ignoreDependencies": ["@react-email/components", "@axiomhq/pino"],
+			"ignore": [
+				"src/external/tinybird/connections/eventsS3.ts",
+				"src/external/connect/attachSandboxStripeAccount.ts",
+				"src/cron/resetCron/runClearExpiredResetCron.ts",
+				"src/external/stripe/common/simulateTestWebhookFailure.ts"
+			]
+		},
+		"shared": {
+			"entry": ["**/*.test.ts", "drizzle.config.events.ts"],
+			"project": ["**/*.ts", "!utils/**"],
+			"includeEntryExports": false
+		},
+		"vite": {
+			"entry": ["tests/**/*.{ts,tsx}", "src/**/*.test.{ts,tsx}"],
+			"project": ["src/**/*.{ts,tsx}", "tests/**/*.{ts,tsx}"],
+			"ignoreDependencies": [
+				"tailwindcss",
+				"tailwind-scrollbar-hide",
+				"tailwindcss-animate",
+				"@squircle/tailwindcss"
+			]
+		},
+		"scripts": {
+			"entry": ["**/*.{ts,js}"],
+			"project": ["**/*.{ts,js}"]
+		},
+		"apps/docs": {
+			"entry": ["**/*"],
+			"project": ["**/*.{ts,js,jsx}"]
+		},
+		"apps/sdk-test": {
+			"entry": ["app/**/*.{ts,tsx}", "lib/**/*.{ts,tsx}", "*.ts"],
+			"project": ["**/*.{ts,tsx}"]
+		},
+		"apps/website": {
+			"entry": [
+				"app/**/*.{ts,tsx,mdx}",
+				"components/**/*.{ts,tsx}",
+				"content/**/*.mdx",
+				"scripts/**/*.mjs",
+				"*.mjs"
+			],
+			"project": ["**/*.{ts,tsx,mdx,mjs}"]
+		},
+		"apps/checkout": {
+			"project": ["src/**/*.{ts,tsx}"],
+			"ignoreDependencies": ["shadcn", "tailwindcss", "tw-animate-css"]
+		},
+		"apps/leaf": {
+			"entry": ["tests/**/*.ts", "agent/**/*.ts"],
+			"project": ["src/**/*.ts", "tests/**/*.ts", "agent/**/*.ts"]
+		},
+		"packages/agent-docs": {
+			"entry": ["**/*.test.ts", "scripts/**/*.ts"],
+			"project": ["src/**/*.ts", "scripts/**/*.ts"]
+		},
+		"packages/ax-evals": {
+			"entry": [
+				"cases/**/*.eval.ts",
+				"tests/**/*.test.ts",
+				"src/grading/inspectWorkspaceConfigScript.ts"
+			],
+			"project": [
+				"src/**/*.ts",
+				"cases/**/*.ts",
+				"tests/**/*.ts"
+			]
+		},
+		"packages/gateway": {
+			"entry": ["tests/**/*.test.ts"],
+			"project": ["src/**/*.ts", "tests/**/*.ts"]
+		},
+		"packages/ksuid": {
+			"project": ["src/**/*.ts"]
+		},
+		"packages/stripe-sync": {
+			"entry": ["scripts/**/*.ts"],
+			"project": ["src/**/*.ts", "scripts/**/*.ts"]
+		},
+		"packages/ducklake": {
+			"entry": ["tests/**/*.test.ts"],
+			"project": ["src/**/*.ts", "tests/**/*.ts"]
+		},
+		"packages/render": {
+			"project": ["src/**/*.ts"]
+		},
+		"packages/env": {
+			"project": ["src/**/*.ts"],
+			"ignore": [
+				"src/index.test.ts",
+				"src/cloudAgent.test.ts",
+				"src/viteDev.test.ts"
+			]
+		},
+		"apps/testbench": {
+			"entry": ["**/*.ts"],
+			"project": ["**/*.ts"]
+		}
+	},
+	"ignoreBinaries": ["infisical", "lsof", "serve"]
+}

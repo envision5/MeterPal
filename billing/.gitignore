@@ -1,0 +1,197 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+vite-lfg/
+lfg/
+lfg
+vite-lfg
+/db/
+
+start.sh
+supabase.sh
+
+
+*.DS_Store
+
+**/certificates/
+**/node_modules/
+**/dist/
+**/.next/
+**/.vercel/
+**/.turbo/
+**/.DS_Store
+**/.env*
+tests/
+!server/tests
+!packages/ax-evals/tests
+!packages/mcp/tests
+!packages/gateway/tests
+!apps/leaf/tests
+!packages/render/tests
+!packages/ducklake/tests
+!vite/tests
+.secrets
+
+# **/.npmrc
+
+**/test.nnb
+**/scripts.nnb
+server/test.nnb
+server/src/test.nnb
+
+
+pull.sh
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# temporary files
+**/.tmp/
+.tmp/
+.atmn/
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+!.env.example
+
+# example env files
+!.env.example
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+*.rdb
+
+
+run.sh
+commands.sh
+env.sh
+server/env.sh
+server/run.sh
+server/test.sh
+
+.dev.vars
+
+
+
+
+
+
+migration.sh
+stat.sh
+
+
+interview
+# Allow root scripts folder
+!/scripts/
+# But ignore server scripts folder
+/server/scripts/
+
+credentials/
+server/chrome
+
+
+server/autumn.config.ts
+/autumn.config.ts
+/atmn/
+/planVersions/
+
+
+.tinyb
+
+# Speakeasy SDK logs
+**/.speakeasy/logs/
+
+# Speakeasy
+others/python-sdk/docs
+packages/sdk/docs
+
+TAKEHOME.md
+
+
+.openlogs
+
+
+# project context (personal working state)
+# .context/
+
+# ai-sync: generated files (source of truth is ai/)
+.pi-subagents/
+.cursor/*
+!.cursor/environment.json
+# Keep the cloud SessionStart hook; other local Claude files stay ignored.
+.claude/*
+!.claude/settings.json
+.codex/
+.agents/
+.mcp.json
+AGENTS.md
+
+server/.turbo
+
+.trigger
+.context
+.opencode/
+
+./AGENTS.md
+./CLAUDE.md
+
+notes.txt
+server/experiments/results/*
+!server/experiments/results/.gitkeep
+server/experiments/out/getFullSubject-*
+
+# Leaf contract fixtures are synced from private S3.
+apps/leaf/contracts/
+
+# Leaf harness (Claude Code) per-thread workspaces and config dirs.
+apps/leaf/.harness/
+
+# Leaf Eve generated runtime/build artifacts.
+apps/leaf/.eve/
+apps/leaf/.output/
+apps/leaf/.workflow-data/
+
+# Built sandbox runner bundle (produced by sandbox/buildRunner.ts).
+apps/leaf/src/harness/claudeCode/runner/runner.mjs
+
+# ax-evals per-run output (transcripts, generated configs). Can contain real
+# org keys from throwaway provisioning — never commit.
+packages/ax-evals/.artifacts/
+
+
+tmp/
+.env*.local
+.neon
+scripts/ops/.duckdb_export.sql
+scripts/ops/.backfill_neon_done
+
+# Experiment outputs (plans, benchmark JSON) — regenerated on demand
+server/experiments/*/out/

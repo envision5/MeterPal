@@ -1,0 +1,112 @@
+import type {
+	BillingPlan,
+	UpdateSubscriptionBillingContext,
+	UpdateSubscriptionV1Params,
+} from "@autumn/shared";
+import type { AutumnContext } from "@/honoUtils/HonoEnv";
+import { handleCancelEndOfCycleErrors } from "@/internal/billing/v2/actions/updateSubscription/errors/handleCancelEndOfCycleErrors";
+import { handleProrationBehaviorErrors } from "@/internal/billing/v2/common/errors/handleBillingBehaviorErrors";
+import { handleExternalPSPErrors } from "@/internal/billing/v2/common/errors/handleExternalPSPErrors";
+import { handleRevertTrialErrors } from "@/internal/billing/v2/common/errors/handleRevertTrialErrors";
+import { handleStripeBillingPlanErrors } from "@/internal/billing/v2/providers/stripe/errors/handleStripeBillingPlanErrors";
+import { computeFieldUpdates } from "../compute/computeFieldUpdates.js";
+import { handleCurrentCustomerProductErrors } from "./handleCurrentCustomerProductErrors.js";
+import { handleCustomPlanErrors } from "./handleCustomPlanErrors.js";
+import { handleManualTopUpErrors } from "./handleManualTopUpErrors.js";
+import {
+	checkTrialRemovalWithOneOffItems,
+	handleOneOffErrors,
+} from "./handleOneOffErrors.js";
+import { handleProductTypeTransitionErrors } from "./handleProductTypeTransitionErrors.js";
+import { handleUncancelErrors } from "./handleUncancelErrors.js";
+import { handleUpdateCheckoutErrors } from "./handleUpdateCheckoutErrors.js";
+import { handleUpdateSubscriptionBillingCycleAnchorErrors } from "./handleUpdateSubscriptionBillingCycleAnchorErrors.js";
+import { handleUpdateSubscriptionCustomLineItemsErrors } from "./handleUpdateSubscriptionCustomLineItemsErrors.js";
+import { handleUpdateSubscriptionLicenseErrors } from "./handleUpdateSubscriptionLicenseErrors.js";
+
+export const handleUpdateSubscriptionErrors = async ({
+	ctx,
+	billingContext,
+	billingPlan,
+	params,
+}: {
+	ctx: AutumnContext;
+	billingContext: UpdateSubscriptionBillingContext;
+	billingPlan: BillingPlan;
+	params: UpdateSubscriptionV1Params;
+}) => {
+	const { customerProduct } = billingContext;
+
+	const { autumn: autumnBillingPlan } = billingPlan;
+
+	// 1. External PSP errors (RevenueCat)
+	handleExternalPSPErrors({
+		customerProduct,
+		action: "update",
+		cancelAction: params.cancel_action,
+		noBillingChanges: params.no_billing_changes,
+		intent: billingContext.intent,
+		hasFieldUpdates: Object.keys(computeFieldUpdates({ params })).length > 0,
+	});
+
+	// 1. Current customer product errors
+	handleCurrentCustomerProductErrors({ billingContext });
+
+	handleRevertTrialErrors({
+		billingContext,
+		updatedCustomerProduct: customerProduct,
+	});
+
+	// 2. Product type transition errors
+	handleProductTypeTransitionErrors({ billingContext, autumnBillingPlan });
+
+	// // 3. Feature quantity errors (recurring prepaid prices must have options)
+	// handleFeatureQuantityErrors({
+	// 	autumnBillingPlan,
+	// });
+
+	// 4. Custom plan errors
+	handleCustomPlanErrors({ ctx, billingContext, autumnBillingPlan, params });
+
+	// 4b. License errors (quantity converge + plan restructure guards)
+	handleUpdateSubscriptionLicenseErrors({
+		billingContext,
+		params,
+	});
+
+	// 4b. Manual top-up strict-shape gate (must run before one-off check so it
+	// owns the "Update too complex" message for ManualTopUp requests).
+	handleManualTopUpErrors({ billingContext, params });
+	handleUpdateSubscriptionCustomLineItemsErrors({
+		billingContext,
+		billingPlan,
+		params,
+	});
+
+	// 5. One-off errors
+	handleOneOffErrors({ ctx, billingContext, autumnBillingPlan, params });
+
+	// 6. Trial removal with one-off items
+	checkTrialRemovalWithOneOffItems({ billingContext, autumnBillingPlan });
+
+	// 7. Cancel end of cycle errors
+	handleCancelEndOfCycleErrors({ billingContext, billingPlan });
+
+	// 8. Uncancel validation errors
+	handleUncancelErrors({ billingContext });
+
+	// 9. Proration behavior errors
+	handleProrationBehaviorErrors({
+		billingContext,
+		billingPlan,
+	});
+
+	// 10. Billing cycle anchor errors
+	handleUpdateSubscriptionBillingCycleAnchorErrors({ billingContext });
+
+	// 11. Update checkout errors
+	handleUpdateCheckoutErrors({ billingContext });
+
+	// 12. Stripe billing plan errors (validate Stripe resources)
+	handleStripeBillingPlanErrors({ ctx, billingContext, billingPlan });
+};

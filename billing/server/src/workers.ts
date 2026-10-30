@@ -1,0 +1,157 @@
+import "dotenv/config";
+import cluster from "node:cluster";
+import { getAutumnEnv } from "@autumn/env";
+
+import { initInfisical } from "./external/infisical/initInfisical.js";
+import { logger } from "./external/logtail/logtailUtils.js";
+import { awaitBoundedWarmup } from "./external/redis/initUtils/boundedWarmup.js";
+import {
+	startAllEdgeConfigPolling,
+	stopAllEdgeConfigPolling,
+} from "./internal/misc/edgeConfig/edgeConfigRegistry.js";
+import "./internal/misc/miscellaneousEdgeConfig/miscellaneousEdgeConfigStore.js";
+import "./internal/misc/asyncBalanceUpdate/asyncBalanceUpdateStore.js";
+import "./internal/misc/requestBlocks/requestBlockStore.js";
+import "./internal/misc/rollouts/rolloutConfigStore.js";
+import "./internal/misc/redisV2Cache/redisV2CacheStore.js";
+import "./internal/misc/miscRedisConfig/miscRedisConfigStore.js";
+import "./internal/misc/cacheV2Ramp/cacheV2RampStore.js";
+import "./internal/misc/jobQueues/jobQueueStore.js";
+import "./internal/misc/batchReset/batchResetConfigStore.js";
+import "./internal/misc/edgeConfig/orgLimitsStore.js";
+import "./internal/misc/rateLimiter/rateLimitOverridesStore.js";
+
+// Number of worker processes (defaults to CPU cores)
+const NUM_PROCESSES = process.env.NODE_ENV === "development" ? 3 : 4;
+
+// Track if we're shutting down
+let isShuttingDown = false;
+
+import { startMemoryMonitor } from "./utils/memoryMonitor.js";
+
+if (cluster.isPrimary) {
+	await initInfisical();
+	getAutumnEnv();
+
+	// const { initHatchetWorker } = await import("./queue/initWorkers.js");
+	// await initHatchetWorker();
+
+	console.log(`Starting ${NUM_PROCESSES} worker processes`);
+	console.log(`SQS URL: ${process.env.SQS_QUEUE_URL_V2}`);
+
+	// Fork workers
+	for (let i = 0; i < NUM_PROCESSES; i++) {
+		cluster.fork();
+	}
+
+	// Graceful shutdown handler for primary process
+	const shutdown = async () => {
+		if (isShuttingDown) return;
+		isShuttingDown = true;
+
+		console.log(
+			"\n🛑 Received shutdown signal, gracefully shutting down workers...",
+		);
+
+		// Send SIGTERM to all workers
+		for (const id in cluster.workers) {
+			cluster.workers[id]?.kill("SIGTERM");
+		}
+
+		// Give workers 10 seconds to finish, then force exit
+		const shutdownTimeout = setTimeout(() => {
+			console.log("⚠️  Shutdown timeout reached, forcing exit");
+			process.exit(0);
+		}, 10000);
+
+		if (shutdownTimeout.unref) {
+			shutdownTimeout.unref();
+		}
+
+		// Wait for all workers to exit gracefully
+		const checkWorkers = setInterval(() => {
+			const aliveWorkers = Object.keys(cluster.workers || {}).length;
+			if (aliveWorkers === 0) {
+				clearInterval(checkWorkers);
+				clearTimeout(shutdownTimeout);
+				console.log("✅ All workers shut down gracefully");
+				process.exit(0);
+			}
+		}, 100);
+	};
+
+	process.on("SIGTERM", shutdown);
+	process.on("SIGINT", shutdown);
+
+	// Handle worker exits
+	cluster.on("exit", (worker, code, signal) => {
+		if (isShuttingDown) {
+			console.log(`[Worker ${worker.process.pid}] Exited gracefully`);
+			return;
+		}
+
+		console.log(
+			`⚠️  Worker ${worker.process.pid} died unexpectedly (${signal || code}). Restarting...`,
+		);
+
+		if (process.env.NODE_ENV === "development") {
+			process.exit(1);
+		} else {
+			cluster.fork();
+		}
+	});
+} else {
+	getAutumnEnv();
+	// Worker process — start OTel SDK so child spans (Stripe/Redis/Drizzle/
+	// withSpan/withWorkerSpan) export to Axiom.
+	await import("./instrumentation.js");
+
+	const startupStartedAt = Date.now();
+	const queueImplementation = "SQS";
+	startMemoryMonitor("worker", 60_000);
+	await startAllEdgeConfigPolling({ logger });
+
+	const { db } = await import("./db/initDrizzle.js");
+	const { primeRedisMonitor } = await import(
+		"./external/redis/availabilityMonitor/redisAvailability.js"
+	);
+	const { primeRedisV2Monitor, startRedisV2Monitor, stopRedisV2Monitor } =
+		await import("./external/redis/availabilityMonitor/redisV2Availability.js");
+	const { startRedisMonitor, stopRedisMonitor, warmupRegionalRedis } =
+		await import("./external/redis/initRedis.js");
+	const { preWarmOrgRedisConnections } = await import(
+		"./external/redis/orgRedisPool.js"
+	);
+
+	// Each arm catches its own failure: a regional rejection must not
+	// short-circuit the wait for healthy dedicated org connections.
+	const redisWarmup = Promise.all([
+		warmupRegionalRedis().catch((error) => {
+			console.error("[Redis] regional warmup failed -", error);
+		}),
+		preWarmOrgRedisConnections({ db }).catch((error) => {
+			logger.warn("[OrgRedis] Warmup failed", { error });
+		}),
+	]);
+	void redisWarmup.catch(() => {});
+
+	await Promise.all([primeRedisMonitor(), primeRedisV2Monitor()]);
+	startRedisMonitor();
+	startRedisV2Monitor();
+
+	process.once("exit", () => {
+		stopAllEdgeConfigPolling();
+		stopRedisMonitor();
+		stopRedisV2Monitor();
+	});
+
+	await awaitBoundedWarmup({
+		warmup: redisWarmup,
+		timeoutMs: 10_000,
+		log: (message) => logger.warn(message),
+	});
+
+	const { initWorkers } = await import("./queue/initWorkers.js");
+	await initWorkers({ startupStartedAt, queueImplementation });
+	// SQS implementation handles its own SIGTERM/SIGINT
+}

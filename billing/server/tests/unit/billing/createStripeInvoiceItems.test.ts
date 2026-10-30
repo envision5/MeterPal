@@ -1,0 +1,100 @@
+import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test";
+
+const mockState = {
+	calls: [] as unknown[],
+	requestOptions: [] as unknown[],
+	inFlight: 0,
+	maxInFlight: 0,
+	resolvers: [] as Array<() => void>,
+};
+
+await mockModuleWithRestore("@/external/connect/createStripeCli", () => ({
+	createStripeCli: () => ({
+		invoiceItems: {
+			create: async (item: unknown, requestOptions: unknown) => {
+				mockState.calls.push(item);
+				mockState.requestOptions.push(requestOptions);
+				const callIndex = mockState.calls.length;
+				mockState.inFlight += 1;
+				mockState.maxInFlight = Math.max(
+					mockState.maxInFlight,
+					mockState.inFlight,
+				);
+
+				await new Promise<void>((resolve) => {
+					mockState.resolvers.push(resolve);
+				});
+
+				mockState.inFlight -= 1;
+				return { id: `ii_${callIndex}` };
+			},
+		},
+	}),
+}));
+
+import { createStripeInvoiceItems } from "@/internal/billing/v2/providers/stripe/utils/invoices/stripeInvoiceOps";
+
+import { mockModuleWithRestore } from "../utils/mockModuleWithRestore.js";
+
+describe("createStripeInvoiceItems", () => {
+	beforeEach(() => {
+		mockState.calls = [];
+		mockState.requestOptions = [];
+		mockState.inFlight = 0;
+		mockState.maxInFlight = 0;
+		mockState.resolvers = [];
+	});
+
+	test("creates invoice items concurrently", async () => {
+		const invoiceItems = [
+			{ customer: "cus_123", amount: 100 },
+			{ customer: "cus_123", amount: 200 },
+			{ customer: "cus_123", amount: 300 },
+		];
+
+		const resultPromise = createStripeInvoiceItems({
+			ctx: { org: { id: "org_123" }, env: "sandbox" } as never,
+			invoiceItems: invoiceItems as never,
+		});
+
+		await Promise.resolve();
+
+		expect(mockState.calls).toEqual(invoiceItems);
+		expect(mockState.maxInFlight).toBe(3);
+
+		for (const resolve of mockState.resolvers) {
+			resolve();
+		}
+		const results = await resultPromise;
+
+		expect(results.map((result) => result.id)).toEqual([
+			"ii_1",
+			"ii_2",
+			"ii_3",
+		]);
+	});
+
+	test("passes deterministic idempotency keys by invoice item position", async () => {
+		const resultPromise = createStripeInvoiceItems({
+			ctx: { org: { id: "org_123" }, env: "sandbox" } as never,
+			invoiceItems: [
+				{ customer: "cus_123", amount: 100 },
+				{ customer: "cus_123", amount: -100 },
+			] as never,
+			idempotencyKeys: ["invoice-credit:first", "invoice-credit:second"],
+		});
+
+		await Promise.resolve();
+		expect(mockState.requestOptions).toEqual([
+			{ idempotencyKey: "invoice-credit:first" },
+			{ idempotencyKey: "invoice-credit:second" },
+		]);
+
+		for (const resolve of mockState.resolvers) resolve();
+		await resultPromise;
+	});
+});
+
+afterAll(() => {
+	mock.restore();
+});

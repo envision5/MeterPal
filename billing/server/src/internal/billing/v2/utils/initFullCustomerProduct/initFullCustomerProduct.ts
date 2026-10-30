@@ -1,0 +1,107 @@
+import {
+	type BalanceTransitionPlan,
+	cp,
+	type FullCusProduct,
+	type InitFullCustomerProductContext,
+	type InitFullCustomerProductOptions,
+} from "@autumn/shared";
+import type { AutumnContext } from "@/honoUtils/HonoEnv";
+import { customerProductHasPaidLicenses } from "@/internal/billing/v2/utils/customerProductHasPaidLicenses.js";
+import { applyExistingStatesToCustomerProduct } from "@/internal/billing/v2/utils/initFullCustomerProduct/applyExisting/applyExistingStatesToCustomerProduct";
+import { generateId } from "@/utils/genUtils";
+import { initCustomerEntitlement } from "./initCustomerEntitlement/initCustomerEntitlement";
+import { initCustomerLicenses } from "./initCustomerLicenses/initCustomerLicenses";
+import { initCustomerPrice } from "./initCustomerPrice";
+import { initCustomerProduct } from "./initCustomerProduct";
+
+type InitFullCustomerProductParams = {
+	ctx: AutumnContext;
+	initContext: InitFullCustomerProductContext;
+	initOptions?: InitFullCustomerProductOptions;
+};
+
+export const initFullCustomerProductWithBalanceTransitions = ({
+	ctx,
+	initContext,
+	initOptions,
+}: InitFullCustomerProductParams): {
+	customerProduct: FullCusProduct;
+	balanceTransitionPlan?: BalanceTransitionPlan;
+} => {
+	const { fullCustomer, fullProduct } = initContext;
+
+	const cusProductId = generateId("cus_prod");
+
+	const newFullCusEnts = fullProduct.entitlements.map((entitlement) => ({
+		...initCustomerEntitlement({
+			initContext,
+			initOptions,
+			entitlement,
+			cusProductId,
+		}),
+		entitlement,
+		replaceables: [],
+		rollovers: [],
+	}));
+
+	const newCusPrices = fullProduct.prices.map((price) => ({
+		...initCustomerPrice({
+			fullCus: fullCustomer,
+			price,
+			cusProductId,
+		}),
+		price,
+	}));
+
+	const newCusProduct = initCustomerProduct({
+		initContext,
+		initOptions,
+		customerProductId: cusProductId,
+	});
+
+	const { entitlements: _ents, prices: _prices, ...rawProduct } = fullProduct;
+
+	const newFullCustomerProduct: FullCusProduct = {
+		...newCusProduct,
+		product: rawProduct,
+		customer_entitlements: newFullCusEnts,
+		customer_prices: newCusPrices,
+		free_trial: initContext.freeTrial ?? null,
+	};
+	newFullCustomerProduct.customer_licenses = initCustomerLicenses({
+		customerProduct: newFullCustomerProduct,
+		fullProduct,
+		customerLicenseQuantities: initContext.customerLicenseQuantities,
+	});
+
+	const balanceTransitionPlan = applyExistingStatesToCustomerProduct({
+		ctx,
+		fullCustomer,
+		customerProduct: newFullCustomerProduct,
+		existingUsagesConfig: initContext.existingUsagesConfig,
+		existingRolloversConfig: initContext.existingRolloversConfig,
+	});
+
+	const { valid: isPaidRecurring } = cp(newFullCustomerProduct)
+		.paid()
+		.recurring();
+
+	if (
+		!isPaidRecurring &&
+		!customerProductHasPaidLicenses(newFullCustomerProduct) &&
+		!initOptions?.keepSubscriptionIds
+	) {
+		newFullCustomerProduct.subscription_ids = [];
+		newFullCustomerProduct.scheduled_ids = [];
+	}
+
+	return {
+		customerProduct: newFullCustomerProduct,
+		balanceTransitionPlan,
+	};
+};
+
+export const initFullCustomerProduct = (
+	params: InitFullCustomerProductParams,
+): FullCusProduct =>
+	initFullCustomerProductWithBalanceTransitions(params).customerProduct;

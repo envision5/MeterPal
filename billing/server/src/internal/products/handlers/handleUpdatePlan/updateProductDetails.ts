@@ -1,0 +1,244 @@
+import {
+	type AppEnv,
+	billingControlsFromColumns,
+	type CreateFreeTrial,
+	type FreeTrial,
+	type FullProduct,
+	isFreeProductV2,
+	normalizeBillingControlsForCompare,
+	type Organization,
+	type Product,
+	type ProductItem,
+	pickBillingControlColumns,
+	RecaseError,
+	type RewardProgram,
+	type UpdateProduct,
+} from "@autumn/shared";
+import type { DrizzleCli } from "@/db/initDrizzle.js";
+import { CusProductService } from "@/internal/customers/cusProducts/CusProductService.js";
+import { notNullish } from "@/utils/genUtils.js";
+import { ProductService } from "../../ProductService.js";
+import {
+	isFeaturePriceItem,
+	isPriceItem,
+} from "../../product-items/productItemUtils/getItemType.js";
+import { isFreeProduct } from "../../productUtils.js";
+import { updateStripeProductNames } from "../../stripeResourceUtils/updateStripeProductNames.js";
+
+const productDetailsSame = (prod1: Product, prod2: UpdateProduct) => {
+	if (notNullish(prod2.id) && prod1.id !== prod2.id) {
+		return false;
+	}
+
+	if (notNullish(prod2.name) && prod1.name !== prod2.name) {
+		return false;
+	}
+
+	if (prod2.group !== undefined && prod1.group !== prod2.group) {
+		return false;
+	}
+
+	if (
+		prod2.description !== undefined &&
+		(prod1.description ?? null) !== (prod2.description ?? null)
+	) {
+		return false;
+	}
+
+	if (notNullish(prod2.is_add_on) && prod1.is_add_on !== prod2.is_add_on) {
+		return false;
+	}
+
+	if (notNullish(prod2.is_default) && prod1.is_default !== prod2.is_default) {
+		return false;
+	}
+
+	if (notNullish(prod2.archived) && prod1.archived !== prod2.archived) {
+		return false;
+	}
+
+	if (
+		notNullish(prod2.config) &&
+		JSON.stringify(prod1.config ?? {}) !== JSON.stringify(prod2.config)
+	) {
+		return false;
+	}
+
+	if (
+		notNullish(prod2.billing_controls) &&
+		JSON.stringify(
+			normalizeBillingControlsForCompare(billingControlsFromColumns(prod1)),
+		) !==
+			JSON.stringify(normalizeBillingControlsForCompare(prod2.billing_controls))
+	) {
+		return false;
+	}
+
+	return true;
+};
+
+const willBeDefaultTrial = ({
+	newProduct,
+	curProduct,
+	newFreeTrial,
+	newItems,
+}: {
+	newProduct: UpdateProduct;
+	curProduct: FullProduct;
+	newFreeTrial?: FreeTrial | CreateFreeTrial | null;
+	newItems: ProductItem[];
+}) => {
+	// 1. Get final default
+	const finalDefault = notNullish(newProduct.is_default)
+		? newProduct.is_default
+		: curProduct.is_default;
+
+	const finalFreeTrial = notNullish(newFreeTrial)
+		? newFreeTrial
+		: curProduct.free_trial;
+
+	const finalIsFree = notNullish(newItems)
+		? isFreeProductV2({ items: newItems })
+		: isFreeProduct(curProduct.prices);
+
+	return finalDefault && !finalIsFree && finalFreeTrial;
+};
+
+export const handleUpdateProductDetails = async ({
+	db,
+	newProduct,
+	curProduct,
+	newFreeTrial,
+	items,
+	org,
+	rewardPrograms,
+	logger,
+}: {
+	db: DrizzleCli;
+	curProduct: FullProduct;
+	newProduct: UpdateProduct;
+	newFreeTrial?: FreeTrial | CreateFreeTrial | null;
+	items: ProductItem[];
+	org: Organization;
+	rewardPrograms: RewardProgram[];
+	logger: any;
+}) => {
+	const customersOnAllVersions = await CusProductService.getByProductId({
+		db,
+		productId: curProduct.id,
+		orgId: org.id,
+		env: curProduct.env as AppEnv,
+	});
+
+	// Should error if:
+	// - New product is a default product
+	// - Org is not allowed to have paid default products
+	// - Current product is not a default trial
+
+	// Final prices are curProduct.prices or newProduct.prices
+
+	if (
+		newProduct.is_default &&
+		!org.config.allow_paid_default &&
+		!willBeDefaultTrial({
+			newProduct,
+			curProduct,
+			newFreeTrial,
+			newItems: items,
+		})
+	) {
+		// 1. Check if there are items
+		if (items) {
+			if (items.some((item) => isFeaturePriceItem(item) || isPriceItem(item))) {
+				throw new RecaseError({
+					message:
+						"Cannot make a product default if it has fixed prices or paid features",
+					statusCode: 400,
+				});
+			}
+		} else {
+			if (!isFreeProduct(curProduct.prices)) {
+				throw new RecaseError({
+					message:
+						"Cannot make a product default if it has fixed prices or paid features",
+					statusCode: 400,
+				});
+			}
+		}
+	}
+
+	if (productDetailsSame(curProduct, newProduct)) return;
+
+	if (notNullish(newProduct.id) && newProduct.id !== curProduct.id) {
+		if (customersOnAllVersions.length > 0) {
+			throw new RecaseError({
+				message: "Cannot change product ID because it has existing customers",
+				statusCode: 409,
+			});
+		}
+
+		if (rewardPrograms.length > 0) {
+			throw new RecaseError({
+				message:
+					"Cannot change product ID because existing reward programs are linked to it",
+				statusCode: 409,
+			});
+		}
+	}
+
+	// 2. Update product
+
+	const mergedConfig = notNullish(newProduct.config)
+		? { ...curProduct.config, ...newProduct.config }
+		: undefined;
+
+	await ProductService.updateByInternalId({
+		db,
+		internalId: curProduct.internal_id,
+		update: {
+			id: newProduct.id,
+			name: newProduct.name,
+			description: newProduct.description,
+			group:
+				newProduct.group === "" || newProduct.group === null
+					? ""
+					: newProduct.group,
+			is_add_on: newProduct.is_add_on,
+			is_default: newProduct.is_default,
+			archived: newProduct.archived,
+			config: mergedConfig,
+			...pickBillingControlColumns(newProduct.billing_controls),
+		},
+	});
+
+	// Update product-owned Stripe names.
+	if (
+		!curProduct.base_internal_product_id &&
+		curProduct.name !== newProduct.name &&
+		notNullish(newProduct.name)
+	) {
+		logger.info(
+			`Updating product (${curProduct.id}) name in Stripe to ${newProduct.name}`,
+		);
+		await updateStripeProductNames({
+			org,
+			curProduct,
+			newName: newProduct.name!,
+			logger,
+		});
+	}
+
+	curProduct.name = newProduct.name || curProduct.name;
+	if (newProduct.description !== undefined) {
+		curProduct.description = newProduct.description;
+	}
+	curProduct.group = newProduct.group || curProduct.group;
+	curProduct.is_add_on = newProduct.is_add_on ?? curProduct.is_add_on;
+	curProduct.is_default = newProduct.is_default ?? curProduct.is_default;
+	curProduct.archived = newProduct.archived ?? curProduct.archived;
+	curProduct.config = mergedConfig ?? curProduct.config;
+	Object.assign(
+		curProduct,
+		pickBillingControlColumns(newProduct.billing_controls),
+	);
+};

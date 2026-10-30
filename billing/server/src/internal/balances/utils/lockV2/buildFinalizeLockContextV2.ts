@@ -1,0 +1,104 @@
+import type { EventProperties, Feature, FullSubject } from "@autumn/shared";
+import { type FinalizeLockParamsV0, findFeatureById } from "@autumn/shared";
+import type { Redis } from "ioredis";
+import { overrideCtxRedisV2 } from "@/external/redis/customerRedisRouting.js";
+import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
+import type { LockReceipt } from "@/internal/balances/utils/lock/fetchLockReceipt.js";
+import {
+	calculateLockValue,
+	calculateUnwindValue,
+} from "@/internal/balances/utils/lock/unwindLockUtils.js";
+import type { DeductionOptions } from "@/internal/balances/utils/types/deductionTypes.js";
+import type { FeatureDeduction } from "@/internal/balances/utils/types/featureDeduction.js";
+import { getOrSetCachedFullSubject } from "@/internal/customers/cache/fullSubject/actions/getOrSetCachedFullSubject.js";
+
+export type FinalizeLockContextV2 = {
+	receipt: LockReceipt;
+	lockReceiptKey: string;
+	redisInstance: Redis;
+	fullSubject: FullSubject;
+	feature: Feature;
+	lockValue: number;
+	finalValue: number;
+	unwindValue: number;
+	additionalValue: number;
+	properties?: Record<string, unknown>;
+	deduction: FeatureDeduction;
+	deductionOptions: {
+		triggerAutoTopUp: boolean;
+		eventProperties?: EventProperties;
+		overageBehaviour: NonNullable<DeductionOptions["overageBehaviour"]>;
+	};
+};
+
+export const buildFinalizeLockContextV2 = async ({
+	ctx,
+	params,
+	receipt,
+	lockReceiptKey,
+	redisInstance,
+}: {
+	ctx: AutumnContext;
+	params: FinalizeLockParamsV0;
+	receipt: LockReceipt;
+	lockReceiptKey: string;
+	redisInstance: Redis;
+}): Promise<FinalizeLockContextV2> => {
+	const ctxWithRedisV2 = overrideCtxRedisV2({ ctx, redisV2: redisInstance });
+
+	const fullSubject = await getOrSetCachedFullSubject({
+		ctx: ctxWithRedisV2,
+		customerId: receipt.customer_id,
+		entityId: receipt.entity_id ?? undefined,
+		source: "runFinalizeLockV2",
+	});
+
+	const calculatedLockValue = calculateLockValue({ items: receipt.items });
+	const lockValue =
+		receipt.items.length === 0
+			? (receipt.overrideLockValue ?? calculatedLockValue)
+			: calculatedLockValue;
+	const finalValue =
+		params.action === "release" ? 0 : (params.override_value ?? lockValue);
+
+	const { unwindValue, additionalValue } = calculateUnwindValue({
+		receipt,
+		finalValue,
+	});
+
+	// Expiry-triggered finalizes send no properties, so fall back to the check's.
+	const eventProperties = params.properties ?? receipt.properties ?? undefined;
+
+	const feature = findFeatureById({
+		features: ctx.features,
+		featureId: receipt.feature_id,
+		errorOnNotFound: true,
+	});
+
+	return {
+		receipt,
+		lockReceiptKey,
+		redisInstance,
+		fullSubject,
+		feature,
+		lockValue,
+		finalValue,
+		unwindValue,
+		additionalValue,
+		properties: eventProperties,
+		deduction: {
+			feature,
+			deduction: additionalValue,
+			enforceOverdueBlock: additionalValue > 0,
+			lockReceipt: receipt,
+			unwindValue,
+			lockReceiptKey,
+		},
+		deductionOptions: {
+			triggerAutoTopUp: true,
+			eventProperties,
+			// Receipts written before this field existed were always locked under reject.
+			overageBehaviour: receipt.overage_behavior ?? "reject",
+		},
+	};
+};

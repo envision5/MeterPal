@@ -1,0 +1,302 @@
+import {
+	type CustomerDisplayInfo,
+	type EntityDisplayInfo,
+	ErrCode,
+	type FullCustomer,
+	filterCustomerProductsByActiveStatuses,
+	type RangeEnum,
+	RecaseError,
+	Scopes,
+} from "@autumn/shared";
+import { UTCDate } from "@date-fns/utc";
+import { StatusCodes } from "http-status-codes";
+import { z } from "zod/v4";
+import { assertTinybirdAvailable } from "@/external/tinybird/tinybirdUtils.js";
+import { createRoute } from "@/honoMiddlewares/routeHandler.js";
+import { aggregateDeductions } from "@/internal/analytics/actions/aggregateDeductions.js";
+import { getCustomerNames } from "@/internal/analytics/actions/getCustomerNames.js";
+import { getEntityNames } from "@/internal/analytics/actions/getEntityNames.js";
+import { CusService } from "@/internal/customers/CusService.js";
+import { ProductService } from "@/internal/products/ProductService.js";
+import { eventActions } from "../actions/eventActions.js";
+import {
+	defaultBinSizeForRange,
+	getStandardIntervalWindow,
+	isMonthRange,
+} from "../analyticsUtils.js";
+import { collapsePlanIdGroups } from "../utils/collapsePlanIdGroups.js";
+
+const InternalAggregateEventsSchema = z.object({
+	interval: z.string().nullish(),
+	custom_range: z
+		.object({ start: z.number(), end: z.number() })
+		.refine((range) => range.start < range.end, {
+			message: "custom_range.start must be before custom_range.end",
+		})
+		.optional(),
+	event_names: z.array(z.string()),
+	customer_id: z.string().optional(),
+	entity_id: z.string().optional(),
+	group_by: z.string().optional(),
+	bin_size: z.enum(["day", "hour", "week", "month"]).optional(),
+	timezone: z.string().optional(),
+	max_groups: z.number().int().min(1).max(250).optional(),
+	// Presence adds the per-balance `deductions` breakdown. Requires a customer:
+	// the rollup is keyed (org, env, customer_id, ...) so it cannot be org-wide.
+	aggregate_on: z.literal("deducted").optional(),
+});
+
+/**
+ * Query events by customer ID
+ */
+export const handleInternalAggregateEvents = createRoute({
+	scopes: [Scopes.Analytics.Read],
+	body: InternalAggregateEventsSchema,
+	handler: async (c) => {
+		assertTinybirdAvailable();
+		const ctx = c.get("ctx");
+		const { db, org, env, features } = ctx;
+		const {
+			interval,
+			custom_range,
+			customer_id,
+			entity_id,
+			group_by,
+			bin_size,
+			timezone,
+			max_groups,
+			aggregate_on,
+		} = c.req.valid("json");
+		let { event_names } = c.req.valid("json");
+
+		let aggregateAll = false;
+		let customer: FullCustomer | undefined;
+		let bcExclusionFlag = false;
+
+		if (aggregate_on && !customer_id) {
+			throw new RecaseError({
+				message: "customer_id is required when aggregate_on is set",
+				code: ErrCode.InvalidRequest,
+				statusCode: StatusCodes.BAD_REQUEST,
+			});
+		}
+
+		if (!customer_id) {
+			// No customer ID provided, set aggregateAll to true
+			aggregateAll = true;
+		} else {
+			// Customer ID provided, fetch customer data
+			customer = await CusService.getFull({
+				ctx,
+				idOrInternalId: customer_id,
+				withSubs: true,
+				withEntities: true,
+			});
+
+			if (!customer) {
+				throw new RecaseError({
+					message: "Customer not found",
+					code: ErrCode.CustomerNotFound,
+					statusCode: StatusCodes.NOT_FOUND,
+				});
+			}
+
+			bcExclusionFlag = filterCustomerProductsByActiveStatuses({
+				customerProducts: customer.customer_products,
+			}).every(({ product }) => product.is_default);
+		}
+
+		// Filter out empty strings
+		event_names = event_names.filter((name: string) => name !== "");
+
+		// Use provided bin_size, or the range's default.
+		const binSize =
+			bin_size || defaultBinSizeForRange({ interval: interval ?? undefined });
+
+		if (
+			isMonthRange({ interval: interval ?? undefined }) &&
+			(binSize === "day" || binSize === "hour")
+		) {
+			throw new RecaseError({
+				message: `bin_size "${binSize}" is not supported for the "${interval}" range; use "week" or "month"`,
+				code: ErrCode.InvalidRequest,
+				statusCode: StatusCodes.BAD_REQUEST,
+			});
+		}
+
+		// For standard ranges, compute the window once here and pass it as
+		// `custom_range` to both actions. This guarantees the chart (aggregate)
+		// and totals (getCountAndSum) use an identical window so their numbers
+		// stay aligned. Billing-cycle ranges fall through to each action's own
+		// resolution (both use the same `getBillingCycleStartDate`).
+		const now = new UTCDate();
+		const standardWindow = getStandardIntervalWindow({
+			interval: interval ?? undefined,
+			binSize,
+			now,
+		});
+		const customRange =
+			custom_range ??
+			(standardWindow && {
+				start: standardWindow.start.getTime(),
+				end: standardWindow.end.getTime(),
+			});
+
+		let resolvedGroupBy = group_by;
+		if (group_by === "$customer_id") {
+			resolvedGroupBy = "customer_id";
+		} else if (group_by === "$entity_id") {
+			resolvedGroupBy = "entity_id";
+		} else if (group_by === "$plan_id") {
+			resolvedGroupBy = "plan_id";
+		} else if (
+			group_by === "source_feature_id" ||
+			group_by === "$source_feature_id"
+		) {
+			// Only meaningful for the deductions breakdown — the events rollups
+			// have no such column, so grouping them by it returns nothing.
+			// aggregateDeductions still receives the raw group_by below.
+			resolvedGroupBy = undefined;
+		}
+
+		const isPlanIdGrouping = resolvedGroupBy === "plan_id";
+		let internalIdToPublicId: Record<string, string> | undefined;
+		let planNames: Record<string, string> | undefined;
+		let effectiveMaxGroups: number | undefined;
+
+		if (isPlanIdGrouping) {
+			const allProductRows = await ProductService.listCachedAllVersions({
+				db,
+				orgId: org.id,
+				env,
+			});
+			effectiveMaxGroups = Math.max(
+				allProductRows.length + 1,
+				max_groups ?? 0,
+				10,
+			);
+			internalIdToPublicId = {};
+			planNames = {};
+			for (const p of allProductRows) {
+				internalIdToPublicId[p.internal_id] = p.id;
+				planNames[p.id] = p.name ?? p.id;
+			}
+		}
+
+		const [{ formatted: events, truncated }, totals] = await Promise.all([
+			eventActions.aggregate({
+				ctx,
+				params: {
+					customer_id: customer_id,
+					entity_id: entity_id,
+					interval: customRange ? undefined : (interval as RangeEnum),
+					custom_range: customRange,
+					event_names,
+					bin_size: binSize,
+					aggregateAll,
+					group_by: resolvedGroupBy,
+					customer,
+					timezone: timezone,
+					max_groups: isPlanIdGrouping ? effectiveMaxGroups : max_groups,
+				},
+			}),
+			eventActions.getCountAndSum({
+				ctx,
+				params: {
+					customer_id: customer_id,
+					entity_id: entity_id,
+					interval: customRange ? undefined : (interval as RangeEnum),
+					custom_range: customRange,
+					event_names,
+					bin_size: binSize,
+					aggregateAll,
+					customer,
+				},
+			}),
+		]);
+
+		if (isPlanIdGrouping && events?.data && internalIdToPublicId) {
+			collapsePlanIdGroups({ events, internalIdToPublicId });
+		}
+
+		// When grouping by entity_id, resolve entity names from ClickHouse
+		let entityNames: Record<string, EntityDisplayInfo> | undefined;
+		if (resolvedGroupBy === "entity_id" && events?.data) {
+			const entityIds = [
+				...new Set(
+					events.data
+						.map((row: Record<string, unknown>) => row.entity_id as string)
+						.filter(
+							(id: string) => id && id !== "AUTUMN_RESERVED" && id !== "",
+						),
+				),
+			];
+
+			if (entityIds.length > 0) {
+				entityNames = await getEntityNames({
+					db,
+					entityIds,
+					orgId: org.id,
+					env,
+				});
+			}
+		}
+
+		let customerNames: Record<string, CustomerDisplayInfo> | undefined;
+		if (resolvedGroupBy === "customer_id" && events?.data) {
+			const customerIds = [
+				...new Set(
+					events.data
+						.map((row: Record<string, unknown>) => row.customer_id as string)
+						.filter(
+							(id: string) => id && id !== "AUTUMN_RESERVED" && id !== "",
+						),
+				),
+			];
+
+			if (customerIds.length > 0) {
+				customerNames = await getCustomerNames({
+					db,
+					customerIds,
+					orgId: org.id,
+					env,
+				});
+			}
+		}
+
+		const deductions =
+			aggregate_on === "deducted" && customer
+				? await aggregateDeductions({
+						ctx,
+						params: {
+							customer,
+							customerId: customer_id as string,
+							entityId: entity_id,
+							featureIds: event_names,
+							groupBy: group_by,
+							// Same normalized window and bin as the event aggregation above,
+							// so both series cover identical, aligned buckets.
+							interval: customRange ? undefined : (interval as RangeEnum),
+							customRange,
+							binSize,
+							maxGroups: max_groups,
+							timezone,
+						},
+					})
+				: undefined;
+
+		return c.json({
+			customer,
+			deductions,
+			events,
+			totals,
+			features,
+			eventNames: event_names,
+			bcExclusionFlag,
+			truncated,
+			entityNames,
+			customerNames,
+			planNames,
+		});
+	},
+});

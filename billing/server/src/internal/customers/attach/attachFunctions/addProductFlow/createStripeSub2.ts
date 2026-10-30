@@ -1,0 +1,202 @@
+import { type AttachConfig, ErrCode } from "@autumn/shared";
+import type { Logger } from "@server/external/logtail/logtailUtils";
+import Stripe from "stripe";
+import type { DrizzleCli } from "@/db/initDrizzle.js";
+import { getCusPaymentMethod } from "@/external/stripe/stripeCusUtils.js";
+import {
+	getEarliestPeriodEnd,
+	getLatestPeriodStart,
+} from "@/external/stripe/stripeSubUtils/convertSubUtils.js";
+import { sanitizeSubItems } from "@/external/stripe/stripeSubUtils/getStripeSubItems.js";
+import { buildAutumnSubscriptionMetadata } from "@/internal/billing/v2/providers/stripe/utils/common/autumnStripeMetadata.js";
+import { customerHasUsableTaxLocationForStripeTax } from "@/internal/billing/v2/providers/stripe/utils/tax/shouldEnableStripeAutomaticTax.js";
+import type { AttachParams } from "@/internal/customers/cusProducts/AttachParams.js";
+import { buildInvoiceMemoFromEntitlements } from "@/internal/invoices/invoiceMemoUtils.js";
+import { freeTrialToStripeTimestamp } from "@/internal/products/free-trials/freeTrialUtils.js";
+import { SubService } from "@/internal/subscriptions/SubService.js";
+import RecaseError from "@/utils/errorUtils.js";
+import { generateId } from "@/utils/genUtils.js";
+import type { ItemSet } from "@/utils/models/ItemSet.js";
+import { buildStripeSubPaymentSettings } from "./buildStripeSubPaymentSettings.js";
+
+export const createStripeSub2 = async ({
+	db,
+	stripeCli,
+	attachParams,
+	config,
+	billingCycleAnchorUnix,
+	itemSet,
+	logger,
+}: {
+	db: DrizzleCli;
+	stripeCli: Stripe;
+	attachParams: AttachParams;
+	config: AttachConfig;
+	billingCycleAnchorUnix?: number;
+	itemSet: ItemSet;
+	logger: Logger;
+}) => {
+	const { customer, invoiceOnly, freeTrial, org, now, rewards, metadata } =
+		attachParams;
+
+	const paymentMethod = await getCusPaymentMethod({
+		stripeCli,
+		stripeId: customer.processor.id,
+		errorIfNone: config.requirePaymentMethod,
+	});
+
+	let paymentMethodData = {};
+	if (paymentMethod) {
+		paymentMethodData = {
+			default_payment_method: paymentMethod.id,
+		};
+	}
+
+	const { subItems, invoiceItems, usageFeatures } = itemSet;
+
+	const discounts = rewards
+		? rewards.map((reward) => ({ coupon: reward.id }))
+		: undefined;
+
+	// Custom PMs (Vercel, etc.) use external payment confirmation.
+	const isCustomPaymentMethod = paymentMethod?.type === "custom";
+
+	const paymentSettings = buildStripeSubPaymentSettings({
+		isCustomPaymentMethod,
+		invoiceOnly,
+		allowedPaymentMethods: org.config.allowed_payment_methods,
+	});
+
+	try {
+		// Skip auto_tax in invoice mode: send_invoice has no
+		// address-collection UI so Stripe Tax rejects.
+		const wantsAutoTax =
+			!!org.config.automatic_tax &&
+			!attachParams.invoiceOnly &&
+			customerHasUsableTaxLocationForStripeTax(attachParams.stripeCus);
+
+		const subscription = await stripeCli.subscriptions.create({
+			...paymentMethodData,
+			customer: customer.processor.id,
+			items: sanitizeSubItems(subItems),
+			...(wantsAutoTax ? { automatic_tax: { enabled: true } } : {}),
+
+			billing_mode: { type: "flexible" },
+			// Custom PMs activate the sub after external payment confirmation
+			// via the Payment Records API.
+			payment_behavior: isCustomPaymentMethod
+				? "default_incomplete"
+				: "allow_incomplete",
+
+			add_invoice_items: invoiceItems,
+			collection_method: invoiceOnly ? "send_invoice" : "charge_automatically",
+			days_until_due: invoiceOnly
+				? (org.config.default_invoice_net_terms_days ?? 30)
+				: undefined,
+			billing_cycle_anchor: billingCycleAnchorUnix
+				? Math.floor(billingCycleAnchorUnix / 1000)
+				: undefined,
+
+			discounts,
+			expand: ["latest_invoice"],
+
+			// Pass metadata from attachParams (e.g., Vercel installation/billing plan IDs)
+			metadata: {
+				...(metadata || {}),
+				...buildAutumnSubscriptionMetadata({ actionSource: "v1Attach" }),
+			},
+
+			...(paymentSettings && { payment_settings: paymentSettings }),
+
+			trial_settings:
+				freeTrial && !freeTrial.card_required
+					? {
+							end_behavior: {
+								missing_payment_method: "cancel",
+							},
+						}
+					: undefined,
+			trial_end: freeTrialToStripeTimestamp({ freeTrial, now }),
+		});
+
+		const latestInvoice = subscription.latest_invoice as Stripe.Invoice;
+
+		if (
+			invoiceOnly &&
+			org.config.invoice_memos &&
+			latestInvoice &&
+			latestInvoice.status === "draft"
+		) {
+			try {
+				const desc = await buildInvoiceMemoFromEntitlements({
+					org,
+					entitlements: attachParams.entitlements,
+					features: attachParams.features,
+					prices: attachParams.prices,
+					logger,
+				});
+				await stripeCli.invoices.update(latestInvoice.id!, {
+					description: desc,
+				});
+			} catch (error) {
+				logger.error("CREATE STRIPE SUB: error adding invoice memo", { error });
+			}
+		}
+
+		if (
+			invoiceOnly &&
+			config.invoiceCheckout &&
+			config.finalizeInvoice &&
+			latestInvoice &&
+			latestInvoice.status === "draft"
+		) {
+			subscription.latest_invoice = await stripeCli.invoices.finalizeInvoice(
+				(subscription.latest_invoice as Stripe.Invoice).id!,
+			);
+		}
+
+		// Store
+		const earliestPeriodEnd = getEarliestPeriodEnd({ sub: subscription });
+		const currentPeriodStart = getLatestPeriodStart({ sub: subscription });
+
+		// customer.subscription.created can land before we get here and store it first.
+		await SubService.createSubIfAbsent({
+			db,
+			sub: {
+				id: generateId("sub"),
+				stripe_id: subscription.id,
+				stripe_schedule_id: subscription.schedule as string,
+				created_at: subscription.created * 1000,
+				usage_features: usageFeatures,
+				org_id: org.id,
+				env: customer.env,
+				current_period_start: currentPeriodStart,
+				current_period_end: earliestPeriodEnd,
+				billing_cycle_anchor_seconds: subscription.billing_cycle_anchor,
+			},
+		});
+
+		return subscription;
+	} catch (error: any) {
+		console.log("Warning: Failed to create stripe subscription");
+		console.log("Error code:", error.code);
+		console.log("Message:", error.message);
+		console.log("Decline code:", error.decline_code);
+		console.log("Error original stack:", error.stack);
+
+		// Stripe rejects caller-fixable params (unactivated payment method type,
+		// currency mismatch, declined card) with 4xx — don't mask those as 500.
+		const stripeStatusCode =
+			error instanceof Stripe.errors.StripeError ? error.statusCode : undefined;
+		const isClientError =
+			!!stripeStatusCode && stripeStatusCode >= 400 && stripeStatusCode < 500;
+
+		throw new RecaseError({
+			code: ErrCode.CreateStripeSubscriptionFailed,
+			message: `Create stripe subscription failed ${
+				error.code ? `(${error.code})` : ""
+			}: ${error.message || ""}`,
+			statusCode: isClientError ? stripeStatusCode : 500,
+		});
+	}
+};

@@ -1,0 +1,113 @@
+import type {
+	FullCusProduct,
+	FullProduct,
+	UpdateSubscriptionBillingContext,
+	UpdateSubscriptionV1Params,
+} from "@autumn/shared";
+import type { AutumnContext } from "@/honoUtils/HonoEnv";
+import { computeCancelFields } from "@/internal/billing/v2/actions/updateSubscription/compute/cancel/computeCancelFields";
+import { getRequestedBillingCycleAnchorResetAt } from "@/internal/billing/v2/utils/billingContext/getRequestedBillingCycleAnchorResetAt";
+import { resolveUpdateExistingUsagesConfig } from "@/internal/billing/v2/utils/handleCarryOvers/resolveUpdateExistingUsagesConfig";
+import { initFullCustomerProduct } from "@/internal/billing/v2/utils/initFullCustomerProduct/initFullCustomerProduct";
+
+export const computeCustomPlanNewCustomerProduct = ({
+	ctx,
+	params,
+	updateSubscriptionContext,
+	fullProduct,
+	currentCustomerProduct,
+}: {
+	ctx: AutumnContext;
+	params: UpdateSubscriptionV1Params;
+	updateSubscriptionContext: UpdateSubscriptionBillingContext;
+	fullProduct: FullProduct;
+	currentCustomerProduct: FullCusProduct;
+}) => {
+	const {
+		customerProduct,
+		fullCustomer,
+		stripeSubscription,
+		stripeSubscriptionSchedule,
+		resetCycleAnchorMs,
+		currentEpochMs,
+		featureQuantities,
+		customerLicenseQuantities,
+		trialContext,
+		cancelAction,
+		billingVersion,
+		skipExistingUsageCarry,
+		carryOverUsages,
+	} = updateSubscriptionContext;
+
+	const cancelFields = computeCancelFields({
+		cancelAction,
+		currentCustomerProduct,
+	});
+
+	// const existingUsages = cusProductToExistingUsages({
+	// 	cusProduct: customerProduct,
+	// 	entityId: fullCustomer.entity?.id,
+	// });
+
+	// const existingRollovers = cusProductToExistingRollovers({
+	// 	cusProduct: customerProduct,
+	// });
+
+	// Compute the new full customer product
+	const newFullCustomerProduct = initFullCustomerProduct({
+		ctx,
+
+		initContext: {
+			fullCustomer,
+			fullProduct,
+			featureQuantities,
+			customerLicenseQuantities,
+			// existingUsages,
+			// existingRollovers,
+			resetCycleAnchor: resetCycleAnchorMs,
+			now: currentEpochMs,
+
+			freeTrial: trialContext?.freeTrial ?? null,
+			trialEndsAt: trialContext?.trialEndsAt ?? undefined,
+			billingVersion: billingVersion,
+
+			existingUsagesConfig: resolveUpdateExistingUsagesConfig({
+				ctx,
+				skipExistingUsageCarry,
+				carryOverUsages,
+				currentCustomerProduct: customerProduct,
+			}),
+
+			existingRolloversConfig: {
+				fromCustomerProduct: customerProduct,
+			},
+		},
+
+		initOptions: {
+			billingCycleAnchorResetsAt: getRequestedBillingCycleAnchorResetAt({
+				requestedBillingCycleAnchor:
+					updateSubscriptionContext.requestedBillingCycleAnchor,
+			}),
+			subscriptionId: stripeSubscription?.id, // don't populate if it's starting in the future.
+			subscriptionScheduleId:
+				stripeSubscriptionSchedule?.id ??
+				currentCustomerProduct.scheduled_ids?.[0],
+			externalId: currentCustomerProduct.external_id ?? undefined,
+			startsAt: currentCustomerProduct.starts_at ?? undefined,
+			...cancelFields,
+
+			...(params.processor_subscription_id
+				? { subscriptionId: params.processor_subscription_id }
+				: {}),
+
+			status: params.status ?? currentCustomerProduct.status,
+
+			onTrialEnd:
+				trialContext?.onEnd ?? currentCustomerProduct.on_trial_end ?? undefined,
+			previousCustomerProductId:
+				currentCustomerProduct.previous_customer_product_id ?? undefined,
+		},
+	});
+
+	return newFullCustomerProduct;
+};

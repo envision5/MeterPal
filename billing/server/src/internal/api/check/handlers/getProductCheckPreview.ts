@@ -1,0 +1,178 @@
+import {
+	type AttachBodyV0,
+	AttachFunction,
+	type AttachPreview,
+	type CheckProductPreview,
+	type Feature,
+	type FullCustomer,
+	type FullProduct,
+	formatAmount,
+	type Organization,
+} from "@autumn/shared";
+import { Decimal } from "decimal.js";
+import type { DrizzleCli } from "@/db/initDrizzle.js";
+import { attachParamsToPreview } from "@/internal/billing/attachPreview/attachParamsToPreview.js";
+import { checkToAttachParams } from "@/internal/customers/attach/attachUtils/attachParams/checkToAttachParams.js";
+import type { AttachParams } from "@/internal/customers/cusProducts/AttachParams.js";
+import { getProductResponse } from "@/internal/products/productUtils/productResponseUtils/getProductResponse.js";
+import { isFreeProduct, isOneOff } from "@/internal/products/productUtils.js";
+import { notNullish } from "@/utils/genUtils.js";
+import type { AutumnContext } from "../../../../honoUtils/HonoEnv.js";
+import { getAttachScenario } from "./attachToCheckPreview/getAttachScenario.js";
+
+const attachToCheckPreview = async ({
+	preview,
+	params,
+	product,
+	org,
+	features,
+	db,
+	fullCus,
+}: {
+	preview: AttachPreview;
+	params: AttachParams;
+	product: FullProduct;
+	org: Organization;
+	features: Feature[];
+	db: DrizzleCli;
+	fullCus: FullCustomer;
+}) => {
+	// 1. If check
+	const attachFunc = preview.func;
+
+	if (
+		attachFunc === AttachFunction.AddProduct &&
+		isFreeProduct(product.prices)
+	) {
+		return null;
+	}
+
+	const noOptions = !preview.options || preview.options.length === 0;
+	if (attachFunc === AttachFunction.CreateCheckout && noOptions) {
+		return null;
+	}
+
+	const scenario = await getAttachScenario({
+		preview,
+		product,
+	});
+
+	const items = preview.due_today?.line_items?.map((item) => {
+		return {
+			price: notNullish(item.amount)
+				? formatAmount({
+						amount: item.amount!,
+						org,
+						minFractionDigits: 2,
+						maxFractionDigits: 2,
+					})
+				: item.price,
+			description: item.description,
+			usage_model: item.usage_model,
+		};
+	});
+
+	const options = preview.options?.map((option: any) => {
+		return {
+			...option,
+			price: new Decimal(option.price).toDecimalPlaces(2).toNumber(),
+		};
+	});
+
+	const due_today = preview.due_today
+		? {
+				price: preview.due_today.total,
+				currency: org.default_currency || "usd",
+			}
+		: undefined;
+
+	let due_next_cycle:
+		| {
+				price: number;
+				currency: string;
+		  }
+		| undefined;
+
+	if (preview.due_next_cycle) {
+		due_next_cycle = {
+			price: preview.due_next_cycle.line_items.reduce((acc, item) => {
+				if (item.amount) {
+					return acc + item.amount;
+				}
+				return acc;
+			}, 0),
+			currency: org.default_currency || "usd",
+		};
+	}
+
+	const checkPreview: CheckProductPreview = {
+		// title: "Check",
+		// message: "Check",
+		scenario,
+
+		// Meta
+		product_id: product.id,
+		product_name: product.name,
+		recurring: !isOneOff(product.prices),
+		error_on_attach: false,
+		next_cycle_at: preview.due_next_cycle?.due_at,
+		current_product_name: preview.current_product?.name,
+
+		// Otehrs
+		options: options?.length > 0 ? options : undefined,
+		items: items?.length > 0 ? items : undefined,
+		due_today,
+		due_next_cycle,
+		product: await getProductResponse({
+			product,
+			features,
+			db,
+			fullCus,
+			currency: org.default_currency || undefined,
+		}),
+	};
+	return checkPreview;
+};
+
+export const getProductCheckPreview = async ({
+	ctx,
+	customer,
+	product,
+}: {
+	ctx: AutumnContext;
+	customer: FullCustomer;
+	product: FullProduct;
+}) => {
+	const { org, features, db } = ctx;
+
+	// Build attach params
+	const attachParams = await checkToAttachParams({
+		ctx,
+		customer,
+		product,
+	});
+
+	const attachBody: AttachBodyV0 = {
+		customer_id: customer.id!,
+		product_id: product.id,
+		entity_id: customer.entity?.id,
+	};
+
+	const preview = await attachParamsToPreview({
+		ctx,
+		attachParams,
+		attachBody,
+	});
+
+	const checkPreview = await attachToCheckPreview({
+		preview,
+		params: attachParams,
+		product,
+		org,
+		features,
+		db,
+		fullCus: customer,
+	});
+
+	return checkPreview;
+};

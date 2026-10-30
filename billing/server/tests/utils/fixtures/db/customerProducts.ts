@@ -1,0 +1,86 @@
+import {
+	BillingVersion,
+	CollectionMethod,
+	CusProductStatus,
+	type FeatureOptions,
+	type FullCusProduct,
+	type FullCustomerEntitlement,
+	type FullCustomerPrice,
+	type FullProduct,
+	type ProcessorType,
+} from "@autumn/shared";
+import { products } from "./products";
+
+/**
+ * Create a customer product fixture
+ */
+const create = ({
+	id = "cus_prod_test",
+	productId = "prod_test",
+	customerEntitlements = [],
+	customerPrices = [],
+	options = [],
+	subscriptionIds = [],
+	internalEntityId,
+	entityId,
+	product,
+	status = CusProductStatus.Active,
+	startsAt,
+	endedAt,
+	processorType,
+}: {
+	id?: string;
+	productId?: string;
+	customerEntitlements?: FullCustomerEntitlement[];
+	customerPrices?: FullCustomerPrice[];
+	options?: FeatureOptions[];
+	subscriptionIds?: string[];
+	internalEntityId?: string;
+	entityId?: string;
+	product?: FullProduct;
+	status?: CusProductStatus;
+	startsAt?: number;
+	endedAt?: number | null;
+	processorType?: ProcessorType;
+}): FullCusProduct => ({
+	id,
+	internal_product_id: `internal_${productId}`,
+	product_id: productId,
+	internal_customer_id: "cus_internal",
+	customer_id: "cus_test",
+	internal_entity_id: internalEntityId ?? null,
+	entity_id: entityId ?? null,
+	created_at: Date.now(),
+	updated_at: Date.now(),
+	status,
+	canceled: false,
+	starts_at: startsAt ?? Date.now(),
+	trial_ends_at: null,
+	billing_cycle_anchor: null,
+	billing_cycle_anchor_resets_at: null,
+	canceled_at: null,
+	ended_at: endedAt ?? null,
+	options,
+	free_trial_id: null,
+	collection_method: CollectionMethod.ChargeAutomatically,
+	subscription_ids: subscriptionIds,
+	scheduled_ids: [],
+	processor: processorType ? { type: processorType } : undefined,
+	quantity: 1,
+	api_semver: null,
+	is_custom: false,
+	customer_prices: customerPrices,
+	customer_entitlements: customerEntitlements,
+	product: product ?? (products.createFull({ id: productId }) as FullProduct),
+	free_trial: null,
+	billing_version: BillingVersion.V2,
+	external_id: null,
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// EXPORT
+// ═══════════════════════════════════════════════════════════════════
+
+export const customerProducts = {
+	create,
+} as const;

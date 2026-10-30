@@ -1,0 +1,171 @@
+import { z } from "zod/v4";
+import {
+	CustomerExportFieldSchema,
+	CustomerExportFieldsSchema,
+	CustomerExportKind,
+	CustomerExportKindSchema,
+	CustomerExportSnapshotSchema,
+	CustomerExportStatusSchema,
+} from "../../../models/cusModels/cusExportModels.js";
+import { CustomerListFiltersSchema } from "../customerListFilters.js";
+
+export const MAX_CUSTOMER_EXPORTS_PAGE_SIZE = 20;
+
+export const MAX_CUSTOMER_EXPORT_SEARCH_LENGTH = 500;
+
+const ExportScopeParamsSchema = z.object({
+	search: z
+		.string()
+		.max(MAX_CUSTOMER_EXPORT_SEARCH_LENGTH)
+		.optional()
+		.default(""),
+	filters: CustomerListFiltersSchema.optional().default({}),
+});
+
+export const CreateCustomerExportParamsSchema = z.discriminatedUnion("kind", [
+	ExportScopeParamsSchema.extend({
+		kind: z.literal(CustomerExportKind.Customers),
+		fields: CustomerExportFieldsSchema,
+	}),
+	ExportScopeParamsSchema.extend({
+		kind: z.literal(CustomerExportKind.BillingVerify),
+	}),
+]);
+
+export type CreateCustomerExportParams = z.infer<
+	typeof CreateCustomerExportParamsSchema
+>;
+
+export const ListCustomerExportsQuerySchema = z.object({
+	limit: z.coerce
+		.number()
+		.int()
+		.min(1)
+		.max(MAX_CUSTOMER_EXPORTS_PAGE_SIZE)
+		.optional()
+		.default(MAX_CUSTOMER_EXPORTS_PAGE_SIZE),
+	offset: z.coerce.number().int().min(0).optional().default(0),
+	kind: CustomerExportKindSchema.optional().default(
+		CustomerExportKind.Customers,
+	),
+});
+
+export type ListCustomerExportsQuery = z.infer<
+	typeof ListCustomerExportsQuerySchema
+>;
+
+export const CustomerExportPhase = {
+	Scanning: "scanning",
+	Exporting: "exporting",
+} as const;
+
+export type CustomerExportPhase =
+	(typeof CustomerExportPhase)[keyof typeof CustomerExportPhase];
+
+export const CustomerExportPhaseSchema = z.enum(CustomerExportPhase);
+
+/** While scanning, processed_rows counts Stripe subscriptions found so far. */
+export const CustomerExportProgressSchema = z.object({
+	phase: CustomerExportPhaseSchema,
+	processed_rows: z.number(),
+	total_rows: z.number(),
+});
+
+export type CustomerExportProgress = z.infer<
+	typeof CustomerExportProgressSchema
+>;
+
+export const CUSTOMER_EXPORT_TOTAL_ROWS_KEY = "total_rows";
+
+export const CUSTOMER_EXPORT_PROCESSED_ROWS_KEY = "processed_rows";
+
+export const CUSTOMER_EXPORT_PHASE_KEY = "phase";
+
+/** A retried run resets and re-counts, so processed is capped at the total
+ * once exporting; the scan count has no total to cap against. */
+export const runMetadataToCustomerExportProgress = ({
+	metadata,
+}: {
+	metadata: Record<string, unknown> | undefined;
+}): CustomerExportProgress | null => {
+	const totalRows = metadata?.[CUSTOMER_EXPORT_TOTAL_ROWS_KEY];
+	if (
+		typeof totalRows !== "number" ||
+		!Number.isFinite(totalRows) ||
+		totalRows < 0
+	)
+		return null;
+
+	const processedRaw = metadata?.[CUSTOMER_EXPORT_PROCESSED_ROWS_KEY];
+	const processedRows =
+		typeof processedRaw === "number" && Number.isFinite(processedRaw)
+			? processedRaw
+			: 0;
+
+	const phase = CustomerExportPhaseSchema.safeParse(
+		metadata?.[CUSTOMER_EXPORT_PHASE_KEY],
+	);
+	const isScanning =
+		phase.success && phase.data === CustomerExportPhase.Scanning;
+
+	return {
+		phase: isScanning
+			? CustomerExportPhase.Scanning
+			: CustomerExportPhase.Exporting,
+		processed_rows: isScanning
+			? Math.max(processedRows, 0)
+			: Math.min(Math.max(processedRows, 0), totalRows),
+		total_rows: totalRows,
+	};
+};
+
+export const CustomerExportResponseSchema = z
+	.object({
+		id: z.string(),
+		kind: CustomerExportKindSchema,
+		status: CustomerExportStatusSchema,
+		fields: z.array(CustomerExportFieldSchema),
+		snapshot: CustomerExportSnapshotSchema,
+		requested_by_user_id: z.string().nullable(),
+		row_count: z.number().nullable(),
+		byte_count: z.number().nullable(),
+		error_message: z.string().nullable(),
+		created_at: z.number(),
+		started_at: z.number().nullable(),
+		completed_at: z.number().nullable(),
+		progress: CustomerExportProgressSchema.nullable(),
+		trigger_run_id: z.string().nullable(),
+		public_access_token: z.string().nullable(),
+	})
+	.refine(
+		({ kind, fields }) =>
+			kind !== CustomerExportKind.Customers ||
+			CustomerExportFieldsSchema.safeParse(fields).success,
+		{ message: "A customers export needs at least one unique field" },
+	);
+
+export type CustomerExportResponse = z.infer<
+	typeof CustomerExportResponseSchema
+>;
+
+export const ListCustomerExportsResponseSchema = z.object({
+	exports: z.array(CustomerExportResponseSchema),
+	total: z.number(),
+	limit: z.number(),
+	offset: z.number(),
+	has_more: z.boolean(),
+});
+
+export type ListCustomerExportsResponse = z.infer<
+	typeof ListCustomerExportsResponseSchema
+>;
+
+export const DownloadCustomerExportResponseSchema = z.object({
+	url: z.string(),
+	expires_in: z.number(),
+	file_name: z.string(),
+});
+
+export type DownloadCustomerExportResponse = z.infer<
+	typeof DownloadCustomerExportResponseSchema
+>;

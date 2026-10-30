@@ -1,0 +1,54 @@
+import type { BillingContext, BillingPlan } from "@autumn/shared";
+import { ErrCode, RecaseError } from "@autumn/shared";
+import { getTrialStateTransition } from "@/internal/billing/v2/utils/billingContext/getTrialStateTransition";
+import {
+	billingPlanWillCharge,
+	getChargeReasonMessage,
+} from "@/internal/billing/v2/utils/billingPlan/billingPlanWillCharge";
+
+/**
+ * Validates that proration_behavior: 'none' is not used
+ * in scenarios where deferring charges is invalid:
+ * 1. Trial -> Non-trial transitions (removing a trial)
+ * 2. Any operation that would result in a charge
+ */
+export const handleProrationBehaviorErrors = ({
+	billingContext,
+	billingPlan,
+}: {
+	billingContext: BillingContext;
+	billingPlan: BillingPlan;
+}) => {
+	if (billingContext.requestedProrationBehavior !== "none") return;
+
+	// When anchor reset + none is used, charges are expected (full new plan price)
+	if (billingContext.requestedBillingCycleAnchor === "now") return;
+
+	// Trial -> Non-trial transition (removing trial)
+	const { isTrialing, willBeTrialing } = getTrialStateTransition({
+		billingContext,
+	});
+
+	if (isTrialing && !willBeTrialing) {
+		throw new RecaseError({
+			message:
+				"Cannot set proration_behavior to 'none' when removing a free trial",
+			code: ErrCode.InvalidRequest,
+			statusCode: 400,
+		});
+	}
+
+	const chargeResult = billingPlanWillCharge({ billingPlan });
+
+	// Proration is an update-time concept — a brand-new subscription has
+	// nothing to prorate, so 'none' is a documented no-op there, not an error.
+	if (chargeResult.reason === "subscription_create") return;
+
+	if (chargeResult.willCharge) {
+		throw new RecaseError({
+			message: `Cannot set proration_behavior to 'none' when ${getChargeReasonMessage(chargeResult.reason)}`,
+			code: ErrCode.InvalidRequest,
+			statusCode: 400,
+		});
+	}
+};

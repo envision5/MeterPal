@@ -1,0 +1,138 @@
+import {
+	type CustomerPrice,
+	customerPrices,
+	type FullCustomerEntitlement,
+	type FullCustomerPrice,
+} from "@autumn/shared";
+import { eq, inArray } from "drizzle-orm";
+import type { DrizzleCli } from "@/db/initDrizzle.js";
+
+export class CusPriceService {
+	/** Whether any customer price references one of these catalog rows. */
+	static async hasAnyPriceReferences({
+		db,
+		priceIds,
+	}: {
+		db: DrizzleCli;
+		priceIds: string[];
+	}): Promise<boolean> {
+		if (priceIds.length === 0) return false;
+		const row = await db
+			.select({ id: customerPrices.id })
+			.from(customerPrices)
+			.where(inArray(customerPrices.price_id, priceIds))
+			.limit(1);
+		return row.length > 0;
+	}
+
+	/** Which of these catalog prices are referenced by any customer_prices row. */
+	static async getReferencedPriceIds({
+		db,
+		priceIds,
+	}: {
+		db: DrizzleCli;
+		priceIds: string[];
+	}): Promise<Set<string>> {
+		if (priceIds.length === 0) return new Set();
+		const rows = await db
+			.select({ price_id: customerPrices.price_id })
+			.from(customerPrices)
+			.where(inArray(customerPrices.price_id, priceIds));
+		return new Set(
+			rows.map((row) => row.price_id).filter((id): id is string => id !== null),
+		);
+	}
+
+	static async getRelatedToCusEnt({
+		db,
+		cusEnt,
+	}: {
+		db: DrizzleCli;
+		cusEnt: FullCustomerEntitlement;
+	}) {
+		if (!cusEnt.customer_product_id) {
+			return null;
+		}
+
+		const customerPricesData = await db.query.customerPrices.findMany({
+			where: eq(customerPrices.customer_product_id, cusEnt.customer_product_id),
+			with: {
+				price: true,
+			},
+		});
+
+		const matchingCustomerPrice = customerPricesData.find(
+			(cp) => cp.price?.entitlement_id === cusEnt.entitlement.id,
+		) as FullCustomerPrice | undefined;
+
+		return matchingCustomerPrice || null;
+	}
+
+	static async insert({
+		db,
+		data,
+	}: {
+		db: DrizzleCli;
+		data: CustomerPrice[] | CustomerPrice;
+	}) {
+		if (Array.isArray(data) && data.length === 0) {
+			return;
+		}
+
+		const inserted = await db
+			.insert(customerPrices)
+			.values(data as any)
+			.returning();
+		return inserted as CustomerPrice[];
+	}
+
+	static async getByCustomerProductId({
+		db,
+		customerProductId,
+	}: {
+		db: DrizzleCli;
+		customerProductId: string;
+	}) {
+		const data = await db.query.customerPrices.findMany({
+			where: eq(customerPrices.customer_product_id, customerProductId),
+			with: {
+				price: true,
+			},
+		});
+
+		return data as FullCustomerPrice[];
+	}
+
+	static async delete({ db, id }: { db: DrizzleCli; id: string }) {
+		const deleted = await db
+			.delete(customerPrices)
+			.where(eq(customerPrices.id, id))
+			.returning();
+		return deleted;
+	}
+
+	static async update({
+		db,
+		id,
+		updates,
+	}: {
+		db: DrizzleCli;
+		id: string;
+		updates: Partial<CustomerPrice>;
+	}) {
+		const updated = await db
+			.update(customerPrices)
+			.set(updates)
+			.where(eq(customerPrices.id, id))
+			.returning();
+
+		// Ensure exactly one record was updated
+		if (updated.length !== 1) {
+			throw new Error(
+				`Expected to update exactly 1 record, but updated ${updated.length} records`,
+			);
+		}
+
+		return updated[0];
+	}
+}

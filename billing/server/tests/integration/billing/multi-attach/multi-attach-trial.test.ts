@@ -1,0 +1,398 @@
+import type { MultiAttachParamsV0Input } from "@shared/api/billing/attachV2/multiAttachParamsV0";
+/**
+ * Multi-Attach Free Trial Tests
+ *
+ * Tests for trial behavior in multi-attach operations.
+ *
+ * Key behaviors:
+ * - Trial inherited from product when no explicit free_trial param
+ * - free_trial: null removes inherited trial
+ * - Explicit free_trial param applies trial to products without one
+ */
+
+import { expect, test } from "bun:test";
+import {
+	ALL_STATUSES,
+	type ApiCustomerV3,
+	CusProductStatus,
+	FreeTrialDuration,
+	ms,
+} from "@autumn/shared";
+import {
+	expectCustomerFeatureCorrect,
+	expectCustomerFeatureExists,
+} from "@tests/integration/billing/utils/expectCustomerFeatureCorrect";
+import { expectCustomerInvoiceCorrect } from "@tests/integration/billing/utils/expectCustomerInvoiceCorrect";
+import { expectCustomerProducts } from "@tests/integration/billing/utils/expectCustomerProductCorrect";
+import {
+	expectProductNotTrialing,
+	expectProductTrialing,
+} from "@tests/integration/billing/utils/expectCustomerProductTrialing";
+import { waitForInvoiceLineItems } from "@tests/integration/billing/utils/expectInvoiceLineItemsCorrect";
+import { expectSubToBeCorrect } from "@tests/merged/mergeUtils/expectSubCorrect";
+import { TestFeature } from "@tests/setup/v2Features";
+import { items } from "@tests/utils/fixtures/items";
+import { products } from "@tests/utils/fixtures/products";
+import { initScenario, s } from "@tests/utils/testInitUtils/initScenario";
+import chalk from "chalk";
+import { CusService } from "@/internal/customers/CusService";
+
+// ═══════════════════════════════════════════════════════════════════
+// Test 1: Recurring product with free trial + add-on → trial inherited
+//
+// Scenario:
+// - proTrial: $20/mo with 7-day trial + messages
+// - addon: one-off add-on with dashboard (no trial)
+// - No free_trial param passed
+//
+// Expected:
+// - Trial inherited from proTrial's product config
+// - Both products active, proTrial is trialing
+// - Preview total = $10 (only one-off addon charged, recurring deferred)
+// - Invoice total = $10 ($0 for trial sub + $10 for one-off addon)
+// ═══════════════════════════════════════════════════════════════════
+// Stripe's $0 trial line has no product and displays as "Custom Item".
+// Green: The trial line retains the Pro product ID and groups under "Pro".
+test.concurrent(`${chalk.yellowBright("multi-attach trial 1: trial inherited from recurring product")}`, async () => {
+	const messagesItem = items.monthlyMessages({ includedUsage: 500 });
+	const dashboardItem = items.dashboard();
+
+	const proTrial = products.proWithTrial({
+		id: "pro-trial",
+		items: [messagesItem],
+		trialDays: 7,
+		cardRequired: true,
+	});
+	const addon = products.oneOffAddOn({
+		id: "addon",
+		items: [dashboardItem],
+	});
+
+	const { customerId, autumnV1, ctx, advancedTo } = await initScenario({
+		customerId: "ma-trial-inherit",
+		setup: [
+			s.customer({ paymentMethod: "success" }),
+			s.products({ list: [proTrial, addon] }),
+		],
+		actions: [],
+	});
+
+	const multiAttachParams = {
+		customer_id: customerId,
+		plans: [{ plan_id: proTrial.id }, { plan_id: addon.id }],
+	};
+
+	// 1. Preview — $0 (trial defers recurring) + $10 (one-off addon) = $10
+	const preview = await autumnV1.billing.previewMultiAttach(multiAttachParams);
+	expect(preview.total).toBeCloseTo(10, 0);
+
+	// 2. Attach
+	await autumnV1.billing.multiAttach(multiAttachParams);
+
+	// 3. Verify
+	const customer = await autumnV1.customers.get<ApiCustomerV3>(customerId);
+
+	await expectCustomerProducts({
+		customer,
+		active: [proTrial.id, addon.id],
+	});
+
+	// proTrial should be trialing
+	await expectProductTrialing({
+		customer,
+		productId: proTrial.id,
+		trialEndsAt: advancedTo + ms.days(7),
+	});
+
+	expectCustomerFeatureCorrect({
+		customer,
+		featureId: TestFeature.Messages,
+		balance: 500,
+	});
+
+	await expectCustomerFeatureExists({
+		customer,
+		featureId: TestFeature.Dashboard,
+	});
+
+	await expectSubToBeCorrect({
+		db: ctx.db,
+		customerId,
+		org: ctx.org,
+		env: ctx.env,
+	});
+
+	const invoice = customer.invoices?.[0];
+	expect(invoice?.stripe_id).toBeDefined();
+	const lineItems = await waitForInvoiceLineItems({
+		stripeInvoiceId: invoice!.stripe_id,
+	});
+	const trialLineItems = lineItems.filter(
+		(lineItem) =>
+			lineItem.amount === 0 && lineItem.stripe_subscription_item_id !== null,
+	);
+	expect(trialLineItems).toHaveLength(1);
+	expect(trialLineItems[0].product_id).toBe(proTrial.id);
+});
+
+test.concurrent(
+	`${chalk.yellowBright("multi-attach trial 4: revert trial pauses and links multiple replaced plans")}`,
+	async () => {
+		const existingA = products.base({
+			id: "revert-existing-a",
+			items: [items.monthlyPrice({ price: 10 })],
+		});
+		const existingB = products.base({
+			id: "revert-existing-b",
+			items: [items.monthlyPrice({ price: 20 })],
+			group: "revert-group-b",
+		});
+		const replacementA = products.base({
+			id: "revert-replacement-a",
+			items: [items.monthlyPrice({ price: 30 })],
+		});
+		const replacementB = products.base({
+			id: "revert-replacement-b",
+			items: [items.monthlyPrice({ price: 40 })],
+			group: "revert-group-b",
+		});
+		const { autumnV1, autumnV2_2, customerId, ctx, advancedTo } =
+			await initScenario({
+				customerId: "ma-trial-revert-multiple",
+				setup: [
+					s.customer({ paymentMethod: "success" }),
+					s.products({
+						list: [existingA, existingB, replacementA, replacementB],
+					}),
+				],
+				actions: [
+					s.billing.attach({ productId: existingA.id }),
+					s.billing.attach({ productId: existingB.id }),
+				],
+			});
+
+		await autumnV2_2.billing.multiAttach({
+			customer_id: customerId,
+			plans: [{ plan_id: replacementA.id }, { plan_id: replacementB.id }],
+			free_trial: {
+				duration_length: 14,
+				duration_type: FreeTrialDuration.Day,
+				card_required: false,
+				on_end: "revert",
+			},
+		});
+
+		const fullCustomer = await CusService.getFull({
+			ctx,
+			idOrInternalId: customerId,
+			inStatuses: ALL_STATUSES,
+		});
+		const byProductId = new Map(
+			fullCustomer.customer_products.map((customerProduct) => [
+				customerProduct.product_id,
+				customerProduct,
+			]),
+		);
+
+		for (const [existing, replacement] of [
+			[existingA, replacementA],
+			[existingB, replacementB],
+		] as const) {
+			const paused = byProductId.get(existing.id);
+			const trial = byProductId.get(replacement.id);
+
+			expect(paused?.status).toBe(CusProductStatus.Paused);
+			expect(paused?.canceled).toBe(false);
+			expect(paused?.ended_at).toBeNull();
+			expect(trial?.previous_customer_product_id).toBe(paused?.id);
+			expect(trial?.on_trial_end).toBe("revert");
+			expect(trial?.trial_ends_at).toBeWithin(
+				advancedTo + ms.days(14) - ms.hours(1),
+				advancedTo + ms.days(14) + ms.hours(1),
+			);
+		}
+
+		const customer = await autumnV1.customers.get<ApiCustomerV3>(customerId);
+		await expectCustomerInvoiceCorrect({
+			customer,
+			count: 2,
+			latestTotal: 20,
+		});
+	},
+);
+
+// ═══════════════════════════════════════════════════════════════════
+// Test 2: Recurring with trial + add-on, free_trial: null → no trial
+//
+// Scenario:
+// - proTrial: $20/mo with 7-day trial + messages
+// - addon: one-off add-on with dashboard
+// - Explicit free_trial: null passed
+//
+// Expected:
+// - Trial suppressed despite product having one
+// - Both products active, proTrial is NOT trialing
+// - Preview total = $30 ($20 recurring + $10 one-off, charged immediately)
+// ═══════════════════════════════════════════════════════════════════
+test.concurrent(`${chalk.yellowBright("multi-attach trial 2: free_trial null suppresses product trial")}`, async () => {
+	const messagesItem = items.monthlyMessages({ includedUsage: 500 });
+	const dashboardItem = items.dashboard();
+
+	const proTrial = products.proWithTrial({
+		id: "pro-trial",
+		items: [messagesItem],
+		trialDays: 7,
+		cardRequired: true,
+	});
+	const addon = products.oneOffAddOn({
+		id: "addon",
+		items: [dashboardItem],
+	});
+
+	const { customerId, autumnV1, ctx } = await initScenario({
+		customerId: "ma-trial-null",
+		setup: [
+			s.customer({ paymentMethod: "success" }),
+			s.products({ list: [proTrial, addon] }),
+		],
+		actions: [],
+	});
+
+	const multiAttachParams = {
+		customer_id: customerId,
+		plans: [{ plan_id: proTrial.id }, { plan_id: addon.id }],
+		free_trial: null,
+	};
+
+	// 1. Preview — $20 (no trial, charged immediately) + $10 (one-off) = $30
+	const preview = await autumnV1.billing.previewMultiAttach(multiAttachParams);
+	expect(preview.total).toBeCloseTo(30, 0);
+
+	// 2. Attach
+	await autumnV1.billing.multiAttach(multiAttachParams);
+
+	// 3. Verify
+	const customer = await autumnV1.customers.get<ApiCustomerV3>(customerId);
+
+	await expectCustomerProducts({
+		customer,
+		active: [proTrial.id, addon.id],
+	});
+
+	// proTrial should NOT be trialing
+	await expectProductNotTrialing({
+		customer,
+		productId: proTrial.id,
+	});
+
+	expectCustomerFeatureCorrect({
+		customer,
+		featureId: TestFeature.Messages,
+		balance: 500,
+	});
+
+	await expectCustomerFeatureExists({
+		customer,
+		featureId: TestFeature.Dashboard,
+	});
+
+	await expectCustomerInvoiceCorrect({
+		customer,
+		count: 1,
+		latestTotal: 30,
+	});
+
+	await expectSubToBeCorrect({
+		db: ctx.db,
+		customerId,
+		org: ctx.org,
+		env: ctx.env,
+		flags: { checkNotTrialing: true },
+	});
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// Test 3: Recurring without trial + add-on, explicit free_trial → trial applied
+//
+// Scenario:
+// - pro: $20/mo with NO trial + messages
+// - addon: one-off add-on with dashboard
+// - Explicit free_trial: { length: 14, duration: "day" }
+//
+// Expected:
+// - Trial applied from explicit param
+// - Both products active, pro is trialing
+// - Preview total = $10 (only one-off addon charged, recurring deferred)
+// ═══════════════════════════════════════════════════════════════════
+test.concurrent(`${chalk.yellowBright("multi-attach trial 3: explicit free_trial param applies trial")}`, async () => {
+	const messagesItem = items.monthlyMessages({ includedUsage: 300 });
+	const dashboardItem = items.dashboard();
+
+	const pro = products.pro({
+		id: "pro",
+		items: [messagesItem],
+	});
+	const addon = products.oneOffAddOn({
+		id: "addon",
+		items: [dashboardItem],
+	});
+
+	const { customerId, autumnV1, ctx, advancedTo } = await initScenario({
+		customerId: "ma-trial-explicit",
+		setup: [
+			s.customer({ paymentMethod: "success" }),
+			s.products({ list: [pro, addon] }),
+		],
+		actions: [],
+	});
+
+	const multiAttachParams: MultiAttachParamsV0Input = {
+		customer_id: customerId,
+		plans: [{ plan_id: pro.id }, { plan_id: addon.id }],
+		free_trial: {
+			duration_length: 14,
+			duration_type: FreeTrialDuration.Day,
+		},
+	};
+
+	// 1. Preview — $0 (trial defers recurring) + $10 (one-off addon) = $10
+	const preview = await autumnV1.billing.previewMultiAttach(multiAttachParams);
+	expect(preview.total).toBeCloseTo(10, 0);
+
+	// 2. Attach
+	await autumnV1.billing.multiAttach(multiAttachParams);
+
+	// 3. Verify
+	const customer = await autumnV1.customers.get<ApiCustomerV3>(customerId);
+
+	await expectCustomerProducts({
+		customer,
+		active: [pro.id, addon.id],
+	});
+
+	// pro should be trialing with 14-day trial
+	await expectProductTrialing({
+		customer,
+		productId: pro.id,
+		trialEndsAt: advancedTo + ms.days(14),
+		toleranceMs: ms.hours(1) + ms.minutes(10),
+	});
+
+	expectCustomerFeatureCorrect({
+		customer,
+		featureId: TestFeature.Messages,
+		balance: 300,
+	});
+
+	await expectCustomerFeatureExists({
+		customer,
+		featureId: TestFeature.Dashboard,
+	});
+
+	await expectSubToBeCorrect({
+		db: ctx.db,
+		customerId,
+		org: ctx.org,
+		env: ctx.env,
+	});
+});

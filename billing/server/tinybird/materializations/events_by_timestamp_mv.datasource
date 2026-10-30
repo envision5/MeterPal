@@ -1,0 +1,22 @@
+DESCRIPTION >
+    Materialized view of events sorted by timestamp for fast time-range queries.
+    Used by list_events_paginated.pipe for the raw logs viewer UI and external API.
+    Sorting key: (org_id, env, timestamp, customer_id, event_name)
+
+SCHEMA >
+    `id` String,
+    `org_id` String,
+    `env` String,
+    `customer_id` String,
+    `event_name` String,
+    `timestamp` DateTime64(6),
+    `value` Nullable(Decimal(38, 19)),
+    `properties` Nullable(String),
+    `idempotency_key` Nullable(String),
+    `entity_id` String DEFAULT '',
+    `internal_product_id` Nullable(String),
+    `deductions` Nullable(String)
+
+ENGINE "MergeTree"
+ENGINE_PARTITION_KEY "toYYYYMM(timestamp)"
+ENGINE_SORTING_KEY "org_id, env, timestamp, id, customer_id, entity_id, event_name"

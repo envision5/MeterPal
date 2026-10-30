@@ -1,0 +1,69 @@
+import {
+	AffectedResource,
+	type ApiEntityV2,
+	applyResponseVersionChanges,
+	EntityNotFoundError,
+	type FullCustomer,
+} from "@autumn/shared";
+import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
+import { getApiEntityBase } from "./getApiEntityBase.js";
+import { getApiEntityExpand } from "./getApiEntityExpand.js";
+
+/**
+ * Get full ApiEntity with expand fields from a caller-provided FullCustomer
+ */
+export const getApiEntity = async ({
+	ctx,
+	customerId,
+	entityId,
+	fullCus,
+	withAutumnId = false,
+}: {
+	ctx: AutumnContext;
+	customerId: string;
+	entityId: string;
+	fullCus: FullCustomer;
+	withAutumnId?: boolean;
+}): Promise<ApiEntityV2> => {
+	const fullCustomer = fullCus;
+
+	if (!fullCustomer.entity) {
+		throw new EntityNotFoundError({ entityId });
+	}
+
+	// Get base entity (cacheable or direct from DB)
+	const { apiEntity: baseEntity, legacyData } = await getApiEntityBase({
+		ctx,
+		entity: fullCustomer.entity,
+		fullCus: fullCustomer,
+		withAutumnId,
+	});
+
+	// Clean api entity
+	const cleanedEntity = {
+		...baseEntity,
+		feature_id: baseEntity.feature_id || undefined,
+		autumn_id: withAutumnId ? baseEntity.autumn_id : undefined,
+	};
+
+	const apiEntityExpand = await getApiEntityExpand({
+		ctx,
+		customerId,
+		entityId,
+		fullCus,
+	});
+
+	// Merge expand fields
+	const apiEntity = {
+		...cleanedEntity,
+		...apiEntityExpand,
+	};
+
+	return applyResponseVersionChanges<ApiEntityV2>({
+		input: apiEntity,
+		targetVersion: ctx.apiVersion,
+		resource: AffectedResource.Entity,
+		legacyData,
+		ctx,
+	});
+};

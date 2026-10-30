@@ -1,0 +1,186 @@
+import {
+	type CreatePlanItemParamsV1,
+	composeMatchKey,
+	type PlanItemFilter,
+	planItemFilterMatchKey,
+} from "@autumn/shared";
+import type { PlanFilter } from "@autumn/shared/api/migrations/filters/planFilter.js";
+import type { UpdatePlanOp } from "@autumn/shared/api/migrations/operations/customer/updatePlan/index.js";
+import type { BatchMigrationRejection } from "../../types/index.js";
+
+/** `item` navigation has no batch lowering at any depth; top-level `price`
+ * lowers into the scope, but the catalog matcher throws on it inside $or. */
+const planFilterHasItem = (filter: PlanFilter): boolean => {
+	if (filter.item !== undefined) return true;
+	return filter.$or?.some((subFilter) => planFilterHasItem(subFilter)) ?? false;
+};
+
+/** diffPlanV1 expresses a modify-in-place as a remove plus an add sharing one
+ * match key. A remove without a matching add is a standalone deletion. */
+export const isModifyInPlaceOnly = ({
+	addItems,
+	removeItems,
+}: {
+	addItems: CreatePlanItemParamsV1[] | undefined;
+	removeItems: PlanItemFilter[] | undefined;
+}): boolean => {
+	if (!removeItems?.length) return true;
+	const addedKeys = new Set((addItems ?? []).map(composeMatchKey));
+	return removeItems.every((filter) =>
+		addedKeys.has(planItemFilterMatchKey(filter)),
+	);
+};
+
+const checkUpsertLicensesEligibility = ({
+	op,
+	opIndex,
+}: {
+	op: UpdatePlanOp;
+	opIndex: number;
+}): BatchMigrationRejection[] =>
+	(op.customize?.upsert_licenses ?? []).flatMap(
+		(entry): BatchMigrationRejection[] => {
+			const customize = entry.customize;
+			const details = { licensePlanId: entry.license_plan_id };
+
+			if (
+				(customize?.add_items?.length ?? 0) === 0 &&
+				(customize?.remove_items?.length ?? 0) === 0
+			) {
+				return [
+					{
+						code: "unsupported_upsert_licenses" as const,
+						opIndex,
+						message:
+							"upsert_licenses without add_items or remove_items resets the link to catalog inheritance; only the per-customer lane applies it.",
+						details,
+					},
+				];
+			}
+
+			const changesLinkFields =
+				entry.included !== undefined ||
+				entry.prepaid_only !== undefined ||
+				entry.metadata !== undefined;
+			if (changesLinkFields || customize?.price !== undefined) {
+				return [
+					{
+						code: "unsupported_upsert_licenses" as const,
+						opIndex,
+						message:
+							"customize.upsert_licenses link fields and base price are per-customer definition work.",
+						details,
+					},
+				];
+			}
+
+			return (customize?.add_items ?? [])
+				.filter((item) => item.price !== undefined)
+				.map((item) => ({
+					code: "priced_add_item" as const,
+					opIndex,
+					message:
+						"upsert_licenses add_items with a price attaches a paid item; only free entitlements are batch-lowered.",
+					details: { ...details, featureId: item.feature_id },
+				}));
+		},
+	);
+
+export const checkUpdatePlanOpEligibility = ({
+	op,
+	opIndex,
+}: {
+	op: UpdatePlanOp;
+	opIndex: number;
+}): BatchMigrationRejection[] => {
+	const rejections: BatchMigrationRejection[] = [];
+
+	if (
+		op.version !== undefined &&
+		(op.customize?.add_items?.length ?? 0) === 0 &&
+		(op.customize?.remove_items?.length ?? 0) === 0
+	) {
+		rejections.push({
+			code: "unsupported_version_only",
+			opIndex,
+			message:
+				"update_plan version-only (no add_items or remove_items) has no batch execute path; only the per-customer lane applies it.",
+		});
+	}
+
+	if (op.proration === true) {
+		rejections.push({
+			code: "proration_enabled",
+			opIndex,
+			message:
+				"update_plan with proration produces real charges; the batch lane is charge-free.",
+		});
+	}
+
+	if ((op.feature_quantities_strategy?.length ?? 0) > 0) {
+		rejections.push({
+			code: "feature_quantity_strategy",
+			opIndex,
+			message:
+				"feature_quantities_strategy resolves a per-customer quantity; the outcome is not uniform.",
+		});
+	}
+
+	if ((op.customize?.update_items?.length ?? 0) > 0) {
+		rejections.push({
+			code: "deprecated_update_items",
+			opIndex,
+			message:
+				"customize.update_items is deprecated and has no batch lowering; use remove_items + add_items.",
+		});
+	}
+
+	const removeItems = op.customize?.remove_items ?? [];
+
+	if (
+		removeItems.some(
+			(filter) =>
+				filter.billing_method !== undefined || filter.feature_id === undefined,
+		)
+	) {
+		rejections.push({
+			code: "unsupported_remove_items",
+			opIndex,
+			message:
+				"remove_items is batch-lowered by feature and interval; a billing_method or feature-less filter is per-customer work.",
+		});
+	}
+
+	rejections.push(...checkUpsertLicensesEligibility({ op, opIndex }));
+
+	if (op.customize?.price !== undefined) {
+		rejections.push({
+			code: "base_price_customize",
+			opIndex,
+			message:
+				"customize.price changes the base price; base price transitions are not batch-lowered yet.",
+		});
+	}
+
+	op.customize?.add_items?.forEach((item, itemIndex) => {
+		if (item.price !== undefined) {
+			rejections.push({
+				code: "priced_add_item",
+				opIndex,
+				message:
+					"add_items with a price attaches a paid item; only free entitlements are batch-lowered.",
+				details: { itemIndex, featureId: item.feature_id },
+			});
+		}
+	});
+
+	if (planFilterHasItem(op.plan_filter)) {
+		rejections.push({
+			code: "unsupported_plan_filter",
+			opIndex,
+			message: "plan_filter.item is not batch-lowered.",
+		});
+	}
+
+	return rejections;
+};

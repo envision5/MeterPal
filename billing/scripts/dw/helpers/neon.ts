@@ -1,0 +1,330 @@
+import {
+	BRANCH_NAME_RE,
+	NEON_PROJECT_ID,
+	NEON_TEMPLATE_BRANCH,
+} from "../constants.ts";
+import type { NeonBranch } from "../types.ts";
+import {
+	neonProjectId,
+	neonTemplateParent,
+	withNeonContextSync,
+} from "./neonContext.ts";
+import { fatal, log, sh } from "./shell.ts";
+
+let neonCmd: string | undefined;
+
+type NeonOperation = {
+	branch_id: string;
+	action: string;
+	status: string;
+};
+
+const REQUIRED_BRANCH_OPERATION_ACTIONS = [
+	"create_branch",
+	"start_compute",
+] as const;
+const TERMINAL_FAILURE_OPERATION_STATUSES = new Set([
+	"failed",
+	"cancelled",
+	"canceled",
+]);
+const NEON_OPERATION_TIMEOUT_MS = 120_000;
+const NEON_OPERATION_POLL_INTERVAL_MS = 1_000;
+
+function resolveNeonCmd(): string {
+	if (neonCmd) return neonCmd;
+	for (const candidate of ["neon", "neonctl"]) {
+		const res = sh("sh", ["-c", `command -v ${candidate}`]);
+		if (res.code === 0 && res.stdout) {
+			neonCmd = candidate;
+			return neonCmd;
+		}
+	}
+	fatal(
+		"neon CLI not found. Install with: bun install -g neonctl\nThen authenticate: neonctl auth (or set NEON_WORKTREE_API_KEY for headless runs)",
+	);
+}
+
+// neonctl reads NEON_API_KEY for non-interactive auth; headless environments
+// (CI, Devin VMs) have no browser for `neonctl auth`.
+function neonEnv(): Record<string, string> | undefined {
+	const apiKey = process.env.NEON_WORKTREE_API_KEY;
+	if (!apiKey) return undefined;
+	return { ...(process.env as Record<string, string>), NEON_API_KEY: apiKey };
+}
+
+function neon(args: string[]): {
+	stdout: string;
+	stderr: string;
+	code: number;
+} {
+	return sh(resolveNeonCmd(), args, { env: neonEnv() });
+}
+
+export function runNeon(args: string[]): {
+	stdout: string;
+	stderr: string;
+	code: number;
+} {
+	return neon(args);
+}
+
+export function listBranches(): NeonBranch[] {
+	const res = neon([
+		"branches",
+		"list",
+		"--project-id",
+		neonProjectId(),
+		"--output",
+		"json",
+	]);
+	if (res.code !== 0) {
+		fatal(`neon branches list failed: ${res.stderr || res.stdout}`);
+	}
+	try {
+		return JSON.parse(res.stdout) as NeonBranch[];
+	} catch {
+		fatal(`could not parse neon branches list output:\n${res.stdout}`);
+	}
+}
+
+export function findBranchByName(name: string): NeonBranch | undefined {
+	return listBranches().find((b) => b.name === name);
+}
+
+export function createBranch(name: string, parent: string): NeonBranch {
+	if (!BRANCH_NAME_RE.test(name) && name !== NEON_TEMPLATE_BRANCH) {
+		fatal(`refusing to create branch with unexpected name: ${name}`);
+	}
+	log(`creating neon branch ${name} (parent: ${parent})`);
+	const res = neon([
+		"branches",
+		"create",
+		"--project-id",
+		neonProjectId(),
+		"--name",
+		name,
+		"--parent",
+		parent,
+		"--output",
+		"json",
+	]);
+	if (res.code !== 0) {
+		fatal(`neon branches create failed: ${res.stderr || res.stdout}`);
+	}
+	try {
+		const parsed = JSON.parse(res.stdout) as { branch?: NeonBranch };
+		const branch = parsed.branch ?? (parsed as unknown as NeonBranch);
+		if (!branch?.id) fatal(`unexpected neon create output:\n${res.stdout}`);
+		return branch;
+	} catch {
+		fatal(`could not parse neon create output:\n${res.stdout}`);
+	}
+}
+
+function listOperations(branchName: string): NeonOperation[] {
+	const res = neon([
+		"operations",
+		"list",
+		"--project-id",
+		neonProjectId(),
+		"--output",
+		"json",
+	]);
+	if (res.code !== 0) {
+		fatal(
+			`neon operations list for ${branchName} failed: ${res.stderr || res.stdout}`,
+		);
+	}
+	try {
+		const operations = JSON.parse(res.stdout);
+		if (!Array.isArray(operations)) {
+			fatal(
+				`unexpected neon operations list output for ${branchName}:\n${res.stdout}`,
+			);
+		}
+		return operations as NeonOperation[];
+	} catch {
+		fatal(
+			`could not parse neon operations list for ${branchName} output:\n${res.stdout}`,
+		);
+	}
+}
+
+function pendingOperationsMessage(operations: NeonOperation[]): string {
+	const missing = REQUIRED_BRANCH_OPERATION_ACTIONS.filter(
+		(action) => !operations.some((operation) => operation.action === action),
+	).map((action) => `missing ${action}`);
+	const pending = operations
+		.filter((operation) => operation.status !== "finished")
+		.map((operation) => `${operation.action} (${operation.status})`);
+	return [...missing, ...pending].join(", ");
+}
+
+export function waitForNeonBranchOperations(branch: NeonBranch): void {
+	const deadline = Date.now() + NEON_OPERATION_TIMEOUT_MS;
+	let branchOperations: NeonOperation[] = [];
+
+	while (Date.now() < deadline) {
+		branchOperations = listOperations(branch.name).filter(
+			(operation) => operation.branch_id === branch.id,
+		);
+		const failedOperation = branchOperations.find((operation) =>
+			TERMINAL_FAILURE_OPERATION_STATUSES.has(operation.status.toLowerCase()),
+		);
+		if (failedOperation) {
+			fatal(
+				`neon branch ${branch.name} operation ${failedOperation.action} entered terminal failure status ${failedOperation.status}`,
+			);
+		}
+
+		const requiredOperationsAppeared = REQUIRED_BRANCH_OPERATION_ACTIONS.every(
+			(action) =>
+				branchOperations.some((operation) => operation.action === action),
+		);
+		if (
+			requiredOperationsAppeared &&
+			branchOperations.every((operation) => operation.status === "finished")
+		) {
+			log(`neon branch ${branch.name} operations ready`);
+			return;
+		}
+
+		Bun.sleepSync(NEON_OPERATION_POLL_INTERVAL_MS);
+	}
+
+	fatal(
+		`neon branch ${branch.name} did not become ready within ${NEON_OPERATION_TIMEOUT_MS / 1_000}s: ${pendingOperationsMessage(branchOperations)}`,
+	);
+}
+
+export function deleteBranch(
+	idOrName: string,
+	opts: { projectId?: string } = {},
+): void {
+	withNeonContextSync(
+		opts.projectId && opts.projectId !== NEON_PROJECT_ID
+			? { projectId: opts.projectId, templateParent: neonTemplateParent() }
+			: undefined,
+		() => {
+			const res = neon([
+				"branches",
+				"delete",
+				idOrName,
+				"--project-id",
+				neonProjectId(),
+			]);
+			if (res.code !== 0) {
+				console.error(
+					`[dw] neon branches delete ${idOrName} failed: ${res.stderr || res.stdout}`,
+				);
+			} else {
+				log(`deleted neon branch ${idOrName}`);
+			}
+		},
+	);
+}
+
+export function connectionString(
+	branchName: string,
+	opts: { pooled?: boolean; database?: string } = {},
+): string {
+	const args = [
+		"connection-string",
+		branchName,
+		"--project-id",
+		neonProjectId(),
+		// Once we create the leaf `chat` DB on the same branch (see
+		// ensureChatDatabase) `neonctl` refuses to pick a default and errors
+		// with "Multiple databases found". Default to `neondb` here so the
+		// helper stays usable across the lifetime of a branch; callers can
+		// override to read the chat URL specifically.
+		"--database-name",
+		opts.database ?? "neondb",
+	];
+	if (opts.pooled) args.push("--pooled");
+	const res = neon(args);
+	if (res.code !== 0) {
+		fatal(
+			`neon connection-string for ${branchName} failed: ${res.stderr || res.stdout}`,
+		);
+	}
+	return res.stdout.trim();
+}
+
+// Leaf's chat-sdk connects to a separate `chat` database on the same branch
+// (env.ts rewrites DATABASE_URL's path to /chat). Create it via the Neon control
+// plane (no CREATE DATABASE privilege / pooler issues), owned by the same role as
+// neondb so leaf can connect. Idempotent + non-fatal.
+export function ensureChatDatabase(branchName: string): void {
+	const list = neon([
+		"databases",
+		"list",
+		"--project-id",
+		neonProjectId(),
+		"--branch",
+		branchName,
+		"--output",
+		"json",
+	]);
+	if (list.code !== 0) {
+		console.error(
+			`[dw] neon databases list for ${branchName} failed: ${list.stderr || list.stdout}`,
+		);
+		return;
+	}
+	let databases: { name: string; owner_name: string }[];
+	try {
+		databases = JSON.parse(list.stdout) as {
+			name: string;
+			owner_name: string;
+		}[];
+	} catch {
+		console.error(`[dw] could not parse neon databases list for ${branchName}`);
+		return;
+	}
+	if (databases.some((db) => db.name === "chat")) {
+		log(`chat database already present on ${branchName}`);
+		return;
+	}
+	const owner =
+		databases.find((db) => db.name === "neondb")?.owner_name ??
+		databases[0]?.owner_name ??
+		"neondb_owner";
+	log(`creating chat database on ${branchName} (owner ${owner})`);
+	const create = neon([
+		"databases",
+		"create",
+		"--project-id",
+		neonProjectId(),
+		"--branch",
+		branchName,
+		"--name",
+		"chat",
+		"--owner-name",
+		owner,
+	]);
+	if (create.code !== 0) {
+		console.error(
+			`[dw] neon databases create chat on ${branchName} failed: ${create.stderr || create.stdout}`,
+		);
+		return;
+	}
+	log(`chat database created on ${branchName}`);
+}
+
+export function ensureTemplateBranch(): void {
+	const branch = findBranchByName(NEON_TEMPLATE_BRANCH);
+	if (branch) return;
+	log(`bootstrap: ${NEON_TEMPLATE_BRANCH} missing, creating empty parent`);
+	createBranch(NEON_TEMPLATE_BRANCH, neonTemplateParent());
+	// Wipe the inherited schema so children start truly empty.
+	const url = connectionString(NEON_TEMPLATE_BRANCH);
+	const reset = sh("psql", [url, "-v", "ON_ERROR_STOP=1"], {
+		stdin: `DROP SCHEMA IF EXISTS drizzle CASCADE;\nDROP SCHEMA IF EXISTS public CASCADE;\nCREATE SCHEMA public;\nCREATE EXTENSION IF NOT EXISTS pg_trgm;\n`,
+	});
+	if (reset.code !== 0) {
+		fatal(`failed to reset ${NEON_TEMPLATE_BRANCH}:\n${reset.stderr}`);
+	}
+	log(`${NEON_TEMPLATE_BRANCH} ready (empty + pg_trgm)`);
+}

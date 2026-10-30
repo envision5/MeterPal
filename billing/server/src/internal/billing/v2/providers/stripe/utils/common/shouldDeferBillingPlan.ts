@@ -1,0 +1,24 @@
+import type {
+	BillingContext,
+	BillingResponseRequiredAction,
+} from "@autumn/shared";
+import type Stripe from "stripe";
+import { isDeferredInvoiceMode } from "@/internal/billing/v2/utils/billingContext/isDeferredInvoiceMode";
+
+export const shouldDeferBillingPlan = ({
+	billingContext,
+	latestStripeInvoice,
+	requiredAction,
+}: {
+	billingContext: BillingContext;
+	latestStripeInvoice: Stripe.Invoice;
+	requiredAction?: BillingResponseRequiredAction;
+}): boolean => {
+	const deferredInvoiceMode = isDeferredInvoiceMode({
+		billingContext,
+	});
+
+	if (latestStripeInvoice.status === "paid") return false;
+
+	return deferredInvoiceMode || Boolean(requiredAction);
+};

@@ -1,0 +1,69 @@
+import {
+	type ActionInsert,
+	type ActionType,
+	type AppEnv,
+	AuthType,
+	type Customer,
+	type Entity,
+	type Organization,
+} from "@autumn/shared";
+import { generateId } from "@/utils/genUtils.js";
+import type { ExtendedRequest } from "@/utils/models/Request.js";
+import type { AutumnContext } from "../../honoUtils/HonoEnv";
+
+export const parseCtxForAction = ({
+	ctx,
+}: {
+	ctx: AutumnContext;
+}): Partial<AutumnContext> => {
+	return {
+		id: ctx.id,
+		authType: ctx.authType,
+		// originalUrl: ctx.originalUrl,
+		// method: ctx.method,
+		// body: ctx.body,
+		// timestamp: Date.now(),
+	} as Partial<ExtendedRequest>;
+};
+
+const constructAction = ({
+	org,
+	env,
+	customer,
+	entity,
+	type,
+	req,
+	properties,
+}: {
+	org: Organization;
+	env: AppEnv;
+	customer: Customer;
+	entity?: Entity;
+	type: ActionType;
+	req: Partial<ExtendedRequest>;
+	properties?: any;
+}): ActionInsert => {
+	const timestampVal = req.timestamp ? new Date(req.timestamp) : new Date();
+
+	return {
+		id: generateId("act"),
+		org_id: org.id,
+		org_slug: org.slug,
+		env,
+		internal_customer_id: customer.internal_id,
+		customer_id: customer.id,
+		entity_id: entity?.id,
+		internal_entity_id: entity?.internal_id,
+		type,
+		timestamp: timestampVal,
+
+		// Request info
+		request_id: req.id || "",
+		method: req.method || "",
+		path: (req.originalUrl || "").split("?")[0],
+		auth_type: req.authType || AuthType.Unknown,
+
+		// Properties
+		properties: properties || {},
+	};
+};

@@ -1,0 +1,219 @@
+import {
+	AttachScenario,
+	BillingInterval,
+	type CreateCustomer,
+	CreateCustomerSchema,
+	type Customer,
+	ErrCode,
+	type FeatureOptions,
+	type FullCustomer,
+	type FullProduct,
+	isPrepaidPrice,
+	priceToEnt,
+} from "@autumn/shared";
+import { createStripeCli } from "@/external/connect/createStripeCli.js";
+import { ProductService } from "@/internal/products/ProductService.js";
+import { getNextStartOfMonthUnix } from "@/internal/products/prices/billingIntervalUtils.js";
+import { isDefaultTrialFullProduct } from "@/internal/products/productUtils/classifyProduct.js";
+import { isFreeProduct } from "@/internal/products/productUtils.js";
+import RecaseError from "@/utils/errorUtils.js";
+import { generateId } from "@/utils/genUtils.js";
+import type { AutumnContext } from "../../../honoUtils/HonoEnv.js";
+import { createFullCusProduct } from "../add-product/createFullCusProduct.js";
+import { handleAddProduct } from "../attach/attachFunctions/addProductFlow/handleAddProduct.js";
+import {
+	newCusToAttachParams,
+	newCusToInsertParams,
+} from "../attach/attachUtils/attachParams/convertToParams.js";
+import { getDefaultAttachConfig } from "../attach/attachUtils/getAttachConfig.js";
+import { CusService } from "../CusService.js";
+import { initStripeCusAndProducts } from "../handlers/handleCreateCustomer.js";
+import { assertCustomerCurrencyAllowed } from "./initCustomer.js";
+
+const getGroupToDefaultProd = async ({
+	defaultProds,
+}: {
+	defaultProds: FullProduct[];
+}) => {
+	const groups = new Set(defaultProds.map((p) => p.group));
+	const groupToDefaultProd: Record<string, FullProduct> = {};
+
+	for (const group of groups) {
+		const defaultProdsInGroup = defaultProds.filter((p) => p.group === group);
+
+		if (defaultProdsInGroup.length === 0) continue;
+
+		defaultProdsInGroup.sort((a, b) => {
+			// 1. If a is default trial, go first
+			if (isDefaultTrialFullProduct({ product: a })) return -1;
+
+			if (!isFreeProduct(a.prices)) return -1;
+
+			return 0;
+		});
+
+		groupToDefaultProd[group] = defaultProdsInGroup[0];
+	}
+
+	return groupToDefaultProd;
+};
+
+export const createNewCustomer = async ({
+	ctx,
+	customer,
+	nextResetAt,
+	createdAt,
+	createDefaultProducts = true,
+	defaultGroup,
+}: {
+	ctx: AutumnContext;
+	customer: CreateCustomer;
+	nextResetAt?: number;
+	createdAt?: number;
+	createDefaultProducts?: boolean;
+	defaultGroup?: string;
+}) => {
+	const { db, org, env, logger } = ctx;
+
+	logger.info(
+		`Creating customer: ${customer.email || customer.id}, org: ${org.slug}`,
+	);
+
+	const defaultProds = await ProductService.listDefault({
+		db,
+		orgId: org.id,
+		env,
+	});
+
+	const nonFreeProds = defaultProds.filter(
+		(p) =>
+			!isFreeProduct(p.prices) && !isDefaultTrialFullProduct({ product: p }),
+	);
+
+	const parsedCustomer = CreateCustomerSchema.parse(customer);
+
+	assertCustomerCurrencyAllowed({ ctx, currency: parsedCustomer.currency });
+
+	const internalId = generateId("cus");
+	const customerData: Customer = {
+		...parsedCustomer,
+
+		name: parsedCustomer.name || "",
+		email:
+			nonFreeProds.length > 0 && !parsedCustomer.email
+				? `${parsedCustomer.id || internalId}@invoices.useautumn.com`
+				: parsedCustomer.email || "",
+
+		metadata: parsedCustomer.metadata || {},
+		internal_id: internalId,
+		org_id: org.id,
+		created_at: createdAt ?? Date.now(),
+		env,
+		processors: parsedCustomer.processors ?? null,
+		processor: parsedCustomer.stripe_id
+			? {
+					id: parsedCustomer.stripe_id,
+					type: "stripe",
+				}
+			: undefined,
+		currency: parsedCustomer.currency?.toLowerCase() || null,
+	};
+
+	// Check if stripeCli exists
+	if (nonFreeProds.length > 0) {
+		createStripeCli({ org, env });
+	}
+
+	const newCustomer = await CusService.insert({
+		db,
+		data: customerData,
+	});
+
+	if (!newCustomer) {
+		throw new RecaseError({
+			code: ErrCode.InternalError,
+			message: "CusService.insert returned null",
+		});
+	}
+
+	if (!createDefaultProducts) {
+		return newCustomer;
+	}
+
+	const groupToDefaultProd = await getGroupToDefaultProd({
+		defaultProds,
+	});
+
+	// Filter to only the specified group if defaultGroup is provided
+	const groupsToProcess = defaultGroup
+		? Object.keys(groupToDefaultProd).filter((g) => g === defaultGroup)
+		: Object.keys(groupToDefaultProd);
+
+	for (const group of groupsToProcess) {
+		const defaultProd = groupToDefaultProd[group];
+		logger.debug(
+			`[createNewCustomer] Creating default product with ID: ${defaultProd?.id}`,
+		);
+
+		if (!isFreeProduct(defaultProd.prices)) {
+			const stripeCli = createStripeCli({ org, env });
+			await initStripeCusAndProducts({
+				ctx,
+				customer: newCustomer,
+				products: nonFreeProds,
+			});
+
+			const optionsList = defaultProd.prices
+				.filter((x) => isPrepaidPrice(x))
+				.map((x) => {
+					const ent = priceToEnt({
+						price: x,
+						entitlements: defaultProd.entitlements,
+					});
+					return {
+						feature_id: ent?.feature.id,
+						internal_feature_id:
+							ent?.feature.internal_id || ent?.internal_feature_id,
+						quantity: 0,
+					};
+				}) as FeatureOptions[];
+
+			await handleAddProduct({
+				ctx,
+				config: {
+					...getDefaultAttachConfig(),
+					requirePaymentMethod: false,
+				},
+				attachParams: newCusToAttachParams({
+					ctx,
+					newCus: newCustomer as FullCustomer,
+					products: [defaultProd],
+					stripeCli,
+					freeTrial: defaultProd.free_trial || null,
+					optionsList: optionsList as FeatureOptions[],
+				}),
+			});
+		} else {
+			await createFullCusProduct({
+				db,
+				attachParams: newCusToInsertParams({
+					ctx,
+					newCus: newCustomer,
+					product: defaultProd,
+					freeTrial: defaultProd?.free_trial || null,
+				}),
+				nextResetAt,
+				anchorToUnix: org.config.anchor_start_of_month
+					? getNextStartOfMonthUnix({
+							interval: BillingInterval.Month,
+							intervalCount: 1,
+						})
+					: undefined,
+				scenario: AttachScenario.New,
+				logger,
+			});
+		}
+	}
+
+	return newCustomer;
+};

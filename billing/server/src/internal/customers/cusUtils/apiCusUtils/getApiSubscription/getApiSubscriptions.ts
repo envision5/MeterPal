@@ -1,0 +1,51 @@
+import {
+	type ApiSubscriptionV1,
+	apiSubscription,
+	type CusProductLegacyData,
+	type FullCustomer,
+	fullCustomerToPlanProducts,
+	isCustomerProductOneOff,
+} from "@autumn/shared";
+import type { RequestContext } from "@/honoUtils/HonoEnv.js";
+import { getApiSubscription } from "./getApiSubscription.js";
+
+export const getApiSubscriptions = async ({
+	ctx,
+	fullCus,
+}: {
+	ctx: RequestContext;
+	fullCus: FullCustomer;
+}) => {
+	const apiSubs: ApiSubscriptionV1[] = [];
+	const apiPurchasesAsSubscriptions: ApiSubscriptionV1[] = [];
+
+	const cusProducts = fullCustomerToPlanProducts({ fullCustomer: fullCus });
+
+	const legacyData: Record<string, CusProductLegacyData> = {};
+	for (const cusProduct of cusProducts) {
+		const processed = await getApiSubscription({
+			cusProduct,
+			ctx,
+			fullCus,
+		});
+
+		if (isCustomerProductOneOff(cusProduct)) {
+			apiPurchasesAsSubscriptions.push(processed.data);
+		} else {
+			apiSubs.push(processed.data);
+		}
+		legacyData[processed.data.plan_id] = processed.legacyData;
+	}
+
+	const purchases = apiPurchasesAsSubscriptions.map((sub) =>
+		apiSubscription.map.v1ToPurchaseV0({
+			apiSubscriptionV1: sub,
+		}),
+	);
+
+	return {
+		subscriptions: apiSubs,
+		purchases,
+		legacyData,
+	};
+};

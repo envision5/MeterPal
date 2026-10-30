@@ -1,0 +1,219 @@
+import type {
+	BillingContext,
+	BillingPlan,
+	Invoice,
+	StripeBillingPlanResult,
+} from "@autumn/shared";
+import { StripeBillingStage, tryCatch } from "@autumn/shared";
+import { createStripeCli } from "@/external/connect/createStripeCli";
+import { setStripeSubscriptionLock } from "@/external/redis/actions/stripeSubscriptionLock/stripeSubscriptionLock.js";
+import { isStripeSubscriptionCanceled } from "@/external/stripe/subscriptions/utils/classifyStripeSubscriptionUtils";
+import type { AutumnContext } from "@/honoUtils/HonoEnv";
+import { addStripeSubscriptionToBillingPlan } from "@/internal/billing/v2/execute/addStripeSubscriptionIdToBillingPlan";
+import { removeStripeSubscriptionIdFromBillingPlan } from "@/internal/billing/v2/execute/removeStripeSubscriptionIdFromBillingPlan";
+import { shouldDeferBillingPlan } from "@/internal/billing/v2/providers/stripe/utils/common/shouldDeferBillingPlan";
+import { applyTemplateToDraft } from "@/internal/billing/v2/providers/stripe/utils/invoices/applyTemplateToDraft";
+import {
+	finalizeStripeInvoice,
+	updateStripeInvoice,
+} from "@/internal/billing/v2/providers/stripe/utils/invoices/stripeInvoiceOps";
+import { executeStripeSubscriptionOperation } from "@/internal/billing/v2/providers/stripe/utils/subscriptions/executeStripeSubscriptionOperation";
+import { getLatestInvoiceFromSubscriptionAction } from "@/internal/billing/v2/providers/stripe/utils/subscriptions/getLatestInvoiceFromSubscriptionAction";
+import { getRequiredActionFromSubscriptionInvoice } from "@/internal/billing/v2/providers/stripe/utils/subscriptions/getRequiredActionFromSubscriptionInvoice";
+import { upsertSubscriptionFromBilling } from "@/internal/billing/v2/utils/upsertFromStripe/upsertSubscriptionFromBilling";
+import { invoiceActions } from "@/internal/invoices/actions";
+import { insertMetadataFromBillingPlan } from "@/internal/metadata/utils/insertMetadataFromBillingPlan";
+import { isDeferredInvoiceMode } from "../../../utils/billingContext/isDeferredInvoiceMode";
+import { getDeferredBillingMetadataExpiresAt } from "./getDeferredBillingMetadataExpiresAt";
+
+export const executeStripeSubscriptionAction = async ({
+	ctx,
+	billingPlan,
+	billingContext,
+}: {
+	ctx: AutumnContext;
+	billingPlan: BillingPlan;
+	billingContext: BillingContext;
+}): Promise<StripeBillingPlanResult> => {
+	// 1. Perform stripe subscription operation
+	const { subscriptionAction } = billingPlan.stripe;
+
+	if (!subscriptionAction) return {};
+
+	let { stripeSubscription, currentEpochMs } = billingContext;
+	const { logger } = ctx;
+	const stripeCli = createStripeCli({ org: ctx.org, env: ctx.env });
+
+	// 2. Lock stripe subscription
+	if (stripeSubscription) {
+		await setStripeSubscriptionLock({
+			ctx,
+			stripeSubscriptionId: stripeSubscription.id,
+			lockedAtMs: currentEpochMs,
+		});
+	}
+
+	logger.debug(`[execSubAction] Executing subscription operation`);
+	const { data: updatedStripeSubscription, error } = await tryCatch(
+		executeStripeSubscriptionOperation({
+			ctx,
+			billingContext,
+			subscriptionAction,
+		}),
+	);
+
+	if (error) throw error;
+
+	stripeSubscription = updatedStripeSubscription;
+
+	let latestStripeInvoice = getLatestInvoiceFromSubscriptionAction({
+		stripeSubscription,
+		subscriptionAction,
+		billingContext,
+	});
+
+	latestStripeInvoice = await applyTemplateToDraft({
+		ctx,
+		stripeCli,
+		invoice: latestStripeInvoice,
+		footer: billingContext.invoiceMode?.footer,
+		memo: billingContext.invoiceMode?.memo,
+	});
+
+	// Honor either the new internal flag (set by attach via setupFinalizeFirstInvoice)
+	// or the public invoice_mode.finalize for the other actions (updateSubscription,
+	// multiAttach, createSchedule) that don't wire setupFinalizeFirstInvoice.
+	const shouldFinalize =
+		billingContext.shouldFinalizeFirstInvoice ??
+		billingContext.invoiceMode?.finalizeInvoice ??
+		false;
+
+	// Invoice-mode drafts (finalize: false) must stay in draft for manual
+	// review. Stripe creates subscription invoices with auto_advance on and
+	// would otherwise finalize and email them ~1 hour later.
+	const shouldKeepDraft =
+		Boolean(billingContext.invoiceMode) &&
+		!shouldFinalize &&
+		latestStripeInvoice?.status === "draft" &&
+		latestStripeInvoice.auto_advance === true;
+
+	if (latestStripeInvoice && shouldKeepDraft) {
+		logger.debug(`[execSubAction] Disabling auto_advance on draft invoice`);
+		latestStripeInvoice = await updateStripeInvoice({
+			stripeCli,
+			invoiceId: latestStripeInvoice.id,
+			params: { auto_advance: false },
+		});
+	}
+
+	if (
+		latestStripeInvoice &&
+		shouldFinalize &&
+		latestStripeInvoice.status === "draft"
+	) {
+		logger.debug(`[execSubAction] Finalizing invoice`);
+		latestStripeInvoice = await finalizeStripeInvoice({
+			stripeCli,
+			invoiceId: latestStripeInvoice.id,
+			// Invoice mode: let Stripe email the finalized invoice (fires invoice.sent).
+			autoAdvance: Boolean(billingContext.invoiceMode),
+		});
+	}
+
+	// Determine required action from invoice payment intent status (only if open)
+	const requiredAction =
+		latestStripeInvoice?.status === "open"
+			? await getRequiredActionFromSubscriptionInvoice({
+					stripeClient: stripeCli,
+					invoiceId: latestStripeInvoice!.id,
+					hasPaymentMethod: Boolean(billingContext.paymentMethod),
+					invoiceMode: billingContext.invoiceMode ?? undefined,
+					enablePlanImmediately: billingContext.enablePlanImmediately,
+				})
+			: undefined;
+
+	const deferBillingPlan = latestStripeInvoice
+		? shouldDeferBillingPlan({
+				billingContext,
+				latestStripeInvoice,
+				requiredAction,
+			})
+		: false;
+
+	let autumnInvoice: Invoice | undefined;
+	if (latestStripeInvoice) {
+		logger.debug(`[execSubAction] Upserting invoice from billing`);
+		const invoiceResult = await invoiceActions.upsertFromStripe({
+			ctx,
+			stripeInvoice: latestStripeInvoice,
+			fullCustomer: billingContext.fullCustomer,
+			fullProducts: billingContext.fullProducts,
+		});
+		autumnInvoice = invoiceResult.invoice;
+	}
+
+	addStripeSubscriptionToBillingPlan({
+		autumnBillingPlan: billingPlan.autumn,
+		stripeSubscription,
+	});
+
+	// Add subscription to DB
+	logger.debug(`[execSubAction] Upserting subscription from billing`);
+	await upsertSubscriptionFromBilling({
+		ctx,
+		stripeSubscription,
+	});
+
+	if (deferBillingPlan) {
+		logger.debug(`[execSubAction] Inserting metadata from billing plan`);
+
+		// Required if we resume after and carry out subscription schedule action
+		const deferredBillingContext = {
+			...billingContext,
+			stripeSubscription,
+		};
+
+		const deferredInvoiceMode = isDeferredInvoiceMode({
+			billingContext,
+		});
+
+		const deferredMetadata = await insertMetadataFromBillingPlan({
+			ctx,
+			billingPlan,
+			billingContext: deferredBillingContext,
+			stripeInvoice: latestStripeInvoice,
+			expiresAt: getDeferredBillingMetadataExpiresAt({
+				deferredInvoiceMode,
+				paymentMethod: billingContext.paymentMethod,
+				stripeInvoice: latestStripeInvoice,
+			}),
+			resumeAfter: StripeBillingStage.SubscriptionAction,
+		});
+
+		return {
+			stripeInvoice: latestStripeInvoice,
+			stripeSubscription,
+			deferred: true,
+			deferredMetadataId: deferredMetadata.id,
+			requiredAction,
+			autumnInvoice,
+		};
+	}
+
+	// If the stripe subscription is canceled, remove the subscription from the billing plan
+	if (isStripeSubscriptionCanceled(stripeSubscription)) {
+		logger.debug(`[execSubAction] removing subscription from billing plan`);
+		removeStripeSubscriptionIdFromBillingPlan({
+			autumnBillingPlan: billingPlan.autumn,
+			stripeSubscriptionId: stripeSubscription.id,
+		});
+
+		stripeSubscription = undefined;
+	}
+
+	return {
+		stripeSubscription,
+		stripeInvoice: latestStripeInvoice,
+		autumnInvoice,
+	};
+};

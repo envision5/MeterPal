@@ -1,0 +1,186 @@
+import { ssoProvider } from "@autumn/shared";
+import { httpInstrumentationMiddleware } from "@hono/otel";
+import { eq } from "drizzle-orm";
+import { Hono } from "hono";
+import { cors } from "hono/cors";
+import { db } from "./db/initDrizzle.js";
+import { autumnWebhookRouter } from "./external/autumn/autumnWebhookRouter.js";
+import { revenuecatWebhookRouter } from "./external/revenueCat/revenuecatWebhookRouter.js";
+import { stripeWebhookRouter } from "./external/stripe/stripeWebhookRouter.js";
+import { paypalWebhookRouter } from "./external/paypal/webhookRouter.js";
+import { vercelTestApiRouter } from "./external/vercel/vercelTestApiRouter.js";
+import { vercelWebhookRouter } from "./external/vercel/vercelWebhookRouter.js";
+import { baseMiddleware } from "./honoMiddlewares/baseMiddleware.js";
+import { errorMiddleware } from "./honoMiddlewares/errorMiddleware.js";
+import { inFlightTrackingMiddleware } from "./honoMiddlewares/inFlightTrackingMiddleware.js";
+import { replicaDbMiddleware } from "./honoMiddlewares/replicaDbMiddleware.js";
+import type { HonoEnv } from "./honoUtils/HonoEnv.js";
+import { handleHealthCheck } from "./honoUtils/handleHealthCheck.js";
+import { handleReadyCheck } from "./honoUtils/handleReadyCheck.js";
+import { handleCapyLogin } from "./internal/auth/handleCapyLogin.js";
+import { handleListAuthOrganizations } from "./internal/auth/handleListAuthOrganizations.js";
+import { oauthRouter } from "./internal/auth/oauth/oauthRouter.js";
+import { withTrustedSsoOrigin } from "./internal/auth/sso/ssoTrustedOrigins.js";
+import { cliRouter } from "./internal/dev/cli/cliRouter.js";
+import { handleRevenueCatOAuthCallback } from "./internal/orgs/handlers/revenueCatHandlers/handleRevenueCatOAuthCallback.js";
+import { handleOAuthCallback } from "./internal/orgs/handlers/stripeHandlers/handleOAuthCallback.js";
+import { slackUnfurlRouter } from "./internal/slackUnfurl/slackUnfurlRouter.js";
+import { apiRouter } from "./routers/apiRouter.js";
+import { createChatProxyRouter } from "./routers/chatProxyRouter.js";
+import { internalRouter } from "./routers/internalRouter.js";
+import { publicRouter } from "./routers/publicRouter.js";
+import { auth, isCapyDev } from "./utils/auth.js";
+import { isAllowedOrigin } from "./utils/corsOrigins.js";
+
+const ALLOWED_HEADERS = [
+	"app_env",
+	"x-sandbox-org-id",
+	"x-api-version",
+	"x-client-type",
+	"x-request-id",
+	"x-visitor-id",
+	"Authorization",
+	"Content-Type",
+	"Accept",
+	"Origin",
+	"X-API-Version",
+	"X-Requested-With",
+	"Access-Control-Request-Method",
+	"Access-Control-Request-Headers",
+	"Cache-Control",
+	"If-Match",
+	"If-None-Match",
+	"If-Modified-Since",
+	"If-Unmodified-Since",
+	"idempotency-key",
+	"Idempotency-Key",
+	"User-Agent", // Required for better-auth v1.4.0+ compatibility with Safari/Zen browser
+];
+
+const FACADE_ONLY_SSO_PATHS = new Set([
+	"/api/auth/sign-in/sso",
+	"/api/auth/sso/register",
+	"/api/auth/sso/request-domain-verification",
+	"/api/auth/sso/verify-domain",
+	"/api/auth/sso/providers",
+	"/api/auth/sso/get-provider",
+	"/api/auth/sso/update-provider",
+	"/api/auth/sso/delete-provider",
+]);
+
+export const createHonoApp = () => {
+	const app = new Hono<HonoEnv>();
+
+	app.route("", createChatProxyRouter());
+
+	// CORS configuration (must be before routes)
+	app.use(
+		"*",
+		cors({
+			origin: isAllowedOrigin,
+			allowHeaders: ALLOWED_HEADERS,
+			allowMethods: ["POST", "GET", "PUT", "DELETE", "PATCH", "OPTIONS"],
+			exposeHeaders: ["Content-Length"],
+			maxAge: 600,
+			credentials: true,
+		}),
+	);
+
+	app.route("", oauthRouter);
+
+	// Better Auth's joined Drizzle query defaults to 100 memberships.
+	app.get("/api/auth/organization/list", handleListAuthOrganizations);
+	if (isCapyDev) app.get("/api/auth/capy-login", handleCapyLogin);
+
+	app.on(["POST", "GET"], ["/api/auth/*"], async (c) => {
+		if (FACADE_ONLY_SSO_PATHS.has(c.req.path)) {
+			return c.json({ message: "Use the Autumn SSO flow" }, 404);
+		}
+		const callbackMatch = c.req.path.match(
+			/^\/api\/auth\/sso\/callback\/([^/]+)$/,
+		);
+		if (callbackMatch?.[1]) {
+			const providerId = decodeURIComponent(callbackMatch[1]);
+			const provider = await db.query.ssoProvider.findFirst({
+				where: eq(ssoProvider.providerId, providerId),
+			});
+			if (!provider) {
+				return c.json({ message: "SSO provider not found" }, 404);
+			}
+			return withTrustedSsoOrigin({
+				origin: new URL(provider.issuer).origin,
+				run: () => auth.handler(c.req.raw),
+			});
+		}
+		return auth.handler(c.req.raw);
+	});
+
+	// OAuth callback (needs to be before middleware)
+	// Health check endpoint for AWS/ECS load balancer
+
+	app.get("/stripe/oauth_callback", handleOAuthCallback);
+	app.get("/revenuecat/oauth_callback", handleRevenueCatOAuthCallback);
+	app.get("/ready/:token", handleReadyCheck);
+	app.get("/", handleHealthCheck);
+
+	// Slack-unfurl (/slack-unfurl/*) — own prefix so it doesn't collide with the
+	// chat proxy's /slack/* (-> leaf). Slack-facing, auths via request signature,
+	// so mounted ahead of the org/auth middleware.
+	app.route("/slack-unfurl", slackUnfurlRouter);
+
+	// Step 1: OTel HTTP span + base middleware + span enrichment
+	app.use(
+		"*",
+		httpInstrumentationMiddleware({
+			serviceName: "autumn-server",
+			serviceVersion: "1.0.0",
+		}),
+	);
+	app.use("*", inFlightTrackingMiddleware);
+	app.use("*", baseMiddleware);
+	app.use("*", replicaDbMiddleware);
+
+	// CLI routes (uses Bearer token auth, not session auth)
+	app.route("/cli", cliRouter);
+
+	// Add Render region identifier header for load balancer verification
+	app.use("*", async (c, next) => {
+		await next();
+		c.header("x-region", process.env.AWS_REGION);
+	});
+
+	// Webhook routes
+	app.route("", stripeWebhookRouter);
+	app.route("", paypalWebhookRouter);
+	app.route("/webhooks/autumn", autumnWebhookRouter);
+	app.route("/webhooks/vercel", vercelWebhookRouter);
+	app.route("/webhooks/revenuecat", revenuecatWebhookRouter);
+
+	// Vercel SDK test mock — mounted in dev/test, used only when
+	// `ctx.testOptions.mockVercelApi` points the SDK at this route.
+	if (process.env.NODE_ENV !== "production") {
+		app.route("/__test/vercel/api", vercelTestApiRouter);
+	}
+
+	// Public routes (no auth required)
+	app.route("", publicRouter);
+	// Debug routes (no auth, dev-only guard is inside the handler)
+	// Debug routes (auth handled internally)
+	// app.route("/debug", heapSnapshotRouter);
+	// app.route("/v1/debug", debugRouter);
+
+	// API Middleware
+	app.route("/v1", apiRouter);
+
+	// OAuth/MCP discovery is public by contract, so an unmatched probe must 404
+	// here rather than fall through to internalRouter's session gate below,
+	// which answers with a misleading 401. Everything this server does serve is
+	// registered on oauthRouter and the chat proxy, both mounted well above.
+	app.all("/.well-known/*", (c) => c.json({ error: "not_found" }, 404));
+
+	app.route("", internalRouter);
+
+	app.onError(errorMiddleware);
+
+	return app;
+};

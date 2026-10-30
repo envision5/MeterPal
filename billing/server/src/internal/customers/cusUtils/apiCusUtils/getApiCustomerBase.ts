@@ -1,0 +1,125 @@
+import { getApiBalances } from "@api/customers/cusFeatures";
+import {
+	type ApiCustomerV5,
+	ApiCustomerV5Schema,
+	CustomerExpand,
+	type CustomerLegacyData,
+	type FullCustomer,
+	fullCustomerToFullSubject,
+	fullSubjectToApiUsageLimits,
+	orgToInStatuses,
+	scopeExpandForCtx,
+} from "@autumn/shared";
+import { z } from "zod/v4";
+import type { RequestContext } from "@/honoUtils/HonoEnv.js";
+import { invoicesToResponse } from "../../../invoices/invoiceUtils.js";
+import { getCusProcessors } from "../cusResponseUtils/getCusProcessors.js";
+import {
+	fullCustomerWithoutEntityData,
+	shouldAggregateEntityData,
+} from "../customerEntityData.js";
+import { getApiCustomerLicenses } from "../getApiCustomerV2/getApiCustomerLicense/getApiCustomerLicenses.js";
+import { getApiSubscriptions } from "./getApiSubscription/getApiSubscriptions.js";
+
+/**
+ * Get base ApiCustomer without expand fields
+ * This is the core customer object that can be cached
+ * By default, it includes the autumn_id
+ */
+export const getApiCustomerBase = async ({
+	ctx,
+	fullCus,
+	withAutumnId = true,
+}: {
+	ctx: RequestContext;
+	fullCus: FullCustomer;
+	withAutumnId?: boolean;
+}): Promise<{ apiCustomer: ApiCustomerV5; legacyData: CustomerLegacyData }> => {
+	const fullCustomer =
+		!fullCus.entity &&
+		!shouldAggregateEntityData({ apiVersion: ctx.apiVersion })
+			? fullCustomerWithoutEntityData({ fullCustomer: fullCus })
+			: fullCus;
+
+	const { balances: apiBalances, flags: apiFlags } = await getApiBalances({
+		ctx,
+		fullCus: fullCustomer,
+	});
+
+	const subscriptionsScopedCtx = scopeExpandForCtx({
+		ctx,
+		prefix: "subscriptions",
+	});
+
+	const {
+		subscriptions: apiSubscriptions,
+		purchases: apiPurchases,
+		legacyData: cusProductLegacyData,
+	} = await getApiSubscriptions({
+		ctx: subscriptionsScopedCtx,
+		fullCus: fullCustomer,
+	});
+	const usageLimits = fullSubjectToApiUsageLimits({
+		fullSubject: fullCustomerToFullSubject({ fullCustomer }),
+		features: ctx.features,
+		inStatuses: orgToInStatuses({ org: ctx.org }),
+	});
+
+	const apiCustomer = ApiCustomerV5Schema.extend({
+		autumn_id: z.string().optional(),
+	}).parse({
+		autumn_id: withAutumnId ? fullCus.internal_id : undefined,
+
+		id: fullCus.id || null,
+		created_at: fullCus.created_at,
+		name: fullCus.name || null,
+		email: fullCus.email || null,
+		fingerprint: fullCus.fingerprint || null,
+
+		stripe_id: fullCus.processor?.id || null,
+		env: fullCus.env,
+		metadata: fullCus.metadata ?? {},
+
+		subscriptions: apiSubscriptions,
+		purchases: apiPurchases,
+		licenses: getApiCustomerLicenses({
+			ctx,
+			customerProducts: fullCustomer.customer_products,
+		}),
+		balances: apiBalances,
+		flags: apiFlags,
+		send_email_receipts: fullCus.send_email_receipts ?? false,
+		billing_controls: {
+			auto_topups: fullCus.auto_topups ?? undefined,
+			spend_limits: fullCus.spend_limits ?? undefined,
+			usage_limits: usageLimits,
+			usage_alerts: fullCus.usage_alerts ?? undefined,
+			overage_allowed: fullCus.overage_allowed ?? undefined,
+		},
+		config: fullCus.config
+			? {
+					disable_pooled_balance: fullCus.config.disable_pooled_balance,
+					disable_overage_billing: fullCus.config.disable_overage_billing,
+				}
+			: undefined,
+
+		processors: getCusProcessors({
+			customer: fullCustomer,
+			customer_products: fullCustomer.customer_products,
+		}),
+
+		invoices:
+			fullCus.invoices && ctx.expand.includes(CustomerExpand.Invoices)
+				? invoicesToResponse({
+						invoices: fullCus.invoices,
+					})
+				: undefined,
+	} satisfies ApiCustomerV5);
+
+	return {
+		apiCustomer,
+		legacyData: {
+			cusProductLegacyData,
+		},
+	};
+};

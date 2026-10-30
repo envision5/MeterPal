@@ -1,0 +1,136 @@
+import {
+	BillingVersion,
+	cusEntToBillingObjects,
+	type FullCusEntWithFullCusProduct,
+	featureOptionUtils,
+	getPriceCurrencyStripeId,
+	InternalError,
+	isPrepaidPrice,
+	priceUtils,
+	type StripeItemSpec,
+	type StripeItemSpecMode,
+	type UsagePriceConfig,
+} from "@autumn/shared";
+import { notNullish } from "@server/utils/genUtils";
+import type { AutumnContext } from "@/honoUtils/HonoEnv";
+import { cusEntToInlineStripePrice } from "./cusEntToInlineStripePrice";
+
+/**
+ * Converts a prepaid (usage-in-advance) price to a StripeItemSpec.
+ * For entity-scoped products, uses an inline price so each entity gets unique tiers.
+ * For non-entity-scoped, uses the stored stripe_prepaid_price_v2_id.
+ */
+export const prepaidToStripeItemSpec = ({
+	ctx,
+	cusEntWithCusProduct,
+	currency,
+	orgDefault,
+	options,
+}: {
+	ctx: AutumnContext;
+	cusEntWithCusProduct: FullCusEntWithFullCusProduct;
+	currency: string;
+	orgDefault: string;
+	options?: {
+		isDuplicateProductId?: boolean;
+		billingVersion?: BillingVersion;
+		mode?: StripeItemSpecMode;
+	};
+}): StripeItemSpec | null => {
+	const billing = cusEntToBillingObjects({ cusEnt: cusEntWithCusProduct });
+	if (!billing) return null;
+
+	const {
+		cusProduct,
+		price,
+		product,
+		entitlement,
+		options: featureOptions,
+	} = billing;
+
+	if (!isPrepaidPrice(price)) {
+		throw new InternalError({
+			message: `[prepaidToStripeItemSpec] Price ${price.id} is not a prepaid price`,
+		});
+	}
+
+	const config = price.config as UsagePriceConfig;
+	const isEntityScoped = notNullish(cusProduct.internal_entity_id);
+	const isTieredOneOff = priceUtils.isTieredOneOff({ price, product });
+
+	if (options?.billingVersion === BillingVersion.V1) {
+		const optionsQuantity =
+			featureOptions?.upcoming_quantity ?? featureOptions?.quantity;
+		const finalQuantity = optionsQuantity;
+
+		return {
+			stripePriceId:
+				getPriceCurrencyStripeId({
+					config,
+					currency,
+					orgDefault,
+					slot: "stripe_price_id",
+				}) ?? undefined,
+			quantity: finalQuantity,
+			autumnPrice: price,
+			autumnEntitlement: entitlement,
+			autumnProduct: product,
+			autumnCusEnt: cusEntWithCusProduct,
+		};
+	}
+
+	const inlineMode = options?.mode === "inline";
+
+	if (
+		isEntityScoped ||
+		isTieredOneOff ||
+		options?.isDuplicateProductId ||
+		inlineMode
+	) {
+		const inlinePrice = cusEntToInlineStripePrice({
+			cusEnt: cusEntWithCusProduct,
+			org: ctx.org,
+			currency,
+		});
+
+		return {
+			stripeInlinePrice: inlinePrice,
+			quantity: 1,
+			autumnPrice: price,
+			autumnEntitlement: entitlement,
+			autumnProduct: product,
+			autumnCusEnt: cusEntWithCusProduct,
+			metadata: {
+				inline_price: "true",
+				...(inlineMode && { inline_mode: "true" }),
+			},
+		};
+	}
+
+	const prepaidV2Id = getPriceCurrencyStripeId({
+		config,
+		currency,
+		orgDefault,
+		slot: "stripe_prepaid_price_v2_id",
+	});
+	if (!prepaidV2Id) {
+		throw new InternalError({
+			message: `[prepaidToStripeItemSpec] Price ${price.id} has no stripe_prepaid_price_v2_id for currency '${currency}'`,
+		});
+	}
+
+	const quantity = featureOptionUtils.convert.toV2StripeQuantity({
+		featureOptions: featureOptions ?? undefined,
+		price,
+		entitlement,
+	});
+
+	return {
+		stripePriceId: prepaidV2Id,
+		quantity,
+		autumnPrice: price,
+		autumnEntitlement: entitlement,
+		autumnProduct: product,
+		autumnCusEnt: cusEntWithCusProduct,
+	};
+};

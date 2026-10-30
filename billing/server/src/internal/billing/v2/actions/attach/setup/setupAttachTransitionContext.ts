@@ -1,0 +1,82 @@
+import type { PlanTiming } from "@autumn/shared";
+import {
+	customerProductToEffectivePrices,
+	type FullCustomer,
+	type FullProduct,
+	findMainActiveCustomerProductByGroup,
+	findMainScheduledCustomerProductByGroup,
+	isOneOffProduct,
+	isProductUpgrade,
+	productToEffectivePrices,
+} from "@autumn/shared";
+
+/**
+ * Sets up the transition context for attaching a product.
+ * Determines if there's an existing product to transition from (upgrade/downgrade).
+ */
+export const setupAttachTransitionContext = ({
+	fullCustomer,
+	attachProduct,
+	planScheduleOverride,
+	internalEntityId,
+}: {
+	fullCustomer: FullCustomer;
+	attachProduct: FullProduct;
+	planScheduleOverride?: PlanTiming;
+	/** Scope the transition lookup to a specific entity. When omitted, the
+	 * finders fall back to the customer's current entity context (customer
+	 * level for a customer-scoped attach). Required so an entity-scoped attach
+	 * transitions from the existing product on that same entity. */
+	internalEntityId?: string;
+}) => {
+	// Only main recurring products can trigger transitions
+	const isMainRecurring =
+		!attachProduct.is_add_on && !isOneOffProduct({ product: attachProduct });
+
+	if (!isMainRecurring) {
+		return {
+			currentCustomerProduct: undefined,
+			scheduledCustomerProduct: undefined,
+			planTiming: "immediate" as PlanTiming,
+		};
+	}
+
+	const currentCustomerProduct = findMainActiveCustomerProductByGroup({
+		fullCus: fullCustomer,
+		productGroup: attachProduct.group,
+		internalEntityId,
+	});
+
+	const scheduledCustomerProduct = findMainScheduledCustomerProductByGroup({
+		fullCustomer,
+		productGroup: attachProduct.group,
+		internalEntityId,
+	});
+
+	// Compute planTiming (upgrade = immediate, downgrade = end_of_cycle)
+	let planTiming: PlanTiming = "immediate";
+
+	if (currentCustomerProduct) {
+		const currentPrices = customerProductToEffectivePrices({
+			customerProduct: currentCustomerProduct,
+		});
+
+		const isUpgrade = isProductUpgrade({
+			prices1: currentPrices,
+			prices2: productToEffectivePrices({ product: attachProduct }),
+		});
+
+		planTiming = isUpgrade ? "immediate" : "end_of_cycle";
+	}
+
+	// Override if plan_schedule param is provided
+	if (planScheduleOverride) {
+		planTiming = planScheduleOverride;
+	}
+
+	return {
+		currentCustomerProduct,
+		scheduledCustomerProduct,
+		planTiming,
+	};
+};

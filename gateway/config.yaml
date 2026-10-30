@@ -1,0 +1,110 @@
+# litellm/config.yaml
+#
+# LiteLLM proxy configuration with the Autumn billing bridge.
+#
+# Start the proxy: litellm --config config.yaml
+#
+# Security notes:
+#   - master_key must be set via env var, never committed.
+#   - callbacks registered below are the ONLY admission/usage source.
+#   - disable_budget_reservation makes Autumn the sole authority; remove
+#     that line if you want LiteLLM's per-key budgets to layer on top.
+
+litellm_settings:
+  drop_params: true
+  set_verbose: false
+  cache: true
+  cache_params:
+    type: redis
+    host: os.environ/REDIS_HOST
+    port: os.environ/REDIS_PORT
+    password: os.environ/REDIS_PASSWORD
+  callbacks:
+    # Must name an *instance*, not the class: LiteLLM's custom-callback loader
+    # rejects a class (neither a CustomLogger instance nor a callable).
+    - "litellm.integrations.autumn_billing.proxy_handler_instance"
+
+  # Per-route overrides (optional)
+  # success_callback:
+  #   - "litellm.integrations.autumn_billing.AutumnBillingBridge"
+  # failure_callback:
+  #   - "litellm.integrations.autumn_billing.AutumnBillingBridge"
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+  database_url: os.environ/DATABASE_URL
+
+  # Disable LiteLLM's native budget reservation.  Autumn is the sole
+  # admission controller.  Remove this line if you want to layer
+  # LiteLLM's per-key / per-team budgets on top of Autumn.
+  disable_budget_reservation: true
+
+  # Auth hardening
+  enable_oauth2: false
+  enable_sso: false
+
+router_settings:
+  routing_strategy: simple-shuffle
+  num_retries: 2
+  timeout: 30
+  cooldown_time: 60
+  cooldown_failed_requests: 5
+
+# ─── Models ────────────────────────────────────────────────────────────
+# Multiple deployments of the same model spread across separate provider
+# orgs aggregate their per-org rate limits.  Three OpenAI orgs gives you
+# 3x the per-org RPM budget.
+
+model_list:
+  - model_name: gpt-4o
+    litellm_params:
+      model: openai/gpt-4o
+      api_key: os.environ/OPENAI_API_KEY_A
+      rpm: 60
+  - model_name: gpt-4o
+    litellm_params:
+      model: openai/gpt-4o
+      api_key: os.environ/OPENAI_API_KEY_B
+      rpm: 60
+  - model_name: gpt-4o
+    litellm_params:
+      model: openai/gpt-4o
+      api_key: os.environ/OPENAI_API_KEY_C
+      rpm: 60
+
+  - model_name: gpt-5-mini
+    litellm_params:
+      model: openai/gpt-5-mini
+      api_key: os.environ/OPENAI_API_KEY_A
+
+  - model_name: claude-sonnet-4-5
+    litellm_params:
+      model: anthropic/claude-sonnet-4-5
+      api_key: os.environ/ANTHROPIC_API_KEY
+
+  - model_name: claude-haiku-4-5
+    litellm_params:
+      model: anthropic/claude-haiku-4-5
+      api_key: os.environ/ANTHROPIC_API_KEY
+
+  - model_name: gemini-2.5-flash
+    litellm_params:
+      model: gemini/gemini-2.5-flash
+      api_key: os.environ/GEMINI_API_KEY
+
+  # ─── Demo models (mock provider, no real keys needed) ────────────────
+  # Both point at demo/mock_llm.py (localhost:9999).  "demo-gpt" is billed
+  # by Autumn as custom/demo-gpt at the rates configured in the feature's
+  # model_markups; "gpt-4o-mini-mock" is billed at models.dev list rates
+  # for openai/gpt-4o-mini.  AUTUMN_MODEL_ID_MAP (litellm/.env) maps the
+  # LiteLLM names to those billable ids.
+  - model_name: demo-gpt
+    litellm_params:
+      model: openai/demo-gpt
+      api_base: os.environ/MOCK_LLM_BASE_URL
+      api_key: os.environ/MOCK_LLM_API_KEY
+  - model_name: gpt-4o-mini-mock
+    litellm_params:
+      model: openai/gpt-4o-mini
+      api_base: os.environ/MOCK_LLM_BASE_URL
+      api_key: os.environ/MOCK_LLM_API_KEY

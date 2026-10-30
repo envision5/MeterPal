@@ -1,0 +1,100 @@
+import type { EventInsert } from "@autumn/shared";
+import { logger } from "@server/external/logtail/logtailUtils.js";
+import { sendEventsToTinybird } from "@server/external/tinybird/sendEvents/sendEvents.js";
+import { db } from "@server/db/initDrizzle.js";
+import { JobName } from "@server/queue/JobName.js";
+import { addTaskToQueue } from "@server/queue/queueUtils.js";
+import { runInsertEventBatch } from "./runInsertEventBatch.js";
+
+class BatchingManager {
+	private events: Map<string, EventInsert> = new Map();
+	private timer: NodeJS.Timeout | null = null;
+	// Batches clear the map before their sends complete, so shutdown flushes
+	// must await these, not just the pending map.
+	private inFlightBatches = new Set<Promise<void>>();
+	private readonly batchWindow = 350; // 100ms batching window
+	private readonly maxBatchSize = 200; // Max events per batch (~200kb per event, keep batches under 10MB for Tinybird)
+
+	/** Add an event to the batch */
+	addEvent(event: EventInsert): void {
+		const key = event.id;
+		this.events.set(key, event);
+
+		// Auto-execute if batch size is reached
+		if (this.events.size >= this.maxBatchSize) {
+			void this.runBatch();
+			return;
+		}
+
+		// Start/reset timer for batch execution
+		if (this.timer) {
+			clearTimeout(this.timer);
+		}
+
+		this.timer = setTimeout(() => {
+			void this.runBatch();
+		}, this.batchWindow);
+	}
+
+	/** Deliver pending AND already-executing batches (shutdown path). */
+	async flush(): Promise<void> {
+		// Settle everything before returning: a fail-fast await would abandon
+		// tracked in-flight batches on the first rejection.
+		const results = await Promise.allSettled([
+			this.runBatch(),
+			...Array.from(this.inFlightBatches),
+		]);
+		const failure = results.find((r) => r.status === "rejected");
+		if (failure && failure.status === "rejected") throw failure.reason;
+	}
+
+	private runBatch(): Promise<void> {
+		const batchPromise = this.executeBatch().finally(() => {
+			this.inFlightBatches.delete(batchPromise);
+		});
+		this.inFlightBatches.add(batchPromise);
+		return batchPromise;
+	}
+
+	/** Execute the current batch - queue to SQS for Postgres and send to Tinybird */
+	private async executeBatch(): Promise<void> {
+		if (this.timer) {
+			clearTimeout(this.timer);
+			this.timer = null;
+		}
+
+		if (this.events.size === 0) {
+			return;
+		}
+
+		// Snapshot current batch
+		const currentEvents = new Map(this.events);
+		this.events.clear();
+
+		const eventItems = Array.from(currentEvents.values());
+
+		// Queue to SQS for Postgres and publish to Tinybird in parallel.
+		// Without a configured queue (local dev) insert inline so the usage
+		// ledger still lands -- mirrors track's own sync fallback in queueTrack.
+		if (!process.env.SQS_QUEUE_URL_V2) {
+			await runInsertEventBatch({
+				db,
+				payload: { events: eventItems },
+				logger,
+			});
+		} else {
+			await addTaskToQueue({
+				jobName: JobName.InsertEventBatch,
+				payload: { events: eventItems },
+			});
+		}
+
+		await sendEventsToTinybird({
+			events: eventItems,
+			logger,
+		});
+	}
+}
+
+// Global singleton instance
+export const globalEventBatchingManager = new BatchingManager();

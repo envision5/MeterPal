@@ -1,0 +1,74 @@
+import {
+	AffectedResource,
+	type ApiCustomerV5,
+	applyResponseVersionChanges,
+	CustomerExpand,
+	type FullCustomer,
+} from "@autumn/shared";
+import type { RequestContext } from "@/honoUtils/HonoEnv.js";
+import { getApiCustomerBase } from "./getApiCustomerBase.js";
+import { getApiCustomerExpand } from "./getApiCustomerExpand.js";
+
+/**
+ * Transform FullCustomer to ApiCustomer with expand fields and version changes applied.
+ *
+ * Note: schedule is not included on the API customer. Consumers that need it
+ * should call the dedicated schedule endpoint.
+ */
+export const getApiCustomer = async ({
+	ctx,
+	fullCustomer,
+	withAutumnId = false,
+}: {
+	ctx: RequestContext;
+	fullCustomer: FullCustomer;
+	withAutumnId?: boolean;
+}): Promise<ApiCustomerV5> => {
+	// Get base ApiCustomer (subscriptions, balances, invoices)
+	const { apiCustomer: baseCustomer, legacyData } = await getApiCustomerBase({
+		ctx,
+		fullCus: fullCustomer,
+		withAutumnId,
+	});
+
+	// Clean base customer (remove entities from base, handle expand)
+	const cleanedBaseCustomer: ApiCustomerV5 = {
+		...baseCustomer,
+		entities: undefined,
+		autumn_id: withAutumnId ? baseCustomer.autumn_id : undefined,
+		invoices: ctx.expand.includes(CustomerExpand.Invoices)
+			? (baseCustomer.invoices ?? [])
+			: undefined,
+	};
+
+	// Get expand params (rewards, referrals, etc.)
+	const apiCustomerExpand = await getApiCustomerExpand({
+		ctx,
+		customerId: fullCustomer.id || fullCustomer.internal_id,
+		fullCus: fullCustomer,
+	});
+
+	const { billing_controls_override, ...standardExpand } = apiCustomerExpand;
+
+	const apiCustomer: ApiCustomerV5 = {
+		...cleanedBaseCustomer,
+		...standardExpand,
+		...(billing_controls_override
+			? {
+					billing_controls: {
+						...cleanedBaseCustomer.billing_controls,
+						auto_topups: billing_controls_override.auto_topups,
+					},
+				}
+			: {}),
+	};
+
+	// Apply version transformations based on API version
+	return applyResponseVersionChanges<ApiCustomerV5>({
+		input: apiCustomer,
+		targetVersion: ctx.apiVersion,
+		resource: AffectedResource.Customer,
+		legacyData,
+		ctx,
+	});
+};

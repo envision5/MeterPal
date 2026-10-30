@@ -1,0 +1,143 @@
+import type { AppEnv, Organization } from "@autumn/shared";
+import * as Sentry from "@sentry/bun";
+import { getSentryTags } from "@/external/sentry/sentryUtils.js";
+import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
+import { createSvixCli, getSvixAppId, safeSvix } from "./svixUtils.js";
+
+export const createSvixApp = safeSvix({
+	fn: async ({
+		name,
+		orgId,
+		env,
+		meta = {},
+	}: {
+		name: string;
+		orgId: string;
+		env: AppEnv;
+		meta?: Record<string, unknown>;
+	}) => {
+		const svix = createSvixCli();
+		const app = await svix.application.create({
+			name,
+			metadata: {
+				org_id: orgId,
+				env,
+				...meta,
+			},
+		});
+		return app;
+	},
+	action: "createSvixApp",
+});
+
+export const deleteSvixApp = safeSvix({
+	fn: async ({ appId }: { appId: string }) => {
+		const svix = createSvixCli();
+		await svix.application.delete(appId);
+	},
+	action: "deleteSvixApp",
+});
+
+export const sendSvixEvent = async ({
+	ctx,
+	eventType,
+	data,
+	payloadFields,
+	idempotencyKey,
+	tags,
+}: {
+	ctx: AutumnContext;
+	eventType: string;
+	data: unknown;
+	payloadFields?: { id?: string; occurred_at?: number };
+	idempotencyKey?: string;
+	tags?: string[];
+}) => {
+	if (!process.env.SVIX_API_KEY) return;
+
+	const { org, env } = ctx;
+
+	try {
+		ctx.logger.info(`[svix] Firing webhook: ${eventType}`);
+
+		const svix = createSvixCli();
+		const appId = getSvixAppId({ org, env });
+		if (!appId) {
+			ctx.logger.warn(
+				`[svix] No app id for org ${org.id} (${env}); skipping ${eventType}`,
+			);
+			return null;
+		}
+
+		return await svix.message.create(
+			appId,
+			{
+				eventType,
+				payload: {
+					type: eventType,
+					...payloadFields,
+					data,
+				},
+				...(tags && tags.length > 0 ? { tags } : {}),
+			},
+			idempotencyKey ? { idempotencyKey } : undefined,
+		);
+	} catch (error) {
+		// Log the tags (the usual culprit) so tag-validation rejections aren't
+		// invisible. Don't log Svix's raw error body — it can echo request data.
+		const status = error as { code?: number; statusCode?: number };
+		ctx.logger.error(
+			`[svix] Failed to send ${eventType}: ${error} | status=${status.code ?? status.statusCode} | tags=${JSON.stringify(tags ?? [])}`,
+		);
+		Sentry.captureException(error, {
+			tags: getSentryTags({ ctx }),
+		});
+	}
+};
+
+export const sendCustomSvixEvent = safeSvix({
+	fn: async ({
+		// biome-ignore lint/correctness/noUnusedFunctionParameters: Might be useful in the future
+		org,
+		// biome-ignore lint/correctness/noUnusedFunctionParameters: Might be useful in the future
+		env,
+		eventType,
+		data,
+		appId,
+		idempotencyKey,
+	}: {
+		org: Organization;
+		env: AppEnv;
+		eventType: string;
+		data: unknown;
+		appId: string;
+		idempotencyKey?: string;
+	}) => {
+		const svix = createSvixCli();
+		return await svix.message.create(
+			appId,
+			{
+				eventType,
+				payload: {
+					type: eventType,
+					data,
+				},
+			},
+			idempotencyKey ? { idempotencyKey } : undefined,
+		);
+	},
+	action: "sendSvixEvent",
+});
+
+export const getSvixDashboardUrl = safeSvix({
+	fn: async ({ org, env }: { org: Organization; env: AppEnv }) => {
+		const appId = getSvixAppId({ org, env });
+		if (!appId) {
+			return null;
+		}
+		const svix = createSvixCli();
+		const dashboard = await svix.authentication.appPortalAccess(appId, {});
+		return dashboard.url;
+	},
+	action: "getSvixDashboardUrl",
+});

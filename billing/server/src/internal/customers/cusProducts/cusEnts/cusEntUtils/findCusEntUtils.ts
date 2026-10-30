@@ -1,0 +1,91 @@
+import type {
+	Entity,
+	Feature,
+	FullCusEntWithFullCusProduct,
+	FullCustomerEntitlement,
+} from "@autumn/shared";
+import { notNullish } from "@/utils/genUtils.js";
+
+const cusEntMatchesEntity = ({
+	cusEnt,
+	entity,
+}: {
+	cusEnt: FullCusEntWithFullCusProduct;
+	entity?: Entity;
+}) => {
+	if (!entity) return true;
+
+	let cusProductMatch = true;
+
+	if (notNullish(cusEnt.customer_product?.internal_entity_id)) {
+		cusProductMatch =
+			cusEnt.customer_product.internal_entity_id === entity.internal_id;
+	}
+
+	let entityFeatureIdMatch = true;
+
+	if (notNullish(cusEnt.entitlement.entity_feature_id)) {
+		entityFeatureIdMatch =
+			cusEnt.entitlement.entity_feature_id === entity.feature_id;
+	}
+
+	return cusProductMatch && entityFeatureIdMatch;
+};
+
+export const findLinkedCusEnts = ({
+	cusEnts,
+	feature,
+}: {
+	cusEnts: FullCustomerEntitlement[];
+	feature: Feature;
+}) => {
+	return cusEnts.filter(
+		(e: any) => e.entitlement.entity_feature_id === feature.id,
+	);
+};
+
+export const findCusEnt = ({
+	feature,
+	cusEnts,
+	onlyUsageAllowed = false,
+	entity,
+	features,
+}: {
+	feature: Feature;
+	cusEnts: FullCustomerEntitlement[];
+	onlyUsageAllowed?: boolean;
+	entity?: Entity;
+	features?: Feature[];
+}) => {
+	return cusEnts.find((ce: any) => {
+		const featureMatch =
+			ce.entitlement.feature.internal_id === feature.internal_id;
+
+		const entityMatch = cusEntMatchesEntity({ cusEnt: ce, entity });
+
+		const usageMatch = onlyUsageAllowed ? ce.usage_allowed : true;
+
+		return featureMatch && entityMatch && usageMatch;
+	});
+};
+
+const filterCusEnts = ({
+	feature,
+	cusEnts,
+	entity,
+	features,
+}: {
+	feature: Feature;
+	cusEnts: FullCustomerEntitlement[];
+	entity?: Entity;
+	features?: Feature[];
+}) => {
+	return cusEnts.filter((ce: any) => {
+		const featureMatch =
+			ce.entitlement.feature.internal_id === feature.internal_id;
+
+		const entityMatch = cusEntMatchesEntity({ cusEnt: ce, entity });
+
+		return featureMatch && entityMatch;
+	});
+};

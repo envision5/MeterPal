@@ -1,0 +1,313 @@
+import type { Plan, PlanItem } from "../../../compose/models/index.js";
+
+export interface ApiPlanLicenseParams {
+	license_plan_id: string;
+	version?: number;
+	included: number;
+	customize?: {
+		price?: { amount: number; interval: string } | null;
+		add_items?: ApiPlanItemParams[];
+		remove_items?: Array<{
+			feature_id?: string;
+			billing_method?: string;
+			interval?: string;
+			interval_count?: number;
+		}>;
+	};
+}
+
+/**
+ * API plan format expected by the server's CreatePlanParams schema
+ */
+export interface ApiAdditionalCurrency {
+	currency: string;
+	amount: number;
+}
+
+export interface ApiAdditionalCurrencyTier {
+	currency: string;
+	amount?: number;
+	flat_amount?: number;
+}
+
+export interface ApiPlanParams {
+	id: string;
+	name: string;
+	description?: string | null;
+	group?: string;
+	add_on?: boolean;
+	auto_enable?: boolean;
+	archived?: boolean;
+	price?: {
+		amount: number;
+		interval: string;
+		additional_currencies?: ApiAdditionalCurrency[];
+	};
+	items?: ApiPlanItemParams[];
+	free_trial?: {
+		duration_type: string;
+		duration_length: number;
+		card_required: boolean;
+	};
+	billing_controls?: Plan["billingControls"];
+	licenses: ApiPlanLicenseParams[];
+}
+
+export interface ApiPlanItemParams {
+	feature_id: string;
+	entity_feature_id?: string;
+	included?: number;
+	unlimited?: boolean;
+	pooled?: boolean;
+	reset?: {
+		interval: string;
+		interval_count?: number;
+	};
+	price?: {
+		amount?: number;
+		tiers?: Array<{
+			to: number | "inf";
+			amount: number;
+			flat_amount?: number;
+			additional_currencies?: ApiAdditionalCurrencyTier[];
+		}>;
+		interval: string;
+		interval_count?: number;
+		billing_units?: number;
+		billing_method: string;
+		max_purchase?: number;
+		tier_behavior?: string;
+		additional_currencies?: ApiAdditionalCurrency[];
+	};
+	proration?: {
+		on_increase: string;
+		on_decrease: string;
+	};
+	rollover?: {
+		max?: number;
+		max_percentage?: number;
+		expiry_duration_type: string;
+		expiry_duration_length?: number;
+	};
+}
+
+/** Transforms SDK plan items while preserving reset and billing cycles independently. */
+export function transformPlanItem(planItem: PlanItem): ApiPlanItemParams {
+	const result: ApiPlanItemParams = {
+		feature_id: planItem.featureId,
+	};
+
+	if (planItem.entityFeatureId != null) {
+		result.entity_feature_id = planItem.entityFeatureId;
+	}
+
+	if (planItem.included !== undefined) {
+		result.included = planItem.included;
+	}
+
+	if (planItem.unlimited !== undefined) {
+		result.unlimited = planItem.unlimited;
+	}
+
+	if (planItem.pooled === true) {
+		result.pooled = true;
+	}
+
+	if (planItem.reset) {
+		result.reset = {
+			interval: planItem.reset.interval,
+			...(planItem.reset.intervalCount !== undefined && {
+				interval_count: planItem.reset.intervalCount,
+			}),
+		};
+	}
+
+	if (planItem.price) {
+		const priceWithInterval = planItem.price as {
+			interval?: string;
+			intervalCount?: number;
+		};
+		const interval = priceWithInterval.interval;
+		const intervalCount = priceWithInterval.intervalCount;
+
+		const priceWithBilling = planItem.price as {
+			billingUnits?: number;
+			billingMethod?: string;
+			maxPurchase?: number;
+			tierBehavior?: string;
+		};
+
+		result.price = {
+			interval: interval!,
+			billing_units: priceWithBilling.billingUnits ?? 1,
+			billing_method: priceWithBilling.billingMethod ?? "prepaid",
+			...(planItem.price.amount !== undefined && {
+				amount: planItem.price.amount,
+			}),
+			...(planItem.price.additionalCurrencies && {
+				additional_currencies: planItem.price.additionalCurrencies,
+			}),
+			...(planItem.price.tiers && {
+				tiers: planItem.price.tiers.map((tier) => {
+					const t = tier as {
+						to: number | "inf";
+						amount: number;
+						flatAmount?: number;
+						additionalCurrencies?: Array<{
+							currency: string;
+							amount?: number;
+							flatAmount?: number;
+						}>;
+					};
+					return {
+						to: t.to,
+						amount: t.amount,
+						...(t.flatAmount !== undefined && { flat_amount: t.flatAmount }),
+						...(t.additionalCurrencies && {
+							additional_currencies: t.additionalCurrencies.map((entry) => ({
+								currency: entry.currency,
+								...(entry.amount !== undefined && { amount: entry.amount }),
+								...(entry.flatAmount !== undefined && {
+									flat_amount: entry.flatAmount,
+								}),
+							})),
+						}),
+					};
+				}),
+			}),
+			...(intervalCount !== undefined && {
+				interval_count: intervalCount,
+			}),
+			...(priceWithBilling.maxPurchase !== undefined && {
+				max_purchase: priceWithBilling.maxPurchase,
+			}),
+			...(priceWithBilling.tierBehavior !== undefined && {
+				tier_behavior: priceWithBilling.tierBehavior,
+			}),
+		};
+	}
+
+	if (planItem.proration) {
+		result.proration = {
+			on_increase: planItem.proration.onIncrease,
+			on_decrease: planItem.proration.onDecrease,
+		};
+	}
+
+	if (planItem.rollover) {
+		result.rollover = {
+			...(planItem.rollover.maxPercentage == null && {
+				// API expects number, SDK allows null (treat null as 0 or very large number)
+				max: planItem.rollover.max ?? 0,
+			}),
+			...(planItem.rollover.maxPercentage != null && {
+				max_percentage: planItem.rollover.maxPercentage,
+			}),
+			expiry_duration_type: planItem.rollover.expiryDurationType,
+			...(planItem.rollover.expiryDurationLength !== undefined && {
+				expiry_duration_length: planItem.rollover.expiryDurationLength,
+			}),
+		};
+	}
+
+	return result;
+}
+
+/**
+ * Transform SDK Plan to API format for has_customers endpoint
+ */
+export function transformPlanToApi(plan: Plan): ApiPlanParams {
+	const result: ApiPlanParams = {
+		id: plan.id,
+		name: plan.name,
+		licenses: (plan.licenses ?? []).map((license) => ({
+			license_plan_id: license.licensePlanId,
+			...(license.version !== undefined ? { version: license.version } : {}),
+			included: license.included ?? 0,
+			...(license.customize !== undefined
+				? {
+						customize: {
+							...(license.customize.price !== undefined
+								? { price: license.customize.price }
+								: {}),
+							...(license.customize.addItems !== undefined
+								? {
+										add_items: license.customize.addItems.map((addItem) =>
+											transformPlanItem(addItem as PlanItem),
+										),
+									}
+								: {}),
+							...(license.customize.removeItems !== undefined
+								? {
+										remove_items: license.customize.removeItems.map(
+											(filter) => ({
+												...(filter.featureId !== undefined
+													? { feature_id: filter.featureId }
+													: {}),
+												...(filter.billingMethod !== undefined
+													? { billing_method: filter.billingMethod }
+													: {}),
+												...(filter.interval !== undefined
+													? { interval: filter.interval }
+													: {}),
+												...(filter.intervalCount !== undefined
+													? { interval_count: filter.intervalCount }
+													: {}),
+											}),
+										),
+									}
+								: {}),
+						},
+					}
+				: {}),
+		})),
+	};
+
+	if (plan.description !== undefined) {
+		result.description = plan.description;
+	}
+
+	if (plan.group !== undefined) {
+		result.group = plan.group;
+	}
+
+	if (plan.addOn !== undefined) {
+		result.add_on = plan.addOn;
+	}
+
+	if (plan.autoEnable !== undefined) {
+		result.auto_enable = plan.autoEnable;
+	}
+
+	if (plan.archived !== undefined) {
+		result.archived = plan.archived;
+	}
+
+	if (plan.price) {
+		result.price = {
+			amount: plan.price.amount,
+			interval: plan.price.interval,
+			...(plan.price.additionalCurrencies && {
+				additional_currencies: plan.price.additionalCurrencies,
+			}),
+		};
+	}
+
+	if (plan.items && plan.items.length > 0) {
+		result.items = plan.items.map(transformPlanItem);
+	}
+
+	if (plan.freeTrial) {
+		result.free_trial = {
+			duration_type: plan.freeTrial.durationType,
+			duration_length: plan.freeTrial.durationLength,
+			card_required: plan.freeTrial.cardRequired,
+		};
+	}
+
+	if (plan.billingControls !== undefined) {
+		result.billing_controls = plan.billingControls;
+	}
+
+	return result;
+}

@@ -1,0 +1,130 @@
+import type {
+	BillingContext,
+	FullCusProduct,
+	FullProductWithoutLicenses,
+	LineItem,
+	Price,
+} from "@autumn/shared";
+import type { AutumnContext } from "@/honoUtils/HonoEnv";
+import { augmentBillingContextForAnchorResetRefund } from "./augmentBillingContextForAnchorResetRefund.js";
+import { chargeRowToRefundLineItem } from "./chargeRowToRefundLineItem.js";
+import {
+	computeAlreadyRefundedByCharge,
+	computeProratedCredit,
+	splitMultiEntityAmount,
+} from "./storedLineItemUtils.js";
+
+type StoredInvoiceCreditForPriceResult = {
+	lineItems: LineItem[];
+	resolved: boolean;
+	coveredSeats: number;
+};
+
+export const storedInvoiceCreditForPrice = ({
+	ctx,
+	customerProduct,
+	billingContext,
+	target,
+	consumedChargeRowIds,
+}: {
+	ctx: AutumnContext;
+	customerProduct: FullCusProduct;
+	billingContext: BillingContext;
+	target: {
+		price: Price;
+		product?: FullProductWithoutLicenses;
+	};
+	/** Mutated as rows are credited, so callers resolving several prices never
+	 * refund the same stored charge twice. */
+	consumedChargeRowIds?: Set<string>;
+}): StoredInvoiceCreditForPriceResult => {
+	const { price, product } = target;
+	const now = billingContext.currentEpochMs;
+	const chargeRows = billingContext.storedChargeLineItems ?? [];
+	const refundRows = billingContext.storedRefundLineItems ?? [];
+	const priceChargeRows = chargeRows.filter(
+		(row) =>
+			row.customer_product_ids.includes(customerProduct.id) &&
+			(row.price_id === price.id ||
+				row.stripe_price_id === price.config?.stripe_price_id) &&
+			(!product ||
+				row.internal_product_id === product.internal_id ||
+				row.product_id === product.id),
+	);
+	const usableRows = priceChargeRows.filter(
+		(row) =>
+			row.customer_product_ids.length > 0 &&
+			row.effective_period_start != null &&
+			row.effective_period_end != null &&
+			row.effective_period_start <= now &&
+			row.effective_period_end > now,
+	);
+
+	if (usableRows.length === 0) {
+		ctx.logger.warn(
+			`[storedInvoiceCreditForPrice] No usable stored charge row for cusProduct=${customerProduct.id} price=${price.id}; falling back to catalog synthesis`,
+		);
+		return { lineItems: [], resolved: false, coveredSeats: 0 };
+	}
+
+	const currentPeriodRefunds = refundRows.filter(
+		(row) =>
+			row.customer_product_ids.includes(customerProduct.id) &&
+			row.effective_period_end != null &&
+			row.effective_period_start != null &&
+			row.effective_period_start <= now &&
+			row.effective_period_end > now,
+	);
+	const lineItems: LineItem[] = [];
+	let coveredSeats = 0;
+	const creditableRows = consumedChargeRowIds
+		? usableRows.filter((row) => !consumedChargeRowIds.has(row.id))
+		: usableRows;
+	const alreadyRefundedByCharge = computeAlreadyRefundedByCharge({
+		chargeRows: usableRows,
+		refundRows: currentPeriodRefunds,
+	});
+
+	for (const chargeRow of creditableRows) {
+		const periodStart = chargeRow.effective_period_start;
+		const periodEnd = chargeRow.effective_period_end;
+		if (periodStart == null || periodEnd == null) continue;
+
+		const action = augmentBillingContextForAnchorResetRefund({
+			currentEpochMs: now,
+			billingPeriod: { start: periodStart, end: periodEnd },
+			anchorResetRefund: billingContext.anchorResetRefund,
+		});
+		consumedChargeRowIds?.add(chargeRow.id);
+		coveredSeats +=
+			(chargeRow.paid_quantity ?? 0) /
+			Math.max(chargeRow.customer_product_ids.length, 1);
+		if (action.type === "skip") continue;
+		const effectiveNow =
+			action.type === "use_snapped_now" ? action.snappedNow : now;
+		const alreadyRefunded = alreadyRefundedByCharge.get(chargeRow.id) ?? 0;
+		const creditAmount = computeProratedCredit({
+			chargeRow: {
+				...chargeRow,
+				amount_after_discounts: splitMultiEntityAmount(chargeRow),
+			},
+			now: effectiveNow,
+			alreadyRefunded,
+		});
+		if (creditAmount === 0) continue;
+
+		lineItems.push(
+			chargeRowToRefundLineItem({
+				chargeRow,
+				creditAmount,
+				effectiveNow,
+				customerProduct,
+				billingContext,
+				ctx,
+				contextOverride: product ? { price, product } : undefined,
+			}),
+		);
+	}
+
+	return { lineItems, resolved: true, coveredSeats };
+};

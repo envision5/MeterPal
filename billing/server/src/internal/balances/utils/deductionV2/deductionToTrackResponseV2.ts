@@ -1,0 +1,201 @@
+import {
+	type ApiBalanceV1,
+	type Feature,
+	FeatureType,
+	type FullSubject,
+	fullSubjectToCustomerEntitlements,
+	fullSubjectToRelevantFeatures,
+	InternalError,
+} from "@autumn/shared";
+import { Decimal } from "decimal.js";
+import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
+import { getCheckSubject } from "@/internal/balances/check/getCheckSubject.js";
+import { getApiSubject } from "@/internal/customers/cusUtils/getApiCustomerV2/getApiSubject.js";
+import type { DeductionUpdate } from "../types/deductionUpdate.js";
+import type { FeatureDeduction } from "../types/featureDeduction.js";
+import { deductionToBalancesResponseV2 } from "./deductionToBalancesResponseV2.js";
+
+type TrackBalanceResponse = {
+	balance: ApiBalanceV1 | null;
+	balances?: Record<string, ApiBalanceV1 | null>;
+};
+
+const computeActualDeductions = ({
+	fullSubject,
+	updates,
+}: {
+	fullSubject: FullSubject;
+	updates: Record<string, DeductionUpdate>;
+}): Record<string, number> => {
+	const actualDeductions: Record<string, number> = {};
+	const customerEntitlements = fullSubjectToCustomerEntitlements({
+		fullSubject,
+	});
+
+	for (const customerEntitlementId of Object.keys(updates)) {
+		const update = updates[customerEntitlementId];
+		const customerEntitlement = customerEntitlements.find(
+			(candidate) => candidate.id === customerEntitlementId,
+		);
+
+		if (!customerEntitlement) {
+			throw new InternalError({
+				message: `Customer entitlement ${customerEntitlementId} not found in full subject`,
+				code: "full_subject_customer_entitlement_not_found",
+			});
+		}
+
+		const featureId = customerEntitlement.entitlement.feature.id;
+		const currentDeduction = actualDeductions[featureId] || 0;
+		actualDeductions[featureId] = new Decimal(currentDeduction)
+			.plus(update.deducted)
+			.toNumber();
+	}
+
+	return actualDeductions;
+};
+
+const findUnlimitedFeature = ({
+	ctx,
+	fullSubject,
+	featureId,
+}: {
+	ctx: AutumnContext;
+	fullSubject: FullSubject;
+	featureId: string;
+}): Feature | undefined => {
+	const relevantFeatures = fullSubjectToRelevantFeatures({
+		fullSubject,
+		featureId,
+		features: ctx.features,
+	});
+
+	for (const feature of relevantFeatures) {
+		const customerEntitlements = fullSubjectToCustomerEntitlements({
+			fullSubject,
+			featureIds: [feature.id],
+		});
+
+		if (
+			customerEntitlements.some(
+				(customerEntitlement) => customerEntitlement.unlimited,
+			)
+		) {
+			return feature;
+		}
+	}
+
+	return undefined;
+};
+
+const getFeatureToUseForBalance = ({
+	ctx,
+	fullSubject,
+	featureDeduction,
+	actualDeductions,
+}: {
+	ctx: AutumnContext;
+	fullSubject: FullSubject;
+	featureDeduction: FeatureDeduction;
+	actualDeductions: Record<string, number>;
+}): string => {
+	if (featureDeduction.enforceOverdueBlock) {
+		fullSubject = getCheckSubject({ ctx, fullSubject });
+	}
+	const unlimitedFeature = findUnlimitedFeature({
+		ctx,
+		fullSubject,
+		featureId: featureDeduction.feature.id,
+	});
+
+	if (unlimitedFeature) {
+		return unlimitedFeature.id;
+	}
+
+	const relevantFeatures = fullSubjectToRelevantFeatures({
+		fullSubject,
+		featureId: featureDeduction.feature.id,
+		features: ctx.features,
+	}).sort((left, right) => {
+		if (
+			left.type === FeatureType.CreditSystem &&
+			right.type !== FeatureType.CreditSystem
+		) {
+			return 1;
+		}
+
+		if (
+			left.type !== FeatureType.CreditSystem &&
+			right.type === FeatureType.CreditSystem
+		) {
+			return -1;
+		}
+
+		return 0;
+	});
+	const featureWithDeduction = relevantFeatures.find(
+		(feature) => (actualDeductions[feature.id] ?? 0) > 0,
+	);
+
+	if (featureWithDeduction) {
+		return featureWithDeduction.id;
+	}
+
+	const creditSystem = relevantFeatures.find(
+		(feature) => feature.id !== featureDeduction.feature.id,
+	);
+
+	return creditSystem?.id ?? featureDeduction.feature.id;
+};
+
+export const deductionToTrackResponseV2 = async ({
+	ctx,
+	fullSubject,
+	featureDeductions,
+	updates,
+}: {
+	ctx: AutumnContext;
+	fullSubject: FullSubject;
+	featureDeductions: FeatureDeduction[];
+	updates: Record<string, DeductionUpdate>;
+}): Promise<TrackBalanceResponse> => {
+	const actualDeductions = computeActualDeductions({
+		fullSubject,
+		updates,
+	});
+	const apiSubject = await getApiSubject({
+		ctx,
+		fullSubject,
+		includeAggregations: true,
+	});
+	const finalBalances: Record<string, ApiBalanceV1> = {};
+
+	for (const featureDeduction of featureDeductions) {
+		const featureToUse = getFeatureToUseForBalance({
+			ctx,
+			fullSubject,
+			featureDeduction,
+			actualDeductions,
+		});
+		const balance = apiSubject.balances?.[featureToUse];
+		if (balance) {
+			finalBalances[featureToUse] = balance;
+		}
+	}
+
+	const balances = await deductionToBalancesResponseV2({
+		ctx,
+		fullSubject,
+		featureDeductions,
+	});
+
+	if (Object.keys(finalBalances).length === 0) {
+		return { balance: null, balances };
+	}
+
+	if (Object.keys(finalBalances).length === 1) {
+		return { balance: Object.values(finalBalances)[0], balances };
+	}
+
+	return { balance: null, balances };
+};

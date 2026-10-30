@@ -1,0 +1,25 @@
+MeterPal
+Copyright 2026 MeterPal contributors
+
+This product includes software developed as part of the following projects:
+
+1. The wallet/metering server under `billing/` is a fork of Autumn
+   (https://github.com/useautumn/autumn), licensed under the Apache License,
+   Version 2.0. Copyright useautumn contributors. The upstream repository was
+   taken private in September 2026; this fork carries the last public Apache-2.0
+   snapshot (last upstream commit c7a8f30ca2, PR #3744) plus MeterPal's PayPal
+   integration layer, LiteLLM bridge provisioning, and supporting migrations.
+   The fork's own Apache-2.0 LICENSE is preserved at `billing/LICENSE`.
+
+2. The AI gateway under `gateway/` is a fork of LiteLLM
+   (https://github.com/BerriAI/litellm), portions of which are licensed under
+   the MIT License (with `enterprise/` portions under their own license as
+   described in `gateway/LICENSE`). Copyright BerriAI and contributors.
+   MeterPal adds a self-contained usage-billing hook
+   (`gateway/litellm/integrations/meterpal_billing.py`); no LiteLLM core files
+   are modified.
+
+All new code added by MeterPal (the `sdk/`, `agent/`, `demo-app/`, `demo/`,
+`docs/` trees, and the PayPal integration files under
+`billing/server/src/external/paypal/`) is licensed under the Apache License,
+Version 2.0, as stated in the root LICENSE file.

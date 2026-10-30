@@ -1,0 +1,270 @@
+import {
+	type ApiFreeTrialV2,
+	ApiFreeTrialV2Schema,
+	type ApiPlanExpandedV1,
+	ApiPlanExpandedV1Schema,
+	type ApiPlanV1,
+	ApiPlanV1Schema,
+	billingControlsFromColumns,
+	type DiffablePlanV1,
+	type Feature,
+	type FullCustomer,
+	type FullProduct,
+	getProductItemDisplay,
+	itemToBillingInterval,
+	itemToBillingIntervalCount,
+	priceConfigToPriceProcessors,
+	productItemsToPlanItemsV1,
+	productToPlanProcessors,
+	productV2ToBasePrice,
+	productV2ToFeatureItems,
+	type RevenueCatPlanMapping,
+	sortProductItems,
+} from "@autumn/shared";
+import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
+import { mapToProductItems } from "../../productV2Utils.js";
+import { buildApiPlanLicense } from "./buildApiPlanLicense.js";
+import { buildApiPlanVariant } from "./buildApiPlanVariant.js";
+import { buildCustomerEligibility } from "./buildCustomerEligibility.js";
+import { buildVariantDetails } from "./buildVariantDetails.js";
+import { resolveTrialCardRequired } from "./resolveTrialCardRequired.js";
+
+/**
+ * Get free trial response in Plan V2 format
+ */
+const getFreeTrialV2Response = ({
+	product,
+}: {
+	product: FullProduct;
+}): ApiFreeTrialV2 | undefined => {
+	if (!product.free_trial) return undefined;
+
+	return ApiFreeTrialV2Schema.parse({
+		duration_type: product.free_trial.duration,
+		duration_length: product.free_trial.length,
+		card_required: resolveTrialCardRequired({ product }),
+		on_end: product.free_trial.on_end ?? null,
+	});
+};
+
+type GetPlanResponseArgs = {
+	ctx?: AutumnContext;
+	product: FullProduct;
+	features: Feature[];
+	fullCus?: FullCustomer;
+	expand?: string[];
+	currency?: string;
+	/** Pre-rendered base plan — reuse it instead of re-rendering per variant. */
+	basePlan?: DiffablePlanV1;
+	baseFullProduct?: FullProduct;
+	resolveBaseFullProduct?: boolean;
+	/** RevenueCat mappings live in their own table, so the row is read in. */
+	revenuecatMapping?: RevenueCatPlanMapping | null;
+	/**
+	 * Every mapping the caller loaded, keyed by plan id. A variant is its own
+	 * product with its own plan id, so it owns its own row — pass the map when
+	 * rendering variants so each nested plan can find its own mapping.
+	 */
+	revenuecatMappings?: ReadonlyMap<string, RevenueCatPlanMapping>;
+};
+
+type PlanExpansions = {
+	/** Keep each license entry's rendered effective plan. */
+	expandLicensePlans?: boolean;
+	/** Attach variants[] edges built from the product's hydrated variants. */
+	expandVariants?: boolean;
+};
+
+/**
+ * Convert FullProduct (DB format) to Plan API response format (V1/latest).
+ * Expansions keep the plan's graph edges (license plans, variants) in the response.
+ */
+export async function getPlanResponse(
+	args: GetPlanResponseArgs & PlanExpansions & { expandLicensePlans: true },
+): Promise<ApiPlanExpandedV1>;
+export async function getPlanResponse(
+	args: GetPlanResponseArgs & PlanExpansions & { expandVariants: true },
+): Promise<ApiPlanExpandedV1>;
+export async function getPlanResponse(
+	args: GetPlanResponseArgs & {
+		expandLicensePlans?: false;
+		expandVariants?: false;
+	},
+): Promise<ApiPlanV1>;
+export async function getPlanResponse({
+	ctx,
+	product,
+	features,
+	fullCus,
+	expand = [],
+	currency = "usd",
+	basePlan,
+	baseFullProduct,
+	resolveBaseFullProduct = true,
+	revenuecatMapping,
+	revenuecatMappings,
+	expandLicensePlans = false,
+	expandVariants = false,
+}: GetPlanResponseArgs & PlanExpansions): Promise<
+	ApiPlanV1 | ApiPlanExpandedV1
+> {
+	// 1. Convert prices/entitlements to items
+	const rawItems = mapToProductItems({
+		prices: product.prices ?? [],
+		entitlements: product.entitlements ?? [],
+		features: features,
+	});
+
+	// 2. Sort items
+	const sortedItems = sortProductItems(rawItems, features);
+
+	// 3. Create a ProductV2-like object for the helper
+	const productV2 = { items: sortedItems };
+
+	// 4. Extract base price using existing helper
+	const basePriceItem = productV2ToBasePrice({ product: productV2 as any });
+	const basePriceProcessors = priceConfigToPriceProcessors({
+		config: basePriceItem?.price_config,
+	});
+	const basePrice: ApiPlanV1["price"] | null = basePriceItem
+		? {
+				amount: basePriceItem.price,
+				...(basePriceItem.additional_currencies?.length
+					? { additional_currencies: basePriceItem.additional_currencies }
+					: {}),
+				interval: itemToBillingInterval({ item: basePriceItem }),
+				interval_count:
+					itemToBillingIntervalCount({ item: basePriceItem }) !== 1
+						? itemToBillingIntervalCount({ item: basePriceItem })
+						: undefined,
+				price_id: basePriceItem.price_id ?? undefined,
+				display: getProductItemDisplay({
+					item: basePriceItem,
+					features,
+					currency,
+				}),
+				...(basePriceProcessors ? { processors: basePriceProcessors } : {}),
+			}
+		: null;
+
+	// 5. Get feature items only (no base price)
+	const featureItems = productV2ToFeatureItems({
+		items: sortedItems,
+		withBasePrice: false, // Don't include base price in features
+	});
+
+	// 6. Convert items to plan features
+	const planItems = productItemsToPlanItemsV1({
+		items: featureItems,
+		features,
+		expand,
+		currency,
+	});
+
+	// 7. Get free trial in V2 format
+	const freeTrial = getFreeTrialV2Response({
+		product,
+	});
+
+	// 8. Build customer eligibility
+	const customerEligibility = await buildCustomerEligibility({
+		ctx,
+		fullCus,
+		fullProduct: product,
+	});
+	const apiLicenses = product.licenses?.length
+		? await Promise.all(
+				product.licenses.map((license) =>
+					expandLicensePlans
+						? buildApiPlanLicense({
+								ctx,
+								license,
+								features,
+								expand,
+								currency,
+								expandPlan: true,
+							})
+						: buildApiPlanLicense({ ctx, license, features, expand, currency }),
+				),
+			)
+		: undefined;
+
+	// 9. Build Plan response
+	const planProcessors = productToPlanProcessors({
+		product,
+		revenuecatMapping: revenuecatMapping ?? revenuecatMappings?.get(product.id),
+	});
+	const plan = {
+		id: product.id,
+		internal_id: product.internal_id,
+		name: product.name || "",
+		description: product.description || null,
+		group: product.group || null,
+		version: product.version,
+		version_slug: product.version_slug ?? null,
+		active: product.active ?? false,
+
+		add_on: product.is_add_on ?? false,
+		auto_enable: product.is_default ?? false,
+
+		price: basePrice,
+		items: planItems ?? [],
+		free_trial: freeTrial,
+
+		created_at: product.created_at ?? 0,
+		env: product.env ?? ctx?.env ?? "sandbox",
+		archived: product.archived,
+		base_variant_id: product.base_variant_id ?? null,
+
+		config: product.config ?? { ignore_past_due: false },
+		billing_controls: billingControlsFromColumns(product),
+		metadata: product.metadata ?? {},
+
+		customer_eligibility: customerEligibility,
+		...(planProcessors ? { processors: planProcessors } : {}),
+	} satisfies ApiPlanV1;
+
+	// 10. Graph edges: up-link to the base plan, down-links to variants.
+	// License links ride along so a variant's customize can state its license overlay.
+	const planWithLicenses = {
+		...plan,
+		...(apiLicenses ? { licenses: apiLicenses } : {}),
+	};
+	const variantDetails = await buildVariantDetails({
+		ctx,
+		product,
+		plan: planWithLicenses,
+		features,
+		expand,
+		currency,
+		basePlan,
+		baseFullProduct,
+		resolveBaseFullProduct,
+	});
+	const variants =
+		expandVariants && product.variants?.length
+			? await Promise.all(
+					product.variants.map((variant) =>
+						buildApiPlanVariant({
+							ctx,
+							basePlan: planWithLicenses,
+							variant,
+							features,
+							expand,
+							currency,
+							revenuecatMappings,
+						}),
+					),
+				)
+			: undefined;
+
+	const planResponse = {
+		...planWithLicenses,
+		...(variantDetails ? { variant_details: variantDetails } : {}),
+		...(variants ? { variants } : {}),
+	};
+
+	return expandLicensePlans || expandVariants || apiLicenses
+		? ApiPlanExpandedV1Schema.parse(planResponse)
+		: ApiPlanV1Schema.parse(planResponse);
+}

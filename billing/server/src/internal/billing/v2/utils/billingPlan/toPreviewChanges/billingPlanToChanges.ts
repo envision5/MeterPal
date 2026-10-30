@@ -1,0 +1,283 @@
+import {
+	type BillingContext,
+	type BillingPlan,
+	type BillingPreviewChange,
+	CusProductStatus,
+	cusPriceToCusEnt,
+	type FullCusProduct,
+	findCusPriceByFeature,
+	findFeatureById,
+	isPrepaidPrice,
+	notNullish,
+	scopeExpandForCtx,
+	UpdateSubscriptionIntent,
+} from "@autumn/shared";
+import { Decimal } from "decimal.js";
+import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
+import {
+	applyCustomerProductPatch,
+	applyCustomerProductUpdate,
+	getPatchCustomerProducts,
+	getUpdateCustomerProducts,
+} from "@/internal/billing/v2/utils/billingPlan/customerProductPlanMutations";
+import { cusProductToBalances } from "@/internal/customers/cusUtils/apiCusUtils/getApiBalance/cusProductToBalances.js";
+import { getApiSubscription } from "@/internal/customers/cusUtils/apiCusUtils/getApiSubscription/getApiSubscription.js";
+import { billingPlanToOutgoingEffectiveAt } from "./billingPlanToEffectiveAt";
+
+function getIncomingEffectiveAt({
+	customerProduct,
+}: {
+	customerProduct: FullCusProduct;
+}): number | null {
+	if (customerProduct.status !== CusProductStatus.Scheduled) return null;
+	return customerProduct.starts_at ?? null;
+}
+
+function cusProductToFeatureQuantities({
+	ctx,
+	cusProduct,
+}: {
+	ctx: AutumnContext;
+	cusProduct: FullCusProduct;
+}) {
+	return cusProduct.options
+		.map((option) => {
+			const feature = findFeatureById({
+				featureId: option.feature_id ?? "",
+				features: ctx.features,
+				errorOnNotFound: true,
+			});
+
+			const cusPrice = findCusPriceByFeature({
+				internalFeatureId: feature.internal_id,
+				cusPrices: cusProduct.customer_prices,
+			});
+
+			const isPrepaidCusPrice = cusPrice && isPrepaidPrice(cusPrice.price);
+
+			if (!isPrepaidCusPrice) {
+				return undefined;
+			}
+
+			const paidQuantity = new Decimal(option.quantity)
+				.mul(cusPrice.price.config.billing_units ?? 1)
+				.toNumber();
+
+			const cusEnt = cusPriceToCusEnt({
+				cusPrice,
+				cusEnts: cusProduct.customer_entitlements,
+			});
+
+			const quantityWithIncludedUsage =
+				paidQuantity + (cusEnt?.entitlement.allowance ?? 0);
+
+			return {
+				feature_id: option.feature_id,
+				quantity: quantityWithIncludedUsage,
+			};
+		})
+		.filter(notNullish);
+}
+
+const getIsOutgoing = ({
+	billingContext,
+	updates,
+}: {
+	billingContext: BillingContext;
+	updates: {
+		canceled?: boolean | null;
+		ended_at?: number | null;
+		status?: CusProductStatus | null;
+	};
+}) => {
+	// A quantity or plan update changes the subscription in place: nothing ends,
+	// but the pre-update plan is still what the change is measured against.
+	if (
+		"intent" in billingContext &&
+		(billingContext.intent === UpdateSubscriptionIntent.UpdateQuantity ||
+			billingContext.intent === UpdateSubscriptionIntent.UpdatePlan)
+	) {
+		return true;
+	}
+
+	if (billingContext.cancelAction === "uncancel") {
+		return true;
+	}
+
+	return Boolean(
+		updates.canceled ||
+			updates.ended_at ||
+			updates.status === CusProductStatus.Expired ||
+			updates.status === CusProductStatus.Paused,
+	);
+};
+
+const getShouldIncludeIncoming = ({
+	billingContext,
+	isOutgoing,
+	incoming,
+}: {
+	billingContext: BillingContext;
+	isOutgoing: boolean;
+	incoming: BillingPreviewChange[];
+}) => {
+	if ("intent" in billingContext) {
+		// A restructuring plan update already inserted its successor; only an
+		// in-place one has to report the updated product as incoming.
+		if (billingContext.intent === UpdateSubscriptionIntent.UpdatePlan) {
+			return incoming.length === 0;
+		}
+		return (
+			billingContext.intent === UpdateSubscriptionIntent.UpdateQuantity ||
+			billingContext.cancelAction === "uncancel" ||
+			billingContext.cancelAction === "cancel_end_of_cycle"
+		);
+	}
+
+	if ("planTiming" in billingContext) {
+		return billingContext.planTiming === "end_of_cycle";
+	}
+
+	return !isOutgoing && incoming.length === 0;
+};
+
+export const billingPlanToChanges = async ({
+	ctx,
+	billingContext,
+	billingPlan,
+}: {
+	ctx: AutumnContext;
+	billingContext: BillingContext;
+	billingPlan: BillingPlan;
+}): Promise<{
+	incoming: BillingPreviewChange[];
+	outgoing: BillingPreviewChange[];
+}> => {
+	const incoming: BillingPreviewChange[] = [];
+	const outgoing: BillingPreviewChange[] = [];
+	const { autumn } = billingPlan;
+	const { fullCustomer } = billingContext;
+
+	const incomingCtx = scopeExpandForCtx({
+		ctx,
+		prefix: "incoming",
+	});
+
+	for (const cusProduct of autumn.insertCustomerProducts) {
+		const { data: subscription } = await getApiSubscription({
+			ctx: incomingCtx,
+			cusProduct,
+			fullCus: fullCustomer,
+		});
+
+		const balances = cusProductToBalances({
+			ctx: incomingCtx,
+			cusProduct,
+			fullCustomer,
+		});
+		void balances;
+
+		incoming.push({
+			plan_id: subscription.plan_id,
+			plan: subscription.plan,
+			feature_quantities: cusProductToFeatureQuantities({
+				ctx: incomingCtx,
+				cusProduct,
+			}),
+			effective_at: getIncomingEffectiveAt({ customerProduct: cusProduct }),
+			canceled_at: subscription.canceled_at,
+			expires_at: subscription.expires_at,
+		});
+	}
+
+	const outgoingCtx = scopeExpandForCtx({
+		ctx,
+		prefix: "outgoing",
+	});
+
+	// A patch-style customize keeps the existing row and carries its new
+	// prices/entitlements as a patch; the incoming plan must render the
+	// patched row, as the Stripe layer does, or the preview shows the old terms.
+	const patchByCustomerProductId = new Map(
+		getPatchCustomerProducts({ autumnBillingPlan: autumn }).map((patch) => [
+			patch.customerProduct.id,
+			patch,
+		]),
+	);
+
+	for (const update of getUpdateCustomerProducts({
+		autumnBillingPlan: autumn,
+	})) {
+		const patch = patchByCustomerProductId.get(update.customerProduct.id);
+		const patchedCustomerProduct = patch
+			? applyCustomerProductPatch({
+					customerProduct: update.customerProduct,
+					patch,
+				})
+			: update.customerProduct;
+		const updatedCustomerProduct = applyCustomerProductUpdate({
+			customerProduct: patchedCustomerProduct,
+			updates: update.updates,
+		});
+		const { updates } = update;
+
+		const isOutgoing = getIsOutgoing({
+			billingContext,
+			updates,
+		});
+		const shouldIncludeIncoming = getShouldIncludeIncoming({
+			billingContext,
+			isOutgoing,
+			incoming,
+		});
+
+		if (shouldIncludeIncoming) {
+			const { data: subscription } = await getApiSubscription({
+				ctx: incomingCtx,
+				cusProduct: updatedCustomerProduct,
+				fullCus: fullCustomer,
+			});
+
+			incoming.push({
+				plan_id: subscription.plan_id,
+				plan: subscription.plan,
+				feature_quantities: cusProductToFeatureQuantities({
+					ctx: incomingCtx,
+					cusProduct: updatedCustomerProduct,
+				}),
+				effective_at: getIncomingEffectiveAt({
+					customerProduct: updatedCustomerProduct,
+				}),
+				canceled_at: subscription.canceled_at,
+				expires_at: subscription.expires_at,
+			});
+		}
+
+		const outgoingCustomerProduct = update.customerProduct;
+
+		if (isOutgoing) {
+			const { data: subscription } = await getApiSubscription({
+				ctx: outgoingCtx,
+				cusProduct: outgoingCustomerProduct,
+				fullCus: fullCustomer,
+			});
+
+			outgoing.push({
+				plan_id: outgoingCustomerProduct.product.id,
+				plan: subscription.plan,
+				feature_quantities: cusProductToFeatureQuantities({
+					ctx: outgoingCtx,
+					cusProduct: outgoingCustomerProduct,
+				}),
+				effective_at: billingPlanToOutgoingEffectiveAt({
+					billingContext,
+					autumnBillingPlan: billingPlan.autumn,
+				}),
+				canceled_at: subscription.canceled_at,
+				expires_at: subscription.expires_at,
+			});
+		}
+	}
+
+	return { incoming, outgoing };
+};

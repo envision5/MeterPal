@@ -1,0 +1,152 @@
+import { afterAll, afterEach, expect, mock, test } from "bun:test";
+import { ErrCode } from "@autumn/shared";
+
+import { mockModuleWithRestore } from "../utils/mockModuleWithRestore.js";
+
+// Map-backed model-pricing-cache stub — the cache key is shared with the dev
+// server, so the real Redis must never be touched here.
+const store = new Map<string, unknown>();
+const setCalls: unknown[] = [];
+
+const PRIMARY_KEY = "models_dev_pricing";
+const STALE_KEY = "models_dev_pricing_stale";
+
+await mockModuleWithRestore(
+	"@/external/redis/actions/modelPricingCache/modelPricingCache.js",
+	() => ({
+		getCachedModelPricing: async () => store.get(PRIMARY_KEY) ?? null,
+		getCachedStaleModelPricing: async () => store.get(STALE_KEY) ?? null,
+		setCachedModelPricing: async ({ data }: { data: unknown }) => {
+			setCalls.push(data);
+			store.set(PRIMARY_KEY, data);
+			store.set(STALE_KEY, data);
+		},
+	}),
+);
+
+const { getModelsDevPricing } = await import(
+	"@/internal/features/utils/getModelPricing.js"
+);
+
+const pricingData = {
+	anthropic: { id: "anthropic", name: "Anthropic", models: {} },
+};
+const stalePricingData = {
+	openai: { id: "openai", name: "OpenAI", models: {} },
+};
+
+const realFetch = globalThis.fetch;
+let fetchCalls = 0;
+
+const stubFetch = (impl: () => Promise<Response>) => {
+	globalThis.fetch = Object.assign(
+		async () => {
+			fetchCalls++;
+			return await impl();
+		},
+		{ preconnect: realFetch.preconnect },
+	);
+};
+
+afterEach(() => {
+	store.clear();
+	setCalls.length = 0;
+	fetchCalls = 0;
+	globalThis.fetch = realFetch;
+});
+
+afterAll(() => {
+	mock.restore();
+	globalThis.fetch = realFetch;
+});
+
+test("primary cache hit returns cached data without fetching", async () => {
+	store.set(PRIMARY_KEY, pricingData);
+	stubFetch(() => {
+		throw new Error("should not fetch");
+	});
+
+	const result = await getModelsDevPricing();
+
+	expect(result).toEqual(pricingData);
+	expect(fetchCalls).toBe(0);
+});
+
+test("cache miss fetches and populates primary + stale caches", async () => {
+	stubFetch(async () => Response.json(pricingData));
+
+	const result = await getModelsDevPricing();
+
+	expect(result).toEqual(pricingData);
+	expect(fetchCalls).toBe(1);
+
+	// Cache writes are fire-and-forget — flush microtasks before asserting
+	await Bun.sleep(0);
+	expect(setCalls).toEqual([pricingData]);
+	expect(store.get(PRIMARY_KEY)).toEqual(pricingData);
+	expect(store.get(STALE_KEY)).toEqual(pricingData);
+});
+
+test("non-ok response falls back to the stale cache", async () => {
+	store.set(STALE_KEY, stalePricingData);
+	stubFetch(async () => new Response("oops", { status: 500 }));
+
+	const result = await getModelsDevPricing();
+
+	expect(result).toEqual(stalePricingData);
+});
+
+test("fetch network error falls back to the stale cache", async () => {
+	store.set(STALE_KEY, stalePricingData);
+	stubFetch(() => {
+		throw new Error("network down");
+	});
+
+	const result = await getModelsDevPricing();
+
+	expect(result).toEqual(stalePricingData);
+});
+
+test("fetch failure with no stale cache throws InternalError", async () => {
+	stubFetch(() => {
+		throw new Error("network down");
+	});
+
+	await expect(getModelsDevPricing()).rejects.toMatchObject({
+		code: ErrCode.InternalError,
+		message: "Failed to fetch models.dev pricing and no cache available",
+	});
+});
+
+test("fetch carries an abort timeout so a hanging models.dev cannot hang tracks", async () => {
+	let capturedSignal: AbortSignal | undefined;
+	globalThis.fetch = Object.assign(
+		async (_input: unknown, init?: RequestInit) => {
+			fetchCalls++;
+			capturedSignal = init?.signal ?? undefined;
+			return Response.json(pricingData);
+		},
+		{ preconnect: realFetch.preconnect },
+	) as typeof fetch;
+
+	await getModelsDevPricing();
+
+	expect(capturedSignal).toBeInstanceOf(AbortSignal);
+	expect(capturedSignal?.aborted).toBe(false);
+});
+
+test("fetches the full feed so specialized model types are included", async () => {
+	let capturedUrl: string | undefined;
+	globalThis.fetch = Object.assign(
+		async (input: unknown) => {
+			fetchCalls++;
+			capturedUrl = String(input);
+			return Response.json(pricingData);
+		},
+		{ preconnect: realFetch.preconnect },
+	) as typeof fetch;
+
+	await getModelsDevPricing();
+
+	expect(capturedUrl).toBe("https://models.dev/api.json?type=all");
+});

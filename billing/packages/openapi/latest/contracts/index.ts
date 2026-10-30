@@ -1,0 +1,275 @@
+import { oc } from "@orpc/contract";
+import {
+	balancesBatchTrackContract,
+	balancesCheckContract,
+	balancesCreateContract,
+	balancesDeleteContract,
+	balancesFinalizeContract,
+	balancesTrackContract,
+	balancesTrackTokensContract,
+	balancesUpdateContract,
+} from "./balancesContract.js";
+import {
+	billingAttachContract,
+	billingCreateScheduleContract,
+	billingMultiAttachContract,
+	billingMultiUpdateContract,
+	billingOpenCustomerPortalContract,
+	billingPreviewAttachContract,
+	billingPreviewMultiAttachContract,
+	billingPreviewMultiUpdateContract,
+	billingPreviewUpdateContract,
+	billingSetupPaymentContract,
+	billingUpdateContract,
+	legacyBillingAdvanceTestClockContract,
+} from "./billingContract.js";
+import {
+	catalogV2DiffContract,
+	catalogV2GetContract,
+	catalogV2PreviewUpdateContract,
+	catalogV2UpdateContract,
+} from "./catalogContract.js";
+import {
+	advanceTestClockContract,
+	deleteCustomerContract,
+	getCustomerContract,
+	getOrCreateCustomerContract,
+	listCustomersContract,
+	updateCustomerContract,
+} from "./customersContract.js";
+import { dfuFlashContract } from "./dfuContract.js";
+import {
+	createEntityContract,
+	deleteEntityContract,
+	getEntityContract,
+	listEntitiesContract,
+	updateEntityContract,
+} from "./entitiesContract.js";
+import {
+	eventsAggregateContract,
+	eventsListContract,
+} from "./eventsContract.js";
+import {
+	createFeatureContract,
+	deleteFeatureContract,
+	getFeatureContract,
+	listFeaturesContract,
+	updateFeatureContract,
+} from "./featuresContract.js";
+import {
+	createInvoiceContract,
+	insertInvoicesContract,
+	listInvoicesContract,
+	listInvoiceTemplatesContract,
+	payInvoiceContract,
+	reissueInvoiceContract,
+	voidInvoiceContract,
+} from "./invoicesContract.js";
+import {
+	keysMintContract,
+	keysRefreshContract,
+	keysRevokeContract,
+} from "./keysContract.js";
+import {
+	attachLicenseContract,
+	listLicenseAssignmentsContract,
+	listLicensesContract,
+	releaseLicenseContract,
+} from "./licensesContract.js";
+import { logsSearchContract } from "./logsContract.js";
+import {
+	organizationPreviewUpdateContract,
+	organizationUpdateContract,
+} from "./organizationContract.js";
+import {
+	createPlanContract,
+	deletePlanContract,
+	getPlanContract,
+	listPlansContract,
+	updatePlanContract,
+} from "./plansContract.js";
+import {
+	platformDisconnectStripeContract,
+	platformGetRevenueCatKeysContract,
+	platformGetStripeConnectionContract,
+	platformLinkRevenueCatContract,
+	platformSyncRevenueCatContract,
+} from "./platformContract.js";
+import {
+	referralProgramsCreateContract,
+	referralProgramsDeleteContract,
+	referralProgramsGetContract,
+	referralProgramsListContract,
+	referralProgramsUpdateContract,
+	referralsCreateCodeContract,
+	referralsRedeemCodeContract,
+	rewardsCreateContract,
+	rewardsDeleteContract,
+	rewardsGetContract,
+	rewardsListContract,
+	rewardsRedeemCodeContract,
+	rewardsUpdateContract,
+} from "./referralsContract.js";
+import {
+	createSandboxContract,
+	createSandboxKeyContract,
+	deleteSandboxContract,
+	listSandboxesContract,
+	resetSandboxContract,
+} from "./sandboxesContract.js";
+import {
+	createWebhookContract,
+	deleteWebhookContract,
+	getWebhookContract,
+	listWebhooksContract,
+	previewSyncWebhooksContract,
+	syncWebhooksContract,
+	updateWebhookContract,
+} from "./webhooksContract.js";
+
+export const v2_3ContractRouter = oc.router({
+	// Customers
+	getOrCreateCustomer: getOrCreateCustomerContract,
+	getCustomer: getCustomerContract,
+	listCustomers: listCustomersContract,
+	updateCustomer: updateCustomerContract,
+	deleteCustomer: deleteCustomerContract,
+	advanceTestClock: advanceTestClockContract,
+
+	// Plans
+	plansCreate: createPlanContract,
+	plansGet: getPlanContract,
+	plansList: listPlansContract,
+	plansUpdate: updatePlanContract,
+	plansDelete: deletePlanContract,
+
+	// Features
+	featuresCreate: createFeatureContract,
+	featuresGet: getFeatureContract,
+	featuresList: listFeaturesContract,
+	featuresUpdate: updateFeatureContract,
+	featuresDelete: deleteFeatureContract,
+
+	// Billing
+	billingAttach: billingAttachContract,
+	billingAdvanceTestClock: legacyBillingAdvanceTestClockContract,
+	billingCreateSchedule: billingCreateScheduleContract,
+	billingMultiAttach: billingMultiAttachContract,
+	billingPreviewAttach: billingPreviewAttachContract,
+	billingPreviewMultiAttach: billingPreviewMultiAttachContract,
+	billingUpdate: billingUpdateContract,
+	billingPreviewUpdate: billingPreviewUpdateContract,
+	billingMultiUpdate: billingMultiUpdateContract,
+	billingPreviewMultiUpdate: billingPreviewMultiUpdateContract,
+	billingOpenCustomerPortal: billingOpenCustomerPortalContract,
+	billingSetupPayment: billingSetupPaymentContract,
+
+	// DFU (customer imaging / live migration)
+	dfuFlash: dfuFlashContract,
+
+	// Balances
+	balancesCreate: balancesCreateContract,
+	balancesUpdate: balancesUpdateContract,
+	balancesDelete: balancesDeleteContract,
+	balancesFinalize: balancesFinalizeContract,
+	balancesCheck: balancesCheckContract,
+	balancesTrack: balancesTrackContract,
+	balancesTrackTokens: balancesTrackTokensContract,
+	balancesBatchTrack: balancesBatchTrackContract,
+
+	// Events
+	eventsList: eventsListContract,
+	eventsAggregate: eventsAggregateContract,
+
+	// Logs
+	logsSearch: logsSearchContract,
+
+	// Invoices
+	invoicesCreate: createInvoiceContract,
+	invoicesInsert: insertInvoicesContract,
+	invoicesList: listInvoicesContract,
+	invoicesListTemplates: listInvoiceTemplatesContract,
+	invoicesPay: payInvoiceContract,
+	invoicesReissue: reissueInvoiceContract,
+	invoicesVoid: voidInvoiceContract,
+
+	// Licenses
+	licensesAttach: attachLicenseContract,
+	licensesRelease: releaseLicenseContract,
+	licensesListAssignments: listLicenseAssignmentsContract,
+	licensesList: listLicensesContract,
+
+	// Entities
+	entitiesCreate: createEntityContract,
+	entitiesGet: getEntityContract,
+	entitiesList: listEntitiesContract,
+	entitiesUpdate: updateEntityContract,
+	entitiesDelete: deleteEntityContract,
+
+	// Rewards & Referrals
+	referralsCreateCode: referralsCreateCodeContract,
+	referralsRedeemCode: referralsRedeemCodeContract,
+	referralProgramsCreate: referralProgramsCreateContract,
+	referralProgramsList: referralProgramsListContract,
+	referralProgramsGet: referralProgramsGetContract,
+	referralProgramsUpdate: referralProgramsUpdateContract,
+	referralProgramsDelete: referralProgramsDeleteContract,
+	rewardsCreate: rewardsCreateContract,
+	rewardsList: rewardsListContract,
+	rewardsGet: rewardsGetContract,
+	rewardsUpdate: rewardsUpdateContract,
+	rewardsDelete: rewardsDeleteContract,
+	rewardsRedeemCode: rewardsRedeemCodeContract,
+
+	// Platform
+	platformGetStripeConnection: platformGetStripeConnectionContract,
+	platformDisconnectStripe: platformDisconnectStripeContract,
+	platformLinkRevenueCat: platformLinkRevenueCatContract,
+	platformSyncRevenueCat: platformSyncRevenueCatContract,
+	platformGetRevenueCatKeys: platformGetRevenueCatKeysContract,
+
+	// Customer Keys (per-customer JWTs)
+	keysMint: keysMintContract,
+	keysRefresh: keysRefreshContract,
+	keysRevoke: keysRevokeContract,
+
+	// Sandboxes (isolated sub-orgs)
+	sandboxesCreate: createSandboxContract,
+	sandboxesList: listSandboxesContract,
+	sandboxesDelete: deleteSandboxContract,
+	sandboxesReset: resetSandboxContract,
+
+	// Webhooks (endpoints Autumn sends events to)
+	webhooksCreate: createWebhookContract,
+	webhooksGet: getWebhookContract,
+	webhooksList: listWebhooksContract,
+	webhooksUpdate: updateWebhookContract,
+	webhooksDelete: deleteWebhookContract,
+	webhooksPreviewSync: previewSyncWebhooksContract,
+	webhooksSync: syncWebhooksContract,
+});
+
+/**
+ * The public router plus catalogV2, used ONLY to generate
+ * `openapi-internal.yml` for the atmn generator. Keeping catalogV2 off
+ * `v2_3ContractRouter` is what keeps it out of the published spec, the SDKs
+ * and the docs — a filter downstream could be forgotten; a router it was
+ * never added to cannot leak.
+ */
+export const v2_3InternalContractRouter = oc.router({
+	...v2_3ContractRouter,
+
+	// catalogV2 (internal — see catalogContract.ts)
+	catalogV2Get: catalogV2GetContract,
+	catalogV2Diff: catalogV2DiffContract,
+	catalogV2PreviewUpdate: catalogV2PreviewUpdateContract,
+	catalogV2Update: catalogV2UpdateContract,
+
+	// sandbox key minting (internal — the CLI's `sandbox use` needs it; the
+	// public surface keeps `sandboxes.create` as the only key-returning route)
+	sandboxesCreateKey: createSandboxKeyContract,
+
+	// organization settings (internal — see organizationContract.ts)
+	organizationPreviewUpdate: organizationPreviewUpdateContract,
+	organizationUpdate: organizationUpdateContract,
+});

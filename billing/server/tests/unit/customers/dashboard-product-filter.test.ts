@@ -1,0 +1,118 @@
+import { describe, expect, test } from "bun:test";
+import { AppEnv } from "@autumn/shared";
+import { type SQL, sql } from "drizzle-orm";
+import { PgDialect, QueryBuilder } from "drizzle-orm/pg-core";
+import type { DrizzleCli } from "@/db/initDrizzle.js";
+import { CusSearchService } from "@/internal/customers/CusSearchService.js";
+import {
+	getCustomerListFilterSql,
+	parseDashboardVersionFilter,
+} from "@/internal/customers/getFullCusQuery.js";
+
+const dialect = new PgDialect();
+const normalize = (value: string) => value.replace(/\s+/g, " ").trim();
+
+const render = (filter: ReturnType<typeof getCustomerListFilterSql>) =>
+	dialect.sqlToQuery(sql`SELECT * FROM customers c WHERE true ${filter}`);
+
+describe("dashboard product filters", () => {
+	test("parses numbered and custom product version selections", () => {
+		expect(
+			parseDashboardVersionFilter([
+				"pro:2",
+				"pro:custom",
+				"",
+				"missing-version",
+				"bad:not-a-number",
+			]),
+		).toEqual([
+			{ productId: "pro", version: 2 },
+			{ productId: "pro", custom: true },
+		]);
+	});
+
+	test("custom plan selection filters customer_products.is_custom", () => {
+		const { sql: query, params } = render(
+			getCustomerListFilterSql({
+				productVersionFilters: [{ productId: "pro", custom: true }],
+			}),
+		);
+
+		// Without org scope the plan id resolves through the products join,
+		// never the denormalized customer_products.product_id snapshot.
+		expect(normalize(query)).toContain("p_dash.id = $3");
+		expect(normalize(query)).toContain("cp_dash.is_custom = true");
+		expect(normalize(query)).toContain("JOIN products p_dash");
+		expect(normalize(query)).not.toContain("cp_dash.product_id");
+		expect(params).toEqual(["active", "past_due", "pro"]);
+	});
+
+	test("org-scoped custom plan selection resolves internal product ids", () => {
+		const { sql: query, params } = render(
+			getCustomerListFilterSql({
+				orgId: "org_target",
+				env: AppEnv.Live,
+				productVersionFilters: [{ productId: "pro", custom: true }],
+			}),
+		);
+
+		const normalized = normalize(query);
+		expect(normalized).toContain("cp_dash.internal_product_id IN");
+		expect(normalized).toContain("p_lookup.org_id =");
+		expect(normalized).toContain("p_lookup.env =");
+		expect(normalized).toContain("cp_dash.is_custom = true");
+		expect(normalized).not.toContain("cp_dash.product_id");
+		expect(params).toEqual([
+			"active",
+			"past_due",
+			"org_target",
+			AppEnv.Live,
+			"pro",
+		]);
+	});
+
+	test("custom and numbered selections share the product filter group", () => {
+		const { sql: query, params } = render(
+			getCustomerListFilterSql({
+				productVersionFilters: [
+					{ productId: "pro", version: 2 },
+					{ productId: "pro", custom: true },
+				],
+			}),
+		);
+
+		const normalized = normalize(query);
+		expect(normalized).toContain("JOIN products p_dash");
+		expect(normalized).toContain("p_dash.version = $4");
+		expect(normalized).toContain("cp_dash.is_custom = true");
+		expect(params).toEqual(["active", "past_due", "pro", 2, "pro"]);
+	});
+
+	test("numbered plan cursor lookup drives from customers and scopes the product lookup", async () => {
+		let capturedQuery: ReturnType<PgDialect["sqlToQuery"]> | undefined;
+		const queryBuilder = new QueryBuilder();
+		const db = {
+			select: queryBuilder.select.bind(queryBuilder),
+			execute: async (query: SQL) => {
+				capturedQuery = dialect.sqlToQuery(query);
+				return [];
+			},
+		} as unknown as DrizzleCli;
+
+		await CusSearchService.resolveInternalIdsByCursor({
+			db,
+			orgId: "org_target",
+			env: AppEnv.Live,
+			search: "",
+			filters: { version: ["enterprise:1"] },
+			limit: 50,
+		});
+
+		const query = normalize(capturedQuery?.sql ?? "");
+		expect(query).toContain('from "customers"');
+		expect(query).toContain('EXISTS ( SELECT 1 FROM "customer_products"');
+		expect(query).toContain("p_lookup.org_id =");
+		expect(query).toContain("p_lookup.env =");
+		expect(query).not.toContain("DISTINCT");
+	});
+});

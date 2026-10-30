@@ -1,0 +1,124 @@
+import type {
+	AttachBillingContext,
+	AttachParamsV1,
+	BillingPlan,
+} from "@autumn/shared";
+import type { AutumnContext } from "@/honoUtils/HonoEnv";
+import { handleAttachInvoiceModeErrors } from "@/internal/billing/v2/actions/attach/errors/handleAttachInvoiceModeErrors";
+import { handleBillingCycleAnchorErrors } from "@/internal/billing/v2/actions/attach/errors/handleBillingCycleAnchorErrors";
+import { handleCarryOverBalancesErrors } from "@/internal/billing/v2/actions/attach/errors/handleCarryOverBalancesErrors";
+import { handleCarryOverUsagesErrors } from "@/internal/billing/v2/actions/attach/errors/handleCarryOverUsagesErrors";
+import { handleCurrentCustomerProductErrors } from "@/internal/billing/v2/actions/attach/errors/handleCurrentCustomerProductErrors";
+import { handleEndDateErrors } from "@/internal/billing/v2/actions/attach/errors/handleEndDateErrors";
+import { handleNewBillingSubscriptionErrors } from "@/internal/billing/v2/actions/attach/errors/handleNewBillingSubscriptionErrors";
+import { handleScheduledSwitchOneOffErrors } from "@/internal/billing/v2/actions/attach/errors/handleScheduledSwitchOneOffErrors";
+import { handleStartDateErrors } from "@/internal/billing/v2/actions/attach/errors/handleStartDateErrors";
+import { handleStripeCheckoutErrors } from "@/internal/billing/v2/actions/attach/errors/handleStripeCheckoutErrors";
+import { handleTransitionConfigErrors } from "@/internal/billing/v2/actions/attach/errors/handleTransitionConfigErrors";
+import { handleProrationBehaviorErrors } from "@/internal/billing/v2/common/errors/handleBillingBehaviorErrors";
+import { handleCustomLineItemsErrors } from "@/internal/billing/v2/common/errors/handleCustomLineItemsErrors";
+import { handleEntityLicenseAssignmentErrors } from "@/internal/billing/v2/common/errors/handleEntityLicenseAssignmentErrors";
+import { handleExternalPSPErrors } from "@/internal/billing/v2/common/errors/handleExternalPSPErrors";
+import { handleLicenseAttachTargetErrors } from "@/internal/billing/v2/common/errors/handleLicenseAttachTargetErrors";
+import { handleRevertTrialErrors } from "@/internal/billing/v2/common/errors/handleRevertTrialErrors";
+import { handleSubscriptionIdErrors } from "@/internal/billing/v2/common/errors/handleSubscriptionIdErrors";
+import { handleStripeBillingPlanErrors } from "@/internal/billing/v2/providers/stripe/errors/handleStripeBillingPlanErrors";
+import { handleCustomPaymentMethodErrorsV2 } from "@/internal/customers/attach/attachUtils/handleAttachErrors";
+import { handleRemoveDiscountsErrors } from "./handleRemoveDiscountsErrors";
+
+/** Validates attach v2 request before executing the billing plan. */
+export const handleAttachV2Errors = async ({
+	ctx,
+	billingContext,
+	billingPlan,
+	params,
+	preview = false,
+}: {
+	ctx: AutumnContext;
+	billingContext: AttachBillingContext;
+	billingPlan: BillingPlan;
+	params: AttachParamsV1;
+	preview?: boolean;
+}) => {
+	const { autumn: autumnBillingPlan } = billingPlan;
+
+	// 1.1. External PSP errors (RevenueCat)
+	// Skipped when the caller IS the external PSP origin (e.g. the RevenueCat
+	// webhook handler attaching onto its own RC-managed customer).
+	if (!billingContext.skipExternalPSPGuard) {
+		handleExternalPSPErrors({
+			customerProducts: billingContext.fullCustomer.customer_products,
+			attachProduct: billingContext.attachProduct,
+			action: "attach",
+		});
+	}
+
+	// 1.2. Custom Payment Method errors (Vercel)
+	handleCustomPaymentMethodErrorsV2({ billingContext });
+
+	// 1.3. Seat-holding entities are managed through their license
+	handleEntityLicenseAssignmentErrors({
+		fullCustomer: billingContext.fullCustomer,
+	});
+
+	// 1.4. License linkage preconditions on the attach target
+	handleLicenseAttachTargetErrors({
+		fullCustomer: billingContext.fullCustomer,
+		attachProduct: billingContext.attachProduct,
+	});
+
+	// 2. Current customer product errors (same product)
+	handleCurrentCustomerProductErrors({ billingContext });
+
+	// 3. new_billing_subscription validation errors
+	handleNewBillingSubscriptionErrors({ billingContext, params });
+
+	// 4. Stripe checkout errors
+	handleStripeCheckoutErrors({ billingContext, autumnBillingPlan });
+
+	// 5. Invoice mode errors (deferred + downgrade)
+	handleAttachInvoiceModeErrors({ billingContext });
+
+	// 6. Scheduled switch with one-off prepaid quantities
+	handleScheduledSwitchOneOffErrors({ ctx, billingContext });
+	handleBillingCycleAnchorErrors({ billingContext, params });
+	handleStartDateErrors({ billingContext, params, preview });
+	handleEndDateErrors({ billingContext, params });
+
+	// 7. Transition config errors (reset_after_trial_end on allocated features)
+	handleTransitionConfigErrors({ ctx, billingContext });
+
+	// 8. Carry over balances errors (non-consumable features, downgrade block)
+	handleCarryOverBalancesErrors({ ctx, params, billingContext });
+
+	// 9. Carry over usages errors (non-consumable features, downgrade block)
+	handleCarryOverUsagesErrors({ ctx, params, billingContext });
+
+	// 10. Proration behavior errors (none restrictions)
+	handleProrationBehaviorErrors({
+		billingContext,
+		billingPlan,
+	});
+
+	// 11. Subscription ID uniqueness
+	await handleSubscriptionIdErrors({
+		db: ctx.db,
+		internalCustomerId: billingContext.fullCustomer.internal_id,
+		subscriptionIds: [billingContext.externalId],
+	});
+
+	// 12. Custom line items errors (only valid for subscription updates)
+	handleCustomLineItemsErrors({
+		params,
+		billingContext,
+		billingPlan,
+	});
+
+	// 13. Revert trial errors (card_required + revert, missing existing plan)
+	handleRevertTrialErrors({ billingContext });
+
+	// 14. Adding and removing the same discount in one request
+	handleRemoveDiscountsErrors({ params });
+
+	handleStripeBillingPlanErrors({ ctx, billingContext, billingPlan });
+};

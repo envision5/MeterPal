@@ -1,0 +1,430 @@
+import type { BillingContext, StripeDiscountWithCoupon } from "@autumn/shared";
+import {
+	customerProductsHaveDuplicateProductId,
+	type FullCusProduct,
+	isOneOffPrice,
+	msToSeconds,
+	truncateMsToSecondPrecision,
+} from "@autumn/shared";
+import type Stripe from "stripe";
+import { billingIntervalToStripe } from "@/external/stripe/stripePriceUtils";
+import { logPhase } from "@/external/stripe/subscriptionSchedules/utils/logStripeSchedulePhaseUtils";
+import type { AutumnContext } from "@/honoUtils/HonoEnv";
+import { stripeItemSpecToPhaseItem } from "@/internal/billing/v2/providers/stripe/utils/stripeItemSpec/stripeItemSpecToStripeParam";
+import { customerProductToStripeItemSpecs } from "@/internal/billing/v2/providers/stripe/utils/subscriptionItems/customerProductToStripeItemSpecs";
+import { isCustomerProductActiveDuringPeriod } from "@/internal/billing/v2/providers/stripe/utils/subscriptionSchedules/isCustomerProductActiveAtEpochMs";
+import { buildTransitionPoints } from "./buildTransitionPoints";
+import { customerProductsToPhaseInvoiceItems } from "./customerProductsToPhaseInvoiceItems";
+import { logTransitionPoints } from "./logBuildPhaseHelpers";
+import { normalizeCustomerProductTimestamps } from "./normalizeCustomerProductTimestamps";
+
+/**
+ * Converts customer products to Stripe schedule phase items.
+ * Merges quantities for duplicate stored price IDs.
+ * Entity-scoped inline items are kept separate (never merged).
+ */
+const customerProductsToPhaseItems = ({
+	ctx,
+	billingContext,
+	customerProducts,
+}: {
+	ctx: AutumnContext;
+	billingContext: BillingContext;
+	customerProducts: FullCusProduct[];
+}): Stripe.SubscriptionScheduleUpdateParams.Phase.Item[] => {
+	const storedPriceMap = new Map<string, number | undefined>();
+	const inlineItems: Stripe.SubscriptionScheduleUpdateParams.Phase.Item[] = [];
+
+	for (const customerProduct of customerProducts) {
+		const isDuplicateProductId = customerProductsHaveDuplicateProductId({
+			customerProducts,
+			productId: customerProduct.product.id,
+		});
+
+		const { recurringItems } = customerProductToStripeItemSpecs({
+			ctx,
+			customerProduct,
+			billingContext,
+			options: { isDuplicateProductId },
+		});
+
+		for (const item of recurringItems) {
+			// Entity-scoped inline prices — never merge
+			if (item.stripeInlinePrice) {
+				inlineItems.push(stripeItemSpecToPhaseItem({ spec: item }));
+				continue;
+			}
+
+			const priceId = item.stripePriceId!;
+			if (item.quantity === undefined) {
+				if (!storedPriceMap.has(priceId)) {
+					storedPriceMap.set(priceId, undefined);
+				}
+			} else {
+				const current = storedPriceMap.get(priceId) ?? 0;
+				storedPriceMap.set(priceId, current + item.quantity);
+			}
+		}
+	}
+
+	const storedItems = Array.from(storedPriceMap.entries()).map(
+		([price, quantity]) => {
+			if (quantity === undefined) {
+				return { price };
+			}
+			return { price, quantity };
+		},
+	);
+
+	return [...storedItems, ...inlineItems];
+};
+
+const MONTHLY_PLACEHOLDER_RECURRING = {
+	interval: "month",
+	interval_count: 1,
+} as const;
+
+const findRecurringStripeInterval = (customerProduct: FullCusProduct) => {
+	const recurringPrice = customerProduct.customer_prices.find(
+		({ price }) => !isOneOffPrice(price) && price.config.interval,
+	)?.price;
+	if (!recurringPrice) return undefined;
+
+	const recurring = billingIntervalToStripe({
+		interval: recurringPrice.config.interval,
+		intervalCount: recurringPrice.config.interval_count,
+	});
+	if (!recurring.interval) return undefined;
+	return {
+		interval: recurring.interval,
+		interval_count: recurring.interval_count,
+	};
+};
+
+const buildPlaceholderItem = ({
+	ctx,
+	stripeProductId,
+	recurring,
+}: {
+	ctx: AutumnContext;
+	stripeProductId: string;
+	recurring: {
+		interval: Stripe.PriceCreateParams.Recurring.Interval;
+		interval_count?: number;
+	};
+}): Stripe.SubscriptionScheduleUpdateParams.Phase.Item => ({
+	price_data: {
+		product: stripeProductId,
+		unit_amount: 0,
+		currency: ctx.org.default_currency || "usd",
+		recurring: {
+			interval: recurring.interval,
+			interval_count: recurring.interval_count,
+		},
+	},
+	quantity: 1,
+	metadata: { autumn_free_phase_placeholder: "true" },
+});
+
+/**
+ * $0 item that keeps a Stripe schedule alive through a free phase. It sits on the
+ * free phase's own product and copies a paid interval to keep the billing anchor.
+ */
+export const buildFreeRecurringPlaceholderItem = ({
+	ctx,
+	customerProducts,
+	phaseCustomerProducts = [],
+}: {
+	ctx: AutumnContext;
+	customerProducts: FullCusProduct[];
+	phaseCustomerProducts?: FullCusProduct[];
+}): Stripe.SubscriptionScheduleUpdateParams.Phase.Item | undefined => {
+	const recurring =
+		customerProducts.map(findRecurringStripeInterval).find(Boolean) ??
+		MONTHLY_PLACEHOLDER_RECURRING;
+
+	const phaseStripeProductId = phaseCustomerProducts.find(
+		(customerProduct) => customerProduct.product.processor?.id,
+	)?.product.processor?.id;
+	if (phaseStripeProductId) {
+		return buildPlaceholderItem({
+			ctx,
+			stripeProductId: phaseStripeProductId,
+			recurring,
+		});
+	}
+
+	for (const customerProduct of customerProducts) {
+		const stripeProductId = customerProduct.product.processor?.id;
+		const productRecurring = findRecurringStripeInterval(customerProduct);
+		if (!stripeProductId || !productRecurring) continue;
+
+		return buildPlaceholderItem({
+			ctx,
+			stripeProductId,
+			recurring: productRecurring,
+		});
+	}
+};
+
+/**
+ * Converts billing context discounts to the format expected by Stripe schedule phases.
+ * Uses the existing discount ID so Stripe reuses the same discount object,
+ * preserving the original start/end timestamps and remaining duration for repeating coupons.
+ * Falls back to coupon ID for new discounts that don't have a discount ID yet.
+ *
+ * Discounts that have already expired before the phase starts are excluded —
+ * Stripe rejects schedule phases that reference a discount whose end has passed.
+ */
+const stripeDiscountsToPhaseDiscounts = ({
+	stripeDiscounts,
+	phaseStartDateSeconds,
+}: {
+	stripeDiscounts?: StripeDiscountWithCoupon[];
+	phaseStartDateSeconds: number;
+}): Stripe.SubscriptionScheduleUpdateParams.Phase.Discount[] | undefined => {
+	if (!stripeDiscounts || stripeDiscounts.length === 0) return undefined;
+
+	const activeDiscounts = stripeDiscounts.filter(
+		(discount) => discount.end == null || discount.end > phaseStartDateSeconds,
+	);
+
+	if (activeDiscounts.length === 0) return undefined;
+
+	return activeDiscounts.map((discount) =>
+		discount.id
+			? { discount: discount.id }
+			: { coupon: discount.source.coupon.id },
+	);
+};
+
+export const getBillingCycleAnchorResetAts = ({
+	customerProducts,
+	nowMs,
+}: {
+	customerProducts: FullCusProduct[];
+	nowMs: number;
+}) => {
+	return Array.from(
+		new Set(
+			customerProducts
+				.map(
+					(customerProduct) => customerProduct.billing_cycle_anchor_resets_at,
+				)
+				.filter(
+					(resetAt): resetAt is number =>
+						typeof resetAt === "number" && resetAt >= nowMs,
+				),
+		),
+	).sort((a, b) => a - b);
+};
+
+export const getBillingCycleAnchorResetAt = ({
+	customerProducts,
+	nowMs,
+}: {
+	customerProducts: FullCusProduct[];
+	nowMs: number;
+}) => {
+	const resetTimestamps = getBillingCycleAnchorResetAts({
+		customerProducts,
+		nowMs,
+	});
+
+	return resetTimestamps[0];
+};
+
+/**
+ * Builds Stripe subscription schedule phases.
+ *
+ * Takes add/remove customer products and computes phases based on
+ * when products start or end (transition points).
+ */
+export const buildStripePhasesUpdate = ({
+	ctx,
+	billingContext,
+	customerProducts,
+	trialEndsAt,
+	useFreePhaseStripeProduct = false,
+}: {
+	ctx: AutumnContext;
+	billingContext: BillingContext;
+	customerProducts: FullCusProduct[];
+	trialEndsAt?: number;
+	/** Only create_schedule places free-phase placeholders on the free plan's own product. */
+	useFreePhaseStripeProduct?: boolean;
+}): Stripe.SubscriptionScheduleUpdateParams.Phase[] => {
+	// Normalize all timestamps to second-level precision for Stripe compatibility.
+	// This is done once at the entry point so downstream functions work with clean data.
+	const nowMs = truncateMsToSecondPrecision(billingContext.currentEpochMs);
+	const normalizedTrialEndsAt = trialEndsAt
+		? truncateMsToSecondPrecision(trialEndsAt)
+		: undefined;
+	const normalizedCustomerProducts = customerProducts.map(
+		normalizeCustomerProductTimestamps,
+	);
+	const billingCycleAnchorResetAts = getBillingCycleAnchorResetAts({
+		customerProducts: normalizedCustomerProducts,
+		nowMs,
+	});
+
+	// Find all transition points
+	const transitionPoints = buildTransitionPoints({
+		customerProducts: normalizedCustomerProducts,
+		nowMs,
+		trialEndsAt: normalizedTrialEndsAt,
+		newBillingCycleAnchorMs: billingCycleAnchorResetAts,
+	});
+
+	const debugLogs = false;
+
+	// Log customer products and transition points
+	if (debugLogs) {
+		logTransitionPoints({
+			ctx,
+			customerProducts: normalizedCustomerProducts,
+			transitionPoints,
+			nowMs,
+		});
+	}
+
+	let startMs = nowMs;
+
+	const phases: Stripe.SubscriptionScheduleUpdateParams.Phase[] = [];
+	let previousActiveCustomerProductIds = new Set<string>();
+	for (let i = 0; i < transitionPoints.length; i++) {
+		const transitionPoint = transitionPoints[i];
+		const endMs = transitionPoint;
+		const phaseIndex = i;
+
+		// 1. Get customer products from now -> transition point
+		const activeCustomerProducts = normalizedCustomerProducts.filter(
+			(customerProduct) =>
+				isCustomerProductActiveDuringPeriod({
+					customerProduct,
+					startMs,
+					endMs,
+				}),
+		);
+		const activeCustomerProductIds = new Set(
+			activeCustomerProducts.map((customerProduct) => customerProduct.id),
+		);
+		let changesCustomerProducts =
+			phaseIndex > 0 &&
+			activeCustomerProductIds.size !== previousActiveCustomerProductIds.size;
+		if (phaseIndex > 0 && !changesCustomerProducts) {
+			for (const customerProductId of activeCustomerProductIds) {
+				if (!previousActiveCustomerProductIds.has(customerProductId)) {
+					changesCustomerProducts = true;
+					break;
+				}
+			}
+		}
+
+		// 2. Build phase items
+		const phaseItems = customerProductsToPhaseItems({
+			ctx,
+			billingContext,
+			customerProducts: activeCustomerProducts,
+		});
+		const phaseAddInvoiceItems = customerProductsToPhaseInvoiceItems({
+			ctx,
+			billingContext,
+			customerProducts: activeCustomerProducts,
+			phaseStartMs: startMs,
+			phaseEndMs: endMs,
+		});
+		const needsFreePhasePlaceholder =
+			endMs &&
+			(activeCustomerProducts.length > 0 ||
+				(normalizedCustomerProducts.some(
+					(product) => product.starts_at < startMs,
+				) &&
+					normalizedCustomerProducts.some(
+						(product) => product.starts_at >= endMs,
+					)));
+		if (phaseItems.length === 0 && needsFreePhasePlaceholder) {
+			const placeholderItem = buildFreeRecurringPlaceholderItem({
+				ctx,
+				customerProducts: normalizedCustomerProducts,
+				phaseCustomerProducts: useFreePhaseStripeProduct
+					? activeCustomerProducts
+					: [],
+			});
+			if (placeholderItem) phaseItems.push(placeholderItem);
+		}
+
+		// Only set trial_end if trial extends into this phase
+		// Constraint: trial_end must be ≤ phase end_date
+		const computePhaseTrialEndsAt = (): number | undefined => {
+			// No trial configured
+			if (!normalizedTrialEndsAt) return undefined;
+
+			// Trial already ended before this phase starts
+			if (normalizedTrialEndsAt <= startMs) return undefined;
+
+			// Trial extends beyond this phase - whole phase is on trial
+			if (endMs && normalizedTrialEndsAt > endMs) {
+				return msToSeconds(endMs);
+			}
+
+			// Trial ends within this phase
+			return msToSeconds(normalizedTrialEndsAt);
+		};
+
+		const phaseStartDateSeconds = msToSeconds(startMs);
+		const isBillingCycleAnchorResetPhase =
+			billingCycleAnchorResetAts.includes(startMs);
+		const hasOneOffInvoiceItems = phaseAddInvoiceItems.length > 0;
+		const shouldInvoicePhaseTransition =
+			phaseIndex > 0 && phaseItems.length > 0;
+		const shouldAlwaysInvoice =
+			shouldInvoicePhaseTransition ||
+			isBillingCycleAnchorResetPhase ||
+			hasOneOffInvoiceItems;
+		const phase: Stripe.SubscriptionScheduleUpdateParams.Phase = {
+			items: phaseItems,
+			...(hasOneOffInvoiceItems && {
+				add_invoice_items: phaseAddInvoiceItems,
+			}),
+			start_date: phaseStartDateSeconds,
+			end_date: endMs ? msToSeconds(endMs) : undefined,
+			trial_end: computePhaseTrialEndsAt(),
+			billing_cycle_anchor: isBillingCycleAnchorResetPhase
+				? "phase_start"
+				: undefined,
+			// Product switches at a reset start a full cycle without old-plan credits.
+			proration_behavior:
+				isBillingCycleAnchorResetPhase && changesCustomerProducts
+					? "none"
+					: shouldAlwaysInvoice
+						? "always_invoice"
+						: undefined,
+			discounts: stripeDiscountsToPhaseDiscounts({
+				stripeDiscounts: billingContext.stripeDiscounts,
+				phaseStartDateSeconds,
+			}),
+		};
+
+		// Log phase details
+		if (debugLogs) {
+			logPhase({
+				ctx,
+				phase,
+				customerProducts: activeCustomerProducts,
+				phaseIndex,
+				logPrefix: "[buildStripePhasesUpdate]",
+				showCustomerProducts: true,
+			});
+		}
+
+		phases.push(phase);
+		previousActiveCustomerProductIds = activeCustomerProductIds;
+
+		if (endMs) {
+			startMs = endMs;
+		}
+	}
+
+	return phases;
+};

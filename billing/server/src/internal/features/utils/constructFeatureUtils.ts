@@ -1,0 +1,201 @@
+import {
+	AggregateType,
+	type AppEnv,
+	buildAiCreditSystemConfig,
+	type Feature,
+	FeatureType,
+	FeatureUsageType,
+	type ModelMarkups,
+	type ProviderMarkups,
+} from "@autumn/shared";
+import { generateId, keyToTitle } from "@server/utils/genUtils";
+
+const constructFeature = ({
+	id,
+	name,
+	orgId,
+	type,
+	env,
+	config,
+	display,
+}: {
+	id: string;
+	name: string;
+	orgId: string;
+	type: FeatureType;
+	env: AppEnv;
+	config: any;
+	display: any;
+}) => {
+	const newFeature: Feature = {
+		internal_id: generateId("fe"),
+		id,
+		name,
+		org_id: orgId,
+		env,
+		created_at: Date.now(),
+		type,
+		config,
+		display,
+		archived: false,
+		event_names: [],
+		model_markups: null,
+	};
+	// This function isn't used anywhere, maybe delete it?
+	return newFeature;
+};
+
+export const constructBooleanFeature = ({
+	featureId,
+	orgId,
+	env,
+	name,
+}: {
+	featureId: string;
+	orgId: string;
+	env: AppEnv;
+	name?: string;
+}) => {
+	const newFeature: Feature = {
+		internal_id: generateId("fe"),
+		org_id: orgId,
+		env,
+		created_at: Date.now(),
+
+		id: featureId,
+		name: name || keyToTitle(featureId),
+		type: FeatureType.Boolean,
+		config: null,
+		archived: false,
+		event_names: [],
+		model_markups: null,
+	};
+
+	return newFeature;
+};
+
+export const constructMeteredFeature = ({
+	featureId,
+	name,
+	orgId,
+	env,
+	usageType,
+	eventNames = [],
+}: {
+	featureId: string;
+	name?: string;
+	orgId: string;
+	env: AppEnv;
+	usageType: FeatureUsageType;
+	eventNames?: string[];
+}) => {
+	const newFeature: Feature = {
+		internal_id: generateId("fe"),
+		org_id: orgId,
+		env,
+		created_at: Date.now(),
+
+		id: featureId,
+		name: name || keyToTitle(featureId),
+		type: FeatureType.Metered,
+		config: {
+			filters: [
+				{
+					property: "event_name",
+					operator: "eq",
+					value: [],
+				},
+			],
+			aggregate: {
+				type: AggregateType.Sum,
+				property: "value",
+			},
+			usage_type: usageType,
+		},
+		archived: false,
+		event_names: eventNames,
+		model_markups: null,
+	};
+
+	return newFeature;
+};
+
+export const constructCreditSystem = ({
+	featureId,
+	name,
+	orgId,
+	env,
+	schema,
+}: {
+	featureId: string;
+	name?: string;
+	orgId: string;
+	env: AppEnv;
+	schema: {
+		metered_feature_id: string;
+		credit_cost: number;
+	}[];
+}) => {
+	const config = {
+		schema: schema.map((item) => ({
+			feature_amount: 1,
+			metered_feature_id: item.metered_feature_id,
+			credit_amount: item.credit_cost,
+		})),
+		usage_type: FeatureUsageType.Single,
+	};
+
+	const newFeature: Feature = {
+		internal_id: generateId("fe"),
+		org_id: orgId,
+		env,
+		created_at: Date.now(),
+
+		id: featureId,
+		name: name || keyToTitle(featureId),
+		type: FeatureType.CreditSystem,
+		config,
+		archived: false,
+		event_names: [],
+		model_markups: null,
+	};
+
+	return newFeature;
+};
+
+export const constructAiCreditSystem = ({
+	featureId,
+	name,
+	orgId,
+	env,
+	modelMarkups,
+	defaultMarkup,
+	providerMarkups,
+}: {
+	featureId: string;
+	name?: string;
+	orgId: string;
+	env: AppEnv;
+	modelMarkups: ModelMarkups;
+	defaultMarkup?: number;
+	providerMarkups?: ProviderMarkups;
+}) => {
+	const config = buildAiCreditSystemConfig({ defaultMarkup, providerMarkups });
+
+	const newFeature: Feature = {
+		internal_id: generateId("fe"),
+		org_id: orgId,
+		env,
+		created_at: Date.now(),
+
+		id: featureId,
+		name: name || keyToTitle(featureId),
+		type: FeatureType.AiCreditSystem,
+		config,
+		archived: false,
+		event_names: [],
+		model_markups: modelMarkups,
+	};
+
+	return newFeature;
+};

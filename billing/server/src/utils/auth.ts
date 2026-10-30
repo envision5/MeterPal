@@ -1,0 +1,446 @@
+import "dotenv/config";
+import { getAutumnEnv, isCloudAgent } from "@autumn/env";
+import {
+	ALL_SCOPES,
+	ac,
+	invitation,
+	MODERN_SCOPES,
+	OPENID_SCOPES,
+	roles,
+	schemas,
+} from "@autumn/shared";
+import { getScopesForUserInOrg } from "@autumn/shared/utils/auth/getScopesForUserInOrg";
+import { oauthProvider } from "@better-auth/oauth-provider";
+import { passkey } from "@better-auth/passkey";
+import { sso } from "@better-auth/sso";
+import { type BetterAuthOptions, betterAuth, type User } from "better-auth";
+import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import {
+	admin,
+	customSession,
+	emailOTP,
+	jwt,
+	type Organization,
+	organization,
+	testUtils,
+} from "better-auth/plugins";
+import type { AccessControl } from "better-auth/plugins/access";
+import { eq } from "drizzle-orm";
+import { db } from "@/db/initDrizzle.js";
+import { logger } from "@/external/logtail/logtailUtils.js";
+import { createLoopsContact } from "@/external/resend/loopsUtils.js";
+import { getOAuthValidAudiences } from "@/internal/auth/oauth/oauthResourceAudiences.js";
+import { SSO_VERIFICATION_PREFIX } from "@/internal/auth/sso/ssoDomainUtils.js";
+import { getTrustedSsoOrigins } from "@/internal/auth/sso/ssoTrustedOrigins.js";
+import { sendInvitationEmail } from "@/internal/emails/sendInvitationEmail.js";
+import { sendOnboardingEmail } from "@/internal/emails/sendOnboardingEmail.js";
+import sendOTPEmail from "@/internal/emails/sendOTPEmail.js";
+import { afterOrgCreated } from "./authUtils/afterOrgCreated.js";
+import { afterSessionCreated } from "./authUtils/afterSessionCreated.js";
+import { afterSessionDeleted } from "./authUtils/afterSessionDeleted.js";
+import { beforeSessionCreated } from "./authUtils/beforeSessionCreated.js";
+import { ADMIN_USER_IDs } from "./constants.js";
+
+// emulate.dev Google: rewrite outbound Google OAuth host so agent worktrees
+// can use any redirect URI without registering it in the real Google console.
+// Real Google's oauth2.googleapis.com/token maps to emulate's /oauth2/token path.
+if (process.env.EMULATE_GOOGLE_URL && process.env.NODE_ENV !== "production") {
+	const emulate = (
+		process.env.EMULATE_GOOGLE_FETCH_URL || process.env.EMULATE_GOOGLE_URL
+	).replace(/\/$/, "");
+	const originalFetch = globalThis.fetch;
+	// biome-ignore lint/suspicious/noExplicitAny: preserve the upstream shim shape.
+	globalThis.fetch = ((input: any, init?: any) => {
+		const url =
+			typeof input === "string"
+				? input
+				: input instanceof URL
+					? input.href
+					: (input as Request).url;
+		if (url.startsWith("https://oauth2.googleapis.com")) {
+			return originalFetch(
+				url.replace("https://oauth2.googleapis.com", `${emulate}/oauth2`),
+				init,
+			);
+		}
+		if (url.startsWith("https://www.googleapis.com/oauth2")) {
+			return originalFetch(
+				url.replace("https://www.googleapis.com", emulate),
+				init,
+			);
+		}
+		return originalFetch(input, init);
+	}) as typeof fetch;
+}
+
+const emulateGoogleUrl =
+	process.env.NODE_ENV !== "production"
+		? process.env.EMULATE_GOOGLE_URL?.replace(/\/$/, "")
+		: undefined;
+
+// HTTPS agent worktrees go through portless (e.g. wtN-api.localhost). The
+// OAuth flow leaves and returns via a third-party host (emulate.dev), so the
+// state cookie must be SameSite=None+Secure to survive the round trip.
+const isProductionAuth = process.env.NODE_ENV === "production";
+export const authBaseUrl = getAutumnEnv().AUTUMN_API_URL;
+const publicAuthBaseUrl = getAutumnEnv().AUTUMN_PUBLIC_API_URL;
+const browserAuthBaseUrl = isProductionAuth
+	? authBaseUrl
+	: isCloudAgent()
+		? publicAuthBaseUrl
+		: authBaseUrl;
+const isHttpsBaseUrl = browserAuthBaseUrl?.startsWith("https://");
+export const isCapyDev =
+	process.env.CAPY_DEV === "1" && process.env.NODE_ENV !== "production";
+const configuredAuthBaseUrl = isCapyDev
+	? {
+			allowedHosts: [
+				"localhost:*",
+				"127.0.0.1:*",
+				"*.localhost",
+				"*.autumnworktree.com",
+				"*.ngrok.app",
+				"*.ngrok-free.app",
+				"*.capysandbox.net",
+			],
+			fallback: browserAuthBaseUrl,
+			protocol: "auto" as const,
+		}
+	: browserAuthBaseUrl;
+
+/**
+ * Passkey (WebAuthn) is bound to the FRONTEND origin where the browser calls
+ * `navigator.credentials.{create,get}`. Derive rpID/origin from CLIENT_URL so
+ * Portless worktrees (e.g. https://wt44.localhost) and production both work
+ * without explicit env vars.
+ *
+ * - rpID: the hostname only (no scheme, no port). Browsers treat `*.localhost`
+ *   as a secure context, so passkeys work in dev over Portless TLS.
+ * - origin: full URL with scheme. Multiple origins may be supplied for envs
+ *   that need to accept both Portless and direct localhost.
+ */
+const passkeyFrontendUrl = process.env.CLIENT_URL ?? "http://localhost:3000";
+const passkeyOrigins: string[] = [passkeyFrontendUrl];
+const passkeyRpID = (() => {
+	try {
+		return new URL(passkeyFrontendUrl).hostname;
+	} catch {
+		return "localhost";
+	}
+})();
+
+if (
+	process.env.VITE_FRONTEND_URL &&
+	process.env.VITE_FRONTEND_URL !== passkeyFrontendUrl
+) {
+	try {
+		const viteOrigin = new URL(process.env.VITE_FRONTEND_URL);
+		if (viteOrigin.hostname === passkeyRpID) {
+			passkeyOrigins.push(process.env.VITE_FRONTEND_URL);
+		}
+	} catch {
+		// Invalid URL, ignore
+	}
+}
+
+const options = {
+	baseURL: configuredAuthBaseUrl,
+	telemetry: {
+		enabled: false,
+	},
+	...((isHttpsBaseUrl || isCapyDev) && {
+		advanced: {
+			...(isCapyDev && { trustedProxyHeaders: true }),
+			...(isHttpsBaseUrl && {
+				useSecureCookies: true,
+				defaultCookieAttributes: {
+					sameSite: "none" as const,
+					secure: true,
+				},
+			}),
+		},
+	}),
+
+	database: drizzleAdapter(db, {
+		provider: "pg",
+		schema: schemas,
+	}),
+
+	user: {
+		deleteUser: {
+			enabled: true,
+			sendDeleteAccountVerification: async ({
+				user,
+				url,
+				token,
+			}: {
+				user: User;
+				url: string;
+				token: string;
+			}) => {
+				console.log("Delete account verification", { user, url, token });
+			},
+		},
+	},
+	databaseHooks: {
+		user: {
+			create: {
+				after: async (user) => {
+					await createLoopsContact(user);
+					await sendOnboardingEmail({
+						name: user.name,
+						email: user.email,
+					});
+				},
+			},
+		},
+		session: {
+			create: {
+				before: beforeSessionCreated,
+				after: afterSessionCreated,
+			},
+			delete: {
+				after: afterSessionDeleted,
+			},
+		},
+	},
+	trustedOrigins: (request?: Request): string[] => {
+		const origins: string[] = [
+			"http://localhost:3000",
+			"https://app.useautumn.com",
+			"https://staging.useautumn.com",
+			"https://*.useautumn.com",
+			"https://*.autumnworktree.com",
+		];
+		origins.push(...getTrustedSsoOrigins());
+		if (process.env.NODE_ENV === "production") return origins;
+
+		// Worktree ports follow worktreeOffset = (N-1)*100; accept any localhost
+		// port the running stack might use as origin.
+		const origin = request?.headers.get("origin") ?? null;
+		if (
+			origin &&
+			/^https?:\/\/(?:[a-zA-Z0-9-]+\.)*localhost(?::\d+)?$/.test(origin)
+		) {
+			origins.push(origin);
+		}
+		if (
+			isCapyDev &&
+			origin &&
+			/^https:\/\/(?:[a-zA-Z0-9-]+\.)*capysandbox\.net$/.test(origin)
+		) {
+			origins.push(origin);
+		}
+		if (process.env.CLIENT_URL) origins.push(process.env.CLIENT_URL);
+		if (authBaseUrl) origins.push(authBaseUrl);
+		return origins;
+	},
+	emailAndPassword: {
+		enabled: true,
+		disableSignUp: false,
+		requireEmailVerification: true,
+		minPasswordLength: 8,
+		maxPasswordLength: 128,
+		autoSignIn: true,
+		resetPasswordTokenExpiresIn: 3600, // 1 hour
+	},
+
+	socialProviders: {
+		google: {
+			clientId: process.env.GOOGLE_CLIENT_ID!,
+			clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+			redirectURI:
+				browserAuthBaseUrl && !isCapyDev
+					? `${browserAuthBaseUrl}/api/auth/callback/google`
+					: undefined,
+			...(emulateGoogleUrl
+				? {
+						// HS256-signed id_tokens from emulate fail real Google's RS256 JWKS check.
+						authorizationEndpoint: `${emulateGoogleUrl}/o/oauth2/v2/auth`,
+						verifyIdToken: async () => true,
+					}
+				: {}),
+		},
+	},
+	plugins: [
+		emailOTP({
+			// biome-ignore lint/correctness/noUnusedFunctionParameters: preserve the upstream callback signature.
+			async sendVerificationOTP({ email, otp, type }) {
+				// Implement the sendVerificationOTP method to send the OTP to the user's email address
+
+				await sendOTPEmail({
+					email,
+					otp,
+				});
+			},
+		}),
+		admin({
+			adminUserIds: ADMIN_USER_IDs,
+			impersonationSessionDuration: 1000 * 60 * 60 * 24, // 1 days
+		}),
+
+		jwt(),
+		oauthProvider({
+			loginPage: `${process.env.CLIENT_URL}/sign-in`,
+			consentPage: `${process.env.CLIENT_URL}/consent`,
+			silenceWarnings: {
+				oauthAuthServerConfig: true,
+			},
+			// Resource-based scopes with R/W actions (plus legacy CRUDL +
+			// meta scopes — see shared/utils/scopeDefinitions.ts).
+			scopes: [...ALL_SCOPES],
+			// Internal roles and legacy aliases remain accepted for existing
+			// clients, but must not be advertised to clients that request every
+			// scope from discovery (notably Devin).
+			advertisedMetadata: {
+				scopes_supported: [...OPENID_SCOPES, ...MODERN_SCOPES],
+			},
+			// Inert: normalizeOAuthTokenRequest strips `resource` before better-auth's
+			// checkResource reads it. resolveOAuthTokenResource enforces the audience.
+			validAudiences: getOAuthValidAudiences(),
+			allowDynamicClientRegistration: true,
+			allowUnauthenticatedClientRegistration: true,
+			customAccessTokenClaims: ({ referenceId }) => ({
+				reference_id: referenceId,
+			}),
+			clientReference: ({ session }) => {
+				return (
+					(session?.activeOrganizationId as string | undefined) ?? undefined
+				);
+			},
+			// Use the active organization as the consent reference
+			// This makes consent org-scoped, not just user-scoped
+			postLogin: {
+				// Required: page to redirect to if shouldRedirect returns true
+				page: `${process.env.CLIENT_URL}/consent`,
+				// Required: whether to show post-login page (we don't need this, so always false)
+				shouldRedirect: async () => false,
+				// Optional: reference ID for consent (org ID makes consent org-scoped)
+				consentReferenceId: ({ session }) => {
+					return (
+						(session?.activeOrganizationId as string | undefined) ?? undefined
+					);
+				},
+			},
+		}),
+
+		passkey({
+			rpID: passkeyRpID,
+			rpName: "Autumn",
+			origin: passkeyOrigins.length === 1 ? passkeyOrigins[0]! : passkeyOrigins,
+		}),
+
+		organization({
+			ac: ac as AccessControl,
+			roles,
+			creatorRole: "owner",
+			async sendInvitationEmail(data: {
+				id: string;
+				email: string;
+				organization: Organization;
+			}) {
+				const inviteLink = `${process.env.CLIENT_URL}/accept?id=${data.id}`;
+				await sendInvitationEmail({
+					email: data.email,
+					orgName: (data.organization.name as string) ?? "an organization",
+					inviteLink: inviteLink,
+				});
+
+				try {
+					// Update invite to expire in 7 days
+					await db
+						.update(invitation)
+						.set({
+							expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+						})
+						.where(eq(invitation.id, data.id));
+				} catch (error) {
+					logger.error("Error updating invite expiration date:", { error });
+				}
+			},
+			schema: {
+				organization: {
+					modelName: "organizations",
+					fields: {
+						createdAt: "createdAt",
+					},
+				},
+			},
+			organizationHooks: {
+				afterCreateOrganization: async ({
+					organization,
+					user,
+				}: {
+					organization: Organization;
+					user: User;
+				}) => {
+					await afterOrgCreated({ org: organization, user });
+				},
+			},
+		}),
+		sso({
+			domainVerification: {
+				enabled: true,
+				tokenPrefix: SSO_VERIFICATION_PREFIX,
+			},
+			// Otherwise SSO users are stored emailVerified:false and the
+			// account-linking guard locks them out of their own provider.
+			trustEmailVerified: true,
+			organizationProvisioning: {
+				disabled: true,
+			},
+			providersLimit: 100,
+		}),
+	],
+} satisfies BetterAuthOptions;
+
+export const auth = betterAuth({
+	...options,
+	plugins: [
+		...options.plugins,
+		// Test-only: exposes privileged ctx.test helpers (no HTTP routes). Off in prod.
+		...(process.env.NODE_ENV !== "production" ? [testUtils()] : []),
+		/**
+		 * Attach `role` and `scopes` to every session response.
+		 *
+		 * Must be last in the plugin list so it can observe the session
+		 * produced by the other plugins (notably `organization`, which
+		 * populates `session.activeOrganizationId`).
+		 *
+		 * better-auth docs note that custom session fields are NOT cached
+		 * (neither in secondary storage nor the cookie cache), so every
+		 * `getSession` call pays a DB round-trip. Accepted.
+		 */
+		customSession(async ({ user, session }) => {
+			let role: string | null = null;
+			let scopes: string[] = [];
+			const orgId = session.activeOrganizationId;
+			if (orgId && user?.id) {
+				const resolved = await getScopesForUserInOrg({
+					db,
+					userId: user.id,
+					organizationId: orgId,
+				});
+				role = resolved.role;
+				scopes = [...resolved.scopes];
+			}
+
+			/**
+			 * Inject `superuser` for Autumn staff. Triggered when the
+			 * better-auth GLOBAL user role is "admin" (NOT the org role),
+			 * or when the session is an impersonation. Mirrors the
+			 * client-side check in `useAdmin` and `adminAuthMiddleware`.
+			 */
+			const globalUserRole = (user as { role?: string } | null | undefined)
+				?.role;
+			const impersonatedBy = (
+				session as { impersonatedBy?: string | null } | null | undefined
+			)?.impersonatedBy;
+			if (globalUserRole === "admin" || impersonatedBy) {
+				if (!scopes.includes("superuser")) scopes.push("superuser");
+			}
+
+			return { user, session, role, scopes };
+		}, options),
+	],
+});

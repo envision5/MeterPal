@@ -1,0 +1,247 @@
+import { isFreeProduct, productToProductKey } from "@autumn/shared";
+import type { AutumnContext } from "@/honoUtils/HonoEnv";
+import { assembleNextFullProduct } from "@/internal/catalogV2/actions/updateCatalog/compute/computeUpsertProductsPlan/assembleNextFullProduct";
+import { computeCatalogEntitlementPricesPlan } from "@/internal/catalogV2/actions/updateCatalog/compute/computeUpsertProductsPlan/computeCatalogEntitlementPricesPlan/computeCatalogEntitlementPricesPlan";
+import { computeFreeTrialPlan } from "@/internal/catalogV2/actions/updateCatalog/compute/computeUpsertProductsPlan/computeFreeTrialPlan/computeFreeTrialPlan";
+import { computeProductDetailsPlan } from "@/internal/catalogV2/actions/updateCatalog/compute/computeUpsertProductsPlan/computeProductDetailsPlan/computeProductDetailsPlan";
+import { declaredVariantsForSource } from "@/internal/catalogV2/actions/updateCatalog/compute/computeUpsertProductsPlan/computeVariantPlan/declaredVariantsForSource";
+import { resolveUpsertVariantPointer } from "@/internal/catalogV2/actions/updateCatalog/compute/computeUpsertProductsPlan/computeVariantPlan/resolveUpsertVariantPointer";
+import type { DeclaredVariantsMap } from "@/internal/catalogV2/actions/updateCatalog/compute/computeUpsertProductsPlan/computeVariantPlan/shouldUnlinkDirectVariant";
+import { planParamsFromEditDiff } from "@/internal/catalogV2/actions/updateCatalog/compute/computeUpsertProductsPlan/planParamsFromEditDiff";
+import { resolveUpsertOp } from "@/internal/catalogV2/actions/updateCatalog/compute/computeUpsertProductsPlan/resolveUpsertOp";
+import { resolveUpsertVersioning } from "@/internal/catalogV2/actions/updateCatalog/compute/computeUpsertProductsPlan/resolveUpsertVersioning";
+import type { ProductStatesContext } from "@/internal/catalogV2/actions/updateCatalog/types/updateCatalogContext";
+import type {
+	ProductUpsertIntent,
+	UpsertProductPlan,
+} from "@/internal/catalogV2/actions/updateCatalog/types/upsertProductPlan";
+import { activeFullProductForPlan } from "@/internal/catalogV2/actions/updateCatalog/utils/productStateUtils/activeFullProductForPlan";
+import { findFullProductByInternalId } from "@/internal/catalogV2/actions/updateCatalog/utils/productStateUtils/findFullProductByInternalId";
+import { maxVersionForPlan } from "@/internal/catalogV2/actions/updateCatalog/utils/productStateUtils/maxVersionForPlan";
+import { productKeyToState } from "@/internal/catalogV2/actions/updateCatalog/utils/productStateUtils/productKeyToState";
+import { resolveAliasReplacement } from "@/internal/catalogV2/productAliases/resolveAliasReplacement";
+
+const planHasVersionableCustomers = ({
+	planId,
+	productStatesContext,
+}: {
+	planId: string;
+	productStatesContext: ProductStatesContext;
+}): boolean =>
+	(productStatesContext.versionsByPlanId[planId] ?? []).some(
+		(product) =>
+			productKeyToState({
+				productKey: productToProductKey({ product }),
+				productStatesContext,
+			}).customerUsage.hasVersionableCustomerProducts,
+	);
+
+/** One intent → one UpsertProductPlan. Demoted sibling attaches in `computeUpsertProductPlan`. */
+export const intentToUpsertProductPlan = ({
+	ctx,
+	intent,
+	productStatesContext,
+	declaredVariants,
+}: {
+	ctx: AutumnContext;
+	intent: ProductUpsertIntent;
+	productStatesContext: ProductStatesContext;
+	declaredVariants?: DeclaredVariantsMap;
+}): UpsertProductPlan => {
+	const { productKey, source, baseInternalProductId } = intent;
+	const { currentFullProduct, customerUsage } = productKeyToState({
+		productKey,
+		productStatesContext,
+	});
+	const versioning = resolveUpsertVersioning({
+		planParams: intent.planParams,
+		source,
+	});
+	const pointer = resolveUpsertVariantPointer({
+		intent,
+		source,
+		planId: productKey.planId,
+		currentFullProduct,
+		productStatesContext,
+		declaredVariants,
+	});
+	const unlink = pointer === null;
+
+	// Content baseline: row at this version, or the active row when minting.
+	const baseFullProduct =
+		currentFullProduct ??
+		(versioning === "new_version"
+			? activeFullProductForPlan({
+					planId: productKey.planId,
+					productStatesContext,
+				})
+			: null);
+	const planParams = planParamsFromEditDiff({
+		planParams: intent.planParams,
+		editDiff: intent.editDiff,
+		currentFullProduct: currentFullProduct ?? baseFullProduct,
+	});
+
+	// variant_link clones content via planParams, not baseFullProduct — the
+	// folded base is still the Stripe baseline (processor + price id carry).
+	const variantBaseFullProduct =
+		source === "variant_link" && baseInternalProductId
+			? findFullProductByInternalId({
+					internalId: baseInternalProductId,
+					productStatesContext,
+				})
+			: null;
+
+	const currentActive = activeFullProductForPlan({
+		planId: productKey.planId,
+		productStatesContext,
+	});
+	const maxVersion = maxVersionForPlan({
+		planId: productKey.planId,
+		productStatesContext,
+	});
+	const details = computeProductDetailsPlan({
+		ctx,
+		planParams,
+		currentFullProduct,
+		version: productKey.version,
+		baseFullProduct,
+		currentActive,
+		latestExistingVersion: maxVersion === 0 ? undefined : maxVersion,
+		...(pointer !== undefined ? { baseInternalProductId: pointer } : {}),
+		...(variantBaseFullProduct
+			? { baseProcessor: variantBaseFullProduct.processor }
+			: {}),
+	});
+
+	const entitlementPricesPlan = computeCatalogEntitlementPricesPlan({
+		ctx,
+		product: details.product,
+		baseFullProduct,
+		planParams,
+		versioning,
+		protectReferencedRows: customerUsage.hasVersionableRowRefs,
+		...(variantBaseFullProduct
+			? {
+					stripeCandidates: {
+						prices: variantBaseFullProduct.prices,
+						entitlements: variantBaseFullProduct.entitlements,
+					},
+				}
+			: {}),
+	});
+
+	// The plan as this update leaves it: a free plan has no card gate, so the
+	// trial's card_required is inert there (resolveTrialCardRequired's rule).
+	const resultingPrices = entitlementPricesPlan
+		? [
+				...entitlementPricesPlan.prices.same,
+				...entitlementPricesPlan.prices.updated,
+				...entitlementPricesPlan.prices.new,
+			]
+		: (baseFullProduct?.prices ?? []);
+	const freeTrialPlan = computeFreeTrialPlan({
+		freeTrialParams: planParams.free_trial,
+		currentFreeTrial: baseFullProduct?.free_trial ?? null,
+		internalProductId: details.product.internal_id,
+		mode:
+			versioning === "new_version" ? { type: "version" } : { type: "update" },
+		cardRequiredInert: isFreeProduct({ prices: resultingPrices }),
+	});
+
+	const nextFullProduct = assembleNextFullProduct({
+		product: details.product,
+		entitlementPricesPlan,
+		freeTrial: freeTrialPlan.projected,
+		features: ctx.features,
+		currentFullProduct: baseFullProduct,
+	});
+	const aliasReplacement = resolveAliasReplacement({
+		claimedId: nextFullProduct.id,
+		aliases: ctx.org.planAliases,
+	});
+
+	const op = resolveUpsertOp({
+		currentFullProduct,
+		detailsChanged: details.changed,
+		entitlementPricesPlan,
+		freeTrialChanged: freeTrialPlan.changed,
+	});
+	const sourceDeclaredVariants = declaredVariantsForSource({
+		source,
+		variants: planParams.variants,
+	});
+
+	return {
+		row: {
+			planId: productKey.planId,
+			version: productKey.version,
+			op,
+			source,
+			versioning,
+			currentFullProduct,
+			// Mint-only clone source for preview; null on in-place writes.
+			baseFullProduct: versioning === "new_version" ? baseFullProduct : null,
+			nextFullProduct,
+		},
+		...(details.changed ? { details } : {}),
+		...(entitlementPricesPlan ? { entitlementPricesPlan } : {}),
+		...(freeTrialPlan.changed ? { freeTrialPlan } : {}),
+		// Direct / variant_link send licenses[]. Siblings rebase via editDiff.
+		...((source === "direct" ||
+			source === "all_versions" ||
+			source === "variant_link" ||
+			source === "variant_propagation") &&
+		planParams.licenses !== undefined
+			? { declaredLicenses: planParams.licenses }
+			: {}),
+		...(intent.editDiff?.upsert_licenses !== undefined
+			? { upsertLicenses: intent.editDiff.upsert_licenses }
+			: {}),
+		...(intent.editDiff?.remove_licenses !== undefined
+			? { removeLicenses: intent.editDiff.remove_licenses }
+			: {}),
+		...(sourceDeclaredVariants !== undefined
+			? { declaredVariants: sourceDeclaredVariants }
+			: {}),
+		...(unlink ? { unlink: true } : {}),
+		...((source === "direct" || source === "all_versions") &&
+		planParams.propagate !== undefined
+			? { propagate: planParams.propagate }
+			: {}),
+		// Mappings are keyed by public plan id, and a variant is its own plan — so
+		// every source that names a concrete plan writes its own row. The version
+		// fan-out lanes are excluded: they restate the addressed row's plan id.
+		...((source === "direct" ||
+			source === "variant_link" ||
+			source === "variant_propagation") &&
+		planParams.processors?.revenuecat !== undefined
+			? { revenuecatProcessor: planParams.processors.revenuecat }
+			: {}),
+		// Every lane that carries the null needs the flag: the Stripe fan-out and
+		// the variant settings patch both restate `{ stripe: null }` on their own
+		// rows, and a sibling left without it gets a replacement product minted.
+		...(planParams.processors?.stripe === null ? { stripeUnlinked: true } : {}),
+		...(planParams.create_in_stripe !== undefined
+			? { createInStripe: planParams.create_in_stripe }
+			: {}),
+		...(aliasReplacement ? { aliasReplacement } : {}),
+		...(details.product.active &&
+		currentActive &&
+		currentActive.internal_id !== details.product.internal_id
+			? { previousActiveInternalId: currentActive.internal_id }
+			: {}),
+		state: {
+			hasCustomers:
+				versioning === "new_version"
+					? planHasVersionableCustomers({
+							planId: productKey.planId,
+							productStatesContext,
+						})
+					: customerUsage.hasVersionableCustomerProducts,
+			planHadLiveVersions:
+				(productStatesContext.versionsByPlanId[productKey.planId] ?? [])
+					.length > 0,
+		},
+	};
+};

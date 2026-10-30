@@ -1,0 +1,48 @@
+import type {
+	AttachParamsV1,
+	FullCustomer,
+	InvoiceMode,
+	MultiAttachParamsV0,
+	UpdateSubscriptionV1Params,
+} from "@autumn/shared";
+import type Stripe from "stripe";
+import type { AutumnContext } from "@/honoUtils/HonoEnv";
+import { handleInvoiceModeEmailErrors } from "@/internal/billing/v2/common/errors/handleInvoiceModeEmailErrors";
+import { InvoiceTemplateService } from "@/internal/orgs/invoiceTemplates/InvoiceTemplateService";
+
+export const setupInvoiceModeContext = async ({
+	ctx,
+	fullCustomer,
+	params,
+	stripeCustomer,
+}: {
+	ctx: AutumnContext;
+	fullCustomer: FullCustomer;
+	params: UpdateSubscriptionV1Params | AttachParamsV1 | MultiAttachParamsV0;
+	stripeCustomer?: Stripe.Customer;
+}): Promise<InvoiceMode | undefined> => {
+	if (params?.invoice_mode?.enabled !== true) {
+		return undefined;
+	}
+	handleInvoiceModeEmailErrors({ fullCustomer, stripeCustomer });
+	const { invoice_template_id, net_terms_days } = params.invoice_mode;
+	const template = invoice_template_id
+		? await InvoiceTemplateService.getById({
+				db: ctx.db,
+				orgId: ctx.org.id,
+				id: invoice_template_id,
+			})
+		: undefined;
+	return {
+		finalizeInvoice: params.invoice_mode.finalize,
+		enableProductImmediately: params.invoice_mode.enable_plan_immediately,
+		footer: template?.footer,
+		memo: template?.memo,
+		daysUntilDue:
+			net_terms_days ??
+			template?.net_terms_days ??
+			ctx.org.config.default_invoice_net_terms_days ??
+			undefined,
+		paymentMethodTypes: ctx.org.config.allowed_payment_methods ?? undefined,
+	};
+};

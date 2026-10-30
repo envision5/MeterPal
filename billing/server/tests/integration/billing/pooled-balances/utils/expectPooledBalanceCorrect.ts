@@ -1,0 +1,232 @@
+import { expect } from "bun:test";
+import type { EntInterval, PooledBalanceResetMode } from "@autumn/shared";
+import type { DrizzleCli } from "@/db/initDrizzle.js";
+import { getPooledBalanceDbState } from "./getPooledBalanceDbState.js";
+
+type PoolExpectation = {
+	count?: number;
+	balance: number;
+	adjustment: number;
+	cacheVersion?: number;
+	granted: number;
+	unlimited?: boolean;
+	customerEntitlementUnlimited?: boolean | null;
+	interval: EntInterval;
+	nextResetAt: "present" | null;
+	resetCycleAnchor: "present" | null;
+	resetMode: PooledBalanceResetMode;
+	stripeSubscriptionId: "stripe_subscription" | null;
+	customerLicenseLinkId?: string | null;
+	rollovers?: Array<{ balance: number; usage?: number }>;
+};
+
+type PoolFilter = {
+	customerLicenseLinkId?: string | null;
+	internalFeatureId?: string;
+};
+
+type ContributionExpectation = {
+	count: number;
+	currentContribution?: number;
+	nextCycleContribution?: number;
+	excludedSourceCustomerProductIds?: string[];
+};
+
+type SourceExpectation = {
+	count: number;
+	balance?: number;
+	adjustment?: number;
+};
+
+export const expectPooledBalanceCorrect = async ({
+	db,
+	customerId,
+	pool,
+	contributions,
+	sources,
+	filter,
+}: {
+	db: DrizzleCli;
+	customerId: string;
+	pool: PoolExpectation;
+	contributions: ContributionExpectation;
+	sources: SourceExpectation;
+	filter?: PoolFilter;
+}) => {
+	const fullState = await getPooledBalanceDbState({ db, customerId });
+	const poolCount = pool.count ?? 1;
+
+	// Expired pools are historical rows kept for audit: a cancel expires the pool
+	// and a later re-attach mints a fresh one, so both linger. "The pool" here
+	// always means the live one — use getPooledBalanceDbState for the history.
+	const isLive = (expiresAt: number | null) =>
+		expiresAt === null || expiresAt > Date.now();
+	const matchesFilter = (candidate: (typeof fullState.pools)[number]) => {
+		if (
+			filter?.customerLicenseLinkId !== undefined &&
+			candidate.customer_license_link_id !== filter.customerLicenseLinkId
+		) {
+			return false;
+		}
+		if (
+			filter?.internalFeatureId !== undefined &&
+			candidate.internal_feature_id !== filter.internalFeatureId
+		) {
+			return false;
+		}
+		return true;
+	};
+	const pools = fullState.pools.filter(
+		(candidate) => isLive(candidate.expires_at) && matchesFilter(candidate),
+	);
+	const livePoolIds = new Set(pools.map((candidate) => candidate.id));
+	const poolCustomerEntitlements = fullState.poolCustomerEntitlements.filter(
+		(candidate) =>
+			candidate.pooled_balance_id !== null &&
+			livePoolIds.has(candidate.pooled_balance_id),
+	);
+	const filteredContributions = fullState.contributions.filter((contribution) =>
+		livePoolIds.has(contribution.pooled_balance_id),
+	);
+	const filteredSourceCustomerEntitlementIds = new Set(
+		filteredContributions.map(
+			(contribution) => contribution.source_customer_entitlement_id,
+		),
+	);
+	const state = {
+		...fullState,
+		pools,
+		poolCustomerEntitlements,
+		contributions: filteredContributions,
+	};
+
+	expect(state.pools).toHaveLength(poolCount);
+	expect(state.poolCustomerEntitlements).toHaveLength(poolCount);
+	for (const pooledCustomerEntitlement of state.poolCustomerEntitlements) {
+		const customerEntitlementUnlimited =
+			pool.customerEntitlementUnlimited === undefined
+				? (pool.unlimited ?? false)
+				: pool.customerEntitlementUnlimited;
+		expect(pooledCustomerEntitlement).toMatchObject({
+			is_pooled_balance: true,
+			unlimited: customerEntitlementUnlimited,
+			customer_product_id: null,
+			balance: pool.balance,
+			adjustment: pool.adjustment,
+			...(pool.cacheVersion === undefined
+				? {}
+				: { cache_version: pool.cacheVersion }),
+		});
+		if (pool.nextResetAt === "present") {
+			expect(pooledCustomerEntitlement.next_reset_at).not.toBeNull();
+		} else {
+			expect(pooledCustomerEntitlement.next_reset_at).toBeNull();
+		}
+		// Pools reset through the lazy/cron paths regardless of mode, so they
+		// are never stamped out of the batch-reset scan.
+		expect(pooledCustomerEntitlement.reset_by_invoice).not.toBe(true);
+		if (pool.rollovers) {
+			expect(pooledCustomerEntitlement.rollovers).toHaveLength(
+				pool.rollovers.length,
+			);
+			for (let index = 0; index < pool.rollovers.length; index++) {
+				expect(pooledCustomerEntitlement.rollovers[index]).toMatchObject(
+					pool.rollovers[index],
+				);
+			}
+		}
+	}
+
+	for (const pooledBalance of state.pools) {
+		expect(pooledBalance).toMatchObject({
+			granted: pool.granted,
+			unlimited: pool.unlimited ?? false,
+			interval: pool.interval,
+			reset_mode: pool.resetMode,
+			customer_license_link_id:
+				pool.customerLicenseLinkId === undefined
+					? (filter?.customerLicenseLinkId ?? null)
+					: pool.customerLicenseLinkId,
+		});
+		if (pool.resetCycleAnchor === "present") {
+			expect(pooledBalance.reset_cycle_anchor).not.toBeNull();
+		} else {
+			expect(pooledBalance.reset_cycle_anchor).toBeNull();
+		}
+		if (pool.stripeSubscriptionId === "stripe_subscription") {
+			expect(pooledBalance.stripe_subscription_id).toMatch(/^sub_/);
+		} else {
+			expect(pooledBalance.stripe_subscription_id).toBeNull();
+		}
+	}
+
+	expect(state.contributions).toHaveLength(contributions.count);
+	for (const contribution of state.contributions) {
+		expect(contribution).toMatchObject({
+			...(contributions.currentContribution === undefined
+				? {}
+				: {
+						current_contribution: contributions.currentContribution,
+					}),
+			...(contributions.nextCycleContribution === undefined
+				? {}
+				: {
+						next_cycle_contribution: contributions.nextCycleContribution,
+					}),
+		});
+
+		const sourceCustomerProduct = state.sourceCustomerProducts.find(
+			(customerProduct) =>
+				customerProduct.id === contribution.source_customer_product_id,
+		);
+		const sourceCustomerEntitlement =
+			sourceCustomerProduct?.customer_entitlements.find(
+				(customerEntitlement) =>
+					customerEntitlement.id ===
+					contribution.source_customer_entitlement_id,
+			);
+		expect(sourceCustomerProduct).toBeDefined();
+		expect(sourceCustomerEntitlement).toBeDefined();
+		expect(sourceCustomerEntitlement?.customer_product_id).toBe(
+			contribution.source_customer_product_id,
+		);
+		expect(
+			state.pools.some(
+				(candidate) => candidate.id === contribution.pooled_balance_id,
+			),
+		).toBe(true);
+	}
+
+	for (const sourceCustomerProductId of contributions.excludedSourceCustomerProductIds ??
+		[]) {
+		expect(
+			state.contributions.some(
+				(contribution) =>
+					contribution.source_customer_product_id === sourceCustomerProductId,
+			),
+		).toBe(false);
+	}
+
+	const pooledSourceCustomerEntitlements = state.sourceCustomerProducts.flatMap(
+		(customerProduct) =>
+			customerProduct.customer_entitlements.filter((customerEntitlement) => {
+				if (!customerEntitlement.entitlement.pooled) return false;
+				if (!filter) return true;
+				return filteredSourceCustomerEntitlementIds.has(
+					customerEntitlement.id,
+				);
+			}),
+	);
+	expect(pooledSourceCustomerEntitlements).toHaveLength(sources.count);
+	for (const sourceCustomerEntitlement of pooledSourceCustomerEntitlements) {
+		expect(sourceCustomerEntitlement).toMatchObject({
+			is_pooled_balance: false,
+			...(sources.balance === undefined ? {} : { balance: sources.balance }),
+			...(sources.adjustment === undefined
+				? {}
+				: { adjustment: sources.adjustment }),
+		});
+	}
+
+	return state;
+};

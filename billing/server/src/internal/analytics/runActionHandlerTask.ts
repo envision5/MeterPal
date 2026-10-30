@@ -1,0 +1,28 @@
+import { JobName } from "@/queue/JobName.js";
+import type { AutumnContext } from "../../honoUtils/HonoEnv.js";
+import { handleProductsUpdated } from "./handlers/handleProductsUpdated.js";
+
+export const runActionHandlerTask = async ({
+	jobName,
+	payload,
+	ctx,
+}: {
+	jobName: JobName;
+	payload: any;
+	ctx?: AutumnContext;
+}) => {
+	if (!ctx) {
+		throw new Error("Context is required for action handler tasks");
+	}
+
+	const { logger } = ctx;
+
+	switch (jobName) {
+		case JobName.HandleProductsUpdated:
+			await handleProductsUpdated({
+				ctx,
+				data: payload,
+			});
+			break;
+	}
+};

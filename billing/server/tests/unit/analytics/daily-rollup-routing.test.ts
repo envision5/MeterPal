@@ -1,0 +1,237 @@
+/**
+ * Contract: org-wide dimensions use their dedicated rollup, eligible UTC property groups use
+ * daily states, and reconciliation keeps exact hourly range edges.
+ */
+import { expect, test } from "bun:test";
+import {
+	buildCountAndSumQuery,
+	hasCompleteUtcDay,
+	selectCountAndSumSource,
+	shouldUseOrgDimensionRollup,
+	shouldUseOrgPropertyRollup,
+	shouldUsePropertyCoverageCheck,
+	shouldUsePropertyDailyRollup,
+} from "@/internal/analytics/actions/dailyRollupRouting.js";
+
+test("org dimension rollup: routes only unfiltered aggregate-all dimensions", () => {
+	const base = {
+		groupColumn: "customer_id" as const,
+		hasCustomerId: false,
+		hasEntityId: false,
+		hasPropertyFilters: false,
+	};
+
+	for (const groupColumn of ["customer_id", "entity_id", "plan_id"] as const) {
+		expect(shouldUseOrgDimensionRollup({ ...base, groupColumn })).toBe(true);
+	}
+
+	expect(
+		shouldUseOrgDimensionRollup({ ...base, groupColumn: "property" }),
+	).toBe(false);
+	expect(shouldUseOrgDimensionRollup({ ...base, hasCustomerId: true })).toBe(
+		false,
+	);
+	expect(shouldUseOrgDimensionRollup({ ...base, hasEntityId: true })).toBe(
+		false,
+	);
+	expect(
+		shouldUseOrgDimensionRollup({ ...base, hasPropertyFilters: true }),
+	).toBe(false);
+});
+
+test("org property rollup: routes only unfiltered aggregate-all property groups", () => {
+	const base = {
+		groupColumn: "property" as const,
+		hasCustomerId: false,
+		hasEntityId: false,
+		hasPropertyFilters: false,
+		propertyKey: "email_type",
+		skipPropertyRollup: false,
+	};
+	const nestedProperty = { ...base, propertyKey: "metadata.region" };
+
+	expect(shouldUseOrgPropertyRollup(base)).toBe(true);
+	expect(shouldUseOrgPropertyRollup(nestedProperty)).toBe(false);
+	expect(shouldUseOrgPropertyRollup({ ...base, hasCustomerId: true })).toBe(
+		false,
+	);
+	expect(shouldUseOrgPropertyRollup({ ...base, hasEntityId: true })).toBe(
+		false,
+	);
+	expect(
+		shouldUseOrgPropertyRollup({ ...base, hasPropertyFilters: true }),
+	).toBe(false);
+	expect(
+		shouldUseOrgPropertyRollup({ ...base, groupColumn: "customer_id" }),
+	).toBe(false);
+	expect(
+		shouldUseOrgPropertyRollup({ ...base, skipPropertyRollup: true }),
+	).toBe(false);
+});
+
+// A customer-scoped `apiKeyId` 90d query: one event without the
+// property made the all-events total exceed the grouped count, which read as gate
+// loss and reran the query ungated over 19.5M rows. Scoped queries must reconcile
+// against property presence in the same scope, exactly like org-wide ones.
+test("property coverage check: covers scoped and org-wide top-level property groups", () => {
+	const base = {
+		groupColumn: "property" as const,
+		hasPropertyFilters: false,
+		propertyKey: "apiKeyId",
+	};
+
+	expect(shouldUsePropertyCoverageCheck(base)).toBe(true);
+	expect(
+		shouldUsePropertyCoverageCheck({ ...base, propertyKey: "metadata.region" }),
+	).toBe(false);
+	expect(
+		shouldUsePropertyCoverageCheck({ ...base, hasPropertyFilters: true }),
+	).toBe(false);
+	expect(
+		shouldUsePropertyCoverageCheck({ ...base, groupColumn: "customer_id" }),
+	).toBe(false);
+});
+
+test("daily property rollup: routes eligible UTC day, week, and month groups", () => {
+	for (const binSize of ["day", "week", "month"]) {
+		expect(
+			shouldUsePropertyDailyRollup({
+				binSize,
+				endDate: "2026-08-03 16:00:00",
+				groupColumn: "property",
+				hasPropertyFilters: false,
+				skipPropertyRollup: false,
+				startDate: "2026-07-01 12:00:00",
+				timezone: "UTC",
+			}),
+		).toBe(true);
+	}
+});
+
+test("daily property rollup: keeps unsupported query shapes hourly", () => {
+	const base = {
+		binSize: "day",
+		endDate: "2026-08-03 16:00:00",
+		groupColumn: "property" as const,
+		hasPropertyFilters: false,
+		skipPropertyRollup: false,
+		startDate: "2026-07-01 12:00:00",
+		timezone: "UTC",
+	};
+
+	expect(shouldUsePropertyDailyRollup({ ...base, binSize: "hour" })).toBe(
+		false,
+	);
+	expect(
+		shouldUsePropertyDailyRollup({
+			...base,
+			startDate: "2026-08-03 00:00:00",
+		}),
+	).toBe(false);
+	expect(shouldUsePropertyDailyRollup({ ...base, binSize: "invalid" })).toBe(
+		false,
+	);
+	expect(
+		shouldUsePropertyDailyRollup({ ...base, timezone: "Europe/London" }),
+	).toBe(false);
+	expect(
+		shouldUsePropertyDailyRollup({ ...base, hasPropertyFilters: true }),
+	).toBe(false);
+	expect(
+		shouldUsePropertyDailyRollup({ ...base, groupColumn: "customer_id" }),
+	).toBe(false);
+	expect(
+		shouldUsePropertyDailyRollup({ ...base, skipPropertyRollup: true }),
+	).toBe(false);
+});
+
+test("daily rollups: detect complete UTC days across supported date formats", () => {
+	expect(
+		hasCompleteUtcDay({
+			startDate: "2026-08-01 00:00:00",
+			endDate: "2026-08-02T12:00:00",
+		}),
+	).toBe(true);
+	expect(
+		hasCompleteUtcDay({
+			startDate: "2026-08-01 12:00:00",
+			endDate: "2026-08-02 12:00:00",
+		}),
+	).toBe(false);
+	expect(
+		hasCompleteUtcDay({
+			startDate: "2026-08-03 00:00:00",
+			endDate: "2026-08-03 23:59:59",
+		}),
+	).toBe(false);
+});
+
+test("daily totals: select the narrowest exact source", () => {
+	expect(
+		selectCountAndSumSource({
+			containsCompleteUtcDay: true,
+			hasCustomerId: true,
+			hasEntityId: false,
+			hasPropertyFilters: false,
+		}),
+	).toBe("customer_daily");
+	expect(
+		selectCountAndSumSource({
+			containsCompleteUtcDay: true,
+			hasCustomerId: true,
+			hasEntityId: true,
+			hasPropertyFilters: false,
+		}),
+	).toBe("customer_daily");
+	expect(
+		selectCountAndSumSource({
+			containsCompleteUtcDay: true,
+			hasCustomerId: false,
+			hasEntityId: false,
+			hasPropertyFilters: false,
+		}),
+	).toBe("org_hourly");
+	expect(
+		selectCountAndSumSource({
+			containsCompleteUtcDay: true,
+			hasCustomerId: true,
+			hasEntityId: false,
+			hasPropertyFilters: true,
+		}),
+	).toBe("raw_events");
+	expect(
+		selectCountAndSumSource({
+			containsCompleteUtcDay: false,
+			hasCustomerId: true,
+			hasEntityId: false,
+			hasPropertyFilters: false,
+		}),
+	).toBe("customer_hourly");
+});
+
+test("daily totals: combine merged full days with hourly range edges", () => {
+	const query = buildCountAndSumQuery({ source: "customer_daily" });
+
+	expect(query).toContain("events_customer_daily_mv");
+	expect(query).toContain("sumMerge(event_count)");
+	expect(query).toContain("events_customer_hourly_mv");
+	expect(query).toContain("hour <");
+	expect(query).toContain("hour >= toStartOfDay");
+	expect(query).toContain("GROUP BY event_name");
+});
+
+test("daily totals: preserve raw filtered and org-hourly query paths", () => {
+	const rawQuery = buildCountAndSumQuery({
+		source: "raw_events",
+		filterBySql: "\nAND properties.kind::String = {filter_value_0:String}",
+		hasEntityId: true,
+	});
+	const orgQuery = buildCountAndSumQuery({ source: "org_hourly" });
+
+	expect(rawQuery).toContain("FROM events");
+	expect(rawQuery).toContain("customer_id = {customer_id:String}");
+	expect(rawQuery).toContain("entity_id = {entity_id:String}");
+	expect(rawQuery).toContain("properties.kind::String");
+	expect(orgQuery).toContain("FROM events_org_hourly_mv");
+	expect(orgQuery).not.toContain("customer_id =");
+});

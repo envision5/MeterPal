@@ -1,0 +1,17 @@
+/** Human labels for the scalar plan fields `previous_attributes` can name.
+ * The dashboard and the CLI both render from this one map. */
+export const PLAN_PREVIOUS_ATTRIBUTE_LABELS: Record<string, string> = {
+	name: "Name",
+	description: "Description",
+	group: "Group",
+	add_on: "Add-on",
+	auto_enable: "Default plan",
+	free_trial: "Free trial",
+	config: "Config",
+	active: "Active version",
+	billing_controls: "Billing controls",
+	processors: "Stripe mapping",
+	base_variant_id: "Base plan",
+	base_version: "Base version",
+	base_version_slug: "Base version slug",
+};

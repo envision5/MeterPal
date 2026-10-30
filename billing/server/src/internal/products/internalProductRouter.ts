@@ -1,0 +1,64 @@
+import { Router } from "express";
+import { EntitlementService } from "./entitlements/EntitlementService.js";
+import { handleGetProductDeleteInfo } from "./handlers/handleGetProductDeleteInfo.js";
+
+const expressProductRouter: Router = Router({ mergeParams: true });
+
+import { Scopes } from "@autumn/shared";
+import { Hono } from "hono";
+import { createRoute } from "@/honoMiddlewares/routeHandler.js";
+import type { HonoEnv } from "@/honoUtils/HonoEnv.js";
+import {
+	handleGetLicenseProducts,
+	handleGetProducts,
+} from "@/internal/products/internalHandlers/handleGetProducts.js";
+import { handleGetProductsByPriceIds } from "@/internal/products/internalHandlers/handleGetProductsByPriceIds.js";
+import { handleCopyEnvironment } from "./handlers/handleCopyEnvironment/handleCopyEnvironment.js";
+import { handleListPlanVariants } from "./handlers/handleListPlanVariants.js";
+import { handleGetFeatures } from "./internalHandlers/handleGetFeatures.js";
+import { handleGetMigrations } from "./internalHandlers/handleGetMigrations.js";
+import { handleGetProductCount } from "./internalHandlers/handleGetProductCount.js";
+import { handleGetProductCounts } from "./internalHandlers/handleGetProductCounts.js";
+import { handleGetProductInternal } from "./internalHandlers/handleGetProductInternal.js";
+import { handleGetRewards } from "./internalHandlers/handleGetRewards.js";
+import { handleGetStripeCoupons } from "./internalHandlers/handleGetStripeCoupons.js";
+
+// Hono router for internal/dashboard product routes
+export const internalProductRouter = new Hono<HonoEnv>();
+
+internalProductRouter.get("/products", ...handleGetProducts);
+internalProductRouter.get("/license_products", ...handleGetLicenseProducts);
+internalProductRouter.get(
+	"/products/by-price-ids",
+	...handleGetProductsByPriceIds,
+);
+internalProductRouter.get("/product_counts", ...handleGetProductCounts);
+internalProductRouter.get("/features", ...handleGetFeatures);
+internalProductRouter.get("/rewards", ...handleGetRewards);
+internalProductRouter.get("/stripe_coupons", ...handleGetStripeCoupons);
+internalProductRouter.get("/migrations", ...handleGetMigrations);
+
+// SINGLE PRODUCT ENDPOINTS
+internalProductRouter.get("/:productId/count", ...handleGetProductCount);
+internalProductRouter.get("/:productId/data", ...handleGetProductInternal);
+internalProductRouter.get("/:productId/variants", ...handleListPlanVariants);
+internalProductRouter.post("/copy_to_production", ...handleCopyEnvironment);
+internalProductRouter.get("/:productId/info", ...handleGetProductDeleteInfo);
+internalProductRouter.get(
+	"/has_entity_feature_id",
+	...createRoute({
+		scopes: [Scopes.Features.Read],
+		handler: async (c) => {
+			const ctx = c.get("ctx");
+			const { db, org, env } = ctx;
+
+			const hasEntityFeatureId = await EntitlementService.hasEntityFeatureId({
+				db,
+				orgId: org.id,
+				env,
+			});
+
+			return c.json({ hasEntityFeatureId });
+		},
+	}),
+);

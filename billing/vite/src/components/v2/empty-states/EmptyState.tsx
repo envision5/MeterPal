@@ -1,0 +1,105 @@
+import analyticsSvg from "./analytics.svg";
+import apiKeysSvg from "./api-keys.svg";
+import customersSvg from "./customers.svg";
+import featuresSvg from "./features.svg";
+import plansSvg from "./plans.svg";
+import rewardsSvg from "./rewards.svg";
+
+export const EmptyState = ({
+	type,
+	actionButton,
+}: {
+	type:
+		| "plans"
+		| "features"
+		| "customers"
+		| "api-keys"
+		| "rewards"
+		| "archived-plans"
+		| "no-customers-found"
+		| "analytics"
+		| "migrations";
+	actionButton?: React.ReactNode;
+}) => {
+	const getEmptyStateContent = () => {
+		switch (type) {
+			case "plans":
+				return {
+					title: "Create your plans",
+					description:
+						"Plans define your pricing tiers, usage limits and feature permissions",
+					svg: plansSvg,
+				};
+			case "archived-plans":
+				return {
+					title: "No archived plans",
+					description: "You haven't archived any plans yet.",
+					svg: plansSvg,
+				};
+			case "features":
+				return {
+					title: "Features",
+					description:
+						"Create features to represent what your customers get access to, then package them into plans",
+					svg: featuresSvg,
+				};
+			case "customers":
+				return {
+					title: "Customers",
+					description:
+						"Create customers to let your users or organizations purchase plans",
+					svg: customersSvg,
+				};
+			case "no-customers-found":
+				return {
+					title: "No customers found",
+					description: "No customers match your search criteria.",
+					svg: customersSvg,
+				};
+			case "rewards":
+				return {
+					title: "Rewards",
+					description:
+						"Create rewards to give to your customers. These can be discounts, promo codes & more.",
+					svg: rewardsSvg,
+				};
+			case "analytics":
+				return {
+					title: "No analytics data",
+					description:
+						"No usage data found. Start recording events to see them appear here.",
+					svg: analyticsSvg,
+				};
+			case "api-keys":
+				return {
+					title: "API Keys",
+					description:
+						"Create an API key to authenticate requests to the Autumn API",
+					svg: apiKeysSvg,
+				};
+			case "migrations":
+				return {
+					title: "Migrations",
+					description:
+						"Define filters and operations to migrate sets of customers in bulk",
+					// Reuses plans illustration for now — replace once we have a dedicated svg.
+					svg: plansSvg,
+				};
+		}
+	};
+
+	const { title, description, svg } = getEmptyStateContent();
+
+	return (
+		<div className="flex flex-col items-center justify-center gap-4 p-8 text-sm pt-20 animate-in fade-in-0 duration-500 slide-in-from-bottom-1">
+			<img src={svg} alt={title} className="h-20" />
+			<div className="space-y-1">
+				<h2 className="text-muted-foreground font-medium text-center">
+					{title}
+				</h2>
+				<p className="text-subtle w-xs text-wrap text-center">{description}</p>
+			</div>
+			{actionButton && actionButton}
+		</div>
+	);
+};

@@ -1,0 +1,111 @@
+import type { Logger } from "@/external/logtail/logtailUtils.js";
+import type {
+	InternalLogRequestContext,
+	LogAppContext,
+	LogRedisData,
+	LogRequestContext,
+	LogStripeEventContext,
+	LogTriggerContext,
+	LogVercelEventContext,
+	LogWorkflowContext,
+} from "./loggerTypes.js";
+
+export const addRequestToLogs = ({
+	logger,
+	requestContext,
+}: {
+	logger: Logger;
+	requestContext: LogRequestContext | InternalLogRequestContext;
+}): Logger => {
+	const withRequestContext =
+		(log: Logger["info"]): Logger["info"] =>
+		(...args) =>
+			log({ req: requestContext }, ...args);
+
+	return {
+		debug: withRequestContext(logger.debug),
+		info: withRequestContext(logger.info),
+		warn: withRequestContext(logger.warn),
+		error: withRequestContext(logger.error),
+		child: ({ context, onlyProd }) =>
+			addRequestToLogs({
+				logger: logger.child({ context, onlyProd }),
+				requestContext,
+			}),
+	};
+};
+
+export const addAppContextToLogs = ({
+	logger,
+	appContext,
+}: {
+	logger: Logger;
+	appContext: LogAppContext;
+}): Logger => {
+	return logger.child({ context: { context: appContext } });
+};
+
+export const addStripeEventToLogs = ({
+	logger,
+	stripeEventContext,
+}: {
+	logger: Logger;
+	stripeEventContext: LogStripeEventContext;
+}): Logger => {
+	return logger.child({ context: { stripe_event: stripeEventContext } });
+};
+
+export const addVercelEventToLogs = ({
+	logger,
+	vercelEventContext,
+}: {
+	logger: Logger;
+	vercelEventContext: LogVercelEventContext;
+}): Logger => {
+	return logger.child({ context: { vercel_event: vercelEventContext } });
+};
+
+export const addWorkflowToLogs = ({
+	logger,
+	workflowContext,
+}: {
+	logger: Logger;
+	workflowContext: LogWorkflowContext;
+}): Logger => {
+	return logger.child({ context: { workflow: workflowContext } });
+};
+
+export const addTriggerToLogs = ({
+	logger,
+	triggerContext,
+}: {
+	logger: Logger;
+	triggerContext: LogTriggerContext;
+}): Logger => {
+	return logger.child({ context: { trigger: triggerContext } });
+};
+
+export const addRedisToLogs = ({
+	logger,
+	redisData,
+}: {
+	logger: Logger;
+	redisData: LogRedisData;
+}): Logger => {
+	return logger.child({ context: { data: redisData } });
+};
+
+export const addExtrasToLogs = ({
+	logger,
+	extras,
+}: {
+	logger: Logger;
+	extras: Record<string, unknown>;
+}): Logger => {
+	return logger.child({ context: { extras } });
+};
+
+/**
+ * Map fields:
+ * req.body, req.query, extras, workflow.payload, worker.payload, data, data2, res
+ */

@@ -1,0 +1,48 @@
+import "dotenv/config";
+import { CusProductStatus } from "@autumn/shared";
+
+const BREAK_API_VERSION = 0.2;
+
+const getActiveCusProductStatuses = () => [
+	CusProductStatus.Active,
+	CusProductStatus.PastDue,
+];
+
+export const ADMIN_USER_IDs = [
+	"user_2tMgAiPsQzX8JTHjZZh9m0VdvUv", // a
+	"user_2sB3tBXsnVVLlTKliQIqvvM2xfB", // j
+	"ZsDswIXyOGMP9y1V1At4dAZNaiggClSs", // t
+	"NqNuL3MtS7MR2WYoqx2b28iY9vmfAs8h", // c
+	"y7xV3rybEkhoPfJe45dymZB1dXxvsolG", // o
+	"NqNuL3MtS7MR2WYoqx2b28iY9vmfAs8h", // charlie prod
+	"zviddNexn8HgLfo6jxxyK2KLcf8NrvtS", //jy
+
+	// Sandbox:
+	"user_2rypooIKyMQx81vMS8FFGx24UHU", // john
+	"K7NDwSwohMCV9BXJ3Yb5MxgeXhWcwj0L", // charlie sandbox
+];
+
+export const dashboardOrigins = [
+	"http://localhost:3000",
+	"https://app.useautumn.com",
+	"https://staging.useautumn.com",
+	"https://dev.useautumn.com",
+	process.env.CLIENT_URL!,
+];
+
+export const WEBHOOK_EVENTS = [
+	"checkout.session.completed",
+	"customer.subscription.created",
+	"customer.subscription.updated",
+	"customer.subscription.deleted",
+	"customer.discount.deleted",
+	"invoice.paid",
+	"invoice.upcoming",
+	"invoice.created",
+	"invoice.finalized",
+	"invoice.updated",
+	"subscription_schedule.canceled",
+	"subscription_schedule.released",
+	"subscription_schedule.updated",
+	"test_helpers.test_clock.ready",
+];

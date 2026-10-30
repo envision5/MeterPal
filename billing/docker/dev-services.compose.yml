@@ -1,0 +1,76 @@
+name: autumn-dev-services
+
+services:
+  postgres:
+    image: postgres:18.3-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: autumn
+    ports:
+      - "5432:5432"
+    volumes:
+      - autumn-dev-postgres-18:/var/lib/postgresql
+
+  # Backs MISC_CACHE_DRAGONFLY_PUBLIC_URL so local dev matches prod's engine
+  # instead of pointing at Redis Cloud.
+  dragonfly-misc:
+    image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
+    network_mode: host
+    command:
+      - --port=6379
+    ulimits:
+      memlock: -1
+    volumes:
+      - autumn-dev-dragonfly-misc:/data
+
+  dragonfly:
+    image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
+    network_mode: host
+    command:
+      - --port=6380
+    ulimits:
+      memlock: -1
+    volumes:
+      - autumn-dev-dragonfly:/data
+
+  # DynamoDB emulator (idempotency keys). -inMemory because the data is
+  # ephemeral by design (24h TTL); -sharedDb so all credential/region pairs
+  # see the same database. The server auto-creates the table on first use.
+  dynamodb:
+    image: amazon/dynamodb-local:latest
+    ports:
+      - "8000:8000"
+    command: ["-jar", "DynamoDBLocal.jar", "-inMemory", "-sharedDb"]
+
+  # SQS emulator. Queue definitions live in the shared elasticmq.conf so
+  # worktrees and the canonical checkout create the same queues.
+  elasticmq:
+    image: softwaremill/elasticmq-native:latest
+    ports:
+      - "9324:9324"
+    volumes:
+      - ../scripts/setup/elasticmq.conf:/opt/elasticmq.conf:ro
+    command: ["-Dconfig.file=/opt/elasticmq.conf"]
+
+  ngrok:
+    image: ngrok/ngrok:latest
+    profiles:
+      - ngrok
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN:-}
+    command:
+      - http
+      - ${NGROK_TARGET:-host.docker.internal:8080}
+      - --url=${NGROK_DOMAIN}
+      - --pooling-enabled
+      - --log=stdout
+    ports:
+      - "4040:4040"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  autumn-dev-postgres-18:
+  autumn-dev-dragonfly-misc:
+  autumn-dev-dragonfly:

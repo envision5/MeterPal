@@ -1,0 +1,157 @@
+import { TZDate } from "@date-fns/tz";
+import { UTCDate } from "@date-fns/utc";
+
+/** Epoch ms of a pipe's "%F %T" bucket start. Hour buckets are always UTC;
+ * day/week/month buckets are wall-clock times in `timezone`. */
+export const periodToEpoch = ({
+	period,
+	timezone,
+	binSize,
+}: {
+	period: string;
+	timezone?: string;
+	binSize?: string;
+}): number => {
+	if (!timezone || timezone === "UTC" || binSize === "hour") {
+		return new UTCDate(period).getTime();
+	}
+
+	const [datePart, timePart = "00:00:00"] = period.split(" ");
+	const [year, month, day] = datePart.split("-").map(Number);
+	const [hours, minutes, seconds] = timePart.split(":").map(Number);
+	return new TZDate(
+		year,
+		month - 1,
+		day,
+		hours,
+		minutes,
+		seconds,
+		timezone,
+	).getTime();
+};
+
+/** Convert event periods from pipe strings to epoch timestamps, in place. */
+export function convertPeriodsToEpoch({
+	events,
+	timezone,
+	binSize,
+}: {
+	events: Array<Record<string, string | number>>;
+	timezone?: string;
+	binSize?: string;
+}): void {
+	for (const event of events) {
+		event.period = periodToEpoch({
+			period: event.period as string,
+			timezone,
+			binSize,
+		});
+	}
+}
+
+/**
+ * Normalize a group value to a string. For `plan_id`, an empty string is a
+ * meaningful bucket ("no plan") and is preserved; for other fields, empty is
+ * treated as missing.
+ */
+function normalizeGroupValue(
+	value: unknown,
+	groupByField?: string,
+): string | null {
+	if (value == null) return null;
+	if (value === "" && groupByField !== "plan_id") return null;
+	return String(value);
+}
+
+/**
+ * Collect grouping metadata from a list of rows.
+ * @param rows - The rows to collect metadata from.
+ * @param groupByField - The field to group by.
+ * @returns The group values and feature names.
+ */
+export function collectGroupingMetadata(
+	rows: Array<Record<string, string | number>>,
+	groupByField: string,
+): { groupValues: Set<string>; featureNames: Set<string> } {
+	const groupValues = new Set<string>();
+	const featureNames = new Set<string>();
+
+	for (const row of rows) {
+		// biome-ignore lint/correctness/noUnusedVariables: period is required here but appears unused
+		const { [groupByField]: groupValue, period, ...metrics } = row;
+		const normalized = normalizeGroupValue(groupValue, groupByField);
+		if (normalized !== null) {
+			groupValues.add(normalized);
+		}
+		for (const featureName of Object.keys(metrics)) {
+			featureNames.add(featureName);
+		}
+	}
+
+	return { groupValues, featureNames };
+}
+
+/**
+ * Build a grouped timeseries from a list of rows.
+ * @param rows - The rows to build the grouped timeseries from.
+ * @param groupByField - The field to group by.
+ * @returns The grouped timeseries.
+ */
+export function buildGroupedTimeseries(
+	rows: Array<Record<string, string | number>>,
+	groupByField: string,
+): Map<number, Record<string, number | Record<string, number>>> {
+	const grouped = new Map<
+		number,
+		Record<string, number | Record<string, number>>
+	>();
+
+	for (const row of rows) {
+		const { period, [groupByField]: groupValue, ...metrics } = row;
+		const periodNum = Number(period);
+
+		if (!grouped.has(periodNum)) {
+			grouped.set(periodNum, { period: periodNum });
+		}
+
+		const normalized = normalizeGroupValue(groupValue, groupByField);
+		if (normalized === null) continue;
+
+		const periodData = grouped.get(periodNum)!;
+		for (const [featureName, value] of Object.entries(metrics)) {
+			if (!periodData[featureName]) {
+				periodData[featureName] = {};
+			}
+			(periodData[featureName] as Record<string, number>)[normalized] =
+				Number(value);
+		}
+	}
+
+	return grouped;
+}
+
+/**
+ * Backfill missing group values in a grouped timeseries.
+ * @param grouped - The grouped timeseries to backfill.
+ * @param groupValues - The group values to backfill.
+ * @param featureNames - The feature names to backfill.
+ */
+export function backfillMissingGroupValues(
+	grouped: Map<number, Record<string, number | Record<string, number>>>,
+	groupValues: Set<string>,
+	featureNames: Set<string>,
+): void {
+	for (const periodData of grouped.values()) {
+		for (const featureName of featureNames) {
+			if (!periodData[featureName]) {
+				periodData[featureName] = {};
+			}
+			const featureData = periodData[featureName] as Record<string, number>;
+			for (const groupValue of groupValues) {
+				if (featureData[groupValue] === undefined) {
+					featureData[groupValue] = 0;
+				}
+			}
+		}
+	}
+}

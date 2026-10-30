@@ -1,0 +1,173 @@
+import { existsSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
+import { isCloudAgent } from "@autumn/env";
+import { LOCAL_DATABASE_URL, PROJECT_ROOT } from "../constants.ts";
+import type { RegistryEntry } from "../types.ts";
+import { startPublicAccess } from "./cloudflare.ts";
+import { emulateGoogleUrl } from "./emulate.ts";
+import { isProvisioned } from "./entry.ts";
+import { provisionedInfraEnv, writeEnvLocalFiles } from "./env-files.ts";
+import { registerPortlessAliases } from "./portless.ts";
+import { serverPortFor } from "./ports.ts";
+import {
+	entryPublicServiceUrls,
+	laptopDevEnv,
+	loopbackServiceUrls,
+	publicDevEnv,
+} from "./publicUrls.ts";
+import { fatal, log } from "./shell.ts";
+import { spawnDevInTmux, tmuxSessionName } from "./tmux.ts";
+import { rewriteDbEnv } from "./url.ts";
+
+const HEADLESS_UNSET = [
+	"NEON_WORKTREE_API_KEY",
+	"MISC_CACHE_DRAGONFLY_PRIVATE_URL",
+	"CACHE_BACKUP_URL",
+] as const;
+
+function applyLocalInfra(
+	env: Record<string, string>,
+	worktreeNum: number,
+): Record<string, string> {
+	const next = { ...env };
+	const infra = provisionedInfraEnv(worktreeNum);
+	Object.assign(next, infra);
+	delete next.MISC_CACHE_DRAGONFLY_PRIVATE_URL;
+	for (const key of Object.keys(next)) {
+		if (key.includes("SQS_QUEUE_URL") && !(key in infra)) delete next[key];
+	}
+	return next;
+}
+
+function applyPublicUrls({
+	entry,
+	env,
+}: {
+	entry: RegistryEntry;
+	env: Record<string, string>;
+}): void {
+	if (isCloudAgent()) {
+		const urls =
+			entryPublicServiceUrls(entry) ??
+			loopbackServiceUrls({ worktreeNum: entry.worktreeNum });
+		Object.assign(env, publicDevEnv({ urls, worktreeNum: entry.worktreeNum }));
+		return;
+	}
+	if (!isProvisioned(entry)) {
+		env.AUTUMN_API_URL = `http://localhost:${serverPortFor(entry.worktreeNum)}`;
+		return;
+	}
+	const aliases = registerPortlessAliases(entry.worktreeNum);
+	Object.assign(
+		env,
+		laptopDevEnv({
+			aliases,
+			publicUrls: entryPublicServiceUrls(entry),
+		}),
+	);
+}
+
+function applyProvisionedDevEnv(
+	entry: RegistryEntry,
+	env: Record<string, string>,
+): Record<string, string> {
+	const { worktreeNum, databaseUrl } = entry;
+	if (!databaseUrl) fatal("worktree missing databaseUrl");
+
+	const next = applyLocalInfra(rewriteDbEnv(env, databaseUrl), worktreeNum);
+	if (!next.EMULATE_GOOGLE_URL) {
+		next.EMULATE_GOOGLE_URL = emulateGoogleUrl({});
+	}
+	const portlessCa = join(homedir(), ".portless", "ca.pem");
+	if (existsSync(portlessCa) && !next.NODE_EXTRA_CA_CERTS) {
+		next.NODE_EXTRA_CA_CERTS = portlessCa;
+	}
+	applyPublicUrls({ entry, env: next });
+	writeEnvLocalFiles(entry);
+	return next;
+}
+
+function applyCloudAgentDevEnv(
+	entry: RegistryEntry,
+	env: Record<string, string>,
+): Record<string, string> {
+	const next = applyLocalInfra({ ...env }, entry.worktreeNum);
+	for (const key of HEADLESS_UNSET) delete next[key];
+	applyPublicUrls({ entry, env: next });
+	if (!next.EMULATE_GOOGLE_URL) {
+		next.EMULATE_GOOGLE_URL = emulateGoogleUrl({
+			origin:
+				entryPublicServiceUrls(entry)?.emulate ??
+				loopbackServiceUrls({ worktreeNum: entry.worktreeNum }).emulate,
+		});
+	}
+	next.DATABASE_URL = LOCAL_DATABASE_URL;
+	next.DATABASE_CRITICAL_URL = LOCAL_DATABASE_URL;
+	next.STRIPE_WEBHOOK_SKIP_VERIFY = "true";
+	writeEnvLocalFiles({
+		...entry,
+		databaseUrl: LOCAL_DATABASE_URL,
+	});
+	return next;
+}
+
+export function buildDevEnvAndArgs(entry: RegistryEntry): {
+	env: Record<string, string>;
+	args: string[];
+} {
+	const { worktreeNum } = entry;
+	let env: Record<string, string> = {
+		...(process.env as Record<string, string>),
+	};
+	if (isCloudAgent()) {
+		env = applyCloudAgentDevEnv(entry, env);
+	} else if (isProvisioned(entry)) {
+		env = applyProvisionedDevEnv(entry, env);
+	}
+
+	const args = [
+		"bun",
+		"scripts/dev.ts",
+		"--worktree",
+		String(worktreeNum),
+		...process.argv.slice(3),
+	];
+	return { env, args };
+}
+
+export async function startDev(
+	entry: RegistryEntry,
+	opts?: { allowTmux?: boolean },
+): Promise<never> {
+	startPublicAccess(entry);
+	const { worktreeNum, branchName } = entry;
+	const { env, args } = buildDevEnvAndArgs(entry);
+
+	const useTmux =
+		(opts?.allowTmux ?? true) && worktreeNum > 1 && !process.stdout.isTTY;
+	if (useTmux) {
+		log(
+			`starting dev in tmux (worktree=${worktreeNum}${branchName ? `, branch=${branchName}` : ""}, non-TTY)`,
+		);
+		spawnDevInTmux(tmuxSessionName(worktreeNum), env, args, PROJECT_ROOT);
+		process.exit(0);
+	}
+
+	log(
+		`starting dev (worktree=${worktreeNum}${branchName ? `, branch=${branchName}` : ""})`,
+	);
+	const proc = Bun.spawn(args, {
+		cwd: PROJECT_ROOT,
+		env,
+		stdout: "inherit",
+		stderr: "inherit",
+	});
+
+	const forward = (sig: NodeJS.Signals) => () => proc.kill(sig);
+	process.on("SIGINT", forward("SIGINT"));
+	process.on("SIGTERM", forward("SIGTERM"));
+
+	proc.exited.then((code) => process.exit(code ?? 0));
+	return undefined as never;
+}

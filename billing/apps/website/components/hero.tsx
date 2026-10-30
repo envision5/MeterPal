@@ -1,0 +1,287 @@
+"use client";
+
+import { motion } from "motion/react";
+import dynamic from "next/dynamic";
+import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
+import { CTALines, IconCTADocs, IconCTAStart } from "@/app/constant";
+import { getGsap } from "@/lib/lazyGsap";
+
+// `AutumnConfig` pulls in `react-syntax-highlighter` + `highlight.js` (~100KB
+// gzipped + meaningful parse cost on mobile). It only renders on `xl+`
+// viewports, so keep it out of the critical path for mobile users entirely.
+const AutumnConfig = dynamic(() => import("./autumn-config"), { ssr: false });
+
+const BADGE_TEXT = "how to build a credit ledger";
+
+const getLoggedInHintCookie = () => {
+	if (typeof window === "undefined") return null;
+	return (
+		document.cookie
+			.split("; ")
+			.find((row) => row.startsWith("logged_in_hint="))
+			?.split("=")[1] === "1"
+	);
+};
+
+export default function Hero() {
+	const containerRef = useRef<HTMLDivElement | null>(null);
+	const [isLoggedIn, setIsLoggedIn] = useState(false);
+	// Gate the xl-only hero visual (background video + AutumnConfig syntax
+	// highlighter) behind an actual viewport check so mobile never downloads
+	// ~100KB of react-syntax-highlighter or 640KB of video that `hidden
+	// xl:block` would otherwise still fetch.
+	const [isXl, setIsXl] = useState(false);
+
+	// Read the hint cookie after mount to avoid SSR/CSR hydration mismatch.
+	useEffect(() => {
+		setIsLoggedIn(getLoggedInHintCookie() === true);
+	}, []);
+
+	useEffect(() => {
+		const mq = window.matchMedia("(min-width: 1280px)");
+		const update = () => setIsXl(mq.matches);
+		update();
+		mq.addEventListener("change", update);
+		return () => mq.removeEventListener("change", update);
+	}, []);
+
+	useEffect(() => {
+		const container = containerRef.current;
+		if (!container) return;
+
+		let ctx: { revert: () => void } | null = null;
+		let cancelled = false;
+
+		// Mobile: CSS animations in globals.css handle the hero reveal.
+		// Guard here so mobile never initiates the ~60KB GSAP dynamic import.
+		if (window.innerWidth < 1024) return;
+
+		getGsap().then((gsap) => {
+			if (cancelled) return;
+			ctx = gsap.context(() => {
+				gsap.set(".hero-reveal", {
+					opacity: 0,
+					y: 25,
+					scale: 0.96,
+					transformOrigin: "center bottom",
+				});
+				gsap.set(".hero-cta", { opacity: 0, scale: 0.95 });
+
+				const tl = gsap.timeline({ defaults: { overwrite: "auto" } });
+
+				// hero-bg is intentionally NOT hidden — it is the LCP element and
+				// must be visible from first paint. The brightness flash still runs.
+				tl.to(".hero-bg", {
+					filter: "brightness(1.6)",
+					duration: 0.125,
+					ease: "power2.in",
+				})
+					.to(".hero-bg", {
+						filter: "brightness(1)",
+						duration: 0.125,
+						ease: "power2.out",
+					})
+					.to(
+						".hero-reveal",
+						{
+							opacity: 1,
+							y: 0,
+							scale: 1,
+							duration: 1.1,
+							stagger: 0.1,
+							ease: "power3.out",
+						},
+						"-=0.2",
+					)
+					.to(
+						".hero-cta",
+						{
+							opacity: 1,
+							scale: 1,
+							duration: 0.3,
+							stagger: 0.06,
+							ease: "back.out(1.5)",
+						},
+						"-=0.1",
+					);
+			}, container);
+		});
+
+		return () => {
+			cancelled = true;
+			ctx?.revert();
+		};
+	}, []);
+
+	return (
+		<div ref={containerRef}>
+			<div className="relative hero-root flex flex-col items-stretch pb-0 mb-0 bg-[#0F0F0F]">
+				<div className="flex justify-between">
+					<div className="flex flex-col gap-6 px-4 xl:px-22.75 py-8 bg-[#0F0F0F] mt-26">
+						<Link
+							href="/blog/ai-billing-infrastructure"
+							className="hero-reveal lg:opacity-0 group relative overflow-hidden uppercase font-mono tracking-[-2%] text-[12px] md:text-sm leading-sm text-[#FFFFFF99] hover:text-white border border-[#9564ff4d] hover:border-[#9564ff] bg-[#9564ff14] hover:bg-[#9564ff26] w-fit px-3 min-h-[30px] md:min-h-[36px] flex items-center gap-2.5 transition-colors duration-300"
+						>
+							<span
+								aria-hidden="true"
+								className="pointer-events-none absolute inset-0 opacity-50 transition-opacity duration-300 group-hover:opacity-80"
+								style={{
+									backgroundImage:
+										"radial-gradient(rgba(176,138,255,0.85) 0.4px, transparent 0.4px)",
+									backgroundSize: "1.5px 1.5px",
+								}}
+							/>
+							<span className="relative font-medium text-[#b08aff]">New</span>
+							<span aria-hidden="true" className="relative text-[#9564ff66]">
+								&bull;
+							</span>
+							<span className="relative">{BADGE_TEXT}</span>
+							<span
+								aria-hidden="true"
+								className="relative inline-flex items-center text-[1.05em] leading-none transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+							>
+								&#8599;
+							</span>
+						</Link>
+						<div className="flex flex-col gap-6 w-full px-0 lg:px-0">
+							<h1 className="hero-reveal lg:opacity-0 text-[44px] md:text-[56px] w-full max-w-sm sm:max-w-[480px] md:max-w-xl leading-[44px] tracking-[-4%] md:leading-14 font-sans">
+								<span className="text-[#FFFFFF99] font-normal">
+									The managed
+								</span>{" "}
+								<span className="text-white">billing service</span>{" "}
+								<span className="text-[#FFFFFF99] font-normal">
+									for scaling companies
+								</span>
+							</h1>
+							<p className="hero-reveal lg:opacity-0 tracking-[-2%] w-full max-w-xs sm:max-w-[480px] md:max-w-xl text-[#FFFFFF99] md:text-[16px] text-[14px] font-light leading-5 font-sans">
+								One layer for billing, ledgering, entitlements and controls.
+								Autumn moves pricing{" "}
+								<span className="text-white font-light">
+									from code into config
+								</span>
+								, so you can iterate on pricing and sell enterprise contracts
+								10x faster. Built for high-growth AI and usage-based companies.
+							</p>
+						</div>
+					</div>
+					{/*
+					  Keep the wrapper itself in the SSR HTML with `hidden xl:block`
+					  so desktop gets the correct half-width hero layout from the
+					  first paint (no post-hydration layout shift). Only the heavy
+					  children (video + AutumnConfig) are client-gated on `isXl`
+					  so mobile never downloads them, and desktop fills the
+					  already-reserved space once it hydrates.
+					*/}
+					<div className="hero-reveal lg:opacity-0 relative w-[50vw] max-w-[720px] min-h-[525px] p-16 py-0 mx-auto hidden xl:flex flex-col justify-center">
+						{isXl && (
+							<>
+								<div className="absolute inset-0 z-0 pointer-events-none">
+									<video
+										src="/images/pricing-models/pricingbg.webm"
+										autoPlay
+										loop
+										muted
+										playsInline
+										className="absolute inset-0 w-full h-full object-cover mix-blend-screen opacity-100"
+									/>
+								</div>
+								<div className="relative z-10 w-full flex justify-center">
+									<AutumnConfig initialDelay={200} />
+								</div>
+							</>
+						)}
+					</div>
+				</div>
+				<div className="border-t border-[#292929]" />
+				<div className="flex flex-nowrap items-center xl:px-22.75 px-4 bg-[#0F0F0F] w-full overflow-hidden">
+					{/* Primary CTA */}
+					<div className="hero-cta lg:opacity-0 w-full md:w-fit md:flex-shrink-0">
+						<Link
+							href={
+								isLoggedIn
+									? "https://app.useautumn.com"
+									: "https://app.useautumn.com/sign-in"
+							}
+						>
+							<motion.div
+								initial="initial"
+								whileHover="hover"
+								whileTap="hover"
+								className="relative"
+							>
+								{/* Adjusted px-3 for mobile, md:px-4 for desktop */}
+								<div className="relative overflow-hidden flex items-center gap-1.5 md:gap-2.5 cursor-pointer justify-between py-2 px-3 md:px-4 md:py-3.5 md:w-50 font-sans bg-[#9564ff] hover:bg-[#7D46F4] transition-colors duration-300">
+									<CTALines />
+									<span className="relative z-10 tracking-[-2%] uppercase md:normal-case text-white font-medium text-[12px] md:text-base whitespace-nowrap">
+										{isLoggedIn ? "Dashboard" : "Start for free"}
+									</span>
+									<span className="relative z-10 scale-95 md:scale-100">
+										<IconCTAStart />
+									</span>
+								</div>
+							</motion.div>
+						</Link>
+					</div>
+
+					{/* Secondary CTA */}
+					<div className="hero-cta lg:opacity-0 w-full md:w-fit md:flex-shrink-0">
+						<Link href={"https://cal.com/ayrod"}>
+							<motion.div
+								initial="initial"
+								whileHover="hover"
+								whileTap="hover"
+								className="relative"
+							>
+								<div className="relative overflow-hidden flex items-center gap-1.5 md:gap-2.5 border-r border-[#292929] text-white cursor-pointer justify-between py-2 px-3 md:px-4 md:py-3.5 md:w-50 font-sans bg-[#0F0F0F] hover:bg-[#FFFFFF1F] transition-colors duration-300">
+									<CTALines />
+									<span className="relative z-10 tracking-[-2%] text-[12px] uppercase md:normal-case md:text-[16px] whitespace-nowrap">
+										Get a demo
+									</span>
+									<span className="relative z-10 scale-100">
+										<IconCTADocs />
+									</span>
+								</div>
+							</motion.div>
+						</Link>
+					</div>
+
+					<div className="hero-cta lg:opacity-0 hidden md:flex flex-nowrap gap-2 md:gap-3 ml-2 md:ml-3 h-10.5 md:h-12.5 flex-1">
+						<div className="border-r border-[#292929] h-full hidden md:block" />
+						<div className="border-r border-[#292929] h-full hidden md:block" />
+						<div className="border-r border-[#292929] h-full hidden md:block" />
+
+						<div className="border-r border-[#292929] h-full hidden md:block" />
+						<div className="border-r border-[#292929] h-full hidden md:block" />
+						<div className="border-r border-[#292929] h-full hidden md:block" />
+						<div className="border-r border-[#292929] h-full hidden md:block" />
+						<div className="border-r border-[#292929] h-full hidden md:block" />
+						<div className="border-r border-[#292929] h-full hidden md:block" />
+					</div>
+				</div>
+				<div className="border-b border-[#292929]" />
+				{/* MOBILE VIEW*/}
+				<div className="relative block xl:hidden w-full overflow-hidden  bg-[#0F0F0F] mt-12">
+					<div className="relative overflow-hidden w-full p-7 flex items-center justify-center">
+						{/* Still frame of the desktop webm; the looping video is too heavy for mobile radios. */}
+						<Image
+							src="/images/pricing-models/pricingbg-mobile.webp"
+							alt=""
+							aria-hidden="true"
+							fill
+							priority
+							fetchPriority="high"
+							sizes="100vw"
+							className="hero-bg absolute inset-0 w-full h-full object-cover mix-blend-screen opacity-100 pointer-events-none select-none"
+						/>
+
+						<div className="hero-reveal lg:opacity-0 relative z-10 w-full max-w-[520px] min-h-[420px] flex justify-center items-center">
+							{!isXl && <AutumnConfig initialDelay={200} />}
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	);
+}

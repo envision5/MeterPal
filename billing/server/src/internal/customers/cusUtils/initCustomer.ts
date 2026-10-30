@@ -1,0 +1,93 @@
+import {
+	type Customer,
+	type CustomerData,
+	ErrCode,
+	type FullCustomer,
+	orgMultiCurrencyEnabled,
+	RecaseError,
+	stripAutoTopupCountsForStorage,
+} from "@autumn/shared";
+import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
+import { generateId } from "@/utils/genUtils.js";
+
+export const assertCustomerCurrencyAllowed = ({
+	ctx,
+	currency,
+}: {
+	ctx: AutumnContext;
+	currency?: string | null;
+}) => {
+	if (currency && !orgMultiCurrencyEnabled({ org: ctx.org })) {
+		throw new RecaseError({
+			code: ErrCode.InvalidRequest,
+			message: "Multi-currency is not enabled for this organization",
+			statusCode: 400,
+		});
+	}
+};
+
+/**
+ * Build a Customer object ready for insertion.
+ */
+const initCustomer = ({
+	ctx,
+	customerId,
+	customerData,
+}: {
+	ctx: AutumnContext;
+	customerId: string | null;
+	customerData?: CustomerData;
+}): Customer => {
+	const { org, env } = ctx;
+	const internalId = generateId("cus");
+
+	assertCustomerCurrencyAllowed({ ctx, currency: customerData?.currency });
+
+	return {
+		internal_id: internalId,
+		id: customerId,
+		org_id: org.id,
+		env,
+		name: customerData?.name || "",
+		email: customerData?.email || "",
+		fingerprint: customerData?.fingerprint,
+		metadata: customerData?.metadata ?? {},
+		created_at: Date.now(),
+		processor: customerData?.stripe_id
+			? {
+					id: customerData.stripe_id,
+					type: "stripe",
+				}
+			: null,
+		processors: customerData?.processors ?? null,
+		send_email_receipts: customerData?.send_email_receipts ?? false,
+		currency: customerData?.currency?.toLowerCase() || null,
+		auto_topups: stripAutoTopupCountsForStorage(
+			customerData?.billing_controls?.auto_topups,
+		),
+		spend_limits: customerData?.billing_controls?.spend_limits,
+		usage_limits: customerData?.billing_controls?.usage_limits,
+		usage_alerts: customerData?.billing_controls?.usage_alerts,
+		overage_allowed: customerData?.billing_controls?.overage_allowed,
+		config: customerData?.config,
+	};
+};
+
+export const initFullCustomer = ({
+	ctx,
+	customerId,
+	customerData,
+}: {
+	ctx: AutumnContext;
+	customerId: string | null;
+	customerData?: CustomerData;
+}): FullCustomer => {
+	return {
+		...initCustomer({ ctx, customerId, customerData }),
+		customer_products: [],
+		entities: [],
+		extra_customer_entitlements: [],
+		subscriptions: [],
+		invoices: [],
+	};
+};

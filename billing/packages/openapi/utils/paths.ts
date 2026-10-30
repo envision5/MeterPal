@@ -1,0 +1,73 @@
+import { mkdirSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+export interface OpenApiPaths {
+	/** packages/openapi/ directory */
+	openApiDir: string;
+	/** packages/openapi/openapi.yml */
+	openApiOutput: string;
+	/** packages/openapi/openapi-stripped.yml (JSDoc examples stripped for non-TS SDKs) */
+	openApiStrippedOutput: string;
+	/** packages/openapi/openapi-internal.yml (public surface + catalogV2, internal fields kept; atmn generator input) */
+	openApiInternalOutput: string;
+	/** packages/sdk/ directory */
+	tsSdkDir: string;
+	/** others/python-sdk/ directory */
+	pythonSdkDir: string;
+	/** apps/docs/mintlify/api/ directory */
+	docsApiDir: string;
+	/** apps/docs/mintlify/api/openapi.yml */
+	docsOpenApiPath: string;
+	/** apps/docs/mintlify/ directory */
+	docsDir: string;
+	/** packages/autumn-js/src/generated/ directory */
+	autumnJsGeneratedDir: string;
+	/** packages/autumn-js/src/generated/schemas.ts */
+	autumnJsSchemasPath: string;
+	/** others/svix-transforms/ directory */
+	svixTransformsDir: string;
+}
+
+/**
+ * Resolves all paths needed for OpenAPI generation.
+ * Also creates necessary directories.
+ */
+export function resolvePaths(): OpenApiPaths {
+	const currentFilePath = fileURLToPath(import.meta.url);
+	const currentDirPath = path.dirname(currentFilePath);
+	// Go up from utils/ to packages/openapi/
+	const openApiDir = path.resolve(currentDirPath, "..");
+
+	const tsSdkDir = path.resolve(openApiDir, "../sdk");
+	const pythonSdkDir = path.resolve(openApiDir, "../../others/python-sdk");
+	const docsApiDir = path.resolve(openApiDir, "../../apps/docs/mintlify/api");
+	const docsDir = path.resolve(openApiDir, "../../apps/docs/mintlify");
+	const autumnJsGeneratedDir = path.resolve(
+		openApiDir,
+		"../autumn-js/src/generated",
+	);
+	const svixTransformsDir = path.resolve(
+		openApiDir,
+		"../../others/svix-transforms",
+	);
+	// Ensure directories exist
+	mkdirSync(openApiDir, { recursive: true });
+	mkdirSync(docsApiDir, { recursive: true });
+	mkdirSync(autumnJsGeneratedDir, { recursive: true });
+
+	return {
+		openApiDir,
+		openApiOutput: path.join(openApiDir, "openapi.yml"),
+		openApiStrippedOutput: path.join(openApiDir, "openapi-stripped.yml"),
+		openApiInternalOutput: path.join(openApiDir, "openapi-internal.yml"),
+		tsSdkDir,
+		pythonSdkDir,
+		docsApiDir,
+		docsOpenApiPath: path.join(docsApiDir, "openapi.yml"),
+		docsDir,
+		autumnJsGeneratedDir,
+		autumnJsSchemasPath: path.join(autumnJsGeneratedDir, "schemas.ts"),
+		svixTransformsDir,
+	};
+}

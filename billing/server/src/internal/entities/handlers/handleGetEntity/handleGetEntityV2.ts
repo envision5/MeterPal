@@ -1,0 +1,54 @@
+import {
+	AffectedResource,
+	GetEntityParamsV0Schema,
+	InternalError,
+	Scopes,
+} from "@autumn/shared";
+import { shed503OnTransientError } from "@/db/shed503OnTransientError.js";
+import { createRoute } from "@/honoMiddlewares/routeHandler.js";
+import { applySubjectLookupDbOnly } from "@/internal/misc/miscellaneousEdgeConfig/applySubjectLookupDbOnly.js";
+import {
+	isSubjectReadSingleflightEnabled,
+} from "@/internal/misc/miscellaneousEdgeConfig/miscellaneousEdgeConfigStore.js";
+import { findCustomerForEntity } from "../../actions/findCustomer.js";
+import { getApiEntityByRollout } from "../../actions/getApiEntityByRollout.js";
+
+export const handleGetEntityV2 = createRoute({
+	scopes: [Scopes.Customers.Read],
+	body: GetEntityParamsV0Schema,
+	resource: AffectedResource.Entity,
+	handler: async (c) => {
+		const ctx = c.get("ctx");
+		const body = c.req.valid("json");
+		let { customer_id: customerId, entity_id: entityId } = body;
+
+		applySubjectLookupDbOnly({ ctx });
+
+		// 1. Entity -> Customer ID
+		if (!customerId) {
+			const customer = await shed503OnTransientError({
+				ctx,
+				source: "entities.get.find_customer",
+				run: () => findCustomerForEntity({ ctx, entityId }),
+			});
+
+			if (!customer?.id) {
+				throw new InternalError({
+					message: `Customer not found for entity ${entityId}`,
+				});
+			}
+
+			customerId = customer.id;
+		}
+
+		const apiEntity = await getApiEntityByRollout({
+			ctx,
+			customerId: customerId,
+			entityId: entityId,
+			source: "handleGetEntityV2",
+			singleflight: isSubjectReadSingleflightEnabled(),
+		});
+
+		return c.json(apiEntity);
+	},
+});

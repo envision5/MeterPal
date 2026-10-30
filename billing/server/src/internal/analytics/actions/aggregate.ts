@@ -1,0 +1,682 @@
+import {
+	BILLING_CYCLE_INTERVALS,
+	type BillingCycleIntervalEnum,
+	type BillingCycleResult,
+	type ClickHouseResult,
+	type TimeseriesEventsParams,
+} from "@autumn/shared";
+import { TZDate } from "@date-fns/tz";
+import { UTCDate } from "@date-fns/utc";
+import {
+	addDays,
+	addHours,
+	addMonths,
+	addWeeks,
+	format,
+	startOfWeek,
+	sub,
+} from "date-fns";
+import { Decimal } from "decimal.js";
+import {
+	type AggregateGroupablePipeRow,
+	type AggregateSimplePipeRow,
+	getTinybirdPipes,
+} from "@/external/tinybird/initTinybird.js";
+import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
+import { validatePropertyPathForJSON } from "@/internal/analytics/actions/eventValidationUtils.js";
+import { getBillingCycleStartDate } from "../analyticsUtils.js";
+import {
+	shouldUseMonthlyRollup,
+	shouldUseOrgDimensionRollup,
+	shouldUseOrgPropertyRollup,
+	shouldUsePropertyCoverageCheck,
+	shouldUsePropertyDailyRollup,
+} from "./dailyRollupRouting.js";
+import { getCountAndSum } from "./getCountAndSum.js";
+import {
+	groupedResultIsIncomplete,
+	groupedValueIsMateriallyShort,
+	propertyRollupCoverageShortfall,
+	propertyRollupCoverageUnderReports,
+	reportsMoreThan,
+} from "./propertyRollupCompleteness.js";
+
+/** Flattens filter_by into indexed filter_key_N / filter_value_N params for Tinybird pipes */
+const buildFilterParams = ({
+	filter_by,
+}: {
+	filter_by?: Record<string, string>;
+}): Record<string, string> => {
+	const params: Record<string, string> = {};
+	if (!filter_by) return params;
+
+	const entries = Object.entries(filter_by).slice(0, 5);
+	for (let i = 0; i < entries.length; i++) {
+		const [key, value] = entries[i];
+		validatePropertyPathForJSON({ propertyKey: key });
+		params[`filter_key_${i}`] = key;
+		params[`filter_value_${i}`] = value;
+	}
+	return params;
+};
+
+const DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
+
+/** Validates and sanitizes timezone string to prevent injection */
+export const sanitizeTimezone = ({ timezone }: { timezone?: string }): string => {
+	if (!timezone) return "UTC";
+	if (!/^[a-zA-Z0-9_/+-]+$/.test(timezone)) return "UTC";
+	if (timezone.length > 50) return "UTC";
+	return timezone;
+};
+
+/** Maps interval type to number of days */
+const intervalToDays = ({
+	interval,
+	billingCycleGap,
+}: {
+	interval: string;
+	billingCycleGap?: number;
+}): number => {
+	const map: Record<string, number> = {
+		"24h": 1,
+		"7d": 7,
+		"30d": 30,
+		"90d": 90,
+		"1bc": (billingCycleGap ?? 0) + 1,
+		"3bc": (billingCycleGap ?? 0) + 1,
+		last_cycle: (billingCycleGap ?? 0) + 1,
+	};
+	return map[interval] ?? 7;
+};
+
+/** Calculates start and end dates for the query */
+export const calculateDateRange = async ({
+	ctx,
+	params,
+}: {
+	ctx: AutumnContext;
+	params: TimeseriesEventsParams;
+}): Promise<{ startDate: string; endDate: string }> => {
+	const { db } = ctx;
+	const intervalType = params.interval ?? "24h";
+
+	// Custom range takes precedence
+	if (params.custom_range) {
+		return {
+			startDate: format(new UTCDate(params.custom_range.start), DATE_FORMAT),
+			endDate: format(new UTCDate(params.custom_range.end), DATE_FORMAT),
+		};
+	}
+
+	// Billing cycle intervals require looking up customer's billing cycle
+	const isBillingCycle = BILLING_CYCLE_INTERVALS.includes(
+		intervalType as BillingCycleIntervalEnum,
+	);
+
+	if (isBillingCycle && !params.aggregateAll && params.customer) {
+		const billingCycleResult = (await getBillingCycleStartDate({
+			customer: params.customer,
+			db,
+			intervalType: intervalType as "1bc" | "3bc" | "last_cycle",
+			featureIds: params.event_names,
+			ctx,
+		})) as BillingCycleResult | null;
+
+		if (billingCycleResult?.startDate && billingCycleResult?.endDate) {
+			return {
+				startDate: billingCycleResult.startDate,
+				endDate: billingCycleResult.endDate,
+			};
+		}
+	}
+
+	// Standard intervals: calculate from now
+	const now = new UTCDate();
+	const days = intervalToDays({ interval: intervalType });
+	const startDate = sub(now, { days });
+
+	return {
+		startDate: format(startDate, DATE_FORMAT),
+		endDate: format(now, DATE_FORMAT),
+	};
+};
+
+// Grid must match the pipe's buckets for the string join: hour buckets are UTC,
+// day/month buckets are in the viewer's timezone. startDate/endDate are UTC.
+export const generateAllPeriods = ({
+	startDate,
+	endDate,
+	binSize,
+	timezone,
+}: {
+	startDate: string;
+	endDate: string;
+	binSize: string;
+	timezone?: string;
+}): string[] => {
+	const periods: string[] = [];
+
+	// Hour buckets stay on UTC to match the pipe's raw `hour` column.
+	if (binSize === "hour") {
+		const end = new UTCDate(endDate);
+		let current = new UTCDate(startDate);
+		current = new UTCDate(
+			current.getFullYear(),
+			current.getMonth(),
+			current.getDate(),
+			current.getHours(),
+			0,
+			0,
+			0,
+		);
+		while (current <= end) {
+			periods.push(format(current, "yyyy-MM-dd HH:mm:ss"));
+			current = addHours(current, 1);
+		}
+		return periods;
+	}
+
+	// Day/week/month: build the grid in the viewer's zone ("UTC" = old behavior).
+	const tz = timezone ?? "UTC";
+	const startInViewerTz = new TZDate(new UTCDate(startDate).getTime(), tz);
+	const end = new TZDate(new UTCDate(endDate).getTime(), tz);
+
+	const startOfDayInViewerTz = new TZDate(
+		startInViewerTz.getFullYear(),
+		startInViewerTz.getMonth(),
+		startInViewerTz.getDate(),
+		tz,
+	);
+
+	let current: TZDate;
+	if (binSize === "month") {
+		current = new TZDate(
+			startInViewerTz.getFullYear(),
+			startInViewerTz.getMonth(),
+			1,
+			tz,
+		);
+	} else if (binSize === "week") {
+		// Monday-aligned to match the pipe's toStartOfWeek(hour, 1, tz) (mode 1).
+		current = startOfWeek(startOfDayInViewerTz, { weekStartsOn: 1 });
+	} else {
+		current = startOfDayInViewerTz;
+	}
+
+	while (current.getTime() <= end.getTime()) {
+		periods.push(format(current, "yyyy-MM-dd HH:mm:ss"));
+		if (binSize === "month") {
+			current = addMonths(current, 1);
+		} else if (binSize === "week") {
+			current = addWeeks(current, 1);
+		} else {
+			current = addDays(current, 1);
+		}
+	}
+
+	return periods;
+};
+
+/** Builds column name based on event name, group value, and noCount flag */
+const buildColumnName = ({
+	eventName,
+	noCount,
+}: {
+	eventName: string;
+	noCount?: boolean;
+}): string => {
+	return noCount ? eventName : `${eventName}_count`;
+};
+
+/** Formats simple pipe results (no grouping) into pivoted format */
+const formatSimpleResults = ({
+	rows,
+	eventNames,
+	noCount,
+	startDate,
+	endDate,
+	binSize,
+	timezone,
+}: {
+	rows: AggregateSimplePipeRow[];
+	eventNames: string[];
+	noCount?: boolean;
+	startDate: string;
+	endDate: string;
+	binSize: string;
+	timezone?: string;
+}): ClickHouseResult => {
+	const allPeriods = generateAllPeriods({
+		startDate,
+		endDate,
+		binSize,
+		timezone,
+	});
+
+	// Initialize with all periods and all event columns set to 0
+	const periodMap = new Map<string, Record<string, number>>();
+	for (const period of allPeriods) {
+		const record: Record<string, number> = {};
+		for (const eventName of eventNames) {
+			record[buildColumnName({ eventName, noCount })] = 0;
+		}
+		periodMap.set(period, record);
+	}
+
+	// Fill in actual data
+	for (const row of rows) {
+		const periodData = periodMap.get(row.period);
+		if (!periodData) continue;
+
+		const columnName = buildColumnName({ eventName: row.event_name, noCount });
+		if (eventNames.includes(row.event_name)) {
+			periodData[columnName] = new Decimal(row.total_value)
+				.toDecimalPlaces(10)
+				.toNumber();
+		}
+	}
+
+	const data = Array.from(periodMap.entries())
+		.sort(([a], [b]) => a.localeCompare(b))
+		.map(([period, values]) => ({ period, ...values }));
+
+	const columnNames = eventNames.map((name) =>
+		buildColumnName({ eventName: name, noCount }),
+	);
+	const meta = [{ name: "period" }, ...columnNames.map((name) => ({ name }))];
+
+	return { meta, rows: data.length, data };
+};
+
+/**
+ * Formats groupable pipe results using per-bin ranking.
+ * The Tinybird pipe already ranks per-bin and buckets overflow into AUTUMN_RESERVED.
+ * This function trusts that ranking — each bin keeps its own top N groups,
+ * so different bins can show different entities.
+ */
+const formatGroupableResults = ({
+	rows,
+	eventNames,
+	groupBy,
+	noCount,
+	startDate,
+	endDate,
+	binSize,
+	timezone,
+}: {
+	rows: AggregateGroupablePipeRow[];
+	eventNames: string[];
+	groupBy: string;
+	noCount?: boolean;
+	startDate: string;
+	endDate: string;
+	binSize: string;
+	timezone?: string;
+	maxGroups?: number;
+}): ClickHouseResult => {
+	const allPeriods = generateAllPeriods({
+		startDate,
+		endDate,
+		binSize,
+		timezone,
+	});
+	const groupByColumn = groupBy;
+
+	// Collect all unique group values across all bins (for backfilling zeros).
+	// Each bin may have a different set of top-N groups, so the union can exceed N.
+	// `""` is a meaningful bucket for plan_id (means "no plan"), so don't drop it.
+	const allGroupValues = new Set<string>();
+	for (const row of rows) {
+		if (row.group_value !== undefined && row.group_value !== null) {
+			allGroupValues.add(row.group_value);
+		}
+	}
+
+	// Build a map of (period, groupValue) -> { event_name: value }
+	const dataMap = new Map<string, Map<string, Record<string, number>>>();
+
+	// Initialize all (period, groupValue) combinations with zeros
+	for (const period of allPeriods) {
+		const groupMap = new Map<string, Record<string, number>>();
+		for (const groupValue of allGroupValues) {
+			const record: Record<string, number> = {};
+			for (const eventName of eventNames) {
+				record[buildColumnName({ eventName, noCount })] = 0;
+			}
+			groupMap.set(groupValue, record);
+		}
+		dataMap.set(period, groupMap);
+	}
+
+	// Fill in actual data directly from the pipe output
+	for (const row of rows) {
+		if (row.group_value === undefined || row.group_value === null) continue;
+
+		const groupMap = dataMap.get(row.period);
+		if (!groupMap) continue;
+
+		const record = groupMap.get(row.group_value);
+		if (!record) continue;
+
+		if (eventNames.includes(row.event_name)) {
+			const columnName = buildColumnName({
+				eventName: row.event_name,
+				noCount,
+			});
+			record[columnName] = new Decimal(record[columnName] ?? 0)
+				.plus(new Decimal(row.total_value))
+				.toDecimalPlaces(10)
+				.toNumber();
+		}
+	}
+
+	// Flatten to array of rows with properties.{groupBy} column
+	const data: Record<string, string | number>[] = [];
+	for (const [period, groupMap] of dataMap) {
+		for (const [groupValue, values] of groupMap) {
+			data.push({
+				period,
+				[groupByColumn]: groupValue,
+				...values,
+			});
+		}
+	}
+
+	// Sort by period then group value (put AUTUMN_RESERVED last within each period)
+	data.sort((a, b) => {
+		const periodCompare = String(a.period).localeCompare(String(b.period));
+		if (periodCompare !== 0) return periodCompare;
+		const aIsOther =
+			a[groupByColumn] === "AUTUMN_RESERVED" || a[groupByColumn] === "Other";
+		const bIsOther =
+			b[groupByColumn] === "AUTUMN_RESERVED" || b[groupByColumn] === "Other";
+		if (aIsOther && !bIsOther) return 1;
+		if (!aIsOther && bIsOther) return -1;
+		return String(a[groupByColumn]).localeCompare(String(b[groupByColumn]));
+	});
+
+	// Build meta with properties.{groupBy} column
+	const columnNames = eventNames.map((name) =>
+		buildColumnName({ eventName: name, noCount }),
+	);
+	const meta = [
+		{ name: "period" },
+		{ name: groupByColumn },
+		...columnNames.map((name) => ({ name })),
+	];
+
+	return { meta, rows: data.length, data };
+};
+
+/** Aggregates events into time-bucketed timeseries data */
+export const aggregate = async ({
+	ctx,
+	params,
+}: {
+	ctx: AutumnContext;
+	params: TimeseriesEventsParams;
+}): Promise<{ formatted: ClickHouseResult; truncated: boolean }> => {
+	const pipes = getTinybirdPipes();
+	const { org, env } = ctx;
+
+	const intervalType = params.interval ?? "24h";
+	const timezone = sanitizeTimezone({ timezone: params.timezone });
+	const binSize = params.bin_size ?? (intervalType === "24h" ? "hour" : "day");
+
+	const { startDate, endDate } = await calculateDateRange({ ctx, params });
+
+	let formatted: ClickHouseResult;
+	let truncated = false;
+
+	// Route to appropriate pipe based on whether grouping is requested
+	if (params.group_by) {
+		// Use aggregate_groupable pipe for grouped queries
+		// Determine group_column and property_key based on group_by value
+		let groupColumn: "property" | "customer_id" | "entity_id" | "plan_id";
+		let propertyKey: string;
+
+		if (params.group_by === "customer_id") {
+			// Special case: group by customer_id column directly
+			groupColumn = "customer_id";
+			propertyKey = "";
+		} else if (params.group_by === "entity_id") {
+			// Special case: group by entity_id column directly
+			groupColumn = "entity_id";
+			propertyKey = "";
+		} else if (params.group_by === "plan_id") {
+			groupColumn = "plan_id";
+			propertyKey = "";
+		} else if (params.group_by.startsWith("properties.")) {
+			// Standard case: group by a property value
+			groupColumn = "property";
+			propertyKey = params.group_by.slice("properties.".length);
+		} else {
+			// Fallback: treat as property key (legacy behavior)
+			groupColumn = "property";
+			propertyKey = params.group_by;
+		}
+
+		if (groupColumn === "property") {
+			validatePropertyPathForJSON({ propertyKey });
+		}
+
+		const filterParams = buildFilterParams({ filter_by: params.filter_by });
+		const customerId = params.aggregateAll ? undefined : params.customer_id;
+		const useOrgDimensionRollup = shouldUseOrgDimensionRollup({
+			groupColumn,
+			hasCustomerId: Boolean(customerId),
+			hasEntityId: Boolean(params.entity_id),
+			hasPropertyFilters: Object.keys(filterParams).length > 0,
+		});
+		const useOrgPropertyRollup = shouldUseOrgPropertyRollup({
+			groupColumn,
+			hasCustomerId: Boolean(customerId),
+			hasEntityId: Boolean(params.entity_id),
+			hasPropertyFilters: Object.keys(filterParams).length > 0,
+			propertyKey,
+			skipPropertyRollup: false,
+		});
+		const useDailyRollup = shouldUsePropertyDailyRollup({
+			binSize,
+			endDate,
+			groupColumn,
+			hasPropertyFilters: Object.keys(filterParams).length > 0,
+			skipPropertyRollup: false,
+			startDate,
+			timezone,
+		});
+		const useMonthlyRollup = shouldUseMonthlyRollup({
+			binSize,
+			endDate,
+			hasPropertyFilters: Object.keys(filterParams).length > 0,
+			startDate,
+			timezone,
+		});
+
+		const pipeParams = {
+			org_id: org.id,
+			env,
+			event_names: params.event_names,
+			start_date: startDate,
+			end_date: endDate,
+			bin_size: binSize,
+			timezone,
+			customer_id: customerId,
+			entity_id: params.entity_id,
+			group_column: groupColumn,
+			property_key: propertyKey,
+			...filterParams,
+			max_groups: params.max_groups,
+			use_daily_rollup: useDailyRollup ? ("1" as const) : undefined,
+			use_monthly_rollup: useMonthlyRollup ? ("1" as const) : undefined,
+			use_org_dimension_rollup: useOrgDimensionRollup
+				? ("1" as const)
+				: undefined,
+			use_org_property_rollup: useOrgPropertyRollup
+				? ("1" as const)
+				: undefined,
+		};
+
+		let result = await pipes.aggregateGroupable(pipeParams);
+
+		// Only this query shape reads the gated property rollup.
+		const readsGatedRollup =
+			groupColumn === "property" && Object.keys(filterParams).length === 0;
+
+		if (readsGatedRollup) {
+			let rollupIsIncomplete: boolean | null = null;
+			const usePropertyCoverage = shouldUsePropertyCoverageCheck({
+				groupColumn,
+				hasPropertyFilters: Object.keys(filterParams).length > 0,
+				propertyKey,
+			});
+			if (usePropertyCoverage) {
+				const coverageResult = await pipes.propertyRollupCoverage({
+					org_id: org.id,
+					env,
+					event_names: params.event_names,
+					start_date: startDate,
+					end_date: endDate,
+					property_key: propertyKey,
+					customer_id: customerId,
+					entity_id: params.entity_id,
+				});
+				const coverage = Object.fromEntries(
+					coverageResult.data.map((row) => [row.event_name, row.event_count]),
+				);
+				const coverageUnderReports = propertyRollupCoverageUnderReports({
+					rows: result.data,
+					coverage,
+				});
+				if (coverageUnderReports) {
+					ctx.logger.warn(
+						"Property coverage rollup under-reports grouped counts; falling back to event totals",
+						{
+							orgId: org.id,
+							propertyKey,
+							customerId,
+							entityId: params.entity_id,
+						},
+					);
+				} else {
+					const shortfall = propertyRollupCoverageShortfall({
+						rows: result.data,
+						coverage,
+					});
+					if (shortfall === "minor") {
+						const totals = await getCountAndSum({
+							ctx,
+							params,
+							dateRange: { startDate, endDate },
+						});
+						rollupIsIncomplete = groupedValueIsMateriallyShort({
+							rows: result.data,
+							totals,
+						});
+					} else {
+						rollupIsIncomplete = shortfall === "major";
+					}
+				}
+			}
+			if (rollupIsIncomplete === null) {
+				const totals = await getCountAndSum({
+					ctx,
+					params,
+					dateRange: { startDate, endDate },
+				});
+				rollupIsIncomplete = groupedResultIsIncomplete({
+					rows: result.data,
+					totals,
+				});
+			}
+
+			if (rollupIsIncomplete) {
+				// The raw-events scan can exceed Tinybird's query timeout on long
+				// windows; the gated result is the better answer than a failed request.
+				const ungated = await pipes
+					.aggregateGroupable({ ...pipeParams, skip_property_rollup: "1" })
+					.catch((error: unknown) => {
+						ctx.logger.warn(
+							"Ungated property retry failed; keeping gated result",
+							{
+								orgId: org.id,
+								propertyKey,
+								customerId,
+								entityId: params.entity_id,
+								startDate,
+								endDate,
+								error: error instanceof Error ? error.message : String(error),
+							},
+						);
+						return null;
+					});
+
+				// A shortfall means gate loss OR events without the property; only the
+				// first is recoverable, and only the retry can tell them apart.
+				if (
+					ungated &&
+					reportsMoreThan({ candidate: ungated.data, current: result.data })
+				) {
+					result = ungated;
+				}
+			}
+		}
+
+		// For external API (enforceGroupLimit), truncated is always false
+		// For internal API, return the actual truncation status from the pipe
+		truncated = params.enforceGroupLimit
+			? false
+			: result.data.length > 0 && result.data[0]._truncated === true;
+
+		formatted = formatGroupableResults({
+			rows: result.data,
+			eventNames: params.event_names,
+			groupBy: params.group_by,
+			noCount: params.no_count,
+			startDate,
+			endDate,
+			binSize,
+			timezone,
+			maxGroups: params.max_groups,
+		});
+	} else {
+		// Use aggregate_simple pipe for ungrouped queries
+		const filterParams = buildFilterParams({ filter_by: params.filter_by });
+		const pipeParams = {
+			org_id: org.id,
+			env,
+			event_names: params.event_names,
+			start_date: startDate,
+			end_date: endDate,
+			bin_size: binSize,
+			timezone,
+			customer_id: params.aggregateAll ? undefined : params.customer_id,
+			entity_id: params.entity_id,
+			...filterParams,
+			use_monthly_rollup: shouldUseMonthlyRollup({
+				binSize,
+				endDate,
+				hasPropertyFilters: Object.keys(filterParams).length > 0,
+				startDate,
+				timezone,
+			})
+				? ("1" as const)
+				: undefined,
+		};
+
+		const result = await pipes.aggregateSimple(pipeParams);
+
+		formatted = formatSimpleResults({
+			rows: result.data,
+			eventNames: params.event_names,
+			noCount: params.no_count,
+			startDate,
+			endDate,
+			binSize,
+			timezone,
+		});
+	}
+
+	return { formatted, truncated };
+};

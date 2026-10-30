@@ -1,0 +1,61 @@
+import type { AppEnv } from "@autumn/shared";
+import { db } from "../../../lib/db.js";
+import { logger } from "../../../lib/logger.js";
+import { chatApprovalRepo } from "../../approvals/repos/chatApprovalRepo.js";
+import type { AgentThreadRef } from "../domain/agentTurnContext.js";
+import { deleteEveSession, type EveSessionDeleteReason } from "./repo.js";
+import type { EveSessionRef } from "./types.js";
+
+/** Drops the row and cancels every card that could only be decided through
+ * the session behind it. */
+export const abandonEveSession = async ({
+	env,
+	orgId,
+	providerUserId,
+	reason,
+	session,
+	thread,
+}: {
+	env: AppEnv;
+	orgId: string;
+	providerUserId: string;
+	reason: EveSessionDeleteReason;
+	session: EveSessionRef;
+	thread: AgentThreadRef;
+}) => {
+	await deleteEveSession({
+		db,
+		env,
+		orgId,
+		reason,
+		sessionId: session.sessionId,
+		threadKey: session.threadKey,
+	});
+	const orphaned = await chatApprovalRepo.listPendingForRun({
+		db,
+		channelId: thread.channelId,
+		env,
+		orgId,
+		provider: thread.provider,
+		runId: session.sessionId,
+		workspaceId: thread.workspaceId,
+	});
+	const orphanedApprovalIds: string[] = [];
+	for (const approval of orphaned) {
+		if (!approval.tool_call_id) continue;
+		await chatApprovalRepo.cancel({
+			approvalId: approval.id,
+			db,
+			providerUserId,
+		});
+		orphanedApprovalIds.push(approval.id);
+	}
+	logger.warn("Abandoned eve session", {
+		event: "leaf.eve_session_abandoned",
+		data: {
+			orphaned_approval_ids: orphanedApprovalIds,
+			reason,
+			session_id: session.sessionId,
+		},
+	});
+};

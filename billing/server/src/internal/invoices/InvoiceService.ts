@@ -1,0 +1,511 @@
+import { getAutumnEnv } from "@autumn/env";
+import {
+	type ApiInvoiceV1,
+	type Customer,
+	customers,
+	ErrCode,
+	entities,
+	type Feature,
+	type InsertInvoice,
+	type Invoice,
+	type InvoiceItem,
+	type InvoiceStatus,
+	invoices,
+	type ListInvoicesParams,
+	type Organization,
+	ProcessorType,
+	RecaseError,
+	StandardCursor,
+	stripeToAtmnAmount,
+} from "@autumn/shared";
+import type { DrizzleCli } from "@server/db/initDrizzle.js";
+import { getInvoiceDiscounts } from "@server/external/stripe/stripeInvoiceUtils.js";
+import { generateId } from "@server/utils/genUtils.js";
+import { Autumn } from "autumn-js";
+import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import type Stripe from "stripe";
+import type { AutumnContext } from "@/honoUtils/HonoEnv";
+import { resolvedProductIdsForColumn } from "./repos/utils/resolvedProductIdsSql.js";
+
+export const processInvoice = ({
+	invoice,
+	withItems = false,
+	features,
+}: {
+	invoice: Invoice;
+	withItems?: boolean;
+	features?: Feature[];
+}): ApiInvoiceV1 => {
+	const processorType = invoice.processor_type ?? ProcessorType.Stripe;
+	const isStripe = processorType === ProcessorType.Stripe;
+
+	return {
+		// Current ids from the hydration query; snapshot if nothing resolved.
+		plan_ids: invoice.resolved_product_ids?.length
+			? invoice.resolved_product_ids
+			: (invoice.product_ids ?? []),
+		stripe_id: invoice.stripe_id,
+		processor_type: processorType,
+		status: invoice.status ?? "",
+		total: invoice.total,
+		currency: invoice.currency,
+		created_at: invoice.created_at,
+		hosted_invoice_url: isStripe
+			? `${getAutumnEnv().AUTUMN_API_URL}/invoices/hosted_invoice_url/${invoice.id}`
+			: null,
+		// hosted_invoice_url: invoice.hosted_invoice_url,
+		// items: withItems
+		// 	? (invoice.items || []).map((i) => {
+		// 			const feature = features?.find(
+		// 				(f) => f.internal_id === i.internal_feature_id,
+		// 			);
+
+		// 			return ApiInvoiceItemSchema.parse({
+		// 				description: i.description,
+		// 				period_start: i.period_start,
+		// 				period_end: i.period_end,
+		// 				feature_id: feature?.id,
+		// 				feature_name: feature?.name,
+		// 			});
+		// 		})
+		// 	: undefined,
+	};
+};
+
+export type InvoiceListRow = {
+	invoice: Invoice;
+	customer_id: string | null;
+	entity_id: string | null;
+};
+
+const selectListRows = ({ db }: { db: DrizzleCli }) =>
+	db
+		.select({
+			invoice: invoices,
+			resolved_product_ids: resolvedProductIdsForColumn({
+				internalProductIds: invoices.internal_product_ids,
+				productIds: invoices.product_ids,
+			}),
+			customer_id: customers.id,
+			entity_id: entities.id,
+		})
+		.from(invoices)
+		.innerJoin(
+			customers,
+			eq(invoices.internal_customer_id, customers.internal_id),
+		)
+		.leftJoin(entities, eq(invoices.internal_entity_id, entities.internal_id));
+
+const toListRow = (
+	row: Awaited<
+		ReturnType<ReturnType<typeof selectListRows>["execute"]>
+	>[number],
+): InvoiceListRow => ({
+	invoice: {
+		...row.invoice,
+		resolved_product_ids: row.resolved_product_ids,
+	} as Invoice,
+	customer_id: row.customer_id,
+	entity_id: row.entity_id,
+});
+
+export class InvoiceService {
+	static async getListRowById({
+		ctx,
+		id,
+	}: {
+		ctx: AutumnContext;
+		id: string;
+	}): Promise<InvoiceListRow | null> {
+		const [row] = await selectListRows({ db: ctx.db })
+			.where(
+				and(
+					eq(invoices.id, id),
+					eq(customers.org_id, ctx.org.id),
+					eq(customers.env, ctx.env),
+				),
+			)
+			.limit(1);
+		return row ? toListRow(row) : null;
+	}
+
+	static async get({ db, id }: { db: DrizzleCli; id: string }) {
+		return (await db.query.invoices.findFirst({
+			where: eq(invoices.id, id),
+			with: {
+				customer: {
+					with: {
+						org: {
+							with: {
+								master: true,
+							},
+						},
+					},
+				},
+			},
+		})) as Invoice & {
+			customer: Customer & { org: Organization & { master: Organization } };
+		};
+	}
+
+	static async getMany({ db, ids }: { db: DrizzleCli; ids: string[] }) {
+		return (await db.query.invoices.findMany({
+			where: inArray(invoices.id, ids),
+			with: {
+				customer: {
+					with: {
+						org: {
+							with: {
+								master: true,
+							},
+						},
+					},
+				},
+			},
+		})) as (Invoice & {
+			customer: Customer & { org: Organization & { master: Organization } };
+		})[];
+	}
+
+	static async getCursorPage({
+		ctx,
+		query,
+	}: {
+		ctx: AutumnContext;
+		query: ListInvoicesParams;
+	}): Promise<{
+		rows: InvoiceListRow[];
+		nextCursor: string | null;
+	}> {
+		const cursor = StandardCursor.decode(query.start_cursor);
+
+		const conditions = [
+			eq(customers.org_id, ctx.org.id),
+			eq(customers.env, ctx.env),
+		];
+
+		if (query.customer_id) {
+			conditions.push(eq(customers.id, query.customer_id));
+		}
+		if (query.entity_id) {
+			conditions.push(eq(entities.id, query.entity_id));
+		}
+		if (query.status?.length) {
+			conditions.push(inArray(invoices.status, query.status));
+		}
+		if (query.processor_types?.length) {
+			// Rows predating processor tracking have NULL processor_type and are Stripe.
+			const processorCondition = query.processor_types.includes(
+				ProcessorType.Stripe,
+			)
+				? or(
+						inArray(invoices.processor_type, query.processor_types),
+						isNull(invoices.processor_type),
+					)
+				: inArray(invoices.processor_type, query.processor_types);
+			if (processorCondition) {
+				conditions.push(processorCondition);
+			}
+		}
+		if (cursor) {
+			conditions.push(
+				sql`(${invoices.created_at}, ${invoices.id}) < (${cursor.t}, ${cursor.id})`,
+			);
+		}
+
+		const results = await selectListRows({ db: ctx.db })
+			.where(and(...conditions))
+			.orderBy(desc(invoices.created_at), desc(invoices.id))
+			.limit(query.limit + 1);
+
+		const hasMore = results.length > query.limit;
+		const rows = (hasMore ? results.slice(0, query.limit) : results).map(
+			toListRow,
+		);
+
+		const last = rows[rows.length - 1];
+		const nextCursor =
+			hasMore && last
+				? StandardCursor.encode({
+						id: last.invoice.id,
+						t: last.invoice.created_at,
+					})
+				: null;
+
+		return { rows, nextCursor };
+	}
+
+	static async assertOwnership({
+		ctx,
+		id,
+		customerId,
+	}: {
+		ctx: AutumnContext;
+		id: string | string[];
+		customerId?: string;
+	}) {
+		const invoices = await InvoiceService.getMany({
+			db: ctx.db,
+			ids: Array.isArray(id) ? id : [id],
+		});
+
+		if (invoices.length === 0) {
+			throw new RecaseError({
+				message: `Invoices not found`,
+				code: ErrCode.InvalidRequest,
+				statusCode: 400,
+			});
+		}
+
+		invoices.forEach((invoice) => {
+			if (invoice.customer.org.id !== ctx.org.id) {
+				throw new RecaseError({
+					message: `Invoice ${invoice.id} not owned by this organization`,
+					code: ErrCode.InvalidRequest,
+					statusCode: 400,
+				});
+			}
+
+			if (customerId && invoice.customer.id !== customerId) {
+				throw new RecaseError({
+					message: `Invoice ${invoice.id} not owned by this customer`,
+					code: ErrCode.InvalidRequest,
+					statusCode: 400,
+				});
+			}
+		});
+
+		return true;
+	}
+
+	static async list({
+		db,
+		internalCustomerId,
+		internalEntityId,
+		limit = 100,
+	}: {
+		db: DrizzleCli;
+		internalCustomerId: string;
+		internalEntityId?: string;
+		limit?: number;
+	}) {
+		const rows = await db
+			.select({
+				invoice: invoices,
+				resolved_product_ids: resolvedProductIdsForColumn({
+					internalProductIds: invoices.internal_product_ids,
+					productIds: invoices.product_ids,
+				}),
+			})
+			.from(invoices)
+			.where(
+				and(
+					eq(invoices.internal_customer_id, internalCustomerId),
+					internalEntityId
+						? or(
+								eq(invoices.internal_entity_id, internalEntityId),
+								isNull(invoices.internal_entity_id),
+							)
+						: undefined,
+				),
+			)
+			.orderBy(desc(invoices.created_at), desc(invoices.id))
+			.limit(limit);
+
+		return rows.map((row) => ({
+			...row.invoice,
+			resolved_product_ids: row.resolved_product_ids,
+		})) as Invoice[];
+	}
+
+	static async getByStripeId({
+		db,
+		stripeId,
+	}: {
+		db: DrizzleCli;
+		stripeId: string;
+	}) {
+		const invoice = await db.query.invoices.findFirst({
+			where: eq(invoices.stripe_id, stripeId),
+		});
+
+		if (!invoice) {
+			return null;
+		}
+
+		return invoice as Invoice;
+	}
+
+	/** @deprecated */
+	static async createInvoiceFromStripe({
+		db,
+		stripeInvoice,
+		internalCustomerId,
+		internalEntityId,
+		productIds,
+		internalProductIds,
+		status,
+		org,
+		sendRevenueEvent = true,
+		items = [],
+	}: {
+		db: DrizzleCli;
+		stripeInvoice: Stripe.Invoice;
+		internalCustomerId: string;
+		internalEntityId?: string | null;
+		productIds: string[];
+		internalProductIds: string[];
+		status?: InvoiceStatus | null;
+		org: Organization;
+		sendRevenueEvent?: boolean;
+		items?: InvoiceItem[];
+	}) {
+		// Convert product ids to unique product ids
+		const uniqueProductIds = [...new Set(productIds)];
+		const uniqueInternalProductIds = [...new Set(internalProductIds)];
+
+		const atmnTotal = stripeToAtmnAmount({
+			amount: stripeInvoice.total,
+			currency: stripeInvoice.currency,
+		});
+
+		const atmnAmountPaid = stripeToAtmnAmount({
+			amount: stripeInvoice.amount_paid,
+			currency: stripeInvoice.currency,
+		});
+
+		const invoice: Invoice = {
+			id: generateId("inv"),
+			internal_customer_id: internalCustomerId,
+			product_ids: uniqueProductIds,
+			created_at: stripeInvoice.created * 1000,
+			stripe_id: stripeInvoice.id!,
+			processor_type: ProcessorType.Stripe,
+			hosted_invoice_url: stripeInvoice.hosted_invoice_url || null,
+			status: status || (stripeInvoice.status as InvoiceStatus | null),
+			internal_product_ids: uniqueInternalProductIds,
+			internal_entity_id: internalEntityId || null,
+
+			// Stripe stuff
+			total: atmnTotal,
+			amount_paid: atmnAmountPaid,
+			refunded_amount: 0,
+			currency: stripeInvoice.currency,
+			discounts: getInvoiceDiscounts({
+				expandedInvoice: stripeInvoice,
+			}),
+
+			items: items,
+		};
+
+		let newInvoice: Invoice | null = null;
+		try {
+			const results = await db
+				.insert(invoices)
+				.values(invoice as any)
+				.returning();
+			if (results.length === 0) {
+				return null;
+			}
+			newInvoice = results[0] as Invoice;
+		} catch (error: any) {
+			if (error.code === "23505") {
+				console.log("   🧐 Invoice already exists");
+				return;
+			} else {
+				console.error("   ❌ Error inserting Stripe invoice: ", error);
+				throw error;
+			}
+		}
+
+		// Send monthly_revenue event
+		try {
+			if (!stripeInvoice.livemode || !sendRevenueEvent) {
+				return newInvoice;
+			}
+
+			const autumn = new Autumn();
+			await autumn.track({
+				customerId: org.id,
+				eventName: "revenue",
+				value: atmnTotal,
+			});
+			console.log("   ✅ Sent revenue event");
+		} catch (error) {
+			console.log("Failed to send revenue event", error);
+		}
+
+		return newInvoice;
+	}
+
+	static async update({
+		db,
+		query,
+		updates,
+	}: {
+		db: DrizzleCli;
+		query: {
+			id?: string;
+			stripeId?: string;
+		};
+		updates: Partial<InsertInvoice>;
+	}) {
+		const results = await db
+			.update(invoices)
+			.set(updates)
+			.where(
+				and(
+					query.id ? eq(invoices.id, query.id) : undefined,
+					query.stripeId ? eq(invoices.stripe_id, query.stripeId) : undefined,
+				),
+			)
+			.returning();
+
+		if (results.length === 0) return null;
+
+		return results[0] as Invoice;
+	}
+
+	static async upsert({
+		db,
+		invoice,
+	}: {
+		db: DrizzleCli;
+		invoice: InsertInvoice;
+	}) {
+		const result = await db
+			.insert(invoices)
+			.values(invoice)
+			.onConflictDoUpdate({
+				target: invoices.stripe_id,
+				set: {
+					status: invoice.status,
+					hosted_invoice_url: invoice.hosted_invoice_url,
+					discounts: invoice.discounts,
+					total: invoice.total,
+					amount_paid: invoice.amount_paid,
+					product_ids: invoice.product_ids?.length
+						? sql`CASE
+							WHEN ${invoices.product_ids} IS NULL OR cardinality(${invoices.product_ids}) = 0
+							THEN excluded.product_ids
+							ELSE ${invoices.product_ids}
+						END`
+						: undefined,
+					internal_product_ids: invoice.internal_product_ids?.length
+						? sql`CASE
+							WHEN ${invoices.internal_product_ids} IS NULL OR cardinality(${invoices.internal_product_ids}) = 0
+							THEN excluded.internal_product_ids
+							ELSE ${invoices.internal_product_ids}
+						END`
+						: undefined,
+				},
+			})
+			.returning();
+
+		if (result.length === 0) {
+			return undefined;
+		}
+
+		return result[0] as Invoice;
+	}
+}
