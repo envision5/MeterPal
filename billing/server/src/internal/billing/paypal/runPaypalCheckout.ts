@@ -33,9 +33,21 @@ import {
 	intervalToPaypalUnit,
 } from "@/external/paypal/subscriptions.js";
 import type { AppEnv } from "@autumn/shared";
+import { isStripeConnected } from "@/internal/orgs/orgUtils.js";
 
 export function isPaypalConfigured(): boolean {
 	return !!process.env.PAYPAL_CLIENT_ID && !!process.env.PAYPAL_CLIENT_SECRET;
+}
+
+/**
+ * True when this org bills through PayPal end-to-end (PayPal configured,
+ * no Stripe connected) — Stripe-coupled plumbing should skip itself.
+ */
+export function isPaypalNativeOrg(ctx: {
+	org: Organization;
+	env: AppEnv;
+}): boolean {
+	return isPaypalConfigured() && !isStripeConnected({ org: ctx.org, env: ctx.env });
 }
 
 /**

@@ -242,6 +242,9 @@ export const initStripeResourcesForBillingPlan = async ({
 	);
 	await applyStripeReuseFromVariantFamilies({ ctx, products: targetProducts });
 
+	// No Stripe account (PayPal-native orgs included) — resources are created
+	// lazily once one is connected.  Mirrors initStripeResourcesForProducts.
+	if (!isStripeConnected({ org, env })) return;
 	if (orgDisableStripeWrites({ ctx })) return;
 
 	await findReusableStripePrice({

@@ -1,4 +1,5 @@
 import {
+	type BillingResult,
 	type AttachBillingContext,
 	type AttachParamsV1,
 	type BillingContextOverride,
@@ -6,6 +7,10 @@ import {
 } from "@autumn/shared";
 import { ms } from "@shared/utils/common/unixUtils";
 import { checkoutSessionLock } from "@/external/redis/actions/checkoutSessionLock/checkoutSessionLock.js";
+import {
+	isPaypalNativeOrg,
+	runPaypalCheckout,
+} from "@/internal/billing/paypal/runPaypalCheckout.js";
 import type { AutumnContext } from "@/honoUtils/HonoEnv";
 import { computeAttachPlan } from "@/internal/billing/v2/actions/attach/compute/computeAttachPlan";
 import { handleAttachComputeErrors } from "@/internal/billing/v2/actions/attach/errors/handleAttachComputeErrors";
@@ -92,6 +97,47 @@ export async function attach({
 	});
 
 	// 3. Evaluate Stripe billing plan (handles checkout mode internally)
+	// 5b. PayPal-native orgs: the buyer approves on PayPal, money lands via
+	// /webhooks/paypal, and the wallet is credited — no Stripe client involved.
+	// The approval URL rides the same response field the Stripe checkout
+	// session would (payment_url via stripeCheckoutSession.url).
+	if (isPaypalNativeOrg(ctx)) {
+		preserveSubjectCache({ ctx });
+		const products = billingContext.attachProduct
+			? [billingContext.attachProduct]
+			: [];
+		const checkoutUrl = await runPaypalCheckout({
+			attachParams: {
+				org: ctx.org,
+				customer: billingContext.fullCustomer,
+				products,
+				prices: products.flatMap((p) => p.prices),
+				successUrl: params.success_url,
+			},
+			db: ctx.db,
+			env: ctx.env,
+		});
+		// Early exit: billingPlan/Stripe evaluation intentionally skipped —
+		// the billingResultToResponse mapper only needs the checkout URL.
+		return {
+			billingContext,
+			billingPlan: undefined,
+			billingResult: {
+				stripe: {
+					deferred: true,
+					stripeCheckoutSession: {
+						id: `paypal-${crypto.randomUUID()}`,
+						url: checkoutUrl,
+					},
+				},
+			},
+		} as unknown as {
+			billingContext: typeof billingContext;
+			billingPlan: typeof billingPlan;
+			billingResult: BillingResult;
+		};
+	}
+
 	const stripeBillingPlan = await evaluateStripeBillingPlan({
 		ctx,
 		billingContext,

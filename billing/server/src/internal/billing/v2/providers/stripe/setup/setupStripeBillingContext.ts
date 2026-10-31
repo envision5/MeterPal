@@ -13,6 +13,7 @@ import { all } from "better-all";
 import type Stripe from "stripe";
 import { stripeSubscriptionToScheduleId } from "@/external/stripe/subscriptions/utils/convertStripeSubscription";
 import type { AutumnContext } from "@/honoUtils/HonoEnv";
+import { isPaypalNativeOrg } from "@/internal/billing/paypal/runPaypalCheckout.js";
 import { isStripeConnected } from "@/internal/orgs/orgUtils";
 import { fetchStripeCustomerForBilling } from "./fetchStripeCustomerForBilling";
 import { fetchStripeDiscountsForBilling } from "./fetchStripeDiscountsForBilling";
@@ -63,6 +64,7 @@ export const setupStripeBillingContext = async ({
 
 	if (
 		skipBillingFetching ||
+		isPaypalNativeOrg(ctx) ||
 		(params &&
 			"no_billing_changes" in params &&
 			params.no_billing_changes === true &&

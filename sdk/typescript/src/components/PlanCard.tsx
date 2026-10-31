@@ -18,7 +18,11 @@ export function PlanCard() {
     setError(null);
     try {
       const result: any = await attach({ planId });
-      const checkoutUrl = result?.checkout_url ?? result?.url;
+      const checkoutUrl =
+			result?.paymentUrl ??
+			result?.payment_url ??
+			result?.checkout_url ??
+			result?.url;
       if (checkoutUrl) {
         window.location.href = checkoutUrl;
       }
