@@ -1,8 +1,7 @@
 "use client";
 
 import { useCustomer } from "autumn-js/react";
-import { cn } from "../lib/utils";
-import { formatCredits } from "../lib/utils";
+import { cn, findCustomerBalance, formatCredits } from "../lib/utils";
 
 interface CreditsBadgeProps {
   featureId?: string;
@@ -21,9 +20,22 @@ export function CreditsBadge({
 
   if (isLoading) return <div className="h-6 w-32 animate-pulse rounded-full bg-muted" />;
 
-  const balance = (customer as any)?.balances?.find((b: any) => b.feature_id === featureId);
+  const balance = findCustomerBalance(customer, featureId);
   const remaining = balance?.remaining ?? 0;
-  const max = balance?.max ?? 0;
+  const max = balance?.granted ?? 0;
+  if (balance?.unlimited) {
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        data-testid="credits-badge"
+        className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300"
+      >
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+        <span>unlimited credits</span>
+      </div>
+    );
+  }
   const pct = max > 0 ? remaining / max : 0;
 
   const tone =

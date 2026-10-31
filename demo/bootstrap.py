@@ -232,7 +232,7 @@ def main() -> None:
             resp = api_call(c, "POST", "/v1/plans", json={
                 "id": pack_id,
                 "name": f"{credits:,} credits",
-                "is_add_on": True,
+                "add_on": True,
                 "create_in_stripe": False,
                 "items": [{
                     "feature_id": FEATURE_ID,

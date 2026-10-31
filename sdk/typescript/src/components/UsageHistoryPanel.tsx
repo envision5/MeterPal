@@ -37,13 +37,14 @@ export function UsageHistoryPanel({
   });
 
   // ListEventsResponse = { list: Event[], nextCursor }
-  const events: any[] = (data as any)?.list ?? [];
+  const events: any[] = (data as any)?.list ?? (data as any)?.events ?? [];
 
   // "By model" aggregates computed client-side from the same page of events —
   // one request, no separate aggregation call.
   const byModel = new Map<string, { credits: number; count: number }>();
   for (const evt of events) {
-    const model = evt.properties?.model_id ?? evt.properties?.model ?? "other";
+    const model =
+      evt.properties?.model_id ?? evt.properties?.model ?? "other";
     const entry = byModel.get(model) ?? { credits: 0, count: 0 };
     entry.credits += Number(evt.value ?? 0);
     entry.count += 1;

@@ -30,8 +30,8 @@ export function TopUpModal({
 
   useEffect(() => {
     const handler = () => setOpen(true);
-    document.addEventListener("open-topup-modal", handler as EventListener);
-    return () => document.removeEventListener("open-topup-modal", handler as EventListener);
+    window.addEventListener("open-topup-modal", handler as EventListener);
+    return () => window.removeEventListener("open-topup-modal", handler as EventListener);
   }, []);
 
   async function onTopUp(productId: string) {

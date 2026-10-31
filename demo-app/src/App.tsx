@@ -5,6 +5,7 @@ import {
 	TopUpModal,
 	UsageHistoryPanel,
 } from "@meterpal/sdk";
+import { AutumnProvider } from "autumn-js/react";
 import { useState } from "react";
 
 type Message = { role: "user" | "assistant"; content: string };
@@ -13,6 +14,28 @@ const CUSTOMERS = ["demo-customer", "demo-customer-2"];
 
 export default function App() {
 	const [customerId, setCustomerId] = useState(CUSTOMERS[0]);
+
+	return (
+		// Keyed per customer: identity is resolved server-side from the
+		// x-meterpal-customer header; remounting refreshes every billing query.
+		<AutumnProvider
+			key={customerId}
+			backendUrl=""
+			headers={{ "x-meterpal-customer": customerId }}
+		>
+			<Dashboard customerId={customerId} onCustomerChange={setCustomerId} />
+		</AutumnProvider>
+	);
+}
+
+function Dashboard({
+	customerId,
+	onCustomerChange,
+}: {
+	customerId: string;
+	onCustomerChange: (id: string) => void;
+}) {
+	const setCustomerId = onCustomerChange;
 	const [messages, setMessages] = useState<Message[]>([]);
 	const [input, setInput] = useState("");
 	const [busy, setBusy] = useState(false);

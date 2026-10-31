@@ -12,11 +12,7 @@ const queryClient = new QueryClient({
 ReactDOM.createRoot(document.getElementById("root")!).render(
 	<React.StrictMode>
 		<QueryClientProvider client={queryClient}>
-			{/* Identity is resolved server-side from the x-meterpal-customer
-			    header the demo app sends (see server.ts /api/autumn mount). */}
-			<AutumnProvider backendUrl="">
-				<App />
-			</AutumnProvider>
+			<App />
 		</QueryClientProvider>
 	</React.StrictMode>,
 );

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useCustomer } from "autumn-js/react";
 import { AlertTriangle, X } from "lucide-react";
-import { cn, formatCredits } from "../lib/utils";
+import { cn, findCustomerBalance, formatCredits } from "../lib/utils";
 
 interface LowBalanceBannerProps {
   featureId?: string;
@@ -22,18 +22,18 @@ export function LowBalanceBanner({
 
   useEffect(() => {
     // Re-show banner when balance changes significantly (re-mount via key change)
-    const bal = (customer as any)?.balances?.find((b: any) => b.feature_id === featureId);
-    if (bal && bal.remaining / Math.max(bal.max, 1) > thresholds.warn) {
+    const bal = findCustomerBalance(customer, featureId);
+    if (bal && !bal.unlimited && bal.remaining / Math.max(bal.granted, 1) > thresholds.warn) {
       setDismissed(false);
     }
   }, [customer, featureId, thresholds.warn]);
 
   if (dismissed) return null;
 
-  const balance = (customer as any)?.balances?.find((b: any) => b.feature_id === featureId);
-  if (!balance || balance.max === 0) return null;
+  const balance = findCustomerBalance(customer, featureId);
+  if (!balance || balance.unlimited || balance.granted === 0) return null;
 
-  const pct = balance.remaining / balance.max;
+  const pct = balance.remaining / balance.granted;
   if (pct > thresholds.warn) return null;
 
   const level = pct === 0 ? "critical" : pct < thresholds.danger ? "danger" : "warning";
