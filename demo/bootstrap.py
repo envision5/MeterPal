@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import subprocess
 import sys
 import time
@@ -32,6 +33,56 @@ sys.path.insert(0, str(ROOT / "gateway"))
 AUTUMN = "http://localhost:8080"
 PG_CONTAINER = "meterpal-postgres-billing"
 PG_USER, PG_DB = "autumn", "autumn"
+
+PAYPAL_EVENTS = [
+    "BILLING.SUBSCRIPTION.ACTIVATED",
+    "BILLING.SUBSCRIPTION.CANCELLED",
+    "BILLING.SUBSCRIPTION.SUSPENDED",
+    "BILLING.SUBSCRIPTION.EXPIRED",
+    "BILLING.SUBSCRIPTION.PAYMENT.FAILED",
+    "PAYMENT.SALE.COMPLETED",
+    "PAYMENT.CAPTURE.COMPLETED",
+    "PAYMENT.CAPTURE.REFUNDED",
+    "CHECKOUT.ORDER.APPROVED",
+    "INVOICING.INVOICE.PAID",
+]
+
+
+def register_paypal_webhook() -> None:
+    """Create the PayPal webhook subscription pointing at PAYPAL_WEBHOOK_URL.
+
+    Avoids dashboard clicking during local sandbox testing.  Idempotent:
+    reuses an existing webhook pointed at the same URL.
+    """
+    base = (
+        "https://api-m.paypal.com"
+        if os.environ.get("PAYPAL_ENV") == "live"
+        else "https://api-m.sandbox.paypal.com"
+    )
+    auth = (os.environ["PAYPAL_CLIENT_ID"], os.environ["PAYPAL_CLIENT_SECRET"])
+    url = os.environ["PAYPAL_WEBHOOK_URL"]
+    with httpx.Client(base_url=base, auth=auth, timeout=20) as c:
+        token = c.post(
+            "/v1/oauth2/token",
+            data={"grant_type": "client_credentials"},
+        ).json()["access_token"]
+        c.headers["Authorization"] = f"Bearer {token}"
+        existing = c.get("/v1/notifications/webhooks").json().get("webhooks", [])
+        match = next((w for w in existing if w.get("url") == url), None)
+        if match:
+            ok(f"webhook already registered -> {url} (id {match['id']})")
+            print(f"  set PAYPAL_WEBHOOK_ID={match['id']} in billing/server/.env")
+            return
+        resp = c.post(
+            "/v1/notifications/webhooks",
+            json={"url": url, "event_types": [{"name": n} for n in PAYPAL_EVENTS]},
+        )
+        if resp.status_code >= 300:
+            print(f"  ! webhook registration failed: {resp.status_code} {resp.text[:300]}")
+            return
+        webhook_id = resp.json()["id"]
+        ok(f"webhook registered -> {url} (id {webhook_id})")
+        print(f"  set PAYPAL_WEBHOOK_ID={webhook_id} in billing/server/.env")
 
 ORG_ID, ORG_SLUG = "org_demo", "demo"
 KEY_ID = "key_demo_bridge"
@@ -146,6 +197,51 @@ def main() -> None:
                 sys.exit(f"  plan create failed: {resp.status_code} {resp.text[:400]}")
             ok(f"plan 'demo-starter': {STARTING_BALANCE:.2f} credits/month, free")
 
+        step("3b. Create paid plan + credit packs (PayPal checkout catalog)")
+        if c.get("/v1/plans/pro").status_code != 200:
+            resp = api_call(c, "POST", "/v1/plans", json={
+                "id": "pro",
+                "name": "MeterPal Pro",
+                "create_in_stripe": False,
+                "items": [{
+                    "feature_id": FEATURE_ID,
+                    "included": 100,
+                    "price": 20,
+                    "interval": "month",
+                    "reset": {"interval": "month"},
+                }],
+            })
+            if resp.status_code >= 300:
+                print(f"  ! pro plan create failed: {resp.status_code} {resp.text[:300]}")
+            else:
+                ok("plan 'pro': 100 credits/month at $20 (PayPal subscription on checkout)")
+        else:
+            ok("plan 'pro' already exists")
+
+        for pack_id, credits, price in [
+            ("topup_10", 10, 10),
+            ("topup_50", 50, 50),
+            ("topup_200", 200, 200),
+        ]:
+            if c.get(f"/v1/plans/{pack_id}").status_code == 200:
+                ok(f"credit pack '{pack_id}' already exists")
+                continue
+            resp = api_call(c, "POST", "/v1/plans", json={
+                "id": pack_id,
+                "name": f"{credits:,} credits",
+                "is_add_on": True,
+                "create_in_stripe": False,
+                "items": [{
+                    "feature_id": FEATURE_ID,
+                    "included": credits,
+                    "price": price,
+                }],
+            })
+            if resp.status_code >= 300:
+                print(f"  ! credit pack '{pack_id}' create failed: {resp.status_code} {resp.text[:300]}")
+            else:
+                ok(f"credit pack '{pack_id}': {credits} credits for ${price} (PayPal order on checkout)")
+
         step("4. Create demo customer (plan auto-attaches, granting credits)")
         resp = api_call(c, "DELETE", f"/v1/customers/{CUSTOMER_ID}")
         resp = api_call(c, "POST", "/v1/customers", json={
@@ -156,6 +252,24 @@ def main() -> None:
         if resp.status_code >= 300:
             sys.exit(f"  customer create failed: {resp.status_code} {resp.text[:400]}")
         ok(f"customer '{CUSTOMER_ID}' created and auto-attached to 'demo-starter'")
+
+        step("4b. Create a second customer (for the demo-app switcher + agent demos)")
+        resp = api_call(c, "DELETE", "/v1/customers/demo-customer-2")
+        resp = api_call(c, "POST", "/v1/customers", json={
+            "id": "demo-customer-2",
+            "name": "Grace Hopper",
+            "email": "grace@example.com",
+        })
+        if resp.status_code >= 300:
+            print(f"  ! customer-2 create failed: {resp.status_code} {resp.text[:300]}")
+        else:
+            ok("customer 'demo-customer-2' created (auto-attached to 'demo-starter')")
+
+        step("4c. Register the PayPal webhook (sandbox) if keys are configured")
+        if os.environ.get("PAYPAL_CLIENT_ID") and os.environ.get("PAYPAL_WEBHOOK_URL"):
+            register_paypal_webhook()
+        else:
+            ok("skipped (set PAYPAL_CLIENT_ID + PAYPAL_WEBHOOK_URL to auto-register)")
 
         step("5. Verify admission check")
         resp = api_call(c, "POST", "/v1/check", json={

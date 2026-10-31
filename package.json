@@ -1,0 +1,12 @@
+{
+	"name": "meterpal",
+	"private": true,
+	"version": "0.1.0",
+	"description": "MeterPal — PayPal-native AI usage billing SDK (workspace root)",
+	"workspaces": ["agent", "demo-app", "sdk/typescript"],
+	"scripts": {
+		"test:sdk": "cd sdk/typescript && bun run test && cd ../../sdk/python && python -m pytest tests -q",
+		"test:gateway": "cd gateway && python -m pytest tests/test_meterpal_billing.py -q",
+		"test:billing": "cd billing/server && bun test ./tests/paypal_webhook.test.ts ./tests/paypal_subscriptions.test.ts ./tests/paypal_invoicing.test.ts"
+	}
+}
