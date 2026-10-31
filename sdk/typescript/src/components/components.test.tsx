@@ -8,7 +8,7 @@ import { describe, it, expect } from "vitest";
 
 describe("public exports", () => {
   it("re-exports the six components", async () => {
-    const mod = await import("./index");
+    const mod = await import("../index");
     expect(typeof mod.CreditsBadge).toBe("function");
     expect(typeof mod.LowBalanceBanner).toBe("function");
     expect(typeof mod.PlanCard).toBe("function");
@@ -16,5 +16,6 @@ describe("public exports", () => {
     expect(typeof mod.UsageHistoryPanel).toBe("function");
     expect(typeof mod.CostTooltip).toBe("function");
     expect(typeof mod.createBillingClient).toBe("function");
+		expect(typeof mod.createMeterPalClient).toBe("function");
   });
 });

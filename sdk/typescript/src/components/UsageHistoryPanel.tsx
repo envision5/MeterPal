@@ -1,35 +1,57 @@
 "use client";
 
-import { useAggregateEvents, useListEvents } from "autumn-js/react";
+import { useListEvents } from "autumn-js/react";
 
 interface UsageHistoryPanelProps {
-  customerId: string;
   featureId?: string;
-  /** First day of the billing window, default = start of current month. */
+  /** Start of the usage window. Defaults to the first day of the current month. */
   rangeStart?: Date;
-  /** Last day of the billing window, default = end of current month. */
+  /** End of the usage window. Defaults to now. */
   rangeEnd?: Date;
+  /** Max events to fetch. Default 50. */
+  limit?: number;
 }
 
 function startOfMonth(d = new Date()) {
   return new Date(d.getFullYear(), d.getMonth(), 1);
 }
-function endOfMonth(d = new Date()) {
-  return new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
-}
 
+/**
+ * Usage history for the current customer (identity resolved server-side by
+ * the autumn-js backend adapter): per-model credit totals for the window,
+ * plus the most recent metered requests.
+ */
 export function UsageHistoryPanel({
-  customerId,
   featureId,
   rangeStart = startOfMonth(),
-  rangeEnd = endOfMonth(),
+  rangeEnd = new Date(),
+  limit = 50,
 }: UsageHistoryPanelProps) {
-  const range = { start: rangeStart.toISOString(), end: rangeEnd.toISOString() };
-  const { data: aggregates } = useAggregateEvents({ customerId, range });
-  const { data: events } = useListEvents({ customerId, range, limit: 50 });
+  const { data } = useListEvents({
+    ...(featureId ? { featureId } : {}),
+    limit,
+    customRange: {
+      start: rangeStart.getTime(),
+      end: rangeEnd.getTime(),
+    },
+  });
 
-  const eventsArr = (events as any[]) ?? [];
-  const aggregatesArr = (aggregates as any[]) ?? [];
+  // ListEventsResponse = { list: Event[], nextCursor }
+  const events: any[] = (data as any)?.list ?? [];
+
+  // "By model" aggregates computed client-side from the same page of events —
+  // one request, no separate aggregation call.
+  const byModel = new Map<string, { credits: number; count: number }>();
+  for (const evt of events) {
+    const model = evt.properties?.model_id ?? evt.properties?.model ?? "other";
+    const entry = byModel.get(model) ?? { credits: 0, count: 0 };
+    entry.credits += Number(evt.value ?? 0);
+    entry.count += 1;
+    byModel.set(model, entry);
+  }
+  const modelRows = [...byModel.entries()].sort(
+    (a, b) => b[1].credits - a[1].credits,
+  );
 
   return (
     <div className="grid gap-4" data-testid="usage-history">
@@ -39,22 +61,24 @@ export function UsageHistoryPanel({
           <thead>
             <tr className="text-left text-muted-foreground">
               <th className="font-normal pb-2">Model</th>
+              <th className="font-normal pb-2 text-right">Requests</th>
               <th className="font-normal pb-2 text-right">Credits</th>
             </tr>
           </thead>
           <tbody>
-            {aggregatesArr.length === 0 && (
+            {modelRows.length === 0 && (
               <tr>
-                <td colSpan={2} className="py-3 text-muted-foreground">
+                <td colSpan={3} className="py-3 text-muted-foreground">
                   No usage yet this month.
                 </td>
               </tr>
             )}
-            {aggregatesArr.map((row) => (
-              <tr key={row.feature_id} className="border-t border-border">
-                <td className="py-2">{row.feature_id}</td>
+            {modelRows.map(([model, agg]) => (
+              <tr key={model} className="border-t border-border">
+                <td className="py-2">{model}</td>
+                <td className="py-2 text-right tabular-nums">{agg.count}</td>
                 <td className="py-2 text-right tabular-nums">
-                  {Number(row.value).toFixed(2)}
+                  {agg.credits.toFixed(2)}
                 </td>
               </tr>
             ))}
@@ -74,24 +98,27 @@ export function UsageHistoryPanel({
             </tr>
           </thead>
           <tbody>
-            {eventsArr.length === 0 && (
+            {events.length === 0 && (
               <tr>
                 <td colSpan={4} className="py-3 text-muted-foreground">
                   No requests yet.
                 </td>
               </tr>
             )}
-            {eventsArr.map((evt) => (
+            {events.map((evt) => (
               <tr key={evt.id} className="border-t border-border">
                 <td className="py-2">
                   {new Date(evt.timestamp).toLocaleString()}
                 </td>
-                <td className="py-2">{evt.properties?.model_id ?? "—"}</td>
-                <td className="py-2 text-right tabular-nums">
-                  {evt.properties?.input_tokens ?? 0} / {evt.properties?.output_tokens ?? 0}
+                <td className="py-2">
+                  {evt.properties?.model_id ?? evt.properties?.model ?? "—"}
                 </td>
                 <td className="py-2 text-right tabular-nums">
-                  {Number(evt.value).toFixed(2)}
+                  {evt.properties?.input_tokens ?? 0} /{" "}
+                  {evt.properties?.output_tokens ?? 0}
+                </td>
+                <td className="py-2 text-right tabular-nums">
+                  {Number(evt.value ?? 0).toFixed(2)}
                 </td>
               </tr>
             ))}

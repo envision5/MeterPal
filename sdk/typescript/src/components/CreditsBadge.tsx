@@ -2,22 +2,20 @@
 
 import { useCustomer } from "autumn-js/react";
 import { cn } from "../lib/utils";
-import { formatCredits } from "../lib/format";
+import { formatCredits } from "../lib/utils";
 
 interface CreditsBadgeProps {
-  customerId: string;
   featureId?: string;
   /** Refresh interval in ms.  Default 5000 (5s). */
   pollIntervalMs?: number;
 }
 
 export function CreditsBadge({
-  customerId,
   featureId = "ai_tokens",
   pollIntervalMs = 5_000,
 }: CreditsBadgeProps) {
+  // Identity is resolved server-side by the autumn-js backend adapter.
   const { data: customer, isLoading } = useCustomer({
-    customerId,
     queryOptions: { refetchInterval: pollIntervalMs },
   });
 

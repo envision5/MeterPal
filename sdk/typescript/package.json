@@ -1,7 +1,7 @@
 {
-  "name": "@autumn/billing-ui",
+  "name": "@meterpal/sdk",
   "version": "0.1.0",
-  "description": "Customer-facing account/credits UI for the LiteLLM + Autumn billing stack. Drop into any React app.",
+  "description": "MeterPal \u2014 PayPal-native AI usage billing SDK for React apps. Drop-in components + client for credits, plans, top-ups and usage history.",
   "private": true,
   "type": "module",
   "main": "./dist/index.js",
@@ -21,8 +21,7 @@
   "peerDependencies": {
     "react": "^18.0.0 || ^19.0.0",
     "react-dom": "^18.0.0 || ^19.0.0",
-    "@tanstack/react-query": "^5.0.0",
-    "autumn-js": "workspace:*"
+    "@tanstack/react-query": "^5.0.0"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.2",
@@ -31,13 +30,14 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.460.0",
-    "tailwind-merge": "^2.5.0"
+    "tailwind-merge": "^2.5.0",
+    "autumn-js": "^1.2.17"
   },
   "devDependencies": {
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.0",
-    "autumn-js": "workspace:*",
+    "autumn-js": "^1.2.17",
     "happy-dom": "^15.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

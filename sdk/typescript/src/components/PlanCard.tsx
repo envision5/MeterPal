@@ -4,12 +4,9 @@ import { useState } from "react";
 import { useCustomer, useListPlans } from "autumn-js/react";
 import { Check } from "lucide-react";
 
-interface PlanCardProps {
-  customerId: string;
-}
-
-export function PlanCard({ customerId }: PlanCardProps) {
-  const { data: customer, attach } = useCustomer({ customerId });
+export function PlanCard() {
+  // Identity is resolved server-side by the autumn-js backend adapter.
+  const { data: customer, attach } = useCustomer();
   const { data: plans } = useListPlans();
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -20,9 +17,10 @@ export function PlanCard({ customerId }: PlanCardProps) {
     setPendingId(planId);
     setError(null);
     try {
-      const result: any = await attach({ productId: planId });
-      if (result?.checkout_url) {
-        window.location.href = result.checkout_url;
+      const result: any = await attach({ planId });
+      const checkoutUrl = result?.checkout_url ?? result?.url;
+      if (checkoutUrl) {
+        window.location.href = checkoutUrl;
       }
     } catch (e: any) {
       setError(e?.message ?? "Failed to switch plan");
@@ -35,7 +33,8 @@ export function PlanCard({ customerId }: PlanCardProps) {
     <div className="grid gap-4 md:grid-cols-3" data-testid="plan-card-grid">
       {(plans as any[])?.map((plan: any) => {
         const isCurrent = plan.id === currentProductId;
-        const priceUsd = (plan.prices?.[0]?.amount ?? 0) / 100;
+        // Autumn plan prices are in major units (dollars).
+        const priceUsd = plan.prices?.[0]?.amount ?? 0;
         return (
           <article
             key={plan.id}

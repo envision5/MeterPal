@@ -5,8 +5,7 @@ import { useCustomer } from "autumn-js/react";
 import { X } from "lucide-react";
 
 interface TopUpModalProps {
-  customerId: string;
-  /** Product ids, ordered small → large.  Configure in Autumn dashboard. */
+  /** Top-up product ids, ordered small → large.  Configure in your MeterPal catalog. */
   productIds?: string[];
   /** Human-readable labels for each product (matched by index). */
   labels?: string[];
@@ -19,12 +18,12 @@ const DEFAULT_LABELS = ["1,000 credits", "5,000 credits", "25,000 credits"];
 const DEFAULT_PRICES = [10, 45, 200];
 
 export function TopUpModal({
-  customerId,
   productIds = DEFAULT_PRODUCTS,
   labels = DEFAULT_LABELS,
   prices = DEFAULT_PRICES,
 }: TopUpModalProps) {
-  const { attach } = useCustomer({ customerId });
+  // Identity is resolved server-side by the autumn-js backend adapter.
+  const { attach } = useCustomer();
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -39,9 +38,10 @@ export function TopUpModal({
     setPending(productId);
     setError(null);
     try {
-      const result: any = await attach({ productId });
-      if (result?.checkout_url) {
-        window.location.href = result.checkout_url;
+      const result: any = await attach({ planId: productId });
+      const checkoutUrl = result?.checkout_url ?? result?.url;
+      if (checkoutUrl) {
+        window.location.href = checkoutUrl;
       } else {
         setOpen(false);
       }
@@ -69,7 +69,7 @@ export function TopUpModal({
               Add credits
             </h2>
             <p className="text-sm text-muted-foreground">
-              Choose a credit pack. Charged to your saved payment method.
+              Choose a credit pack — you'll approve the payment with PayPal.
             </p>
           </div>
           <button

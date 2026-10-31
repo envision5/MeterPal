@@ -6,19 +6,18 @@ import { AlertTriangle, X } from "lucide-react";
 import { cn, formatCredits } from "../lib/utils";
 
 interface LowBalanceBannerProps {
-  customerId: string;
   featureId?: string;
   thresholds?: { warn: number; danger: number };
   onAddCredits?: () => void;
 }
 
 export function LowBalanceBanner({
-  customerId,
   featureId = "ai_tokens",
   thresholds = { warn: 0.2, danger: 0.1 },
   onAddCredits,
 }: LowBalanceBannerProps) {
-  const { data: customer } = useCustomer({ customerId, queryOptions: { refetchInterval: 5_000 } });
+  // Identity is resolved server-side by the autumn-js backend adapter.
+  const { data: customer } = useCustomer({ queryOptions: { refetchInterval: 5_000 } });
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
