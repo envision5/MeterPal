@@ -131,6 +131,16 @@ app.all(
 	}),
 );
 
+// ---- paypal poll proxy (popup checkout finalize) ----
+app.get("/api/paypal/poll", async (c) => {
+	const customerId = c.req.header("x-meterpal-customer") ?? DEFAULT_CUSTOMER;
+	const base = process.env.METERPAL_API_URL ?? "http://localhost:8080";
+	const res = await fetch(
+		`${base}/paypal/poll?customer_id=${encodeURIComponent(customerId)}`,
+	);
+	return c.json(await res.json());
+});
+
 // ---- metered chat proxy ----
 app.post("/api/chat", async (c) => {
 	const { prompt } = await c.req.json<{ prompt?: string }>();

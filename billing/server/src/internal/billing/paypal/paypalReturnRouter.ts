@@ -14,7 +14,10 @@
 // Env: METERPAL_CHECKOUT_RETURN_URL (app landing page after capture,
 //      default http://localhost:5173)
 
+import { and, desc, eq } from "drizzle-orm";
 import { Hono } from "hono";
+import { customers, paypalOrderIntents } from "@autumn/shared";
+import { db } from "@/db/initDrizzle.js";
 import { logger } from "@/external/logtail/logtailUtils.js";
 import { paypalFetch } from "@/external/paypal/client.js";
 import { captureOrder } from "@/external/paypal/orders.js";
@@ -23,9 +26,118 @@ import {
 	resolveCustomer,
 	stampPayerId,
 } from "@/external/paypal/runPaypalWebhookHandlers.js";
+import { paypalOrderIntents } from "@autumn/shared";
 import type { HonoEnv } from "@/honoUtils/HonoEnv.js";
 
 export const paypalReturnRouter = new Hono<HonoEnv>();
+
+/**
+ * Poll/finalize endpoint for popup checkouts.  The host app calls this while
+ * the PayPal popup is open; when the buyer has approved (or the webhook
+ * already captured), the order is captured server-side and the wallet is
+ * credited — no browser redirect from PayPal required, which sandbox hermes
+ * refuses to do for localhost return URLs.
+ *
+ * Response: { status: "captured" | "pending" | "none" | "error", credits? }
+ */
+paypalReturnRouter.get("/poll", async (c) => {
+	const customerId = c.req.query("customer_id") ?? "";
+	if (!customerId) return c.json({ status: "none" });
+
+	const [intent] = await db
+		.select()
+		.from(paypalOrderIntents)
+		.where(
+			and(
+				eq(paypalOrderIntents.customer_id, customerId),
+				eq(paypalOrderIntents.status, "pending"),
+			),
+		)
+		.orderBy(desc(paypalOrderIntents.id))
+		.limit(1);
+
+	if (!intent) return c.json({ status: "none" });
+
+	try {
+		const order = await paypalFetch<Record<string, any>>(
+			`/v2/checkout/orders/${intent.order_id}`,
+			{ method: "GET" },
+		);
+
+		let captureResource: Record<string, any> | undefined =
+			order?.purchase_units?.[0]?.payments?.captures?.[0];
+
+		if (order?.status === "APPROVED") {
+			const capture = (await captureOrder(intent.order_id)) as Record<string, any>;
+			captureResource = capture?.purchase_units?.[0]?.payments?.captures?.[0];
+		}
+
+		if (!captureResource || captureResource.status !== "COMPLETED") {
+			return c.json({ status: "pending", order_status: order?.status });
+		}
+
+		const amount = parseFloat(captureResource.amount?.value ?? "0");
+		const currency = (captureResource.amount?.currency_code ?? "USD").toUpperCase();
+		const captureId = captureResource.id;
+		if (!captureId || !amount || currency !== "USD") {
+			logger.error({
+				msg: "paypal poll: unsupported capture",
+				orderId: intent.order_id,
+				captureId,
+				amount,
+				currency,
+			});
+			return c.json({ status: "error", reason: "unsupported_capture" });
+		}
+
+		const [cust] = await db
+			.select()
+			.from(customers)
+			.where(eq(customers.id, intent.customer_id))
+			.limit(1);
+		if (!cust?.id) {
+			logger.error({
+				msg: "paypal poll: customer not found",
+				orderId: intent.order_id,
+				customerId: intent.customer_id,
+			});
+			return c.json({ status: "error", reason: "no_customer" });
+		}
+
+		await grantWalletCredits({
+			customer: cust,
+			amountUsd: amount,
+			idempotencyKey: `paypal-capture:${captureId}`,
+			eventName: "wallet_topup",
+			metadata: {
+				capture_id: captureId,
+				order_id: intent.order_id,
+				via: "poll_finalize",
+			},
+		});
+
+		await db
+			.update(paypalOrderIntents)
+			.set({ status: "captured" })
+			.where(eq(paypalOrderIntents.id, intent.id));
+
+		logger.info({
+			msg: "paypal poll: captured and credited",
+			orderId: intent.order_id,
+			captureId,
+			amount,
+			customerId: cust.id,
+		});
+		return c.json({ status: "captured", credits: amount });
+	} catch (err) {
+		logger.error({
+			msg: "paypal poll: failed",
+			orderId: intent.order_id,
+			error: String(err),
+		});
+		return c.json({ status: "error", reason: String(err).slice(0, 200) });
+	}
+});
 
 paypalReturnRouter.get("/return", async (c) => {
 	const appUrl =

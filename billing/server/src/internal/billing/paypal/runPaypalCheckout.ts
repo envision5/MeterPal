@@ -17,6 +17,7 @@ import {
 	PriceType,
 	RecaseError,
 	paypalCatalogMap,
+	paypalOrderIntents,
 	type FullProduct,
 	type Organization,
 	type Price,
@@ -291,6 +292,8 @@ export async function runPaypalCheckout({
 			});
 		}
 
+		// Record the intent so the finalize/poll endpoint can capture the
+		// order without depending on PayPal's browser redirect.
 		const order = await createOrder(
 			{
 				intent: "CAPTURE",
@@ -329,6 +332,16 @@ export async function runPaypalCheckout({
 			},
 			{ idempotencyKey: `mp-order-${crypto.randomUUID()}` },
 		);
+
+		await db.insert(paypalOrderIntents).values({
+			order_id: order.id,
+			org_id: org.id,
+			env,
+			customer_id: customerId,
+			product_id: product.id,
+			amount_usd: total,
+			status: "pending",
+		});
 
 		const url = approvalLink(order.links);
 		if (!url) {

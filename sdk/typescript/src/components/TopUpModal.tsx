@@ -11,6 +11,17 @@ interface TopUpModalProps {
   labels?: string[];
   /** Prices in USD (matched by index). */
   prices?: number[];
+  /**
+   * Optional poll callback for popup checkout: called every few seconds while
+   * the PayPal popup is open.  Return `{ captured: true }` once the payment
+   * has been captured server-side.  When provided, checkout opens in a popup
+   * and this modal closes itself on capture — no page redirect.  When
+   * omitted, checkout redirects the current tab (relies on PayPal's
+   * return_url redirect).
+   */
+  pollFinalize?: () => Promise<{ captured: boolean; credits?: number } | null>;
+  /** Fired after a payment is confirmed captured (popup mode only). */
+  onCaptured?: (credits?: number) => void;
 }
 
 const DEFAULT_PRODUCTS = ["topup_1k", "topup_5k", "topup_25k"];
@@ -21,12 +32,15 @@ export function TopUpModal({
   productIds = DEFAULT_PRODUCTS,
   labels = DEFAULT_LABELS,
   prices = DEFAULT_PRICES,
+  pollFinalize,
+  onCaptured,
 }: TopUpModalProps) {
   // Identity is resolved server-side by the autumn-js backend adapter.
   const { attach } = useCustomer();
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [awaitingPayment, setAwaitingPayment] = useState(false);
 
   useEffect(() => {
     const handler = () => setOpen(true);
@@ -40,18 +54,68 @@ export function TopUpModal({
     try {
       const result: any = await attach({ planId: productId });
       const checkoutUrl =
-			result?.paymentUrl ??
-			result?.payment_url ??
-			result?.checkout_url ??
-			result?.url;
-      if (checkoutUrl) {
-        window.location.href = checkoutUrl;
-      } else {
+        result?.paymentUrl ??
+        result?.payment_url ??
+        result?.checkout_url ??
+        result?.url;
+
+      if (!checkoutUrl) {
         setOpen(false);
+        return;
       }
+
+      if (pollFinalize) {
+        // Popup mode: the app tab stays alive and polls for the capture.
+        const popup = window.open(
+          checkoutUrl,
+          "meterpal-paypal",
+          "width=480,height=720",
+        );
+        setAwaitingPayment(true);
+        const deadline = Date.now() + 5 * 60 * 1000;
+        while (Date.now() < deadline) {
+          await new Promise((r) => setTimeout(r, 2500));
+          try {
+            const res = await pollFinalize();
+            if (res?.captured) {
+              setAwaitingPayment(false);
+              setPending(null);
+              setOpen(false);
+              onCaptured?.(res.credits);
+              return;
+            }
+          } catch {
+            // transient poll errors — keep polling until the deadline
+          }
+          if (popup?.closed) {
+            // one last poll in case capture landed as the popup closed
+            try {
+              const res = await pollFinalize();
+              if (res?.captured) {
+                setAwaitingPayment(false);
+                setPending(null);
+                setOpen(false);
+                onCaptured?.(res.credits);
+                return;
+              }
+            } catch {
+              // ignore
+            }
+            break;
+          }
+        }
+        setAwaitingPayment(false);
+        setPending(null);
+        setError(
+          "Payment not confirmed yet — if you completed it in PayPal, your credits will appear shortly.",
+        );
+        return;
+      }
+
+      // Redirect mode (default): PayPal redirects back via return_url.
+      window.location.href = checkoutUrl;
     } catch (e: any) {
       setError(e?.message ?? "Top-up failed");
-    } finally {
       setPending(null);
     }
   }
@@ -101,6 +165,13 @@ export function TopUpModal({
             </button>
           ))}
         </div>
+
+        {awaitingPayment && (
+          <p className="mt-3 text-sm text-muted-foreground">
+            Complete the payment in the PayPal window — this dialog closes when
+            your credits arrive.
+          </p>
+        )}
 
         {error && (
           <p role="alert" className="mt-3 text-sm text-red-600">

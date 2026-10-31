@@ -210,6 +210,22 @@ function Dashboard({
 							productIds={["topup_10", "topup_50", "topup_200"]}
 							labels={["10 credits", "50 credits", "200 credits"]}
 							prices={[10, 50, 200]}
+							pollFinalize={async () => {
+								const res = await fetch("/api/paypal/poll");
+								if (!res.ok) return null;
+								const data = await res.json();
+								if (data?.status === "captured") {
+									return { captured: true, credits: data.credits };
+								}
+								return { captured: false };
+							}}
+							onCaptured={(credits) => {
+								setPaymentNotice(
+									credits
+										? `✅ Payment captured — ${credits} credits added to your wallet.`
+										: "✅ Payment captured — credits added to your wallet.",
+								);
+							}}
 						/>
 						<button
 							type="button"
