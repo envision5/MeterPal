@@ -1,0 +1,20 @@
+{
+	"name": "@meterpal/agent",
+	"version": "0.1.0",
+	"description": "MeterPal agent layer: MCP server exposing AI-billing tools + merchant and buyer demo agents",
+	"private": true,
+	"type": "module",
+	"bin": { "meterpal-mcp": "./mcp/server.ts" },
+	"scripts": {
+		"mcp": "bun mcp/server.ts",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@modelcontextprotocol/sdk": "^1.0.4",
+		"zod": "^3.24.1"
+	},
+	"devDependencies": {
+		"@types/node": "^22.10.0",
+		"typescript": "^5.7.0"
+	}
+}
