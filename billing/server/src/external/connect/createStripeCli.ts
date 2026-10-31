@@ -26,6 +26,23 @@ export const createStripeCli = ({
 	throughSecretKey?: boolean;
 	skipInstrumentation?: boolean;
 }) => {
+	// MeterPal: PayPal-native orgs (PayPal configured, Stripe not connected)
+	// get a dead client — any real Stripe usage throws a clear error, while
+	// the PayPal checkout path (runCheckout → runPaypalCheckout) never
+	// touches the CLI at all.  This keeps the attach/checkout plumbing
+	// usable end-to-end without a Stripe account.
+	if (!isStripeConnected({ org, env }) && !!process.env.PAYPAL_CLIENT_ID) {
+		return new Proxy({} as Stripe, {
+			get() {
+				throw new RecaseError({
+					message:
+						"Stripe is not connected — this org bills through PayPal (MeterPal). The checkout path tried to use the Stripe client.",
+					statusCode: 400,
+				});
+			},
+		});
+	}
+
 	// Try secret key first.
 	if (isStripeConnected({ org, env, throughSecretKey: true })) {
 		// Secret key flow

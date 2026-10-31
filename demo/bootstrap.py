@@ -206,9 +206,12 @@ def main() -> None:
                 "items": [{
                     "feature_id": FEATURE_ID,
                     "included": 100,
-                    "price": 20,
-                    "interval": "month",
                     "reset": {"interval": "month"},
+                    "price": {
+                        "amount": 20,
+                        "interval": "month",
+                        "billing_method": "prepaid",
+                    },
                 }],
             })
             if resp.status_code >= 300:
@@ -234,7 +237,11 @@ def main() -> None:
                 "items": [{
                     "feature_id": FEATURE_ID,
                     "included": credits,
-                    "price": price,
+                    "price": {
+                        "amount": price,
+                        "interval": "one_off",
+                        "billing_method": "prepaid",
+                    },
                 }],
             })
             if resp.status_code >= 300:

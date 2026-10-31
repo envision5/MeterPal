@@ -1,6 +1,8 @@
 import { type AttachBodyV0, ErrCode, RecaseError } from "@autumn/shared";
 import type Stripe from "stripe";
 import { createStripeCli } from "@/external/connect/createStripeCli.js";
+import { isPaypalConfigured } from "@/internal/billing/paypal/runPaypalCheckout.js";
+import { isStripeConnected } from "@/internal/orgs/orgUtils.js";
 import { rewardRepo } from "@/internal/rewards/repos/index.js";
 
 import type { AutumnContext } from "../../../../../honoUtils/HonoEnv.js";
@@ -74,6 +76,12 @@ export const processAttachBody = async ({
 	// 1. Get customer and products
 	const { org, env, logger } = ctx;
 
+	// PayPal-native orgs never touch the Stripe CLI; createStripeCli returns
+	// a dead proxy for them.  allowNoStripe also skips the Stripe customer
+	// lookup so the attach context builds cleanly for the PayPal branch.
+	const paypalNative =
+		isPaypalConfigured() && !isStripeConnected({ org, env });
+
 	const stripeCli = createStripeCli({ org, env });
 
 	const { customer, products } = await getCustomerAndProducts({
@@ -85,6 +93,7 @@ export const processAttachBody = async ({
 		getStripeCusData({
 			ctx,
 			customer,
+			allowNoStripe: paypalNative,
 		}),
 		getRewards({
 			ctx,

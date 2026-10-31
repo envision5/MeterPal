@@ -38,27 +38,43 @@ export function isPaypalConfigured(): boolean {
 	return !!process.env.PAYPAL_CLIENT_ID && !!process.env.PAYPAL_CLIENT_SECRET;
 }
 
-/** True when every price on the attach is a one-off fixed charge (credit packs). */
+/**
+ * USD amount for a price, major units.  Handles both stored shapes:
+ *   fixed:      { type: "fixed", amount }
+ *   usage/prepaid credit packs: { type: "usage", usage_tiers: [{to: "inf", amount}] }
+ */
+export function priceAmountUsd(price: Price): number | null {
+	const cfg = price.config as {
+		type?: string;
+		amount?: number;
+		usage_tiers?: Array<{ to?: string | number | null; amount?: number }>;
+	};
+	if (cfg.type === PriceType.Fixed) return cfg.amount ?? null;
+	const inf = (cfg.usage_tiers ?? []).find(
+		(t) => t.to === "inf" || t.to === null || t.to === undefined,
+	);
+	return inf?.amount ?? null;
+}
+
+/** True when every price on the attach is a one-off charge (credit packs). */
 export function pricesAreOneOff(prices: Price[]): boolean {
 	return (
 		prices.length > 0 &&
 		prices.every(
 			(p) =>
-				p.config.type === PriceType.Fixed &&
 				(p.config as { interval?: BillingInterval }).interval ===
-					BillingInterval.OneOff,
+				BillingInterval.OneOff,
 		)
 	);
 }
 
-/** First fixed recurring price on the product — the PayPal plan amount. */
+/** First recurring price on the product — the PayPal plan amount. */
 export function recurringFixedPrice(product: FullProduct): Price | null {
 	return (
 		product.prices.find(
 			(p) =>
-				p.config.type === PriceType.Fixed &&
 				(p.config as { interval?: BillingInterval }).interval !==
-					BillingInterval.OneOff,
+					BillingInterval.OneOff && priceAmountUsd(p) != null,
 		) ?? null
 	);
 }
@@ -113,10 +129,18 @@ export async function ensurePaypalPlan({
 		});
 	}
 	const config = price.config as {
-		amount: number;
+		amount?: number;
 		interval: BillingInterval;
 		interval_count?: number;
+		usage_tiers?: Array<{ to?: string | number | null; amount?: number }>;
 	};
+	const planAmount = priceAmountUsd(price);
+	if (planAmount == null) {
+		throw new RecaseError({
+			message: `Product ${product.id}: cannot resolve a USD amount for the PayPal plan`,
+			statusCode: 400,
+		});
+	}
 
 	const paypalProduct = await createCatalogProduct({
 		name: `${org.slug ?? org.id} — ${product.name}`.slice(0, 127),
@@ -134,7 +158,7 @@ export async function ensurePaypalPlan({
 		description: `MeterPal plan ${product.id}`.slice(0, 127),
 		intervalUnit: intervalToPaypalUnit(config.interval),
 		intervalCount: config.interval_count ?? 1,
-		amountUsd: config.amount,
+		amountUsd: planAmount,
 		idempotencyKey: `mp-plan-${org.id}-${env}-${product.id}`,
 	});
 
@@ -208,8 +232,11 @@ export async function runPaypalCheckout({
 
 	if (pricesAreOneOff(prices)) {
 		// One-off credit pack -> Orders v2.
-		const fixed = prices.filter((p) => p.config.type === PriceType.Fixed);
-		const total = fixed.reduce((sum, p) => sum + (p.config as { amount: number }).amount, 0);
+		const total = prices.reduce(
+			(sum, p) => sum + (priceAmountUsd(p) ?? 0),
+			0,
+		);
+		const fixed = prices;
 		if (total <= 0) {
 			throw new RecaseError({
 				message: "PayPal order total must be positive",
