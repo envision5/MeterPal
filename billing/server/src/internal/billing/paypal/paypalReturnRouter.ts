@@ -135,11 +135,24 @@ paypalReturnRouter.get("/poll", async (c) => {
 	if (intents.length === 0) return c.json({ status: "none" });
 
 	let sawPending = false;
+	let totalCaptured = 0;
+	let captureCount = 0;
 	for (const intent of intents) {
 		const result = await captureAndGrant(intent.order_id, "poll_finalize");
-		if (result.status === "captured") return c.json(result);
+		if (result.status === "captured") {
+			totalCaptured += result.credits ?? 0;
+			captureCount += 1;
+			continue;
+		}
 		if (result.status === "pending") sawPending = true;
 		// unapproved/error — skip and try the next intent
+	}
+	if (captureCount > 0) {
+		return c.json({
+			status: "captured",
+			credits: totalCaptured,
+			count: captureCount,
+		});
 	}
 	return c.json({ status: sawPending ? "pending" : "none" });
 });

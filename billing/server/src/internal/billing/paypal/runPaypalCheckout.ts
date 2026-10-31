@@ -22,10 +22,11 @@ import {
 	type Organization,
 	type Price,
 } from "@autumn/shared";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import type { DrizzleCli } from "@/db/initDrizzle.js";
 import type { AttachParams } from "@/internal/customers/cusProducts/AttachParams.js";
 import { createOrder, type OrderResponse } from "@/external/paypal/orders.js";
+import { paypalFetch } from "@/external/paypal/client.js";
 import {
 	approvalLink,
 	createBillingPlan,
@@ -34,6 +35,7 @@ import {
 	intervalToPaypalUnit,
 } from "@/external/paypal/subscriptions.js";
 import type { AppEnv } from "@autumn/shared";
+import { logger } from "@/external/logtail/logtailUtils.js";
 import { isStripeConnected } from "@/internal/orgs/orgUtils.js";
 
 export function isPaypalConfigured(): boolean {
@@ -283,6 +285,55 @@ export async function runPaypalCheckout({
 
 	if (pricesAreOneOff(prices)) {
 		// One-off credit pack -> Orders v2.
+		// ORDER REUSE: every pack click must NOT mint a new PayPal order —
+		// each approval is a real buyer charge.  Reuse the customer's latest
+		// pending order if PayPal still has it in CREATED (approvable) state;
+		// APPROVED ones are captured by the poll/capture endpoints.
+		const [pendingIntent] = await db
+			.select()
+			.from(paypalOrderIntents)
+			.where(
+				and(
+					eq(paypalOrderIntents.customer_id, customerId),
+					eq(paypalOrderIntents.status, "pending"),
+				),
+			)
+			.orderBy(desc(paypalOrderIntents.id))
+			.limit(1);
+		if (pendingIntent) {
+			// Sandbox orders are BORN in PAYER_ACTION_REQUIRED (payer must
+			// verify their card) — that state is still approvable, so reuse it.
+			// Freshness window: a permanently-stuck order must not lock the
+			// buyer out of ever buying again.
+			const freshUntil =
+				new Date(pendingIntent.created_at).getTime() + 30 * 60 * 1000;
+			const isFresh = Date.now() < freshUntil;
+			try {
+				const existing = await paypalFetch<Record<string, any>>(
+					`/v2/checkout/orders/${pendingIntent.order_id}`,
+					{ method: "GET" },
+				);
+				const reusable = ["CREATED", "PAYER_ACTION_REQUIRED"].includes(
+					existing?.status,
+				);
+				if (isFresh && reusable) {
+					const url = approvalLink(existing.links);
+					if (url) {
+						logger.info({
+							msg: "paypal checkout: reusing pending order",
+							orderId: pendingIntent.order_id,
+							customerId,
+						});
+						return url;
+					}
+				}
+				// APPROVED -> the poll/capture endpoints will grab it.
+				// Anything else (expired/voided/stale) -> mint fresh.
+			} catch {
+				// order lookup failed (e.g. voided) — mint fresh
+			}
+		}
+
 		const amounts = prices.map((p) => priceAmountUsd(p) ?? 0);
 		const total = amounts.reduce((sum, a) => sum + a, 0);
 		if (total <= 0) {
