@@ -36,6 +36,7 @@ import {
 } from "@/external/paypal/subscriptions.js";
 import type { AppEnv } from "@autumn/shared";
 import { logger } from "@/external/logtail/logtailUtils.js";
+import { captureAndGrant } from "./captureAndGrant.js";
 import { isStripeConnected } from "@/internal/orgs/orgUtils.js";
 
 export function isPaypalConfigured(): boolean {
@@ -247,6 +248,70 @@ export async function ensurePaypalPlan({
 }
 
 /**
+ * Cancels every other live order intent for this customer at PayPal and
+ * marks them abandoned.  Guarantees at most ONE live order per customer:
+ * stale orders can never be approved later (which would charge the buyer
+ * for a checkout they've abandoned) and never block the poll.
+ */
+async function abandonOtherIntents({
+	db,
+	customerId,
+	exceptOrderId,
+}: {
+	db: DrizzleCli;
+	customerId: string;
+	exceptOrderId?: string;
+}): Promise<void> {
+	const pendings = await db
+		.select()
+		.from(paypalOrderIntents)
+		.where(
+			and(
+				eq(paypalOrderIntents.customer_id, customerId),
+				eq(paypalOrderIntents.status, "pending"),
+			),
+		);
+	for (const intent of pendings) {
+		if (intent.order_id === exceptOrderId) continue;
+		// Honor real approvals first — never abandon money the buyer paid.
+		try {
+			const result = await captureAndGrant(intent.order_id, "abandon_sweep");
+			if (result.status === "captured") {
+				logger.info({
+					msg: "paypal checkout: captured approved order during sweep",
+					orderId: intent.order_id,
+					credits: result.credits,
+					customerId,
+				});
+				continue;
+			}
+		} catch {
+			// fall through to cancellation
+		}
+		try {
+			// Only CREATED orders are cancellable at PayPal; best-effort either
+			// way — an uncancellable one stays unapproved forever and the poll
+			// simply skips it.
+			await paypalFetch(
+				`/v2/checkout/orders/${intent.order_id}/cancel`,
+				{ method: "POST", body: "{}" },
+			);
+		} catch {
+			// already processed / not cancellable — still stop tracking it
+		}
+		await db
+			.update(paypalOrderIntents)
+			.set({ status: "abandoned" })
+			.where(eq(paypalOrderIntents.id, intent.id));
+		logger.info({
+			msg: "paypal checkout: abandoned stale order",
+			orderId: intent.order_id,
+			customerId,
+		});
+	}
+}
+
+/**
  * PayPal checkout: returns the buyer-approval URL, same contract as the
  * Stripe path's `checkout_url`.
  */
@@ -324,6 +389,13 @@ export async function runPaypalCheckout({
 							orderId: pendingIntent.order_id,
 							customerId,
 						});
+						// Keep the one-live-order invariant: honor any approvals
+						// in older intents, cancel + abandon the rest.
+						await abandonOtherIntents({
+							db,
+							customerId,
+							exceptOrderId: pendingIntent.order_id,
+						});
 						return url;
 					}
 				}
@@ -342,6 +414,10 @@ export async function runPaypalCheckout({
 				statusCode: 400,
 			});
 		}
+
+		// At most one live order per customer: cancel + abandon every other
+		// pending intent before minting a fresh one.
+		await abandonOtherIntents({ db, customerId });
 
 		// Record the intent so the finalize/poll endpoint can capture the
 		// order without depending on PayPal's browser redirect.
