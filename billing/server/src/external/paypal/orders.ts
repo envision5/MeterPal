@@ -25,7 +25,14 @@ export interface OrderCreateArgs {
     }>;
   }>;
   payment_source?: {
-    paypal?: { experience_context?: { shipping_preference?: string; user_action?: string } };
+    paypal?: {
+      experience_context?: {
+        shipping_preference?: string;
+        user_action?: string;
+        brand_name?: string;
+        locale?: string;
+      };
+    };
   };
 }
 

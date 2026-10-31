@@ -31,6 +31,7 @@ import { rewardProgramRouter } from "../internal/api/rewards/rewardProgramRouter
 import { rewardRouter } from "../internal/api/rewards/rewardRouter";
 import { balancesRouter } from "../internal/balances/balancesRouter";
 import { billingRouter } from "../internal/billing/billingRouter";
+import { paypalRouter } from "../internal/billing/paypal/paypalRouter";
 import { cusRouter } from "../internal/customers/cusRouter";
 import { entityRouter } from "../internal/entities/entityRouter";
 import { featureRouter } from "../internal/features/featureRouter";
@@ -66,6 +67,7 @@ apiRouter.use("*", idempotencyMiddleware);
 
 apiRouter.route("", rpcRouter);
 apiRouter.route("", billingRouter);
+apiRouter.route("", paypalRouter);
 apiRouter.route("", balancesRouter);
 apiRouter.route("", entityRouter);
 apiRouter.route("/customers", cusRouter);

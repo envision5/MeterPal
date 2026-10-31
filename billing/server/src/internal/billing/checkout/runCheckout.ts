@@ -1,5 +1,7 @@
 import { AttachFunction, type CheckoutParamsV0 } from "@autumn/shared";
 import type { AutumnContext } from "../../../honoUtils/HonoEnv";
+import { isStripeConnected } from "../../orgs/orgUtils";
+import { isPaypalConfigured, runPaypalCheckout } from "../paypal/runPaypalCheckout";
 import { handleCreateCheckout } from "../../customers/add-product/handleCreateCheckout";
 import { handleCreateInvoiceCheckout } from "../../customers/add-product/handleCreateInvoiceCheckout";
 import {
@@ -40,13 +42,6 @@ export const runCheckout = async ({
 	});
 
 	if (func === AttachFunction.CreateCheckout) {
-		await checkStripeConnections({
-			ctx,
-			attachParams,
-			createCus: true,
-			useCheckout: true,
-		});
-
 		await insertCustomItems({
 			db: ctx.db,
 			customPrices: customPrices || [],
@@ -59,24 +54,42 @@ export const runCheckout = async ({
 			useCheckout: config.onlyCheckout,
 		});
 
-		if (config.invoiceCheckout) {
-			const result = await handleCreateInvoiceCheckout({
-				ctx,
+		if (isPaypalConfigured() && !isStripeConnected({ org: ctx.org, env: ctx.env })) {
+			// PayPal-native path: returns the buyer-approval URL (Orders v2 for
+			// one-off credit packs, Subscriptions for recurring plans).  Money-in
+			// lands via /webhooks/paypal, which grants wallet credits.
+			checkoutUrl = await runPaypalCheckout({
 				attachParams,
-				config,
-				branch,
+				db: ctx.db,
+				env: ctx.env,
 			});
-
-			checkoutUrl = result?.checkout_url;
 		} else {
-			const result = await handleCreateCheckout({
+			await checkStripeConnections({
 				ctx,
 				attachParams,
-				config,
-				returnCheckout: true,
+				createCus: true,
+				useCheckout: true,
 			});
 
-			checkoutUrl = result?.checkout_url;
+			if (config.invoiceCheckout) {
+				const result = await handleCreateInvoiceCheckout({
+					ctx,
+					attachParams,
+					config,
+					branch,
+				});
+
+				checkoutUrl = result?.checkout_url;
+			} else {
+				const result = await handleCreateCheckout({
+					ctx,
+					attachParams,
+					config,
+					returnCheckout: true,
+				});
+
+				checkoutUrl = result?.checkout_url;
+			}
 		}
 	}
 

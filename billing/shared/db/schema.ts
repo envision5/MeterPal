@@ -46,6 +46,7 @@ import {
 	bridgeRateLimits,
 	walletLedger,
 } from "../models/litellmModels/bridgeTables.js";
+import { paypalCatalogMap } from "../models/paypalModels/paypalCatalogMap.js";
 import { featureRelations } from "../models/featureModels/featureRelations.js";
 import { features } from "../models/featureModels/featureTable.js";
 import { invoiceTemplates } from "../models/invoiceTemplateModels/invoiceTemplateTable.js";
@@ -151,6 +152,7 @@ export {
 	bridgeAuditLog,
 	bridgeRateLimits,
 	walletLedger,
+	paypalCatalogMap,
 	stripeWebhookEvents,
 	customerJwtFamilies,
 	autoTopupLimitStates as autoTopupLimits,

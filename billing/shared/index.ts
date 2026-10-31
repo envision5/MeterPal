@@ -90,6 +90,8 @@ export * from "./models/licenseModels/licenseModels";
 export * from "./models/licenseModels/licenseTable";
 // LiteLLM bridge tables (bridge_audit_log, bridge_rate_limits, wallet_ledger)
 export * from "./models/litellmModels/bridgeTables";
+// PayPal catalog map (product_id <-> paypal_plan_id, written by catalog sync)
+export * from "./models/paypalModels/paypalCatalogMap";
 export * from "./models/pooledBalanceModels/pooledBalanceIdentity";
 export * from "./models/pooledBalanceModels/pooledBalanceTable";
 // Processor Models

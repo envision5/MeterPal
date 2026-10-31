@@ -51,6 +51,7 @@ export const customers = pgTable(
 		paypal_subscription_id: text("paypal_subscription_id"),
 		paypal_plan_id: text("paypal_plan_id"),
 		paypal_payment_status: text("paypal_payment_status"),
+		paypal_payer_id: text("paypal_payer_id"),
 	},
 	(table) => [
 		unique("cus_id_constraint").on(table.org_id, table.id, table.env),
@@ -111,6 +112,9 @@ export const customers = pgTable(
 		index("idx_customers_litellm_vkey")
 			.on(table.litellm_virtual_key)
 			.where(sql`${table.litellm_virtual_key} IS NOT NULL`),
+		index("idx_customers_paypal_payer_id")
+			.on(table.org_id, table.env, table.paypal_payer_id)
+			.where(sql`${table.paypal_payer_id} IS NOT NULL`),
 	],
 ).enableRLS();
 

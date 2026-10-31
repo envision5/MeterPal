@@ -97,6 +97,11 @@ const buildCustomer = ({
 	usage_limits: null,
 	usage_alerts: null,
 	overage_allowed: null,
+	litellm_virtual_key: null,
+	paypal_subscription_id: null,
+	paypal_plan_id: null,
+	paypal_payment_status: null,
+	paypal_payer_id: null,
 });
 
 const buildEntity = ({

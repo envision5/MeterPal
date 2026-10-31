@@ -1,0 +1,227 @@
+// tests/paypal_subscriptions.test.ts
+//
+// Unit tests for the PayPal catalog/subscriptions wrappers. Run with:
+//   bun test ./tests/paypal_subscriptions.test.ts
+//
+// paypalFetch is mocked at the module level — no network, no credentials.
+// Asserts request shapes (paths, bodies, idempotency headers) and the pure
+// helpers (interval mapping, USD formatting, approval-link extraction).
+
+import { describe, it, expect, mock, beforeEach } from "bun:test";
+
+type CapturedCall = { path: string; init: Record<string, any> };
+const calls: CapturedCall[] = [];
+
+let nextResponse: any = {
+	id: "PP-PLAN-123",
+	product_id: "PP-PROD-1",
+	name: "Pro",
+	status: "ACTIVE",
+	links: [
+		{ rel: "self", href: "https://api-m.sandbox.paypal.com/v1/billing/plans/PP-PLAN-123" },
+		{ rel: "approve", href: "https://www.sandbox.paypal.com/approve" },
+	],
+};
+
+mock.module("../src/external/paypal/client.js", () => ({
+	paypalFetch: async (path: string, init: Record<string, any> = {}) => {
+		calls.push({ path, init });
+		if (nextResponse instanceof Error) throw nextResponse;
+		return typeof nextResponse === "function"
+			? nextResponse(path, init)
+			: nextResponse;
+	},
+	paypalBaseUrl: () => "https://api-m.sandbox.paypal.com",
+	getAccessToken: async () => "test-token",
+}));
+
+const {
+	createCatalogProduct,
+	createBillingPlan,
+	createSubscription,
+	getSubscription,
+	reviseSubscription,
+	suspendSubscription,
+	cancelSubscription,
+	createWebhook,
+	intervalToPaypalUnit,
+	toUsd,
+	approvalLink,
+} = await import("../src/external/paypal/subscriptions.js");
+
+beforeEach(() => {
+	calls.length = 0;
+	nextResponse = {
+		id: "PP-PLAN-123",
+		product_id: "PP-PROD-1",
+		name: "Pro",
+		status: "ACTIVE",
+		links: [{ rel: "approve", href: "https://www.sandbox.paypal.com/approve" }],
+	};
+});
+
+const last = () => calls[calls.length - 1];
+
+describe("intervalToPaypalUnit", () => {
+	it("maps month/week/year directly", () => {
+		expect(intervalToPaypalUnit("month")).toBe("MONTH");
+		expect(intervalToPaypalUnit("week")).toBe("WEEK");
+		expect(intervalToPaypalUnit("year")).toBe("YEAR");
+	});
+	it("maps unsupported intervals to the closest unit (MONTH)", () => {
+		expect(intervalToPaypalUnit("quarter")).toBe("MONTH");
+		expect(intervalToPaypalUnit("semi_annual")).toBe("MONTH");
+		expect(intervalToPaypalUnit("one_off")).toBe("MONTH");
+	});
+});
+
+describe("toUsd", () => {
+	it("formats dollars as a 2-decimal string", () => {
+		expect(toUsd(20)).toBe("20.00");
+		expect(toUsd(7.5)).toBe("7.50");
+		expect(toUsd(0)).toBe("0.00");
+	});
+});
+
+describe("approvalLink", () => {
+	it("extracts the approve link", () => {
+		expect(
+			approvalLink([
+				{ rel: "self", href: "https://self" },
+				{ rel: "approve", href: "https://approve" },
+			]),
+		).toBe("https://approve");
+	});
+	it("falls back to payer-action (subscriptions v1 sometimes returns it)", () => {
+		expect(
+			approvalLink([{ rel: "payer-action", href: "https://payer-action" }]),
+		).toBe("https://payer-action");
+	});
+	it("returns null when absent", () => {
+		expect(approvalLink([{ rel: "self", href: "https://self" }])).toBeNull();
+		expect(approvalLink(undefined)).toBeNull();
+	});
+});
+
+describe("createCatalogProduct", () => {
+	it("POSTs a SERVICE/SOFTWARE product with an idempotency key", async () => {
+		await createCatalogProduct({
+			name: "MeterPal Pro",
+			description: "Pro plan",
+			sku: "org1:sandbox:pro",
+			idempotencyKey: "mp-catprod-org1-sandbox-pro",
+		});
+		expect(last().path).toBe("/v1/catalog/products");
+		expect(last().init.method).toBe("POST");
+		const body = JSON.parse(last().init.body);
+		expect(body.type).toBe("SERVICE");
+		expect(body.category).toBe("SOFTWARE");
+		expect(body.name).toBe("MeterPal Pro");
+		expect(last().init.idempotencyKey).toBe("mp-catprod-org1-sandbox-pro");
+	});
+});
+
+describe("createBillingPlan", () => {
+	it("POSTs an ACTIVE plan with a REGULAR fixed-price cycle", async () => {
+		await createBillingPlan({
+			productId: "PP-PROD-1",
+			name: "Pro",
+			intervalUnit: "MONTH",
+			amountUsd: 20,
+			idempotencyKey: "mp-plan-org1-sandbox-pro",
+		});
+		expect(last().path).toBe("/v1/billing/plans");
+		const body = JSON.parse(last().init.body);
+		expect(body.product_id).toBe("PP-PROD-1");
+		expect(body.status).toBe("ACTIVE");
+		expect(body.billing_cycles).toHaveLength(1);
+		const cycle = body.billing_cycles[0];
+		expect(cycle.tenure_type).toBe("REGULAR");
+		expect(cycle.frequency).toEqual({ interval_unit: "MONTH", interval_count: 1 });
+		expect(cycle.total_cycles).toBe(0);
+		expect(cycle.pricing_scheme.fixed_price).toEqual({
+			value: "20.00",
+			currency_code: "USD",
+		});
+		expect(last().init.idempotencyKey).toBe("mp-plan-org1-sandbox-pro");
+	});
+
+	it("prepends a TRIAL cycle when trialCycles > 0", async () => {
+		await createBillingPlan({
+			productId: "PP-PROD-1",
+			name: "Pro",
+			intervalUnit: "MONTH",
+			amountUsd: 20,
+			trialCycles: 1,
+		});
+		const body = JSON.parse(last().init.body);
+		expect(body.billing_cycles).toHaveLength(2);
+		expect(body.billing_cycles[0].tenure_type).toBe("TRIAL");
+		expect(body.billing_cycles[0].pricing_scheme.fixed_price.value).toBe("0.00");
+		expect(body.billing_cycles[1].sequence).toBe(2);
+	});
+});
+
+describe("createSubscription", () => {
+	it("POSTs a subscription with custom_id, NO_SHIPPING and SUBSCRIBE_NOW", async () => {
+		const sub = await createSubscription({
+			planId: "PP-PLAN-123",
+			customId: "demo-customer",
+			subscriberEmail: "buyer@example.com",
+			returnUrl: "https://app.example.com/return",
+			cancelUrl: "https://app.example.com/cancel",
+			idempotencyKey: "mp-sub-abc",
+		});
+		expect(last().path).toBe("/v1/billing/subscriptions");
+		const body = JSON.parse(last().init.body);
+		expect(body.plan_id).toBe("PP-PLAN-123");
+		expect(body.custom_id).toBe("demo-customer");
+		expect(body.subscriber.email_address).toBe("buyer@example.com");
+		expect(body.application_context.user_action).toBe("SUBSCRIBE_NOW");
+		expect(body.application_context.shipping_preference).toBe("NO_SHIPPING");
+		expect(body.application_context.return_url).toBe("https://app.example.com/return");
+		expect(body.application_context.cancel_url).toBe("https://app.example.com/cancel");
+		expect(last().init.idempotencyKey).toBe("mp-sub-abc");
+		// the approve link is surfaced through the shared helper
+		expect(approvalLink(sub.links)).toBe("https://www.sandbox.paypal.com/approve");
+	});
+});
+
+describe("subscription lifecycle wrappers", () => {
+	it("getSubscription GETs by id", async () => {
+		await getSubscription("I-123");
+		expect(last().path).toBe("/v1/billing/subscriptions/I-123");
+		expect(last().init.method).toBe("GET");
+	});
+
+	it("reviseSubscription POSTs the new plan", async () => {
+		await reviseSubscription({ subscriptionId: "I-123", planId: "PP-PLAN-NEW" });
+		expect(last().path).toBe("/v1/billing/subscriptions/I-123/revise");
+		const body = JSON.parse(last().init.body);
+		expect(body.plan_id).toBe("PP-PLAN-NEW");
+	});
+
+	it("suspendSubscription / cancelSubscription POST with a note", async () => {
+		await suspendSubscription("I-123", "paused");
+		expect(last().path).toBe("/v1/billing/subscriptions/I-123/suspend");
+		expect(JSON.parse(last().init.body).note).toBe("paused");
+		await cancelSubscription("I-123");
+		expect(last().path).toBe("/v1/billing/subscriptions/I-123/cancel");
+	});
+});
+
+describe("createWebhook", () => {
+	it("POSTs the event-type list for programmatic webhook registration", async () => {
+		await createWebhook({
+			url: "https://tunnel.example.com/webhooks/paypal",
+			eventTypes: ["PAYMENT.CAPTURE.COMPLETED", "BILLING.SUBSCRIPTION.ACTIVATED"],
+		});
+		expect(last().path).toBe("/v1/notifications/webhooks");
+		const body = JSON.parse(last().init.body);
+		expect(body.url).toBe("https://tunnel.example.com/webhooks/paypal");
+		expect(body.event_types).toEqual([
+			{ name: "PAYMENT.CAPTURE.COMPLETED" },
+			{ name: "BILLING.SUBSCRIPTION.ACTIVATED" },
+		]);
+	});
+});
