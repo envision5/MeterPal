@@ -98,10 +98,17 @@ function toUsd(amount: number): string {
 	}).format(amount);
 }
 
-function fallbackUrls(org: Organization): { returnUrl: string; cancelUrl: string } {
-	const base =
-		process.env.METERPAL_CHECKOUT_RETURN_URL ?? "http://localhost:5173";
-	return { returnUrl: base, cancelUrl: base };
+/**
+ * PayPal redirects the buyer's browser here after approval/cancel.  The
+ * server-side return route captures the order and credits the wallet —
+ * this closes the loop locally without a public webhook URL.
+ */
+function paypalRedirectUrls(): { returnUrl: string; cancelUrl: string } {
+	const base = process.env.METERPAL_PUBLIC_URL ?? "http://localhost:8080";
+	return {
+		returnUrl: `${base}/paypal/return`,
+		cancelUrl: `${base}/paypal/return?cancelled=1`,
+	};
 }
 
 /**
@@ -270,9 +277,8 @@ export async function runPaypalCheckout({
 	}
 	const product = products[0];
 
-	const { returnUrl, cancelUrl } = successUrl
-		? { returnUrl: successUrl, cancelUrl: successUrl }
-		: fallbackUrls(org);
+	void successUrl; // the server return route owns the landing experience
+	const { returnUrl, cancelUrl } = paypalRedirectUrls();
 
 	if (pricesAreOneOff(prices)) {
 		// One-off credit pack -> Orders v2.

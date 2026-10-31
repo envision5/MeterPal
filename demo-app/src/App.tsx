@@ -6,7 +6,7 @@ import {
 	UsageHistoryPanel,
 } from "@meterpal/sdk";
 import { AutumnProvider } from "autumn-js/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type Message = { role: "user" | "assistant"; content: string };
 
@@ -39,6 +39,28 @@ function Dashboard({
 	const [messages, setMessages] = useState<Message[]>([]);
 	const [input, setInput] = useState("");
 	const [busy, setBusy] = useState(false);
+	const [paymentNotice, setPaymentNotice] = useState<string | null>(null);
+
+	useEffect(() => {
+		// PayPal browser-return landing: the billing server captured the
+		// payment and redirected here (?payment=success&credits=N).
+		const params = new URLSearchParams(window.location.search);
+		const payment = params.get("payment");
+		if (!payment) return;
+		if (payment === "success") {
+			const credits = params.get("credits");
+			setPaymentNotice(
+				credits
+					? `✅ Payment captured — ${credits} credits added to your wallet.`
+					: "✅ Payment captured — credits added to your wallet.",
+			);
+		} else if (payment === "cancelled") {
+			setPaymentNotice("Payment cancelled — no charge was made.");
+		} else {
+			setPaymentNotice("⚠️ Payment could not be completed — try again.");
+		}
+		window.history.replaceState({}, "", window.location.pathname);
+	}, []);
 
 	async function send(prompt: string) {
 		if (!prompt.trim() || busy) return;
@@ -116,6 +138,16 @@ function Dashboard({
 					<CreditsBadge />
 				</div>
 			</header>
+
+			{paymentNotice && (
+				<div
+					role="status"
+					data-testid="payment-notice"
+					className="rounded-md border border-emerald-500/50 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-900 dark:text-emerald-100"
+				>
+					{paymentNotice}
+				</div>
+			)}
 
 			<LowBalanceBanner
 				onAddCredits={() => window.dispatchEvent(new Event("open-topup-modal"))}

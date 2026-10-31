@@ -141,7 +141,7 @@ async function dispatch(event: PayPalEvent): Promise<void> {
 
 // ---------- customer resolution ----------
 
-async function resolveCustomer(opts: {
+export async function resolveCustomer(opts: {
 	customId?: string | null;
 	payerId?: string | null;
 	orgId?: string | null;
@@ -181,7 +181,7 @@ async function resolveCustomer(opts: {
 	return null;
 }
 
-async function stampPayerId(
+export async function stampPayerId(
 	customerId: string | null | undefined,
 	payerId?: string | null,
 ): Promise<void> {
@@ -206,7 +206,7 @@ async function stampPayerId(
  * worker-context machinery the queue uses.
  * Returns false when the grant was a replay (already applied).
  */
-async function grantWalletCredits({
+export async function grantWalletCredits({
 	customer,
 	amountUsd,
 	idempotencyKey,
