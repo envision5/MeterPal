@@ -93,6 +93,41 @@ function fallbackUrls(org: Organization): { returnUrl: string; cancelUrl: string
 }
 
 /**
+ * PayPal product id for a plan.  PayPal's model is one catalog product per
+ * service with many billing plans underneath — so a shared product id via
+ * `PAYPAL_PRODUCT_ID` is the preferred setup.  Otherwise one product is
+ * auto-created per MeterPal plan through /v1/catalog/products (some sandbox
+ * accounts return 404 on that endpoint — set PAYPAL_PRODUCT_ID there).
+ */
+async function resolvePaypalProductId({
+	org,
+	env,
+	product,
+	existingProductId,
+}: {
+	org: Organization;
+	env: AppEnv;
+	product: FullProduct;
+	existingProductId: string | null;
+}): Promise<string> {
+	if (existingProductId) return existingProductId;
+
+	const shared = process.env.PAYPAL_PRODUCT_ID;
+	if (shared) return shared;
+
+	const created = await createCatalogProduct({
+		name: `${org.slug ?? org.id} — ${product.name}`.slice(0, 127),
+		description: `MeterPal plan ${product.id} (${org.slug ?? org.id})`.slice(
+			0,
+			127,
+		),
+		sku: `${org.id}:${env}:${product.id}`.slice(0, 127),
+		idempotencyKey: `mp-catprod-${org.id}-${env}-${product.id}`,
+	});
+	return created.id;
+}
+
+/**
  * Get-or-create the PayPal catalog product + billing plan for an Autumn
  * product, cached in `paypal_catalog_map`.  Shared by the checkout path and
  * the catalog sync script (server/scripts/paypalCatalog.ts).
@@ -142,18 +177,15 @@ export async function ensurePaypalPlan({
 		});
 	}
 
-	const paypalProduct = await createCatalogProduct({
-		name: `${org.slug ?? org.id} — ${product.name}`.slice(0, 127),
-		description: `MeterPal plan ${product.id} (${org.slug ?? org.id})`.slice(
-			0,
-			127,
-		),
-		sku: `${org.id}:${env}:${product.id}`.slice(0, 127),
-		idempotencyKey: `mp-catprod-${org.id}-${env}-${product.id}`,
+	const paypalProductId = await resolvePaypalProductId({
+		org,
+		env,
+		product,
+		existingProductId: existing?.paypal_product_id ?? null,
 	});
 
 	const plan = await createBillingPlan({
-		productId: paypalProduct.id,
+		productId: paypalProductId,
 		name: product.name.slice(0, 127),
 		description: `MeterPal plan ${product.id}`.slice(0, 127),
 		intervalUnit: intervalToPaypalUnit(config.interval),
@@ -166,11 +198,11 @@ export async function ensurePaypalPlan({
 		org_id: org.id,
 		env,
 		product_id: product.id,
-		paypal_product_id: paypalProduct.id,
+		paypal_product_id: paypalProductId,
 		paypal_plan_id: plan.id,
 		name: product.name,
 		interval: config.interval,
-		amount_usd: config.amount,
+		amount_usd: planAmount,
 	};
 	await db
 		.insert(paypalCatalogMap)
@@ -232,11 +264,8 @@ export async function runPaypalCheckout({
 
 	if (pricesAreOneOff(prices)) {
 		// One-off credit pack -> Orders v2.
-		const total = prices.reduce(
-			(sum, p) => sum + (priceAmountUsd(p) ?? 0),
-			0,
-		);
-		const fixed = prices;
+		const amounts = prices.map((p) => priceAmountUsd(p) ?? 0);
+		const total = amounts.reduce((sum, a) => sum + a, 0);
 		if (total <= 0) {
 			throw new RecaseError({
 				message: "PayPal order total must be positive",
@@ -259,12 +288,12 @@ export async function runPaypalCheckout({
 								item_total: { currency_code: "USD", value: toUsd(total) },
 							},
 						},
-						items: fixed.map((p, i) => ({
+						items: amounts.map((amount) => ({
 							name: `${product.name}`.slice(0, 127),
 							quantity: "1",
 							unit_amount: {
 								currency_code: "USD",
-								value: toUsd((p.config as { amount: number }).amount),
+								value: toUsd(amount),
 							},
 							category: "DIGITAL_GOODS" as const,
 						})),
