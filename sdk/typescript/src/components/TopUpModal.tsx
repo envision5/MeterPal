@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useCustomer } from "autumn-js/react";
+import { useEffect, useRef, useState } from "react";
+import { useAutumnClient } from "autumn-js/react";
 import { X } from "lucide-react";
 
 interface TopUpModalProps {
@@ -22,6 +22,17 @@ interface TopUpModalProps {
   pollFinalize?: () => Promise<{ captured: boolean; credits?: number } | null>;
   /** Fired after a payment is confirmed captured (popup mode only). */
   onCaptured?: (credits?: number) => void;
+  /**
+   * In-page PayPal Buttons mode (recommended): the PayPal JS SDK renders its
+   * buttons inside this modal — no redirect and no host-managed popup, so the
+   * app page never navigates away.  `capture` is called from onApprove with
+   * the order id; return `{ captured: true }` once the server has captured
+   * and credited the wallet.
+   */
+  inPageCheckout?: {
+    clientId: string;
+    capture: (orderId: string) => Promise<{ captured: boolean; credits?: number }>;
+  };
 }
 
 const DEFAULT_PRODUCTS = ["topup_1k", "topup_5k", "topup_25k"];
@@ -34,13 +45,136 @@ export function TopUpModal({
   prices = DEFAULT_PRICES,
   pollFinalize,
   onCaptured,
+  inPageCheckout,
 }: TopUpModalProps) {
   // Identity is resolved server-side by the autumn-js backend adapter.
-  const { attach } = useCustomer();
+  // NOTE: we call the client directly — the useCustomer().attach() hook
+  // auto-redirects the page to payment_url, which would defeat the in-page
+  // and popup checkout modes.
+  const client = useAutumnClient({ caller: "TopUpModal" });
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [awaitingPayment, setAwaitingPayment] = useState(false);
+  const [inPageActive, setInPageActive] = useState(false);
+  const buttonsRef = useRef<HTMLDivElement | null>(null);
+  const pendingProductId = useRef<string | null>(null);
+
+  // Load the PayPal JS SDK once per client id.
+  function loadPayPalSdk(clientId: string): Promise<any> {
+    const w = window as any;
+    if (w.paypal?.Buttons) return Promise.resolve(w.paypal);
+    return new Promise((resolve, reject) => {
+      const id = `paypal-sdk-${clientId.slice(0, 12)}`;
+      if (document.getElementById(id)) {
+        // already loading — wait for window.paypal
+        const t = setInterval(() => {
+          if (w.paypal?.Buttons) { clearInterval(t); resolve(w.paypal); }
+        }, 200);
+        setTimeout(() => clearInterval(t), 15000);
+        return;
+      }
+      const el = document.createElement("script");
+      el.id = id;
+      el.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=USD&intent=capture&components=buttons&disable-funding=credit`;
+      el.onload = () => (w.paypal?.Buttons ? resolve(w.paypal) : reject(new Error("PayPal SDK loaded without Buttons")));
+      el.onerror = () => reject(new Error("Failed to load the PayPal SDK"));
+      document.head.appendChild(el);
+    });
+  }
+
+  // Render in-page Buttons once the pack is chosen in inPage mode.
+  useEffect(() => {
+    if (!inPageActive || !inPageCheckout || !buttonsRef.current) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const paypal = await loadPayPalSdk(inPageCheckout.clientId);
+        if (cancelled || !buttonsRef.current) return;
+        buttonsRef.current.innerHTML = "";
+        paypal
+          .Buttons({
+            style: { layout: "vertical", height: 45 },
+            createOrder: async (): Promise<string> => {
+              const productId = pendingProductId.current;
+              if (!productId) throw new Error("no pack selected");
+              const result: any = await client.attach({ planId: productId });
+              const checkoutUrl =
+                result?.paymentUrl ??
+                result?.payment_url ??
+                result?.checkout_url ??
+                result?.url;
+              const orderId = checkoutUrl
+                ? new URL(checkoutUrl).searchParams.get("token")
+                : null;
+              if (!orderId) throw new Error("PayPal order could not be created");
+              return orderId;
+            },
+            onApprove: async (data: any) => {
+              const res = await inPageCheckout.capture(data.orderID);
+              if (res?.captured) {
+                onCaptured?.(res.credits);
+                setAwaitingPayment(false);
+                setPending(null);
+                setOpen(false);
+              } else {
+                setError("Capture failed — please try again.");
+                setAwaitingPayment(false);
+                setPending(null);
+              }
+            },
+            onCancel: () => {
+              setAwaitingPayment(false);
+              setPending(null);
+            },
+            onError: (err: any) => {
+              setError(String(err?.message ?? err));
+              setAwaitingPayment(false);
+              setPending(null);
+            },
+          })
+          .render(buttonsRef.current);
+      } catch (e: any) {
+        setError(e?.message ?? "Failed to load PayPal");
+        setAwaitingPayment(false);
+        setPending(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [inPageActive, inPageCheckout]);
+
+  // Safety net: sandbox PayPal sometimes loops its overlay instead of
+  // closing it after approval.  While awaiting, poll the host's finalize
+  // endpoint — the server captures APPROVED orders directly, and the modal
+  // completes even when the overlay never closes.
+  useEffect(() => {
+    if (!inPageActive || !pollFinalize) return;
+    let stopped = false;
+    (async () => {
+      const deadline = Date.now() + 10 * 60 * 1000;
+      while (!stopped && Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, 3000));
+        if (stopped) return;
+        try {
+          const res = await pollFinalize();
+          if (res?.captured) {
+            onCaptured?.(res.credits);
+            setAwaitingPayment(false);
+            setPending(null);
+            setOpen(false);
+            return;
+          }
+        } catch {
+          // transient — keep polling
+        }
+      }
+    })();
+    return () => {
+      stopped = true;
+    };
+  }, [inPageActive, pollFinalize]);
 
   useEffect(() => {
     const handler = () => setOpen(true);
@@ -49,10 +183,14 @@ export function TopUpModal({
   }, []);
 
   async function onTopUp(productId: string) {
+    console.log("[MP-DEBUG] onTopUp", {
+      inPage: !!inPageCheckout,
+      poll: !!pollFinalize,
+    });
     setPending(productId);
     setError(null);
     try {
-      const result: any = await attach({ planId: productId });
+      const result: any = await client.attach({ planId: productId });
       const checkoutUrl =
         result?.paymentUrl ??
         result?.payment_url ??
@@ -61,6 +199,15 @@ export function TopUpModal({
 
       if (!checkoutUrl) {
         setOpen(false);
+        return;
+      }
+
+      if (inPageCheckout) {
+        // In-page mode: keep the modal open, swap the packs for PayPal Buttons.
+        pendingProductId.current = productId;
+        setAwaitingPayment(true);
+        setInPageActive(true);
+        setPending(null);
         return;
       }
 
@@ -167,10 +314,16 @@ export function TopUpModal({
         </div>
 
         {awaitingPayment && (
-          <p className="mt-3 text-sm text-muted-foreground">
-            Complete the payment in the PayPal window — this dialog closes when
-            your credits arrive.
-          </p>
+          <div className="mt-3">
+            {inPageCheckout ? (
+              <div ref={buttonsRef} data-testid="paypal-buttons" />
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Complete the payment in the PayPal window — this dialog closes
+                when your credits arrive.
+              </p>
+            )}
+          </div>
         )}
 
         {error && (

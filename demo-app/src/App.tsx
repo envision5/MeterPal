@@ -40,6 +40,14 @@ function Dashboard({
 	const [input, setInput] = useState("");
 	const [busy, setBusy] = useState(false);
 	const [paymentNotice, setPaymentNotice] = useState<string | null>(null);
+	const [paypalClientId, setPaypalClientId] = useState<string | null>(null);
+
+	useEffect(() => {
+		fetch("/api/paypal/config")
+			.then((r) => r.json())
+			.then((d) => setPaypalClientId(d?.clientId ?? null))
+			.catch(() => {});
+	}, []);
 
 	useEffect(() => {
 		// PayPal browser-return landing: the billing server captured the
@@ -210,6 +218,20 @@ function Dashboard({
 							productIds={["topup_10", "topup_50", "topup_200"]}
 							labels={["10 credits", "50 credits", "200 credits"]}
 							prices={[10, 50, 200]}
+							inPageCheckout={
+								paypalClientId
+									? {
+											clientId: paypalClientId,
+											capture: async (orderId: string) => {
+												const res = await fetch(
+													`/api/paypal/capture/${encodeURIComponent(orderId)}`,
+													{ method: "POST" },
+												);
+												return res.json();
+											},
+										}
+									: undefined
+							}
 							pollFinalize={async () => {
 								const res = await fetch("/api/paypal/poll");
 								if (!res.ok) return null;

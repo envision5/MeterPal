@@ -131,6 +131,25 @@ app.all(
 	}),
 );
 
+// ---- paypal in-page checkout support ----
+// The client id is public (sandbox) — the SDK loads it in the browser; the
+// capture call is proxied so nothing but the order id crosses the wire.
+app.get("/api/paypal/config", async (c) => {
+	const clientId =
+		process.env.PAYPAL_CLIENT_ID ??
+		readEnvFile(join(ROOT, "..", "billing", "server", ".env")).PAYPAL_CLIENT_ID;
+	return c.json({ clientId: clientId ?? null });
+});
+
+app.post("/api/paypal/capture/:orderId", async (c) => {
+	const orderId = c.req.param("orderId");
+	const base = process.env.METERPAL_API_URL ?? "http://localhost:8080";
+	const res = await fetch(`${base}/paypal/capture/${encodeURIComponent(orderId)}`, {
+		method: "POST",
+	});
+	return c.json(await res.json());
+});
+
 // ---- paypal poll proxy (popup checkout finalize) ----
 app.get("/api/paypal/poll", async (c) => {
 	const customerId = c.req.header("x-meterpal-customer") ?? DEFAULT_CUSTOMER;
