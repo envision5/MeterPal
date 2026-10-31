@@ -21,15 +21,18 @@ const ROOT = import.meta.dir;
 const GATEWAY_URL = process.env.LITELLM_URL ?? "http://localhost:4000";
 const DEFAULT_CUSTOMER = process.env.DEMO_CUSTOMER_ID ?? "demo-customer";
 
-function readGatewayEnv(): Record<string, string> {
+function readEnvFile(path: string): Record<string, string> {
 	const out: Record<string, string> = {};
-	const path = join(ROOT, "..", "gateway", ".env");
 	if (!existsSync(path)) return out;
 	for (const line of readFileSync(path, "utf8").split(/\r?\n/)) {
 		const m = line.match(/^\s*([A-Z_][A-Z0-9_]*)\s*=\s*(.*)\s*$/);
 		if (m) out[m[1]] = m[2].replace(/^['"]|['"]$/g, "");
 	}
 	return out;
+}
+
+function readGatewayEnv(): Record<string, string> {
+	return readEnvFile(join(ROOT, "..", "gateway", ".env"));
 }
 
 const gatewayEnv = readGatewayEnv();
@@ -48,6 +51,73 @@ if (!SECRET_KEY) {
 }
 
 const app = new Hono();
+
+// ---- local usage read (demo) ----
+// The billing server's events API aggregates through Tinybird (its cloud
+// analytics backend), which isn't part of the local stack.  For the demo the
+// usage panel reads the Postgres events ledger directly — the same rows the
+// merchant dashboard and ledger queries see.  Registered BEFORE the
+// autumn-js adapter so it wins routing for this one path.
+let billingSql: Bun.SQL | null = null;
+function getBillingSql(): Bun.SQL {
+	if (!billingSql) {
+		const url =
+			process.env.METERPAL_DATABASE_URL ??
+			readEnvFile(join(ROOT, "..", "billing", "server", ".env")).DATABASE_URL;
+		if (!url) throw new Error("no billing DATABASE_URL for local usage read");
+		billingSql = new Bun.SQL(url);
+	}
+	return billingSql;
+}
+
+app.post("/api/autumn/listEvents", async (c) => {
+	const body = await c.req.json().catch(() => ({}) as any);
+	const customerId = c.req.header("x-meterpal-customer") ?? DEFAULT_CUSTOMER;
+	const limit = Math.min(Number(body?.limit) || 50, 200);
+	const startMs = Number(body?.custom_range?.start) || 0;
+	const feature = process.env.METERPAL_FEATURE_ID ?? "ai_tokens";
+	const sql = getBillingSql();
+
+	const rows = startMs
+		? await sql`
+				select id, customer_id, event_name, value, properties, "timestamp"
+				from events
+				where env = 'sandbox'
+					and event_name = ${feature}
+					and customer_id = ${customerId}
+					and "timestamp" >= ${new Date(startMs).toISOString()}
+				order by "timestamp" desc
+				limit ${limit}
+			`
+		: await sql`
+				select id, customer_id, event_name, value, properties, "timestamp"
+				from events
+				where env = 'sandbox'
+					and event_name = ${feature}
+					and customer_id = ${customerId}
+				order by "timestamp" desc
+				limit ${limit}
+			`;
+
+	// ListEventsResponse shape the @meterpal/sdk panel expects.
+	return c.json({
+		list: rows.map((r: any) => ({
+			id: r.id,
+			timestamp: new Date(r.timestamp).getTime(),
+			featureId: r.event_name,
+			customerId: r.customer_id,
+			value: Number(r.value ?? 0),
+			properties: {
+				model_id: r.properties?.model_id ?? r.properties?.model,
+				input_tokens: r.properties?.input_tokens ?? 0,
+				output_tokens: r.properties?.output_tokens ?? 0,
+				status: r.properties?.status,
+				cost_usd: r.properties?.cost ?? r.properties?.cost_usd,
+			},
+		})),
+		nextCursor: null,
+	});
+});
 
 // ---- billing routes (secret key injected here, server-side) ----
 app.all(
