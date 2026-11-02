@@ -4,13 +4,18 @@
   "description": "MeterPal \u2014 PayPal-native AI usage billing SDK for React apps. Drop-in components + client for credits, plans, top-ups and usage history.",
   "private": true,
   "type": "module",
-  "main": "./dist/index.js",
-  "module": "./dist/index.mjs",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "bin": {
+    "meterpal": "./dist/cli/index.js"
+  },
   "exports": {
-    ".": "./dist/index.js",
-    "./components/*": "./dist/components/*.js",
-    "./client": "./dist/client.js"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
   },
   "scripts": {
     "build": "tsup",

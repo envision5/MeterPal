@@ -8,7 +8,20 @@ import {
 import { AutumnProvider } from "autumn-js/react";
 import { useEffect, useState } from "react";
 
-type Message = { role: "user" | "assistant"; content: string };
+type Message = {
+	role: "user" | "assistant";
+	content: string;
+	/** Credits this turn cost, when it was a metered call. */
+	charged?: number;
+};
+
+type ServedModel = {
+	model_id: string;
+	display_name: string | null;
+	enabled: boolean;
+	input_cost_usd_1m: number | null;
+	output_cost_usd_1m: number | null;
+};
 
 const CUSTOMERS = ["demo-customer", "demo-customer-2"];
 
@@ -41,11 +54,28 @@ function Dashboard({
 	const [busy, setBusy] = useState(false);
 	const [paymentNotice, setPaymentNotice] = useState<string | null>(null);
 	const [paypalClientId, setPaypalClientId] = useState<string | null>(null);
+	const [models, setModels] = useState<ServedModel[]>([]);
+	const [modelId, setModelId] = useState("custom/demo-gpt");
 
 	useEffect(() => {
 		fetch("/api/paypal/config")
 			.then((r) => r.json())
 			.then((d) => setPaypalClientId(d?.clientId ?? null))
+			.catch(() => {});
+	}, []);
+
+	// The models this merchant serves, with their prices.  This is the
+	// merchant's own price sheet -- the app shows exactly what it may call
+	// and what it charges.
+	useEffect(() => {
+		fetch("/api/models")
+			.then((r) => r.json())
+			.then((d) => {
+				const served: ServedModel[] = d?.models ?? [];
+				setModels(served);
+				const firstEnabled = served.find((m) => m.enabled);
+				if (firstEnabled) setModelId(firstEnabled.model_id);
+			})
 			.catch(() => {});
 	}, []);
 
@@ -97,17 +127,22 @@ function Dashboard({
 					"Content-Type": "application/json",
 					"x-meterpal-customer": customerId,
 				},
-				body: JSON.stringify({ prompt }),
+				body: JSON.stringify({ prompt, model: modelId }),
 			});
 			if (res.status === 402) {
 				// Admission control refused the call before the model ran.
+				const data = await res.json().catch(() => ({}));
 				setMessages((m) => [
 					...m,
 					{
 						role: "assistant",
 						content:
-							"⛔ 402 — insufficient credits. The gateway refused this call " +
-							"before the model provider was touched. Top up with PayPal to continue.",
+							"⛔ 402 — insufficient credits. The call was refused before " +
+							"the model provider was touched." +
+							(data?.balance !== undefined
+								? ` Balance: ${data.balance}, needed: ${data.requiredCredits}.`
+								: "") +
+							" Top up with PayPal to continue.",
 					},
 				]);
 				window.dispatchEvent(new Event("open-topup-modal"));
@@ -119,6 +154,7 @@ function Dashboard({
 				{
 					role: "assistant",
 					content: data?.choices?.[0]?.message?.content ?? "(empty reply)",
+					charged: data?.meterpal?.credits_charged ?? undefined,
 				},
 			]);
 		} catch (err) {
@@ -155,6 +191,21 @@ function Dashboard({
 						{CUSTOMERS.map((c) => (
 							<option key={c} value={c}>
 								{c}
+							</option>
+						))}
+					</select>
+					<select
+						value={modelId}
+						onChange={(e) => setModelId(e.target.value)}
+						className="rounded-md border border-border bg-background px-2 py-1 text-sm"
+						data-testid="model-switcher"
+						title="The models this merchant serves, and what they charge"
+					>
+						{models.map((m) => (
+							<option key={m.model_id} value={m.model_id}>
+								{m.display_name ?? m.model_id} · $
+								{m.input_cost_usd_1m}/$
+								{m.output_cost_usd_1m} per 1M
 							</option>
 						))}
 					</select>
@@ -197,6 +248,14 @@ function Dashboard({
 								].join(" ")}
 							>
 								{m.content}
+								{m.charged !== undefined && (
+									<span
+										className="mt-1 block text-[11px] text-muted-foreground"
+										data-testid="chat-charge"
+									>
+										charged {m.charged} credits
+									</span>
+								)}
 							</div>
 						))}
 						{busy && <p className="text-xs text-muted-foreground">thinking…</p>}

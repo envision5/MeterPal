@@ -3,22 +3,22 @@
 // One process serving the demo app:
 //   /api/autumn/*  — autumn-js backend routes (injects the billing secret
 //                    key server-side; the browser never sees it)
-//   /api/chat      — proxy to the metered LiteLLM gateway (attaches the
-//                    customer id the gateway's admission hook reads)
+//   /api/chat      — metered inference through the MeterPal SDK
+//   /api/models    — the models this merchant serves, with their prices
 //   /*             — the built frontend (vite build -> dist/)
 //
 // Run:  bun install && bun run dev   (builds, then serves on :5173)
-// Env:  METERPAL_SECRET_KEY / LITELLM_MASTER_KEY / LITELLM_URL — falls back to
-//       parsing gateway/.env (demo convenience).
+// Env:  METERPAL_SECRET_KEY / METERPAL_API_URL — falls back to parsing
+//       gateway/.env (demo convenience).
 
 import { serveStatic } from "hono/bun";
 import { Hono } from "hono";
 import { autumnHandler } from "autumn-js/hono";
+import { createMeterPal, InsufficientBalanceError } from "@meterpal/sdk";
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
 const ROOT = import.meta.dir;
-const GATEWAY_URL = process.env.LITELLM_URL ?? "http://localhost:4000";
 const DEFAULT_CUSTOMER = process.env.DEMO_CUSTOMER_ID ?? "demo-customer";
 
 function readEnvFile(path: string): Record<string, string> {
@@ -41,14 +41,20 @@ const SECRET_KEY =
 	gatewayEnv.PAB_API_KEY ??
 	gatewayEnv.AUTUMN_API_KEY ??
 	"";
-const MASTER_KEY =
-	process.env.LITELLM_MASTER_KEY ?? gatewayEnv.LITELLM_MASTER_KEY ?? "";
+const API_URL = process.env.METERPAL_API_URL ?? "http://localhost:8080";
 
 if (!SECRET_KEY) {
 	console.error(
 		"demo-app: no billing secret key — set METERPAL_SECRET_KEY or run demo/bootstrap.py to fill gateway/.env",
 	);
 }
+
+// The inference client.  The secret key stays here, on the server; the
+// browser only ever talks to /api/chat.
+const meterpal = createMeterPal({
+	apiKey: SECRET_KEY,
+	baseURL: API_URL,
+});
 
 const app = new Hono();
 
@@ -168,37 +174,55 @@ app.get("/api/paypal/poll", async (c) => {
 	return c.json(await res.json());
 });
 
-// ---- metered chat proxy ----
+// ---- metered chat, through the MeterPal SDK ----
 app.post("/api/chat", async (c) => {
-	const { prompt } = await c.req.json<{ prompt?: string }>();
+	const { prompt, model } = await c.req.json<{
+		prompt?: string;
+		model?: string;
+	}>();
 	if (!prompt) return c.json({ error: "prompt required" }, 400);
 
-	const customerId =
-		c.req.header("x-meterpal-customer") ?? DEFAULT_CUSTOMER;
+	const customerId = c.req.header("x-meterpal-customer") ?? DEFAULT_CUSTOMER;
 
-	const res = await fetch(`${GATEWAY_URL}/v1/chat/completions`, {
-		method: "POST",
-		headers: {
-			Authorization: `Bearer ${MASTER_KEY}`,
-			"Content-Type": "application/json",
-		},
-		body: JSON.stringify({
-			// agnes-flash = real model (Agnes AI free tier) — metered for real
-			// by the gateway hook. DEMO_MODEL=demo-gpt falls back to the mock.
-			model: process.env.DEMO_MODEL ?? "agnes-flash",
+	try {
+		const completion = await meterpal.chat.completions.create({
+			// A model id from the merchant's served catalog.
+			model: model ?? process.env.DEMO_MODEL_ID ?? "custom/demo-gpt",
 			messages: [{ role: "user", content: prompt }],
-			max_tokens: 300,
+			// The end user being billed.
 			user: customerId,
-		}),
-	});
-
-	// Surface the gateway's admission decision verbatim: 402 means the
-	// pre-call /check refused the call before any provider spend.
-	if (res.status !== 200) {
-		const text = await res.text();
-		return c.text(text || res.statusText, res.status as 402 | 500);
+		});
+		return c.json(completion);
+	} catch (error) {
+		// The paywall: the end user must buy credits before the model runs.
+		if (error instanceof InsufficientBalanceError) {
+			return c.json(
+				{
+					error: "insufficient_balance",
+					message: error.message,
+					customer_id: error.customerId,
+					balance: error.balance,
+					requiredCredits: error.requiredCredits,
+				},
+				402,
+			);
+		}
+		throw error;
 	}
-	return c.json(await res.json());
+});
+
+// ---- the merchant's served catalog ----
+app.get("/api/models", async (c) => {
+	const catalog = await meterpal.models.list();
+	return c.json({
+		models: catalog.models.map((model) => ({
+			model_id: model.model_id,
+			display_name: model.display_name,
+			enabled: model.enabled,
+			input_cost_usd_1m: model.input_cost_usd_1m,
+			output_cost_usd_1m: model.output_cost_usd_1m,
+		})),
+	});
 });
 
 // ---- static frontend ----
