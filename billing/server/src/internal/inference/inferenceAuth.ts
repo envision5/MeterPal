@@ -27,7 +27,7 @@ import {
 } from "@autumn/shared";
 import { eq } from "drizzle-orm";
 import { verifyKey } from "@/internal/dev/apiKeys/actions/verifyKey.js";
-import { OrgService } from "@/internal/orgs/OrgService.js";
+import { getOrgWithFeaturesCached } from "@/internal/orgs/orgUtils/getOrgWithFeaturesCached.js";
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
 
 export type InferenceCredential = "secret_key" | "virtual_key";
@@ -86,7 +86,7 @@ export const resolveInferenceCaller = async ({
 		if (!customer) throw invalidCredential("Invalid virtual key");
 
 		const env = customer.env as AppEnv;
-		const orgData = await OrgService.getWithFeatures({
+		const orgData = await getOrgWithFeaturesCached({
 			db: ctx.db,
 			orgId: customer.org_id,
 			env,

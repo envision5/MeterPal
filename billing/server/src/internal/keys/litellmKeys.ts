@@ -14,8 +14,15 @@
 //   await blockLitellmKey(ctx, customerId);
 
 import { createHash } from "node:crypto";
-import { eq } from "drizzle-orm";
-import { bridgeAuditLog, customers } from "@autumn/shared";
+import { and, eq, isNotNull } from "drizzle-orm";
+import {
+  AppEnv,
+  bridgeAuditLog,
+  customers,
+  customerProducts,
+  servedModels,
+} from "@autumn/shared";
+import type { DrizzleCli } from "@/db/initDrizzle.js";
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
 import { logger } from "@/external/logtail/logtailUtils.js";
 import { litellmBase, litellmMasterKey } from "@/internal/keys/litellmEnv.js";
@@ -34,6 +41,67 @@ const LITELLM_BUDGET_PER_PLAN: Record<string, number> = {
 };
 
 const LITELLM_BUDGET_DURATION = "30d";
+
+/**
+ * Plan-key -> the customer's own rate limits.
+ *
+ * These sit on the key, so they protect the merchant from a runaway end
+ * user: one customer cannot spend the merchant's whole provider quota.
+ */
+const LITELLM_RATE_LIMITS_PER_PLAN: Record<
+  string,
+  { rpm: number; tpm: number }
+> = {
+  free: { rpm: 20, tpm: 50_000 },
+  pro: { rpm: 120, tpm: 400_000 },
+  pro_plus: { rpm: 300, tpm: 1_000_000 },
+  ultra: { rpm: 600, tpm: 4_000_000 },
+};
+
+/**
+ * The org's rate limits.
+ *
+ * These are enforced by the gateway, against a shared Redis counter, so
+ * one merchant cannot exhaust the shared provider quota however many
+ * customers it has.  They live here so the gateway and the billing server
+ * read the same numbers.
+ */
+export const ORG_RATE_LIMITS = { rpm: 600, tpm: 4_000_000 };
+
+/**
+ * The identity a virtual key carries: `<org>:<customer>`.
+ *
+ * The gateway resolves the tenant from this and nothing else.  A merchant's
+ * app cannot name another tenant, because the key is minted here and only
+ * the master key can create one.
+ */
+export const litellmIdentity = (orgId: string, customerId: string): string =>
+  `${orgId}:${customerId}`;
+
+/**
+ * The models this org may call, by the name the gateway knows them by.
+ *
+ * An empty list means every model the gateway offers -- that is an org that
+ * never listed a price sheet, and it keeps the pre-P2 behaviour.  Once the
+ * org has a price sheet, the enabled models are the allow-list.
+ */
+const getOrgAllowedModels = async ({
+  db,
+  orgId,
+  env,
+}: {
+  db: DrizzleCli;
+  orgId: string;
+  env: AppEnv;
+}): Promise<string[]> => {
+  const rows = await db.query.servedModels.findMany({
+    where: and(eq(servedModels.org_id, orgId), eq(servedModels.env, env)),
+  });
+  if (rows.length === 0) return [];
+  return rows
+    .filter((row) => row.enabled)
+    .map((row) => row.upstream_model ?? row.model_id);
+};
 
 async function findVirtualKey(
   ctx: AutumnContext,
@@ -114,6 +182,83 @@ async function deleteKeysByAlias(alias: string): Promise<number> {
   return hashes.length;
 }
 
+/**
+ * The plan a customer is on, which decides their budget and rate limits.
+ */
+export const resolveCustomerPlanKey = async ({
+  ctx,
+  customer,
+}: {
+  ctx: AutumnContext;
+  customer: { internal_id: string };
+}): Promise<string> => {
+  const rows = await ctx.db
+    .select({ productId: customerProducts.product_id })
+    .from(customerProducts)
+    .where(
+      and(
+        eq(customerProducts.internal_customer_id, customer.internal_id),
+        eq(customerProducts.status, "active"),
+      ),
+    )
+    .limit(1);
+
+  return rows[0]?.productId ?? "free";
+};
+
+/**
+ * Bring every virtual key of an org back in line with its price sheet.
+ *
+ * The gateway enforces the model allow-list on the key, so a merchant who
+ * enables a model (or switches one off) has to reach the gateway, not just
+ * the billing server.  Keys that cannot be synced are logged and left
+ * alone: a stale allow-list must not stop the merchant serving.
+ */
+export async function syncOrgLitellmKeys(
+  ctx: AutumnContext,
+  orgId: string,
+): Promise<{ synced: number; failed: number }> {
+  const rows = await ctx.db
+    .select({
+      id: customers.id,
+      internalId: customers.internal_id,
+    })
+    .from(customers)
+    .where(
+      and(
+        eq(customers.org_id, orgId),
+        isNotNull(customers.litellm_virtual_key),
+      ),
+    );
+
+  let synced = 0;
+  let failed = 0;
+
+  for (const row of rows) {
+    try {
+      const planKey = await resolveCustomerPlanKey({
+        ctx,
+        customer: { internal_id: row.internalId },
+      });
+      await provisionLitellmKey(ctx, {
+        customerId: row.id as string,
+        planKey,
+      });
+      synced++;
+    } catch (error) {
+      failed++;
+      logger.error({
+        msg: "litellm: could not sync a customer's key to the org's price sheet",
+        orgId,
+        customerId: row.id,
+        err: String(error),
+      });
+    }
+  }
+
+  return { synced, failed };
+}
+
 export interface ProvisionArgs {
   customerId: string;
   planKey: string;
@@ -125,8 +270,22 @@ export async function provisionLitellmKey(
   args: ProvisionArgs,
 ): Promise<{ key: string; created: boolean } | null> {
   const { customerId, planKey } = args;
+  const orgId = ctx.org.id;
   const maxBudget =
     args.planMaxBudgetUsd ?? LITELLM_BUDGET_PER_PLAN[planKey] ?? 5;
+  const limits =
+    LITELLM_RATE_LIMITS_PER_PLAN[planKey] ??
+    LITELLM_RATE_LIMITS_PER_PLAN.free;
+  const allowedModels = await getOrgAllowedModels({
+    db: ctx.db,
+    orgId,
+    env: ctx.env,
+  });
+
+  // The key's identity: the tenant, and the customer inside it.  The
+  // gateway resolves both from this and bills that tenant.
+  const identity = litellmIdentity(orgId, customerId);
+  const keyAlias = `meterpal:${identity}`;
 
   const [existing] = await ctx.db
     .select({ litellmVirtualKey: customers.litellm_virtual_key })
@@ -134,28 +293,42 @@ export async function provisionLitellmKey(
     .where(eq(customers.id, customerId))
     .limit(1);
 
-  // Idempotent: if we already have a key, just update its budget
+  // Idempotent: if we already have a key, just update its limits and
+  // identity.
   if (existing?.litellmVirtualKey) {
     const upd = await litellmFetch("/key/update", {
       key: existing.litellmVirtualKey,
+      key_alias: keyAlias,
+      user_id: identity,
       max_budget: maxBudget,
       budget_duration: LITELLM_BUDGET_DURATION,
+      models: allowedModels,
+      rpm_limit: limits.rpm,
+      tpm_limit: limits.tpm,
+      metadata: {
+        autumn_org_id: orgId,
+        autumn_customer_id: customerId,
+        plan: planKey,
+      },
     });
     if (upd.status >= 400) {
       await audit(ctx, customerId, "update", "system", existing.litellmVirtualKey, null, JSON.stringify(upd.body));
       throw new Error(`litellm /key/update ${upd.status}: ${JSON.stringify(upd.body)}`);
     }
-    await audit(ctx, customerId, "update", "system", existing.litellmVirtualKey, { planKey, maxBudget }, null);
+    await audit(ctx, customerId, "update", "system", existing.litellmVirtualKey, { planKey, maxBudget, identity, allowedModels, limits }, null);
     return { key: existing.litellmVirtualKey, created: false };
   }
 
-  const keyAlias = `autumn:${customerId}`;
   const generateBody = {
-    user_id: customerId,
+    user_id: identity,
     max_budget: maxBudget,
     budget_duration: LITELLM_BUDGET_DURATION,
     key_alias: keyAlias,
+    models: allowedModels,
+    rpm_limit: limits.rpm,
+    tpm_limit: limits.tpm,
     metadata: {
+      autumn_org_id: orgId,
       autumn_customer_id: customerId,
       plan: planKey,
       provisioned_at: new Date().toISOString(),

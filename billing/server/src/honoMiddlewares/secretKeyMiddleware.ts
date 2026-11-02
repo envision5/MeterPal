@@ -12,6 +12,10 @@ import { verifyKey } from "@/internal/dev/apiKeys/actions/verifyKey.js";
 import { handleOAuthMiddleware } from "./authMiddlewares/handleOAuthMiddleware.js";
 import { betterAuthMiddleware } from "./betterAuthMiddleware.js";
 import { customerJwtMiddleware } from "./customerJwtMiddleware.js";
+import {
+	gatewayAuthMiddleware,
+	isGatewayCredential,
+} from "./gatewayAuthMiddleware.js";
 import { publicKeyMiddleware } from "./publicKeyMiddleware.js";
 
 const maskApiKey = (apiKey: string) => {
@@ -79,6 +83,14 @@ export const secretKeyMiddleware = async (c: Context<HonoEnv>, next: Next) => {
 	// Step 3: Handle publishable key verification
 	if (isPublishableKeyPrefix({ token: bearerToken })) {
 		return publicKeyMiddleware(c, bearerToken, next);
+	}
+
+	// The hosted gateway serves every merchant, so it cannot present one
+	// merchant's secret key when it bills another.  It presents the shared
+	// gateway secret and names the tenant it resolved from the caller's
+	// virtual key.
+	if (isGatewayCredential(bearerToken)) {
+		return gatewayAuthMiddleware(c, next);
 	}
 
 	if (!isSecretKeyPrefix({ token: bearerToken })) {

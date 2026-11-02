@@ -88,3 +88,20 @@ export function litellmRequiredBalance(): number {
 	const parsed = Number(raw);
 	return Number.isFinite(parsed) ? parsed : 1;
 }
+
+/**
+ * The shared secret the hosted gateway presents to this API.
+ *
+ * The gateway serves every merchant, so it cannot present one merchant's
+ * secret key when it bills another.  It presents this instead and names the
+ * tenant it resolved from the caller's virtual key; the tenant is then
+ * trusted because the key itself is the only thing that can produce it.
+ *
+ * Empty means the gateway is not trusted: calls from it are refused rather
+ * than billed against the wrong tenant.
+ */
+export function gatewayTrustSecret(): string {
+	return (
+		process.env.PAB_TRUST_SECRET ?? gatewayEnv().PAB_TRUST_SECRET ?? ""
+	);
+}

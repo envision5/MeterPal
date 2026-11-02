@@ -136,6 +136,13 @@ class MeterPalBridge(CustomLogger):
 
     def __init__(self) -> None:
         self.api_key: str = _env("API_KEY", "") or ""
+        # The bearer presented to the billing server.  One deployment serves
+        # every merchant, so it cannot present a merchant's secret key when
+        # it bills a different merchant: it presents this shared secret and
+        # names the tenant it resolved from the caller's virtual key.
+        self.trust_secret: str = _env("TRUST_SECRET", "") or ""
+        self.bearer: str = self.trust_secret or self.api_key
+        self.env: str = _env("ENV", "sandbox") or "sandbox"
         self.base_url: str = _env("BASE_URL", "https://api.meterpal.dev/v1") or ""
         self.feature_id: str = _env("FEATURE_ID", "ai_tokens") or "ai_tokens"
         self.customer_header: str = _env("CUSTOMER_HEADER", "user") or "user"
@@ -145,6 +152,16 @@ class MeterPalBridge(CustomLogger):
         self.fail_mode: str = _env("FAIL_MODE", "open") or "open"
         self.use_lock: bool = _bool_env("USE_LOCK", False)
         self.required_balance: float = float(_env("REQUIRED_BALANCE", "1.0") or "1.0")
+        # Per-org ceilings.  One merchant cannot exhaust the shared provider
+        # quota, however many customers it has.  Enforced against the
+        # gateway's shared cache, so every gateway instance sees the same
+        # budget.
+        self.org_rpm_limit: int = int(_env("ORG_RPM_LIMIT", "600") or "600")
+        self.org_tpm_limit: int = int(_env("ORG_TPM_LIMIT", "4000000") or "4000000")
+        # How long the shared counter survives.  The counter is bucketed per
+        # minute, so two minutes is enough for Redis to reclaim it once the
+        # window it belongs to is over.
+        self._org_counter_ttl_sec: int = 120
         self.model_id_map: dict[str, str] = {}
         raw_map = _env("MODEL_ID_MAP", "") or ""
         if raw_map.strip():
@@ -157,7 +174,7 @@ class MeterPalBridge(CustomLogger):
                       f"model ids will be passed through unmapped", flush=True)
                 self.model_id_map = {}
 
-        if not self.api_key:
+        if not self.bearer:
             # Logged once at startup.  Bridge will no-op until configured.
             try:
                 from litellm._logging import verbose_proxy_logger
@@ -174,7 +191,7 @@ class MeterPalBridge(CustomLogger):
             self._client = httpx.AsyncClient(
                 base_url=self.base_url,
                 headers={
-                    "Authorization": f"Bearer {self.api_key}",
+                    "Authorization": f"Bearer {self.bearer}",
                     "Content-Type": "application/json",
                 },
                 params={"am-version": "V1_2"},
@@ -188,7 +205,32 @@ class MeterPalBridge(CustomLogger):
             self._client = None
 
     # -------- helpers --------
+    def _key_identity(self, uak: Optional[UserAPIKeyAuth]) -> Tuple[Optional[str], Optional[str]]:
+        """The (org, customer) carried by the key itself.
+
+        A MeterPal virtual key is minted with `<org>:<customer>` as its
+        identity.  Only the master key can mint one, so this is the one place
+        the tenant can be established -- a header the caller controls is not.
+        """
+        if uak is None:
+            return (None, None)
+        raw = getattr(uak, "user_id", None)
+        if not raw:
+            return (None, None)
+        text = str(raw)
+        if ":" not in text:
+            return (None, None)
+        org, _, customer = text.partition(":")
+        if not org or not customer:
+            return (None, None)
+        return (org, customer)
+
     def _customer_id(self, data: Optional[dict], uak: Optional[UserAPIKeyAuth]) -> Optional[str]:
+        # The key's own identity wins.  A header the caller controls must
+        # never be able to redirect the charge to another customer.
+        _, key_customer = self._key_identity(uak)
+        if key_customer:
+            return key_customer
         if data:
             for key in (self.customer_header, "user", "user_id", "end_user_id"):
                 v = data.get(key)
@@ -242,6 +284,7 @@ class MeterPalBridge(CustomLogger):
     async def _billing_check(
         self,
         customer_id: str,
+        org_id: Optional[str] = None,
         model_id: str = "",
         input_tokens: int = 0,
         output_tokens: int = 0,
@@ -261,7 +304,9 @@ class MeterPalBridge(CustomLogger):
         charge a different merchant's price row.
         """
         now = time.monotonic()
-        cache_key = f"{customer_id}:{model_id}"
+        # The tenant is part of the cache key: two orgs can have a customer
+        # with the same id, and they are billed differently.
+        cache_key = f"{org_id or ''}:{customer_id}:{model_id}"
         async with self._cache_lock:
             cached = self._check_cache.get(cache_key)
             if cached and (now - cached[0]) < self.check_ttl:
@@ -272,6 +317,12 @@ class MeterPalBridge(CustomLogger):
             "feature_id": self.feature_id,
             "required_balance": self.required_balance,
         }
+        if org_id:
+            # The tenant this call belongs to.  It came from the caller's
+            # virtual key, so the billing server can bill this org's customer
+            # and no other.
+            body["org_id"] = org_id
+            body["env"] = self.env
         if model_id:
             body["model_id"] = model_id
             body["input_tokens"] = int(input_tokens or 0)
@@ -347,6 +398,7 @@ class MeterPalBridge(CustomLogger):
         self,
         *,
         customer_id: str,
+        org_id: Optional[str] = None,
         model_id: str,
         input_tokens: int,
         output_tokens: int,
@@ -391,6 +443,10 @@ class MeterPalBridge(CustomLogger):
             # bills at these verbatim, so the reservation and the charge are
             # the same price.
             body["pinned_rates"] = pinned_rates
+        if org_id:
+            # The tenant the charge belongs to.
+            body["org_id"] = org_id
+            body["env"] = self.env
 
         await self._post_billing_with_retry("/track_tokens", body)
 
@@ -432,6 +488,71 @@ class MeterPalBridge(CustomLogger):
                 return value
         return 0
 
+    async def _org_rate_limit(
+        self,
+        org_id: Optional[str],
+        cache: Any,
+        estimated_tokens: int,
+    ) -> Optional[str]:
+        """The org's own request and token ceilings.
+
+        The counter is kept in the gateway's Redis, so the ceiling holds
+        across every gateway instance -- the whole point of a per-org limit
+        is that one merchant cannot exhaust the shared provider quota.  When
+        no Redis cache is configured the gateway's own cache is used
+        instead, which still holds within one instance.
+
+        A limiter outage must not stop a merchant serving, so a failure
+        here admits the request.
+        """
+        if not org_id:
+            return None
+
+        window = int(time.time() // 60)
+        try:
+            rpm = await self._increment_counter(
+                f"meterpal:org_rpm:{org_id}:{window}", 1, cache
+            )
+            tpm = await self._increment_counter(
+                f"meterpal:org_tpm:{org_id}:{window}",
+                max(1, estimated_tokens),
+                cache,
+            )
+        except Exception as exc:  # noqa: BLE001 -- a limiter must never break a call
+            await self._log(f"org rate limit check failed: {exc!r}")
+            return None
+
+        if rpm is not None and rpm > self.org_rpm_limit:
+            return f"more than {self.org_rpm_limit} requests per minute"
+        if tpm is not None and tpm > self.org_tpm_limit:
+            return f"more than {self.org_tpm_limit} tokens per minute"
+        return None
+
+    async def _increment_counter(
+        self, key: str, value: int, cache: Any
+    ) -> Optional[float]:
+        """Increment a shared counter, preferring the gateway's Redis.
+
+        `litellm.cache.cache` is the Redis cache the proxy was configured
+        with -- the same one its own rate limiter uses.  It is read at call
+        time because the cache is built during startup, after this module
+        is imported.
+        """
+        # Imported here, not at module level: this module is loaded from
+        # inside litellm's own package.
+        import litellm
+
+        redis_cache = getattr(getattr(litellm, "cache", None), "cache", None)
+        if redis_cache is not None and hasattr(redis_cache, "async_increment"):
+            # The counter is per minute window, so it may outlive its window
+            # by one; the TTL lets Redis reclaim it.
+            return await redis_cache.async_increment(
+                key, value, ttl=self._org_counter_ttl_sec, refresh_ttl=False
+            )
+        if cache is not None:
+            return await cache.async_increment_cache(key, value, refresh_ttl=False)
+        return None
+
     # -------- Hook 1: admission --------
     async def async_pre_call_hook(
         self,
@@ -440,10 +561,13 @@ class MeterPalBridge(CustomLogger):
         data: dict,
         call_type: Any,
     ) -> dict:
-        if not self.api_key:
+        if not self.bearer:
             return data
 
-        customer_id = self._customer_id(data, user_api_key_dict)
+        # The tenant comes from the key, never from the request.
+        org_id, key_customer = self._key_identity(user_api_key_dict)
+
+        customer_id = key_customer or self._customer_id(data, user_api_key_dict)
         if not customer_id:
             # Fail closed: an unresolvable identity means an unmetered model
             # call. Every billable request must name a customer.
@@ -458,16 +582,50 @@ class MeterPalBridge(CustomLogger):
                 },
             )
 
+        if self.trust_secret and not org_id:
+            # The shared gateway secret is only used when the tenant can be
+            # established from the key.  Without it the charge would land on
+            # whichever org the request happened to name.
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": "unresolvable_tenant",
+                    "message": (
+                        "This key does not carry a MeterPal tenant. Use a "
+                        "MeterPal virtual key, not a gateway admin key."
+                    ),
+                },
+            )
+
         # mirror the customer id so LiteLLM populates LiteLLM_EndUserTable.user_id
         data[self.customer_header] = customer_id
         data["user"] = customer_id
 
+        estimated_input = self._estimate_input_tokens(data)
+        estimated_output = self._estimate_output_tokens(data)
+
+        # The org's ceiling.  Checked before the provider is touched, so an
+        # over-quota merchant never spends anything.
+        over_quota = await self._org_rate_limit(
+            org_id, cache, estimated_input + estimated_output
+        )
+        if over_quota:
+            raise HTTPException(
+                status_code=429,
+                detail={
+                    "error": "rate_limit_exceeded",
+                    "message": f"This organization sent {over_quota}.",
+                    "org_id": org_id,
+                },
+            )
+
         model_id = self._model_id(data)
         allowed, lock_id, pinned_rates, resolved_model_id = await self._billing_check(
             customer_id,
+            org_id=org_id,
             model_id=model_id,
-            input_tokens=self._estimate_input_tokens(data),
-            output_tokens=self._estimate_output_tokens(data),
+            input_tokens=estimated_input,
+            output_tokens=estimated_output,
         )
         if not allowed and self.admit_mode == "block":
             raise HTTPException(
@@ -490,6 +648,10 @@ class MeterPalBridge(CustomLogger):
             # The id the charge belongs to, resolved against this org's
             # price sheet by the billing server.
             md["_autumn_model_id"] = resolved_model_id
+        if org_id:
+            # The tenant the charge belongs to.  The settle call has to name
+            # it again: the success hook only sees the logging payload.
+            md["_autumn_org_id"] = org_id
         # Always carry the customer through to the logging payload -- the
         # success/failure hooks have no other reliable way to resolve it.
         md["_autumn_customer_id"] = customer_id
@@ -497,7 +659,7 @@ class MeterPalBridge(CustomLogger):
 
     # -------- Hook 2: billable success --------
     async def async_log_success_event(self, kwargs, response_obj, start_time, end_time):
-        if not self.api_key:
+        if not self.bearer:
             return
         customer_id = self._post_call_customer_id(kwargs)
         if not customer_id:
@@ -509,6 +671,7 @@ class MeterPalBridge(CustomLogger):
         usage = _usage_breakdown(kwargs, response_obj)
         await self._billing_track_tokens(
             customer_id=customer_id,
+            org_id=md.get("_autumn_org_id"),
             model_id=md.get("_autumn_model_id") or self._model_id(kwargs),
             input_tokens=usage["input_tokens"],
             output_tokens=usage["output_tokens"],
@@ -523,7 +686,7 @@ class MeterPalBridge(CustomLogger):
 
     # -------- Hook 3: failure path --------
     async def async_log_failure_event(self, kwargs, response_obj, start_time, end_time):
-        if not self.api_key:
+        if not self.bearer:
             return
         customer_id = self._post_call_customer_id(kwargs)
         if not customer_id:
@@ -536,6 +699,7 @@ class MeterPalBridge(CustomLogger):
         exc = kwargs.get("exception")
         await self._billing_track_tokens(
             customer_id=customer_id,
+            org_id=md.get("_autumn_org_id"),
             model_id=md.get("_autumn_model_id") or self._model_id(kwargs),
             input_tokens=usage["input_tokens"],
             output_tokens=usage["output_tokens"],

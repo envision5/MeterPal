@@ -15,14 +15,16 @@ import {
 	AppEnv,
 	customers,
 	type DbCustomer,
-	customerProducts,
 	RecaseError,
 } from "@autumn/shared";
 import { and, eq, or } from "drizzle-orm";
 import type { DrizzleCli } from "@/db/initDrizzle.js";
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
 import { litellmBase, litellmFeatureId } from "@/internal/keys/litellmEnv.js";
-import { provisionLitellmKey } from "@/internal/keys/litellmKeys.js";
+import {
+	provisionLitellmKey,
+	resolveCustomerPlanKey,
+} from "@/internal/keys/litellmKeys.js";
 import {
 	getServedModel,
 	getServedModelAllowList,
@@ -209,28 +211,6 @@ export const getOrProvisionVirtualKey = async ({
 		});
 	}
 	return provisioned.key;
-};
-
-/** The plan the customer is on, which decides their gateway budget. */
-const resolveCustomerPlanKey = async ({
-	ctx,
-	customer,
-}: {
-	ctx: AutumnContext;
-	customer: DbCustomer;
-}): Promise<string> => {
-	const rows = await ctx.db
-		.select({ productId: customerProducts.product_id })
-		.from(customerProducts)
-		.where(
-			and(
-				eq(customerProducts.internal_customer_id, customer.internal_id),
-				eq(customerProducts.status, "active"),
-			),
-		)
-		.limit(1);
-
-	return rows[0]?.productId ?? "free";
 };
 
 /** The body forwarded to the gateway. */

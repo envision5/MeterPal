@@ -4,6 +4,11 @@ export enum AuthType {
 	PublicKey = "public_key",
 	CustomerJwt = "customer_jwt",
 	Dashboard = "dashboard",
+	/**
+	 * The hosted gateway.  It presents the shared gateway secret and names
+	 * the tenant it resolved from the caller's virtual key.
+	 */
+	Gateway = "gateway",
 
 	// Internal
 	Vercel = "vercel",

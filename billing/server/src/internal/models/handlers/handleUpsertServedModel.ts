@@ -13,6 +13,7 @@ import { Scopes, servedModels } from "@autumn/shared";
 import { z } from "zod/v4";
 import { generateId } from "@/utils/genUtils.js";
 import { createRoute } from "@/honoMiddlewares/routeHandler.js";
+import { syncOrgLitellmKeys } from "@/internal/keys/litellmKeys.js";
 
 export const handleUpsertServedModel = createRoute({
 	scopes: [Scopes.Organisation.Write],
@@ -70,6 +71,12 @@ export const handleUpsertServedModel = createRoute({
 					})
 					.returning();
 
+		// The gateway enforces the model allow-list on the key, so the
+		// merchant's price sheet has to reach it, not just this server.
+		// A model that is enabled here but not on the key would 404 at the
+		// gateway, which reads as "the model is broken" to the merchant.
+		const sync = await syncOrgLitellmKeys(ctx, org.id);
+
 		return c.json({
 			model: {
 				model_id: row[0].model_id,
@@ -81,6 +88,10 @@ export const handleUpsertServedModel = createRoute({
 				markup_pct: row[0].markup_pct,
 				updated_at: row[0].updated_at,
 			},
+			// How many of the org's inference keys now carry the new
+			// allow-list.
+			keys_synced: sync.synced,
+			keys_failed: sync.failed,
 		});
 	},
 });

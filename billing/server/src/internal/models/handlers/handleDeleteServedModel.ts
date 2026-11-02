@@ -8,6 +8,7 @@
 import { and, eq } from "drizzle-orm";
 import { ErrCode, RecaseError, Scopes, servedModels } from "@autumn/shared";
 import { createRoute } from "@/honoMiddlewares/routeHandler.js";
+import { syncOrgLitellmKeys } from "@/internal/keys/litellmKeys.js";
 
 export const handleDeleteServedModel = createRoute({
 	scopes: [Scopes.Organisation.Write],
@@ -33,6 +34,15 @@ export const handleDeleteServedModel = createRoute({
 				),
 			);
 
-		return c.json({ deleted: true, model_id: modelId });
+		// The gateway enforces the model allow-list on the key, so dropping a
+		// row has to reach it too.
+		const sync = await syncOrgLitellmKeys(ctx, org.id);
+
+		return c.json({
+			deleted: true,
+			model_id: modelId,
+			keys_synced: sync.synced,
+			keys_failed: sync.failed,
+		});
 	},
 });

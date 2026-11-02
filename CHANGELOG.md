@@ -72,6 +72,94 @@ documentation, and packaging.
 - `scripts/fix-ps1-encoding.py` keeps the PowerShell scripts ASCII-only and
   BOM-encoded so Windows PowerShell 5.1 parses them correctly.
 
+**Multi-tenant PayPal (2026-11-02)** — P1 of the architecture plan
+- A merchant's PayPal account is theirs, not the platform's. Every PayPal call
+  now goes through a client built from the org's own row
+  (`organizations.paypal_config`), with the client secret encrypted at rest and
+  the access token cached in Redis per org. `external/paypal/paypalClient.ts`
+  replaces the process-global client; the org row wins, and the `PAYPAL_*` env
+  vars remain as the back-compat fallback for single-tenant deployments.
+- Per-org configuration is split per environment (`paypal_config.test` /
+  `.live`), like a PayPal REST app. The env fallback applies only when the org
+  has no `paypal_config` at all — once an org manages its own PayPal the
+  shared account never bills for it.
+- Webhooks move to `POST /webhooks/paypal/:orgId/:webhookId`. The org comes
+  from the path, so the signature is verified against THAT org's webhook id,
+  and the environment is resolved from the webhook id. Event dedupe reuses
+  `stripe_webhook_events` with a `paypal:` prefix rather than adding a second
+  table for the same job.
+- The dashboard gets a PayPal section (Settings > Integrations): connect with a
+  client id and secret, verified against PayPal BEFORE they are stored, the
+  webhook URL to paste into the merchant's app, and a disconnect.
+
+**The merchant's price sheet (2026-11-02)** — P2 of the architecture plan
+- What a merchant charges is the merchant's decision, so a provider price
+  change cannot move it. `served_models` is the per-org price sheet, split by
+  environment: `model_id` (the billable id), `upstream_model` (the LiteLLM
+  deployment), `enabled`, input/output cost per 1M tokens, and a markup that is
+  NULL when the plan's markup should apply. The provider price (models.dev) is
+  only the SEED used when a row is created.
+- The track path prices from the org's row when it has one and falls back to
+  the old path when it does not, so an org that never opens the Models tab
+  behaves exactly as before.
+- Price pinning: `/check` resolves the unit rates and returns them as
+  `pricing.pinned_rates`; the gateway passes them back on `/track_tokens`, and
+  the settle uses them verbatim (`markup_source: "pinned"`). The reservation
+  and the charge are the same price even if the merchant edits their sheet in
+  between.
+- The dashboard gets a Models tab (Catalog > Models) with inline-editable
+  prices, a markup, and a margin preview against the provider price.
+  Verified end to end: a call at the feature's 20/80 cost 0.36; after setting
+  60/100 in the dashboard the same call cost 1.76.
+
+**The inference proxy and the SDK (2026-11-02)** — P3 of the architecture plan
+- `POST /v1/chat/completions` on the billing server: the merchant's app calls
+  it with its MeterPal secret key (or a customer virtual key). The proxy
+  resolves the org, the model it may serve and the end user being billed, then
+  forwards to the shared gateway with that customer's virtual key — the
+  gateway's bridge stays the single metering authority. The response is the
+  OpenAI shape verbatim plus a `meterpal` block with what the call cost.
+- The billable model id is resolved per org: the gateway names a model its own
+  way (`demo-gpt`) while the merchant's price sheet names it the way they bill
+  it (`custom/demo-gpt`). A single global alias map cannot serve two merchants
+  selling the same upstream model under different ids, so the org's own sheet
+  is the authority.
+- `@meterpal/sdk` — `createMeterPal({ apiKey })` gives a merchant's server a
+  chat client whose calls are metered. The secret key stays on the server; the
+  client mints a per-customer virtual key on first use and caches it
+  process-wide. Errors are typed, because the paywall is the product:
+  `InsufficientBalanceError` carries `topUp()`, which opens the PayPal
+  checkout.
+- `npx @meterpal/sdk init` detects the framework (Next, Hono, Express,
+  Fastify), writes the environment and a server-side handler that keeps the key
+  off the browser.
+- The demo app now uses the SDK instead of a hand-rolled proxy, and shows the
+  merchant's own price sheet as a model picker with the charge under every
+  reply.
+
+**Gateway hardening (2026-11-02)** — P4 of the architecture plan
+- The virtual key carries the tenant: `<org>:<customer>` is the key's
+  identity, so the gateway resolves which merchant a call belongs to from the
+  key itself. A `user` header the caller controls can no longer redirect a
+  charge, and an admin key (no tenant) is refused outright
+  (`missing_billing_identity` / `unresolvable_tenant`) instead of billing a
+  guess.
+- The gateway presents a shared `PAB_TRUST_SECRET` (single source:
+  `gateway/.env`) and names the tenant it resolved; the billing server loads
+  that org and looks the customer up inside it, so a request naming another
+  org's customer is refused, not billed.
+- The price sheet is the gateway's allow-list: each key carries the org's
+  enabled upstream models, kept in sync when the merchant edits the sheet
+  (`syncOrgLitellmKeys` on served-model upsert/delete).
+- Two ceilings. Per customer, rpm/tpm on the key, seeded from the plan (free
+  20/50k, pro 120/400k, pro_plus 300/1M, ultra 600/4M). Per org, rpm/tpm in
+  the bridge, counted in the gateway's Redis so the ceiling holds across every
+  gateway instance.
+- `scripts/verify-tenant-isolation.ps1` drives the gateway directly and
+  asserts all of it: the key beats a spoofed customer header, an admin key is
+  refused, a model that is not on the price sheet is refused, and an unknown
+  key is refused.
+
 ## 0.1.0-baseline — 2026-09-30 (pre-hackathon)
 
 The starting point, predating the hackathon submission window. This baseline
