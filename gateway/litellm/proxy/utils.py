@@ -77,6 +77,7 @@ from litellm.proxy.common_utils.openai_error_payload import (
     openai_error_param,
     with_litellm_call_id,
 )
+from litellm.proxy.process_probe import process_is_alive
 from litellm.proxy.spend_tracking.spend_log_error_logger import spend_log_error
 from litellm.types.guardrails import GuardrailEventHooks
 from litellm.types.proxy.model_listing import ModelInfoResponse
@@ -5767,8 +5768,7 @@ class PrismaClient:
         if self._engine_pid <= 0:
             return True
         try:
-            os.kill(self._engine_pid, 0)
-            return True
+            return process_is_alive(self._engine_pid)
         except ProcessLookupError:
             return False
         except (PermissionError, OSError):
@@ -5986,13 +5986,13 @@ class PrismaClient:
         )
 
     async def _poll_engine_proc(self) -> None:
-        """poll via os.kill(pid, 0) every 1s.
+        """poll the engine's liveness every 1s.
         Only used when BOTH waitpid thread and pidfd are unavailable
         (e.g., PID is not our child process and pidfd_open fails)
         """
         while self._watching_engine and self._engine_pid > 0:
             try:
-                os.kill(self._engine_pid, 0)
+                process_is_alive(self._engine_pid)
             except ProcessLookupError:
                 dead_pid = self._engine_pid
                 if self._consume_expected_death(dead_pid):

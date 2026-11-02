@@ -244,7 +244,21 @@ class PrismaWrapper:
 
     @staticmethod
     def _write_engine(prisma_client: _PrismaClient, engine: _PrismaEngine) -> None:
-        prisma_client._Prisma__engine = engine
+        # prisma-client-py >= 0.13 keeps the engine in the __slots__-managed
+        # `_internal_engine` attribute and exposes it through a read-only
+        # `_engine` property; older releases stored it in the name-mangled
+        # `_Prisma__engine`.  Writing the wrong one raises AttributeError on
+        # __slots__-based clients, which breaks PrismaClient.connect().
+        for attribute in ("_internal_engine", "_Prisma__engine"):
+            try:
+                setattr(prisma_client, attribute, engine)
+                return
+            except AttributeError:
+                continue
+        raise AttributeError(
+            "prisma client exposes no writable engine attribute "
+            "(tried _internal_engine, _Prisma__engine)"
+        )
 
     def _instrument_prisma_client(self, prisma_client: "Prisma | _PrismaClient") -> _PrismaDrainTracker | None:
         from prisma.errors import ClientNotConnectedError

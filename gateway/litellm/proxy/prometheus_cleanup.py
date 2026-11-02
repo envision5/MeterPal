@@ -12,6 +12,7 @@ import re
 from typing import Final
 
 from litellm._logging import verbose_proxy_logger
+from litellm.proxy.process_probe import process_is_alive
 
 _LIVE_GAUGE_PID: Final = re.compile(r"gauge_live[a-z]*_(\d+)\.db$")
 
@@ -45,7 +46,7 @@ def mark_worker_exit(worker_pid: int) -> None:
 
 def _is_running(pid: int) -> bool:
     try:
-        os.kill(pid, 0)
+        process_is_alive(pid)
     except ProcessLookupError:
         return False
     except PermissionError:
