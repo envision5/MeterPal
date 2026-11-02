@@ -14,52 +14,14 @@
 //   await blockLitellmKey(ctx, customerId);
 
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { eq } from "drizzle-orm";
-import { parse } from "dotenv";
 import { bridgeAuditLog, customers } from "@autumn/shared";
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
 import { logger } from "@/external/logtail/logtailUtils.js";
+import { litellmBase, litellmMasterKey } from "@/internal/keys/litellmEnv.js";
 
 // The LiteLLM master key has to be the SAME value for the gateway and this
-// server.  gateway/.env is the canonical source: the gateway process reads
-// that file at startup, so a key read from it is guaranteed to match and
-// there is only ever one copy of the secret.  A second copy in this
-// server's .env is exactly how the two drifted apart before.
-//
-// The environment still wins, which is how a deployed instance supplies it.
-// The file is a LOCAL-DEV fallback only.
-let gatewayEnvCache: Record<string, string> | null = null;
-
-function gatewayEnv(): Record<string, string> {
-  if (gatewayEnvCache) return gatewayEnvCache;
-  const path =
-    process.env.LITELLM_ENV_FILE ??
-    resolve(
-      dirname(fileURLToPath(import.meta.url)),
-      "..",
-      "..",
-      "..",
-      "..",
-      "..",
-      "gateway",
-      ".env",
-    );
-  gatewayEnvCache = existsSync(path) ? parse(readFileSync(path)) : {};
-  return gatewayEnvCache;
-}
-
-// Read lazily: webhook handlers import this module dynamically, and a
-// missing bridge config must fail that one operation — not module load.
-function litellmBase(): string {
-  return required("LITELLM_BASE_URL");
-}
-
-function litellmMasterKey(): string {
-  return required("LITELLM_MASTER_KEY");
-}
+// server.  gateway/.env is the canonical source — see litellmEnv.ts.
 
 // Plan-key → USD budget. Mirrored from plan.md. Keep in sync with the
 // merchant dashboard's plan definitions; this table is the fallback when
@@ -72,14 +34,6 @@ const LITELLM_BUDGET_PER_PLAN: Record<string, number> = {
 };
 
 const LITELLM_BUDGET_DURATION = "30d";
-
-function required(name: string): string {
-  const v = process.env[name] ?? gatewayEnv()[name];
-  if (!v) {
-    throw new Error(`Missing required env var: ${name}`);
-  }
-  return v;
-}
 
 async function findVirtualKey(
   ctx: AutumnContext,

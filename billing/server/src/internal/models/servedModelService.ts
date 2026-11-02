@@ -169,3 +169,60 @@ export const getServedModelAllowList = async ({
 	if (rows.length === 0) return null;
 	return rows.filter((r) => r.enabled).map((r) => r.model_id);
 };
+
+/**
+ * The billable model id for a model name, resolved against THIS org's price
+ * sheet.
+ *
+ * The gateway names models its own way ("demo-gpt"); the price sheet names
+ * them the way the org bills them ("custom/demo-gpt").  A single global
+ * alias map cannot serve two merchants who both sell "demo-gpt" under
+ * different ids, so the org's own sheet is the authority:
+ *
+ *   1. an exact `model_id` match
+ *   2. an exact `upstream_model` match
+ *   3. an `upstream_model` match on the bare name after the last slash
+ *      ("openai/gpt-4o" -> "gpt-4o")
+ *
+ * Returns null when the org has no opinion, in which case the caller keeps
+ * the incoming id (the pre-P2 behaviour: provider pricing).
+ */
+export const resolveServedModelId = async ({
+	db,
+	orgId,
+	env,
+	modelId,
+}: {
+	db: DrizzleCli;
+	orgId: string;
+	env: AppEnv;
+	modelId: string;
+}): Promise<string | null> => {
+	if (!modelId) return null;
+
+	const exact = await getServedModel({ db, orgId, env, modelId });
+	if (exact) return exact.model_id;
+
+	const byUpstream = await db.query.servedModels.findFirst({
+		where: and(
+			eq(servedModels.org_id, orgId),
+			eq(servedModels.env, env),
+			eq(servedModels.upstream_model, modelId),
+		),
+	});
+	if (byUpstream) return byUpstream.model_id;
+
+	const bare = modelId.split("/").pop();
+	if (bare && bare !== modelId) {
+		const byBare = await db.query.servedModels.findFirst({
+			where: and(
+				eq(servedModels.org_id, orgId),
+				eq(servedModels.env, env),
+				eq(servedModels.upstream_model, bare),
+			),
+		});
+		if (byBare) return byBare.model_id;
+	}
+
+	return null;
+};

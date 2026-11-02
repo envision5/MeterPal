@@ -38,6 +38,7 @@ from typing import Any
 
 import uvicorn
 from fastapi import FastAPI, Request
+from fastapi.responses import StreamingResponse
 
 app = FastAPI(title="Mock LLM")
 
@@ -103,7 +104,7 @@ def models() -> dict[str, Any]:
 
 
 @app.post("/v1/chat/completions")
-async def chat_completions(request: Request) -> dict[str, Any]:
+async def chat_completions(request: Request) -> Any:
     body = await request.json()
     model = body.get("model") or "demo-gpt"
     usage, cleaned = _parse_usage(body.get("messages") or [])
@@ -118,10 +119,40 @@ async def chat_completions(request: Request) -> dict[str, Any]:
         + f" / {usage['out']:,} output tokens."
     )
 
+    completion_id = f"chatcmpl-mock-{int(time.time() * 1000)}"
+    created = int(time.time())
+
+    usage_block = {
+        # OpenAI semantics: prompt_tokens includes cached input.
+        "prompt_tokens": prompt_total,
+        "completion_tokens": completion_total,
+        "total_tokens": prompt_total + completion_total,
+        "prompt_tokens_details": {"cached_tokens": usage["cache_read"]},
+        # Anthropic-style pool fields; the bridge reads either shape.
+        "cache_read_input_tokens": usage["cache_read"],
+        "cache_creation_input_tokens": usage["cache_write"],
+        "completion_tokens_details": {"reasoning_tokens": usage["reasoning"]},
+    }
+
+    if body.get("stream"):
+        return StreamingResponse(
+            _stream_chunks(
+                completion_id=completion_id,
+                created=created,
+                model=model,
+                reply=reply,
+                usage_block=usage_block,
+                include_usage=bool(
+                    (body.get("stream_options") or {}).get("include_usage")
+                ),
+            ),
+            media_type="text/event-stream",
+        )
+
     return {
-        "id": f"chatcmpl-mock-{int(time.time() * 1000)}",
+        "id": completion_id,
         "object": "chat.completion",
-        "created": int(time.time()),
+        "created": created,
         "model": model,
         "choices": [
             {
@@ -130,18 +161,55 @@ async def chat_completions(request: Request) -> dict[str, Any]:
                 "finish_reason": "stop",
             }
         ],
-        "usage": {
-            # OpenAI semantics: prompt_tokens includes cached input.
-            "prompt_tokens": prompt_total,
-            "completion_tokens": completion_total,
-            "total_tokens": prompt_total + completion_total,
-            "prompt_tokens_details": {"cached_tokens": usage["cache_read"]},
-            # Anthropic-style pool fields; the bridge reads either shape.
-            "cache_read_input_tokens": usage["cache_read"],
-            "cache_creation_input_tokens": usage["cache_write"],
-            "completion_tokens_details": {"reasoning_tokens": usage["reasoning"]},
-        },
+        "usage": usage_block,
     }
+
+
+async def _stream_chunks(
+    *,
+    completion_id: str,
+    created: int,
+    model: str,
+    reply: str,
+    usage_block: dict[str, Any],
+    include_usage: bool,
+):
+    """Server-Sent Events in the OpenAI chunk shape.
+
+    The reply is delivered in a few pieces so a client sees the stream
+    arrive, then the usage chunk, then [DONE] -- the same order the real
+    providers use.
+    """
+    import json
+
+    def envelope(delta: dict[str, Any], finish_reason: Any, usage: Any = None) -> str:
+        payload: dict[str, Any] = {
+            "id": completion_id,
+            "object": "chat.completion.chunk",
+            "created": created,
+            "model": model,
+            "choices": [
+                {"index": 0, "delta": delta, "finish_reason": finish_reason}
+            ],
+        }
+        if usage is not None:
+            payload["choices"] = []
+            payload["usage"] = usage
+        return f"data: {json.dumps(payload)}\n\n"
+
+    yield envelope({"role": "assistant", "content": ""}, None)
+
+    pieces = reply.split(" ")
+    for index, piece in enumerate(pieces):
+        text = piece if index == 0 else " " + piece
+        yield envelope({"content": text}, None)
+
+    yield envelope({}, "stop")
+
+    if include_usage:
+        yield envelope({}, None, usage_block)
+
+    yield "data: [DONE]\n\n"
 
 
 if __name__ == "__main__":

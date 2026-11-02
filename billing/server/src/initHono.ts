@@ -24,6 +24,7 @@ import { withTrustedSsoOrigin } from "./internal/auth/sso/ssoTrustedOrigins.js";
 import { cliRouter } from "./internal/dev/cli/cliRouter.js";
 import { handleRevenueCatOAuthCallback } from "./internal/orgs/handlers/revenueCatHandlers/handleRevenueCatOAuthCallback.js";
 import { handleOAuthCallback } from "./internal/orgs/handlers/stripeHandlers/handleOAuthCallback.js";
+import { inferenceRouter } from "./internal/inference/inferenceRouter.js";
 import { slackUnfurlRouter } from "./internal/slackUnfurl/slackUnfurlRouter.js";
 import { apiRouter } from "./routers/apiRouter.js";
 import { createChatProxyRouter } from "./routers/chatProxyRouter.js";
@@ -170,6 +171,10 @@ export const createHonoApp = () => {
 	// app.route("/v1/debug", debugRouter);
 
 	// API Middleware
+	// The inference API authenticates itself (it accepts a merchant secret
+	// key OR a per-customer virtual key), so it is mounted ahead of the
+	// standard secret-key chain rather than inside it.
+	app.route("/v1", inferenceRouter);
 	app.route("/v1", apiRouter);
 
 	// OAuth/MCP discovery is public by contract, so an unmatched probe must 404

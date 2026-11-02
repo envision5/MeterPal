@@ -165,7 +165,7 @@ class MeterPalBridge(CustomLogger):
             except Exception:
                 pass
 
-        self._check_cache: dict[str, Tuple[float, Tuple[bool, Optional[str], Optional[dict]]]] = {}
+        self._check_cache: dict[str, Tuple[float, Tuple[bool, Optional[str], Optional[dict], Optional[str]]]] = {}
         self._cache_lock = asyncio.Lock()
         self._client: Optional[httpx.AsyncClient] = None
 
@@ -245,13 +245,20 @@ class MeterPalBridge(CustomLogger):
         model_id: str = "",
         input_tokens: int = 0,
         output_tokens: int = 0,
-    ) -> Tuple[bool, Optional[str], Optional[dict]]:
+    ) -> Tuple[bool, Optional[str], Optional[dict], Optional[str]]:
         """Admit the request, and pin the price it is admitted at.
 
         The billing server resolves the merchant's price for the model and
         returns it as `pricing.pinned_rates`.  Those rates are handed back on
         the settle call, so the reservation and the charge are made at the
         same price even if the merchant edits their price sheet in between.
+
+        It also returns `pricing.model_id`: the id the charge must be
+        recorded against.  The gateway names a model its own way ("demo-gpt")
+        while the merchant's price sheet names it the way they bill it
+        ("custom/demo-gpt"), and only the billing server knows which id
+        belongs to this org.  Settling against the gateway's name would
+        charge a different merchant's price row.
         """
         now = time.monotonic()
         cache_key = f"{customer_id}:{model_id}"
@@ -273,6 +280,7 @@ class MeterPalBridge(CustomLogger):
             body["lock"] = True
 
         pinned_rates: Optional[dict] = None
+        resolved_model_id: Optional[str] = None
         try:
             client = self._get_client()
             resp = await client.post("/check", json=body)
@@ -282,15 +290,17 @@ class MeterPalBridge(CustomLogger):
             lock_id = (payload.get("lock") or {}).get("lock_id") if self.use_lock else None
             pricing = payload.get("pricing") or {}
             pinned_rates = pricing.get("pinned_rates") or None
+            resolved_model_id = pricing.get("model_id") or None
         except httpx.HTTPError as exc:
             await self._log(f"billing /check failed: {exc!r}")
             allowed = self.fail_mode == "open"
             lock_id = None
             pinned_rates = None
+            resolved_model_id = None
 
         async with self._cache_lock:
-            self._check_cache[cache_key] = (now, (allowed, lock_id, pinned_rates))
-        return (allowed, lock_id, pinned_rates)
+            self._check_cache[cache_key] = (now, (allowed, lock_id, pinned_rates, resolved_model_id))
+        return (allowed, lock_id, pinned_rates, resolved_model_id)
 
     async def _post_billing_with_retry(self, path: str, json_body: dict) -> None:
         # Money-movement POST with bounded retry: a transient billing-server
@@ -453,7 +463,7 @@ class MeterPalBridge(CustomLogger):
         data["user"] = customer_id
 
         model_id = self._model_id(data)
-        allowed, lock_id, pinned_rates = await self._billing_check(
+        allowed, lock_id, pinned_rates, resolved_model_id = await self._billing_check(
             customer_id,
             model_id=model_id,
             input_tokens=self._estimate_input_tokens(data),
@@ -476,6 +486,10 @@ class MeterPalBridge(CustomLogger):
             # The price this request is admitted at.  The settle call uses it
             # verbatim, so the charge matches the quote.
             md["_autumn_pinned_rates"] = pinned_rates
+        if resolved_model_id:
+            # The id the charge belongs to, resolved against this org's
+            # price sheet by the billing server.
+            md["_autumn_model_id"] = resolved_model_id
         # Always carry the customer through to the logging payload -- the
         # success/failure hooks have no other reliable way to resolve it.
         md["_autumn_customer_id"] = customer_id
@@ -495,7 +509,7 @@ class MeterPalBridge(CustomLogger):
         usage = _usage_breakdown(kwargs, response_obj)
         await self._billing_track_tokens(
             customer_id=customer_id,
-            model_id=self._model_id(kwargs),
+            model_id=md.get("_autumn_model_id") or self._model_id(kwargs),
             input_tokens=usage["input_tokens"],
             output_tokens=usage["output_tokens"],
             cache_read_tokens=usage["cache_read_tokens"],
@@ -522,7 +536,7 @@ class MeterPalBridge(CustomLogger):
         exc = kwargs.get("exception")
         await self._billing_track_tokens(
             customer_id=customer_id,
-            model_id=self._model_id(kwargs),
+            model_id=md.get("_autumn_model_id") or self._model_id(kwargs),
             input_tokens=usage["input_tokens"],
             output_tokens=usage["output_tokens"],
             cache_read_tokens=usage["cache_read_tokens"],

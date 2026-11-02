@@ -12,6 +12,7 @@ import { isAiCreditSystem } from "@autumn/shared";
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
 import { getPinnedModelCostBreakdown } from "@/internal/features/aiCreditSystemUtils.js";
 import { resolveModelRates } from "@/internal/models/resolveModelRates.js";
+import { resolveServedModelId } from "@/internal/models/servedModelService.js";
 
 export type CheckPricing = {
 	/** The unit rates the caller is admitted at, in USD per 1M tokens. */
@@ -27,6 +28,15 @@ export type CheckPricing = {
 	};
 	/** What the request is expected to cost at those rates. */
 	estimated_cost: number;
+	/**
+	 * The billable model id these rates belong to.
+	 *
+	 * The caller may have named the model the gateway's way ("demo-gpt");
+	 * the org's price sheet names it the way the org bills it
+	 * ("custom/demo-gpt").  The settle call must use THIS id, or it would
+	 * charge against a different merchant's price row.
+	 */
+	model_id: string;
 };
 
 /**
@@ -58,11 +68,21 @@ export const resolveCheckPricing = async ({
 		ctx.features.find((f) => isAiCreditSystem(f.type));
 	if (!creditSystem || !isAiCreditSystem(creditSystem.type)) return null;
 
+	// The org's price sheet is the authority on which id this model bills
+	// as; the gateway may have named it differently.
+	const billableModelId =
+		(await resolveServedModelId({
+			db: ctx.db,
+			orgId: ctx.org.id,
+			env: ctx.env,
+			modelId,
+		})) ?? modelId;
+
 	const rates = await resolveModelRates({
 		db: ctx.db,
 		orgId: ctx.org.id,
 		env: ctx.env,
-		modelId,
+		modelId: billableModelId,
 		creditSystem,
 	});
 	if (!rates) return null;
@@ -76,5 +96,6 @@ export const resolveCheckPricing = async ({
 	return {
 		pinned_rates: rates,
 		estimated_cost: breakdown.cost,
+		model_id: billableModelId,
 	};
 };
