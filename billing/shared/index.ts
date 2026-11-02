@@ -182,6 +182,7 @@ export * from "./models/migrationV2Models/migrationItemRunTable";
 export * from "./models/migrationV2Models/migrationRunTable";
 export * from "./models/migrationV2Models/migrationTable";
 export * from "./models/migrationV2Models/pendingMigrationModel";
+export * from "./models/modelModels/servedModelTable";
 export * from "./models/orgModels/agent/agentRules";
 export * from "./models/orgModels/agent/agentRulesTable";
 // 1. Org Models

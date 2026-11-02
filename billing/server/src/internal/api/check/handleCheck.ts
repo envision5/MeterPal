@@ -15,6 +15,7 @@ import { parseCheckParamsForLock } from "@/internal/balances/utils/lock/parseChe
 import { getCheckFailOpenFallback } from "./checkUtils/getCheckFailOpenFallback.js";
 import { getCheckPreview } from "./getCheckPreview.js";
 import { handleProductCheck } from "./handlers/handleProductCheck.js";
+import { resolveCheckPricing } from "./resolveCheckPricing.js";
 
 const DEFAULT_REQUIRED_BALANCE = 1;
 // check is the hottest-path route: past this budget we answer allowed rather
@@ -71,6 +72,9 @@ export const handleCheck = createRoute({
 			required_quantity,
 			required_balance,
 			with_preview,
+			model_id,
+			input_tokens,
+			output_tokens,
 		} = body;
 
 		// Legacy path - product check
@@ -95,6 +99,19 @@ export const handleCheck = createRoute({
 		}
 
 		const { checkData, response } = result;
+
+		// Price pinning: when the caller says which model it is about to use,
+		// the response carries the unit rates it is admitted at.  The caller
+		// passes them back on the settle call, so the reservation and the
+		// charge are made at the same price even if the merchant edits their
+		// price sheet in between.
+		const pricing = await resolveCheckPricing({
+			ctx,
+			modelId: model_id,
+			inputTokens: input_tokens,
+			outputTokens: output_tokens,
+			featureId: body.feature_id,
+		});
 
 		const preview = with_preview
 			? await getCheckPreview({
@@ -122,6 +139,7 @@ export const handleCheck = createRoute({
 		return c.json({
 			...transformedResponse,
 			preview,
+			...(pricing ? { pricing } : {}),
 			// lock_id: body.lock?.lock_id ?? undefined,
 		});
 	},

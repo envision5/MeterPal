@@ -63,6 +63,22 @@ export const TrackTokensParamsSchema = z.object({
 		description:
 			"If true, enqueue the event for asynchronous processing and return 204 immediately. The response will not include balance information.",
 	}),
+	pinned_rates: z
+		.object({
+			input: z.number(),
+			output: z.number(),
+			cache_read: z.number().optional(),
+			cache_write: z.number().optional(),
+			audio_input: z.number().optional(),
+			audio_output: z.number().optional(),
+			reasoning: z.number().optional(),
+			markup: z.number(),
+		})
+		.optional()
+		.meta({
+			description:
+				"The unit prices returned by an earlier check for the same model. When present they are used verbatim, so the reservation and the charge are made at the same price even if the merchant changes their prices in between.",
+		}),
 });
 
 export type TrackTokensParams = z.infer<typeof TrackTokensParamsSchema>;

@@ -10,6 +10,7 @@ import {
 	splitModelId,
 } from "@autumn/shared";
 import { Decimal } from "decimal.js";
+import type { ServedModelPricing } from "@/internal/models/servedModelService.js";
 import { getModelsDevPricing } from "@/internal/features/utils/getModelPricing.js";
 import { isBillableModelCost } from "@/internal/features/utils/isBillableModelCost.js";
 
@@ -145,7 +146,7 @@ export type ModelCostBreakdown = {
 	cost: number;
 	baseCost: number;
 	markup: number;
-	markupSource: "model" | "provider" | "default" | "none";
+	markupSource: "model" | "provider" | "default" | "none" | "pinned";
 	tierApplied: boolean;
 	rates: ModelCostRates;
 };
@@ -236,21 +237,58 @@ const resolveAiMarkup = ({
 export const getModelCreditCostBreakdown = async ({
 	modelName,
 	creditSystem,
+	servedModel,
 	...tokens
 }: {
 	modelName: string;
 	creditSystem: Feature;
+	/**
+	 * The org's own price for this model, from `served_models`.
+	 *
+	 * When present it is the runtime authority: a models.dev change cannot
+	 * move the merchant's price, and the merchant's markup wins over the
+	 * plan's (unless the merchant left it unset, in which case the plan's
+	 * markup still applies).  When absent, nothing changes.
+	 */
+	servedModel?: ServedModelPricing | null;
 } & TokenInput): Promise<ModelCostBreakdown> => {
 	const markups = creditSystem.model_markups || {};
 	const pricingData = await getModelsDevPricing();
 	const resolved = resolveModel({ modelName, pricingData });
 
 	const markupEntry = markups[modelName];
-	const { markup, source } = resolveAiMarkup({
+	const featureMarkup = resolveAiMarkup({
 		modelName,
 		creditSystem,
 		modelMarkup: markupEntry,
 	});
+
+	// The org's price sheet wins for both the base rate and the markup.
+	if (servedModel) {
+		const { markup, source } =
+			servedModel.markupPct != null
+				? { markup: servedModel.markupPct, source: "model" as const }
+				: featureMarkup;
+
+		// Cache, audio, and reasoning pools are not separately priced on the
+		// merchant's sheet, so they fall back to the text rates.
+		const computed = computeCost({
+			cost: {
+				input: servedModel.input,
+				output: servedModel.output,
+				cache_read: servedModel.input,
+				cache_write: servedModel.input,
+				input_audio: servedModel.input,
+				output_audio: servedModel.output,
+				reasoning: servedModel.output,
+			},
+			tokens,
+			markup,
+		});
+		return { ...computed, markup, markupSource: source };
+	}
+
+	const { markup, source } = featureMarkup;
 
 	// Custom models carry no models.dev rates; they bill input/output at the user-supplied
 	// costs only (cache/audio/reasoning pools are not priced for custom models).
@@ -281,3 +319,41 @@ export const getModelCreditCostBreakdown = async ({
 export const getModelCreditCost = async (
 	args: { modelName: string; creditSystem: Feature } & TokenInput,
 ): Promise<number> => (await getModelCreditCostBreakdown(args)).cost;
+
+/**
+ * The cost of a request at rates that were pinned earlier.
+ *
+ * Used when the caller settled at a price it was admitted at: the merchant's
+ * price sheet may have changed in between, and the charge must still be the
+ * one that was quoted.  No price lookup happens here at all.
+ */
+export const getPinnedModelCostBreakdown = ({
+	rates,
+	...tokens
+}: {
+	rates: {
+		input: number;
+		output: number;
+		cache_read?: number;
+		cache_write?: number;
+		audio_input?: number;
+		audio_output?: number;
+		reasoning?: number;
+		markup: number;
+	};
+} & TokenInput): ModelCostBreakdown => {
+	const computed = computeCost({
+		cost: {
+			input: rates.input,
+			output: rates.output,
+			cache_read: rates.cache_read ?? rates.input,
+			cache_write: rates.cache_write ?? rates.input,
+			input_audio: rates.audio_input ?? rates.input,
+			output_audio: rates.audio_output ?? rates.output,
+			reasoning: rates.reasoning ?? rates.output,
+		},
+		tokens,
+		markup: rates.markup,
+	});
+	return { ...computed, markup: rates.markup, markupSource: "pinned" };
+};

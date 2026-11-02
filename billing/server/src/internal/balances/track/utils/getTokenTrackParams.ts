@@ -13,7 +13,11 @@ import {
 } from "@autumn/shared";
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
 import { getOrSetCachedFullSubject } from "@/internal/customers/cache/fullSubject/actions/getOrSetCachedFullSubject.js";
-import { getModelCreditCostBreakdown } from "@/internal/features/aiCreditSystemUtils.js";
+import {
+	getModelCreditCostBreakdown,
+	getPinnedModelCostBreakdown,
+} from "@/internal/features/aiCreditSystemUtils.js";
+import { getServedModelPricing } from "@/internal/models/servedModelService.js";
 import type { FeatureDeduction } from "../../utils/types/featureDeduction.js";
 
 const resolveAiCreditFeatureById = ({
@@ -157,17 +161,41 @@ export const getTokenTrackParams = async ({
 }): Promise<{ body: TrackParams; featureDeductions: FeatureDeduction[] }> => {
 	const aiCreditFeature = await resolveAiCreditFeature({ ctx, input });
 
-	const pricing = await getModelCreditCostBreakdown({
-		modelName: input.model_id,
-		creditSystem: aiCreditFeature,
-		input: input.input_tokens,
-		output: input.output_tokens,
-		cacheRead: input.cache_read_tokens,
-		cacheWrite: input.cache_write_tokens,
-		audioInput: input.audio_input_tokens,
-		audioOutput: input.audio_output_tokens,
-		reasoning: input.reasoning_tokens,
+	// The org's own price sheet is the runtime authority for this model.
+	// An org with no row for it keeps the old behaviour exactly.
+	const servedModel = await getServedModelPricing({
+		db: ctx.db,
+		orgId: ctx.org.id,
+		env: ctx.env,
+		modelId: input.model_id,
 	});
+
+	// A pinned rate sheet means the caller was admitted at a known price:
+	// use it verbatim, so a price change between admission and settlement
+	// cannot move what the customer is charged.
+	const pricing = input.pinned_rates
+		? getPinnedModelCostBreakdown({
+				rates: input.pinned_rates,
+				input: input.input_tokens,
+				output: input.output_tokens,
+				cacheRead: input.cache_read_tokens,
+				cacheWrite: input.cache_write_tokens,
+				audioInput: input.audio_input_tokens,
+				audioOutput: input.audio_output_tokens,
+				reasoning: input.reasoning_tokens,
+			})
+		: await getModelCreditCostBreakdown({
+				modelName: input.model_id,
+				creditSystem: aiCreditFeature,
+				servedModel,
+				input: input.input_tokens,
+				output: input.output_tokens,
+				cacheRead: input.cache_read_tokens,
+				cacheWrite: input.cache_write_tokens,
+				audioInput: input.audio_input_tokens,
+				audioOutput: input.audio_output_tokens,
+				reasoning: input.reasoning_tokens,
+			});
 	const cost = pricing.cost;
 
 	const featureDeductions: FeatureDeduction[] = [

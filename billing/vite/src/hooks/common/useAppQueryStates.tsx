@@ -11,6 +11,7 @@ type SecondaryTabType =
 	| "products"
 	| "rewards"
 	| "features"
+	| "models"
 	| "webhooks";
 
 export const useAppQueryStates = ({

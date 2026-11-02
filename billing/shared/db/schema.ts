@@ -79,6 +79,7 @@ import { migrationItemRuns } from "../models/migrationV2Models/migrationItemRunT
 import { migrationRunsRelations } from "../models/migrationV2Models/migrationRunRelations.js";
 import { migrationRuns } from "../models/migrationV2Models/migrationRunTable.js";
 import { migrations } from "../models/migrationV2Models/migrationTable.js";
+import { servedModels } from "../models/modelModels/servedModelTable.js";
 /* RELATIONS */
 import { agentRules } from "../models/orgModels/agent/agentRulesTable.js";
 import { organizationsRelations } from "../models/orgModels/orgRelations.js";
@@ -252,6 +253,7 @@ export {
 	rollovers,
 	schedulePhases,
 	schedules,
+	servedModels,
 	session,
 	ssoConnection,
 	ssoProvider,

@@ -43,6 +43,21 @@ export const ExtCheckParamsSchema = BalanceParamsBaseSchema.extend({
 			"If true, includes upgrade/upsell information in the response when access is denied. Useful for displaying paywalls.",
 	}),
 
+	model_id: z.string().optional().meta({
+		description:
+			"The AI model the request will use, as '[provider]/[model]' (e.g. 'openai/gpt-4o', 'custom/demo-gpt'). When given, the response carries `pricing.pinned_rates`: the unit prices this request is admitted at. Pass them back on the settle call so the reservation and the charge use the same price.",
+	}),
+
+	input_tokens: z.number().int().nonnegative().optional().meta({
+		description:
+			"Estimated non-cached input tokens, used with model_id to estimate the cost of the request.",
+	}),
+
+	output_tokens: z.number().int().nonnegative().optional().meta({
+		description:
+			"Estimated output tokens, used with model_id to estimate the cost of the request.",
+	}),
+
 	customer_data: CustomerDataSchema.optional().meta({
 		internal: true,
 	}),

@@ -11,6 +11,7 @@ import { useProductStore } from "@/hooks/stores/useProductStore";
 import { useSheetCleanup } from "@/hooks/stores/useSheetStore";
 import LoadingScreen from "../general/LoadingScreen";
 import { FeaturesPage } from "./features/FeaturesPage";
+import { ModelsPage } from "./models/ModelsPage";
 import { ProductsContext } from "./ProductsContext";
 import { ProductsPage } from "./products/ProductsPage";
 import { RewardsPage } from "./rewards/RewardsPage";
@@ -41,6 +42,7 @@ function ProductsView({ env: _env }: { env: AppEnv }) {
 				{tab === "products" && <ProductsPage />}
 				{tab === "features" && <FeaturesPage />}
 				{tab === "rewards" && <RewardsPage />}
+				{tab === "models" && <ModelsPage />}
 			</PageContainer>
 		</ProductsContext.Provider>
 	);

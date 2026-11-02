@@ -165,7 +165,7 @@ class MeterPalBridge(CustomLogger):
             except Exception:
                 pass
 
-        self._check_cache: dict[str, Tuple[float, Tuple[bool, Optional[str]]]] = {}
+        self._check_cache: dict[str, Tuple[float, Tuple[bool, Optional[str], Optional[dict]]]] = {}
         self._cache_lock = asyncio.Lock()
         self._client: Optional[httpx.AsyncClient] = None
 
@@ -239,10 +239,24 @@ class MeterPalBridge(CustomLogger):
         bare = raw.split("/")[-1]
         return self.model_id_map.get(bare, raw)
 
-    async def _billing_check(self, customer_id: str) -> Tuple[bool, Optional[str]]:
+    async def _billing_check(
+        self,
+        customer_id: str,
+        model_id: str = "",
+        input_tokens: int = 0,
+        output_tokens: int = 0,
+    ) -> Tuple[bool, Optional[str], Optional[dict]]:
+        """Admit the request, and pin the price it is admitted at.
+
+        The billing server resolves the merchant's price for the model and
+        returns it as `pricing.pinned_rates`.  Those rates are handed back on
+        the settle call, so the reservation and the charge are made at the
+        same price even if the merchant edits their price sheet in between.
+        """
         now = time.monotonic()
+        cache_key = f"{customer_id}:{model_id}"
         async with self._cache_lock:
-            cached = self._check_cache.get(customer_id)
+            cached = self._check_cache.get(cache_key)
             if cached and (now - cached[0]) < self.check_ttl:
                 return cached[1]
 
@@ -251,9 +265,14 @@ class MeterPalBridge(CustomLogger):
             "feature_id": self.feature_id,
             "required_balance": self.required_balance,
         }
+        if model_id:
+            body["model_id"] = model_id
+            body["input_tokens"] = int(input_tokens or 0)
+            body["output_tokens"] = int(output_tokens or 0)
         if self.use_lock:
             body["lock"] = True
 
+        pinned_rates: Optional[dict] = None
         try:
             client = self._get_client()
             resp = await client.post("/check", json=body)
@@ -261,14 +280,17 @@ class MeterPalBridge(CustomLogger):
             payload = resp.json()
             allowed = bool(payload.get("allowed", False))
             lock_id = (payload.get("lock") or {}).get("lock_id") if self.use_lock else None
+            pricing = payload.get("pricing") or {}
+            pinned_rates = pricing.get("pinned_rates") or None
         except httpx.HTTPError as exc:
             await self._log(f"billing /check failed: {exc!r}")
             allowed = self.fail_mode == "open"
             lock_id = None
+            pinned_rates = None
 
         async with self._cache_lock:
-            self._check_cache[customer_id] = (now, (allowed, lock_id))
-        return (allowed, lock_id)
+            self._check_cache[cache_key] = (now, (allowed, lock_id, pinned_rates))
+        return (allowed, lock_id, pinned_rates)
 
     async def _post_billing_with_retry(self, path: str, json_body: dict) -> None:
         # Money-movement POST with bounded retry: a transient billing-server
@@ -327,35 +349,40 @@ class MeterPalBridge(CustomLogger):
         request_id: str,
         status: str,
         error_type: Optional[str] = None,
+        pinned_rates: Optional[dict] = None,
     ) -> None:
-        await self._post_billing_with_retry(
-            "/track_tokens",
-            {
-                "customer_id": customer_id,
-                "feature_id": self.feature_id,
+        body: dict[str, Any] = {
+            "customer_id": customer_id,
+            "feature_id": self.feature_id,
+            "model_id": model_id,
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "cache_read_tokens": cache_read_tokens,
+            "cache_write_tokens": cache_write_tokens,
+            "audio_input_tokens": audio_input_tokens,
+            "audio_output_tokens": audio_output_tokens,
+            "reasoning_tokens": reasoning_tokens,
+            # Never an empty idempotency key: the billing server skips its
+            # dedupe claim when the key is absent, so a retry could
+            # double-charge.
+            "idempotency_key": request_id or str(uuid.uuid4()),
+            # TrackTokensParamsSchema expects unix milliseconds.
+            "timestamp": int(time.time() * 1000),
+            "properties": {
                 "model_id": model_id,
-                "input_tokens": input_tokens,
-                "output_tokens": output_tokens,
-                "cache_read_tokens": cache_read_tokens,
-                "cache_write_tokens": cache_write_tokens,
-                "audio_input_tokens": audio_input_tokens,
-                "audio_output_tokens": audio_output_tokens,
-                "reasoning_tokens": reasoning_tokens,
-                # Never an empty idempotency key: the billing server skips its
-                # dedupe claim when the key is absent, so a retry could
-                # double-charge.
-                "idempotency_key": request_id or str(uuid.uuid4()),
-                # TrackTokensParamsSchema expects unix milliseconds.
-                "timestamp": int(time.time() * 1000),
-                "properties": {
-                    "model_id": model_id,
-                    "cost_usd": cost_usd,
-                    "litellm_call_id": request_id,
-                    "status": status,
-                    "error_type": error_type,
-                },
+                "cost_usd": cost_usd,
+                "litellm_call_id": request_id,
+                "status": status,
+                "error_type": error_type,
             },
-        )
+        }
+        if pinned_rates:
+            # The rates this request was admitted at.  The billing server
+            # bills at these verbatim, so the reservation and the charge are
+            # the same price.
+            body["pinned_rates"] = pinned_rates
+
+        await self._post_billing_with_retry("/track_tokens", body)
 
     async def _log(self, msg: str) -> None:
         # Never log customer ids or API keys.  Billing failures MUST be
@@ -367,6 +394,33 @@ class MeterPalBridge(CustomLogger):
             verbose_proxy_logger.info(f"[MeterPalBridge] {msg}")
         except ImportError:
             pass
+
+    def _estimate_input_tokens(self, data: dict) -> int:
+        """Rough input-token count for the admission estimate.
+
+        Only used to price the request BEFORE it runs; the actual charge is
+        computed from the real token counts the provider reports.  A rough
+        estimate is enough: it feeds `estimated_cost`, not the amount billed.
+        """
+        total = 0
+        for message in data.get("messages") or []:
+            content = message.get("content")
+            if isinstance(content, str):
+                total += len(content)
+            elif isinstance(content, list):
+                for part in content:
+                    if isinstance(part, dict):
+                        total += len(str(part.get("text") or ""))
+        # ~4 characters per token is the usual English approximation.
+        return max(1, total // 4) if total else 1
+
+    def _estimate_output_tokens(self, data: dict) -> int:
+        """The caller's output cap, used for the admission estimate."""
+        for key in ("max_tokens", "max_completion_tokens"):
+            value = data.get(key)
+            if isinstance(value, int) and value > 0:
+                return value
+        return 0
 
     # -------- Hook 1: admission --------
     async def async_pre_call_hook(
@@ -398,7 +452,13 @@ class MeterPalBridge(CustomLogger):
         data[self.customer_header] = customer_id
         data["user"] = customer_id
 
-        allowed, lock_id = await self._billing_check(customer_id)
+        model_id = self._model_id(data)
+        allowed, lock_id, pinned_rates = await self._billing_check(
+            customer_id,
+            model_id=model_id,
+            input_tokens=self._estimate_input_tokens(data),
+            output_tokens=self._estimate_output_tokens(data),
+        )
         if not allowed and self.admit_mode == "block":
             raise HTTPException(
                 status_code=402,
@@ -409,12 +469,15 @@ class MeterPalBridge(CustomLogger):
                 },
             )
 
+        md = data.setdefault("metadata", {})
         if lock_id:
-            md = data.setdefault("metadata", {})
             md["_autumn_lock_id"] = lock_id
+        if pinned_rates:
+            # The price this request is admitted at.  The settle call uses it
+            # verbatim, so the charge matches the quote.
+            md["_autumn_pinned_rates"] = pinned_rates
         # Always carry the customer through to the logging payload -- the
         # success/failure hooks have no other reliable way to resolve it.
-        md = data.setdefault("metadata", {})
         md["_autumn_customer_id"] = customer_id
         return data
 
@@ -441,6 +504,7 @@ class MeterPalBridge(CustomLogger):
             cost_usd=float(kwargs.get("response_cost") or 0.0),
             request_id=str(kwargs.get("litellm_call_id") or ""),
             status="success",
+            pinned_rates=md.get("_autumn_pinned_rates"),
         )
 
     # -------- Hook 3: failure path --------
@@ -468,6 +532,7 @@ class MeterPalBridge(CustomLogger):
             request_id=str(kwargs.get("litellm_call_id") or ""),
             status="failure",
             error_type=exc.__class__.__name__ if exc else None,
+            pinned_rates=md.get("_autumn_pinned_rates"),
         )
 
 
