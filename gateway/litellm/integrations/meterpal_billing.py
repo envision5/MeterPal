@@ -52,6 +52,7 @@ import asyncio
 import json
 import os
 import time
+import uuid
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Optional, Tuple
 
@@ -269,20 +270,44 @@ class MeterPalBridge(CustomLogger):
             self._check_cache[customer_id] = (now, (allowed, lock_id))
         return (allowed, lock_id)
 
+    async def _post_billing_with_retry(self, path: str, json_body: dict) -> None:
+        # Money-movement POST with bounded retry: a transient billing-server
+        # blip must not silently lose usage or leak a reservation. Retries
+        # network errors and 5xx; 4xx are permanent (logged, not retried).
+        # The billing server dedupes on idempotency keys, so retries are safe.
+        delays = [0.5, 1.0, 2.0]
+        last_error: Optional[str] = None
+        for attempt in range(len(delays) + 1):
+            try:
+                client = self._get_client()
+                resp = await client.post(path, json=json_body)
+                if resp.status_code < 300:
+                    return
+                last_error = f"HTTP {resp.status_code}"
+                if resp.status_code < 500:
+                    break  # 4xx — the server rejected the payload; retrying won't help
+            except httpx.HTTPError as exc:
+                last_error = repr(exc)
+            if attempt < len(delays):
+                await asyncio.sleep(delays[attempt])
+        await self._log(f"billing {path} failed after retries: {last_error}")
+
     async def _billing_finalize(self, customer_id: str, lock_id: str, action: str) -> None:
         try:
-            client = self._get_client()
-            resp = await client.post(
+            await self._post_billing_with_retry(
                 "/balances.finalize",
-                json={
+                {
                     "customer_id": customer_id,
                     "lock_id": lock_id,
                     "action": action,
+                    # Commit releases the reservation in full — the actual
+                    # usage is billed separately by /track_tokens. Without
+                    # this the reserved amount is kept AND the real cost is
+                    # deducted on top (double-billing).
+                    **({"override_value": 0} if action == "commit" else {}),
                     "feature_id": self.feature_id,
                 },
             )
-            if resp.status_code >= 300:
-                await self._log(f"billing /balances.finalize returned HTTP {resp.status_code}")
         except httpx.HTTPError as exc:
             await self._log(f"billing /balances.finalize failed: {exc!r}")
 
@@ -303,40 +328,40 @@ class MeterPalBridge(CustomLogger):
         status: str,
         error_type: Optional[str] = None,
     ) -> None:
-        try:
-            client = self._get_client()
-            resp = await client.post(
-                "/track_tokens",
-                json={
-                    "customer_id": customer_id,
-                    "feature_id": self.feature_id,
+        await self._post_billing_with_retry(
+            "/track_tokens",
+            {
+                "customer_id": customer_id,
+                "feature_id": self.feature_id,
+                "model_id": model_id,
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "cache_read_tokens": cache_read_tokens,
+                "cache_write_tokens": cache_write_tokens,
+                "audio_input_tokens": audio_input_tokens,
+                "audio_output_tokens": audio_output_tokens,
+                "reasoning_tokens": reasoning_tokens,
+                # Never an empty idempotency key: the billing server skips its
+                # dedupe claim when the key is absent, so a retry could
+                # double-charge.
+                "idempotency_key": request_id or str(uuid.uuid4()),
+                # TrackTokensParamsSchema expects unix milliseconds.
+                "timestamp": int(time.time() * 1000),
+                "properties": {
                     "model_id": model_id,
-                    "input_tokens": input_tokens,
-                    "output_tokens": output_tokens,
-                    "cache_read_tokens": cache_read_tokens,
-                    "cache_write_tokens": cache_write_tokens,
-                    "audio_input_tokens": audio_input_tokens,
-                    "audio_output_tokens": audio_output_tokens,
-                    "reasoning_tokens": reasoning_tokens,
-                    "idempotency_key": request_id,
-                    # TrackTokensParamsSchema expects unix milliseconds.
-                    "timestamp": int(time.time() * 1000),
-                    "properties": {
-                        "model_id": model_id,
-                        "cost_usd": cost_usd,
-                        "litellm_call_id": request_id,
-                        "status": status,
-                        "error_type": error_type,
-                    },
+                    "cost_usd": cost_usd,
+                    "litellm_call_id": request_id,
+                    "status": status,
+                    "error_type": error_type,
                 },
-            )
-            if resp.status_code >= 300:
-                await self._log(f"billing /track_tokens returned HTTP {resp.status_code}")
-        except httpx.HTTPError as exc:
-            await self._log(f"billing /track_tokens failed: {exc!r}")
+            },
+        )
 
     async def _log(self, msg: str) -> None:
-        # Never log customer ids or API keys.
+        # Never log customer ids or API keys.  Billing failures MUST be
+        # visible regardless of LiteLLM's log level — stderr always shows.
+        import sys
+        print(f"[MeterPalBridge] {msg}", file=sys.stderr, flush=True)
         try:
             from litellm._logging import verbose_proxy_logger
             verbose_proxy_logger.info(f"[MeterPalBridge] {msg}")
@@ -356,7 +381,18 @@ class MeterPalBridge(CustomLogger):
 
         customer_id = self._customer_id(data, user_api_key_dict)
         if not customer_id:
-            return data
+            # Fail closed: an unresolvable identity means an unmetered model
+            # call. Every billable request must name a customer.
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": "missing_billing_identity",
+                    "message": (
+                        "No billing customer could be resolved for this "
+                        "request. Pass 'user' (the MeterPal customer id)."
+                    ),
+                },
+            )
 
         # mirror the customer id so LiteLLM populates LiteLLM_EndUserTable.user_id
         data[self.customer_header] = customer_id

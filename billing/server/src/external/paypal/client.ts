@@ -11,6 +11,9 @@ const SANDBOX = "https://api-m.sandbox.paypal.com";
 const LIVE = "https://api-m.paypal.com";
 
 function baseUrl(): string {
+  // PAYPAL_BASE_URL override exists for local end-to-end tests (mock PayPal);
+  // production always uses the sandbox/live hosts below.
+  if (process.env.PAYPAL_BASE_URL) return process.env.PAYPAL_BASE_URL;
   return process.env.PAYPAL_ENV === "live" ? LIVE : SANDBOX;
 }
 

@@ -18,6 +18,7 @@ export const paypalOrderIntents = pgTable(
 	{
 		id: bigserial("id", { mode: "number" }).primaryKey(),
 		order_id: text("order_id").notNull().unique(),
+		subscription_id: text("subscription_id"),
 		org_id: text("org_id").notNull(),
 		env: text("env").notNull(),
 		customer_id: text("customer_id").notNull(),

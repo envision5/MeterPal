@@ -68,14 +68,16 @@ export class SyncBatchingManagerV3 {
 	private readonly MAX_BATCH_SIZE = 1000;
 	private readonly DEDUP_BUCKET_MS: number = 2500;
 
-	private readonly _addTaskToQueue: (args: QueueSyncV4Payload) => Promise<void>;
+	private readonly _addTaskToQueue: (
+		args: QueueSyncV4Payload,
+	) => Promise<boolean>;
 
 	constructor({
 		addTaskToQueueFn,
 		batchWindowMs,
 		dedupBucketMs,
 	}: {
-		addTaskToQueueFn?: (args: QueueSyncV4Payload) => Promise<void>;
+		addTaskToQueueFn?: (args: QueueSyncV4Payload) => Promise<boolean>;
 		batchWindowMs?: number;
 		dedupBucketMs?: number;
 	} = {}) {
@@ -83,7 +85,7 @@ export class SyncBatchingManagerV3 {
 			addTaskToQueueFn ??
 			(addTaskToQueue as unknown as (
 				args: QueueSyncV4Payload,
-			) => Promise<void>);
+			) => Promise<boolean>);
 		this.BATCH_WINDOW_MS = batchWindowMs ?? 1000;
 		this.DEDUP_BUCKET_MS = dedupBucketMs ?? 2500;
 	}
@@ -347,6 +349,63 @@ export class SyncBatchingManagerV3 {
 
 	/** Merge into Redis dirty state and signal on the empty->dirty transition.
 	 *  An enqueue failure clears the marker before the legacy fallback. */
+	/**
+	 * Runs the balance sync in-process.  Used when no queue is configured
+	 * (local dev): the Redis-side deduction is real, but the Postgres write
+	 * only happens when this sync lands — dropping the job silently loses
+	 * usage deductions, so the API server drains them itself instead.
+	 */
+	private async runSyncInline({
+		context,
+		variant,
+		payload,
+	}: {
+		context: CustomerBatchContext;
+		variant: "v4" | "v5";
+		payload: Record<string, any>;
+	}): Promise<void> {
+		try {
+			const [{ db }, { createWorkerContext }, { syncItemV4 }, { syncItemV5 }] =
+				await Promise.all([
+					import("@/db/initDrizzle.js"),
+					import("@/queue/createWorkerContext.js"),
+					import("./syncItemV4.js"),
+					import("./syncItemV5.js"),
+				]);
+
+			const ctx = await createWorkerContext({
+				db,
+				payload: {
+					orgId: context.orgId,
+					env: context.env,
+					customerId: context.customerId,
+					requestId: `inline-sync-${Date.now()}`,
+				},
+				logger,
+				skipCache: true,
+			});
+			if (!ctx) {
+				logger.error(
+					`[SyncInline] No context for ${context.customerId} — sync dropped`,
+				);
+				return;
+			}
+
+			if (variant === "v5") {
+				await syncItemV5({ ctx, payload: payload as never });
+			} else {
+				await syncItemV4({ ctx, payload: payload as never });
+			}
+			logger.info(
+				`[SyncInline] Synced ${context.customerId} (${variant}) in-process`,
+			);
+		} catch (error) {
+			logger.error(
+				`[SyncInline] Inline sync failed for ${context.customerId}: ${error}`,
+			);
+		}
+	}
+
 	private async queueCoalescedSync({
 		context,
 	}: {
@@ -374,23 +433,32 @@ export class SyncBatchingManagerV3 {
 		// No DelaySeconds: FIFO queues reject per-message delay. The coalescing
 		// window is enforced by the drain handler, which waits out the window
 		// from `timestamp` before claiming.
+		const dirtyPayload = {
+			customerId: context.customerId,
+			orgId: context.orgId,
+			env: context.env,
+			region: context.region,
+			redisInstance: context.redisInstance!,
+			timestamp: Date.now(),
+		};
 		try {
-			await addTaskToQueue({
+			const delivered = await addTaskToQueue({
 				jobName: JobName.SyncCustomerDirty,
-				payload: {
-					customerId: context.customerId,
-					orgId: context.orgId,
-					env: context.env,
-					region: context.region,
-					redisInstance: context.redisInstance!,
-					timestamp: Date.now(),
-				},
+				payload: dirtyPayload,
 				// Serializes drains per customer: two workers can never race on the
 				// same claim.
 				messageGroupId: `sync-dirty:${Bun.hash(
 					`${context.orgId}:${context.env}:${context.customerId}`,
 				)}`,
 			});
+			if (!delivered) {
+				// No queue (local dev): drain the dirty state in-process.
+				await this.runSyncInline({
+					context,
+					variant: "v5",
+					payload: dirtyPayload,
+				});
+			}
 		} catch (error) {
 			const { signalKey } = buildSyncDirtyKeys(scope);
 			await context.coalesceRedis!.del(signalKey);
@@ -426,28 +494,40 @@ export class SyncBatchingManagerV3 {
 			usageWindowUpdates,
 		});
 
+		const syncPayload = {
+			customerId: context.customerId,
+			orgId: context.orgId,
+			env: context.env,
+			region: context.region,
+			timestamp: Date.now(),
+			cusEntIds,
+			rolloverIds,
+			entityId: context.entityId,
+			modifiedCusEntIdsByFeatureId: context.modifiedCusEntIdsByFeatureId,
+			usageWindowUpdates,
+		};
+
 		try {
-			await this._addTaskToQueue({
+			const delivered = await this._addTaskToQueue({
 				jobName: JobName.SyncBalanceBatchV4,
-				payload: {
-					customerId: context.customerId,
-					orgId: context.orgId,
-					env: context.env,
-					region: context.region,
-					timestamp: Date.now(),
-					cusEntIds,
-					rolloverIds,
-					entityId: context.entityId,
-					modifiedCusEntIdsByFeatureId: context.modifiedCusEntIdsByFeatureId,
-					usageWindowUpdates,
-				},
+				payload: syncPayload,
 				// messageGroupId: `sync-v4:${context.orgId}:${context.env}:${context.customerId}`,
 				messageDeduplicationId,
 			});
 
-			logger.debug(
-				`[SyncV4] Queued sync for ${context.customerId}, ${cusEntIds.length} entitlements, ${rolloverIds.length} rollovers, ${usageWindowUpdates.length} usage windows`,
-			);
+			if (!delivered) {
+				// No queue (local dev): write the deducted balances to Postgres
+				// in-process instead of losing the deduction.
+				await this.runSyncInline({
+					context,
+					variant: "v4",
+					payload: syncPayload,
+				});
+			} else {
+				logger.debug(
+					`[SyncV4] Queued sync for ${context.customerId}, ${cusEntIds.length} entitlements, ${rolloverIds.length} rollovers, ${usageWindowUpdates.length} usage windows`,
+				);
+			}
 		} catch (error) {
 			logger.error(
 				`[SyncV4] Failed to queue sync for ${context.customerId}: ${error}`,

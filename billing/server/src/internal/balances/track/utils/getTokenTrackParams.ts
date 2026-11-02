@@ -97,9 +97,32 @@ const resolveAiCreditFeature = async ({
 }): Promise<Feature> => {
 	const held = await resolveHeldAiCreditFeatures({ ctx, input });
 
+	// MeterPal: pricing updates must reach EXISTING customers. The customer's
+	// entitlement carries an attach-time snapshot of the credit-system
+	// feature, so a newly mapped model (added to the live catalog's
+	// model_markups after the customer attached) is invisible to the
+	// snapshot. When the snapshot can't price the requested custom model but
+	// the live catalog can, bill at the live price.
+	const canPrice = (feature: Feature, modelId: string): boolean => {
+		if (!modelId.startsWith("custom/")) return true;
+		const entry = feature.model_markups?.[modelId];
+		return entry?.input_cost != null && entry?.output_cost != null;
+	};
+
+	const pickHeld = (feature: Feature | undefined): Feature | undefined => {
+		if (!feature) return undefined;
+		if (canPrice(feature, input.model_id)) return feature;
+		const live = ctx.features?.find((f) => f.id === feature.id);
+		if (live && canPrice(live, input.model_id)) return live;
+		return feature;
+	};
+
 	if (input.feature_id) {
+		const heldFeature = pickHeld(
+			held.find((feature) => feature.id === input.feature_id),
+		);
 		return (
-			held.find((feature) => feature.id === input.feature_id) ??
+			heldFeature ??
 			resolveAiCreditFeatureById({
 				features: ctx.features,
 				featureId: input.feature_id,
@@ -122,7 +145,7 @@ const resolveAiCreditFeature = async ({
 			statusCode: 400,
 		});
 	}
-	return held[0];
+	return pickHeld(held[0])!;
 };
 
 export const getTokenTrackParams = async ({

@@ -11,7 +11,7 @@ interface CreditsBadgeProps {
 
 export function CreditsBadge({
   featureId = "ai_tokens",
-  pollIntervalMs = 5_000,
+  pollIntervalMs = 2_500,
 }: CreditsBadgeProps) {
   // Identity is resolved server-side by the autumn-js backend adapter.
   const { data: customer, isLoading } = useCustomer({

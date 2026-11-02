@@ -31,7 +31,14 @@ interface TopUpModalProps {
    */
   inPageCheckout?: {
     clientId: string;
-    capture: (orderId: string) => Promise<{ captured: boolean; credits?: number }>;
+    /** Resolve with `{ captured: true }` once the server has captured and
+     *  credited the wallet.  The billing server's native shape
+     *  `{ status: "captured", credits }` is accepted too. */
+    capture: (orderId: string) => Promise<{
+      captured: boolean;
+      credits?: number;
+      status?: string;
+    }>;
   };
 }
 
@@ -59,6 +66,20 @@ export function TopUpModal({
   const [inPageActive, setInPageActive] = useState(false);
   const buttonsRef = useRef<HTMLDivElement | null>(null);
   const pendingProductId = useRef<string | null>(null);
+  // The PayPal order is FIXED at pack-click time (Stripe-session parity):
+  // createOrder hands PayPal this exact order and never mints a new one.
+  // Re-clicks and sandbox overlay loops re-approve the same order, whose
+  // capture is idempotent server-side — one click can never double-charge.
+  const pendingOrderId = useRef<string | null>(null);
+
+  // Closing the modal ends the purchase flow: drop the pending order and
+  // reset the buttons so reopening renders them fresh.
+  useEffect(() => {
+    if (open) return;
+    setInPageActive(false);
+    pendingProductId.current = null;
+    pendingOrderId.current = null;
+  }, [open]);
 
   // Load the PayPal JS SDK once per client id.
   function loadPayPalSdk(clientId: string): Promise<any> {
@@ -96,6 +117,11 @@ export function TopUpModal({
           .Buttons({
             style: { layout: "vertical", height: 45 },
             createOrder: async (): Promise<string> => {
+              // Never mint here.  The order was created when the pack was
+              // clicked; handing PayPal a fresh order on every createOrder
+              // (overlay loops, extra clicks) is what allowed one purchase
+              // to double-charge.
+              if (pendingOrderId.current) return pendingOrderId.current;
               const productId = pendingProductId.current;
               if (!productId) throw new Error("no pack selected");
               const result: any = await client.attach({ planId: productId });
@@ -108,12 +134,20 @@ export function TopUpModal({
                 ? new URL(checkoutUrl).searchParams.get("token")
                 : null;
               if (!orderId) throw new Error("PayPal order could not be created");
+              pendingOrderId.current = orderId;
               return orderId;
             },
             onApprove: async (data: any) => {
               const res = await inPageCheckout.capture(data.orderID);
-              if (res?.captured) {
-                onCaptured?.(res.credits);
+              // Accept both the documented `{ captured: true }` contract and
+              // the billing server's native `{ status: "captured", credits }`
+              // shape — treating a successful capture as a failure made the
+              // modal stay open and invited duplicate purchases.
+              const captured =
+                res?.captured === true || res?.status === "captured";
+              const credits = res?.credits;
+              if (captured) {
+                onCaptured?.(credits);
                 setAwaitingPayment(false);
                 setPending(null);
                 setOpen(false);
@@ -203,8 +237,13 @@ export function TopUpModal({
       }
 
       if (inPageCheckout) {
-        // In-page mode: keep the modal open, swap the packs for PayPal Buttons.
+        // In-page mode: keep the modal open, swap the packs for PayPal
+        // Buttons.  The order is created HERE, once — createOrder only hands
+        // PayPal this fixed order id.
         pendingProductId.current = productId;
+        pendingOrderId.current = checkoutUrl
+          ? new URL(checkoutUrl).searchParams.get("token")
+          : null;
         setAwaitingPayment(true);
         setInPageActive(true);
         setPending(null);

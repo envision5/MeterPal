@@ -1,9 +1,11 @@
 // billing/server/src/internal/billing/paypal/captureAndGrant.ts
 //
 // Capture a PayPal order and grant the wallet credits — the single money
-// path shared by /paypal/return, /paypal/poll, /paypal/capture and the
-// checkout abandonment sweep.  Idempotent on the PayPal capture id: every
-// caller can fire on the same payment and only one grant lands.
+// path shared by /paypal/return, /paypal/poll and /paypal/capture.
+// Idempotent on the PayPal capture id: every caller can fire on the same
+// payment and only one grant lands.  Callers must only ever pass the order
+// the buyer is paying RIGHT NOW — no path sweeps the backlog of older
+// intents, so one buyer approval can never turn into multiple charges.
 
 import { eq } from "drizzle-orm";
 import { paypalOrderIntents } from "@autumn/shared";
@@ -92,8 +94,10 @@ export async function captureAndGrant(
 		});
 		return { status: "captured", credits: amount };
 	} catch (err) {
+		// Log the detail; return a generic reason — this response goes to
+		// unauthenticated callers and raw PayPal error text is reconnaissance.
 		logger.error({ msg: "paypal capture: failed", orderId, via, error: String(err) });
-		return { status: "error", reason: String(err).slice(0, 200) };
+		return { status: "error", reason: "capture_failed" };
 	}
 }
 

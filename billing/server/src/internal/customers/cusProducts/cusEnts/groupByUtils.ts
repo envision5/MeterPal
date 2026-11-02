@@ -44,6 +44,18 @@ export const getResetBalancesUpdate = ({
 				entityResetBalance = new Decimal(newBalance).sub(overage).toNumber();
 			}
 
+			// MeterPal wallet: purchased credit (PayPal top-ups) rides in the
+			// same balance column as the allowance. Anything above the fresh
+			// allowance was paid for — carry it across the reset instead of
+			// wiping it.
+			const entityCarryOver = Decimal.max(
+				0,
+				new Decimal(entity.balance ?? 0).sub(entityResetBalance),
+			);
+			entityResetBalance = new Decimal(entityResetBalance)
+				.plus(entityCarryOver)
+				.toNumber();
+
 			newEntities[entityId].balance = entityResetBalance;
 			newEntities[entityId].adjustment = 0;
 		}
@@ -57,6 +69,14 @@ export const getResetBalancesUpdate = ({
 		});
 		resetBalance = new Decimal(newBalance).sub(overage).toNumber();
 	}
+
+	// MeterPal wallet: preserve purchased credit above the fresh allowance
+	// across resets (same rule as the entity branch above).
+	const carryOver = Decimal.max(
+		0,
+		new Decimal(cusEnt.balance ?? 0).sub(resetBalance),
+	);
+	resetBalance = new Decimal(resetBalance).plus(carryOver).toNumber();
 
 	return {
 		balance: resetBalance,

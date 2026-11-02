@@ -165,7 +165,10 @@ export const shutdownSqsSendBatchers = (): Promise<void> =>
 	]).then(() => undefined);
 
 /**
- * Add a task to the queue (auto-detects SQS or BullMQ)
+ * Add a task to the queue (auto-detects SQS or BullMQ).
+ * Resolves `true` when the task was delivered, `false` when no queue is
+ * configured (development) so callers can run correctness-critical work
+ * inline instead of losing it.
  */
 export const addTaskToQueue = async <T extends keyof Payloads>({
 	jobName,
@@ -183,7 +186,7 @@ export const addTaskToQueue = async <T extends keyof Payloads>({
 	generateDeduplicationId?: boolean;
 	delayMs?: number;
 	queueUrl?: string;
-}) => {
+}): Promise<boolean> => {
 	// TW-only queue isolation; leave BALANCE_SYNC_SQS_QUEUE_URL unset outside test workers.
 	const isBalanceSync =
 		jobName === JobName.SyncBalanceBatchV4 ||
@@ -236,25 +239,28 @@ export const addTaskToQueue = async <T extends keyof Payloads>({
 				messageDeduplicationId: messageInput.MessageDeduplicationId,
 				delaySeconds: messageInput.DelaySeconds,
 			});
-			return;
+			return true;
 		}
 
 		const command = new SendMessageCommand(messageInput);
 		await sqsClient.send(command);
-		return;
+		return true;
 	}
 
-	// Without a queue there is nowhere to deliver the task. These tasks are
-	// async side-effects (display generation, balance syncs), not the request's
-	// core work, so in development the API call should still succeed. Keep
-	// production loud -- a missing queue there means lost billing work.
+	// Without a queue there is nowhere to deliver the task. Most of these are
+	// async side-effects (display generation), but BALANCE SYNC jobs carry
+	// billing state — callers that drop those lose usage deductions (they
+	// live only in Redis until the sync lands in Postgres), so they check the
+	// return value and run the work inline instead.
+	// Keep production loud -- a missing queue there means lost billing work.
 	if (process.env.NODE_ENV === "production") {
 		throw new Error("No queue configured. Set SQS_QUEUE_URL_V2");
 	}
 	if (!devQueueWarningLogged) {
 		devQueueWarningLogged = true;
 		console.warn(
-			`[queue] SQS_QUEUE_URL_V2 unset -- dropping task "${String(jobName)}" (development only)`,
+			`[queue] SQS_QUEUE_URL_V2 unset -- task "${String(jobName)}" was NOT delivered (development only)`,
 		);
 	}
+	return false;
 };

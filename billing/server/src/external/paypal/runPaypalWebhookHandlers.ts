@@ -23,6 +23,9 @@
 import { and, eq } from "drizzle-orm";
 import {
 	customers,
+	entitlements,
+	features,
+	products,
 	paypalCatalogMap,
 	stripeWebhookEvents,
 	walletLedger,
@@ -83,19 +86,28 @@ export async function handlePaypalEvent(event: PayPalEvent): Promise<void> {
 		return;
 	}
 
+	// Record AFTER successful dispatch. Grant/activation idempotency makes a
+	// PayPal retry of an already-applied event a safe no-op, but recording a
+	// FAILED dispatch would defeat PayPal's 25-retry policy and lose the
+	// money event entirely.
 	try {
 		await dispatch(event);
-	} finally {
-		// Record after success (or partial failure); if dispatch throws,
-		// the 5xx causes PayPal to retry and the next attempt re-enters.
-		await db
-			.insert(stripeWebhookEvents)
-			.values({
-				event_id: `paypal:${event.id}`,
-				payload: event as unknown as Record<string, unknown>,
-			})
-			.onConflictDoNothing();
+	} catch (error) {
+		logger.error({
+			msg: "paypal: dispatch failed — leaving event unrecorded so PayPal retries",
+			eventId: event.id,
+			eventType: event.type,
+			error: String(error),
+		});
+		throw error;
 	}
+	await db
+		.insert(stripeWebhookEvents)
+		.values({
+			event_id: `paypal:${event.id}`,
+			payload: event as unknown as Record<string, unknown>,
+		})
+		.onConflictDoNothing();
 }
 
 async function dispatch(event: PayPalEvent): Promise<void> {
@@ -239,6 +251,26 @@ export async function grantWalletCredits({
 		logger.info({ msg: "paypal: grant replay skipped", idempotencyKey });
 		return false;
 	}
+	const ledgerRowId = inserted[0].id;
+
+	// The ledger row and the balance update are two separate writes: if the
+	// balance update fails, DELETE the ledger row before propagating — the
+	// unique idempotency key would otherwise block every retry (PayPal's
+	// 25 redeliveries included) and the paid grant would be lost forever.
+	const releaseLedgerRowAndRethrow = async (err: unknown) => {
+		await db
+			.delete(walletLedger)
+			.where(eq(walletLedger.id, ledgerRowId))
+			.catch((deleteErr) => {
+				logger.error({
+					msg: "paypal: failed to release ledger row after balance-update failure",
+					ledgerRowId,
+					idempotencyKey,
+					error: String(deleteErr),
+				});
+			});
+		throw err;
+	};
 
 	const ctx = await createWorkerContext({
 		db,
@@ -256,6 +288,9 @@ export async function grantWalletCredits({
 			idempotencyKey,
 			customerId,
 		});
+		await releaseLedgerRowAndRethrow(
+			new Error("could not build worker context for grant"),
+		);
 		return false;
 	}
 
@@ -270,18 +305,35 @@ export async function grantWalletCredits({
 		});
 	} catch (err) {
 		logger.error({
-			msg: "paypal: balance update failed after ledger insert",
+			msg: "paypal: balance update failed — releasing ledger row for retry",
 			idempotencyKey,
 			error: String(err),
 		});
+		await releaseLedgerRowAndRethrow(err);
 	}
 	return true;
 }
 
 // ---------- handlers ----------
 
-async function onSubscriptionActive(event: PayPalEvent): Promise<void> {
-	const sub = event.resource;
+/**
+ * Activates a PayPal subscription in MeterPal: links the subscription to the
+ * customer, stamps the payer id and provisions the plan entitlements
+ * (LiteLLM key + budget).
+ *
+ * Shared by the BILLING.SUBSCRIPTION.* webhook handler and the browser-return
+ * route (GET /paypal/return) — locally there is no webhook tunnel, so the
+ * return redirect is often what activates the subscription.  Both paths can
+ * fire for the same subscription, so this is idempotent: re-activating an
+ * already-active subscription is a no-op that still returns true.
+ */
+export async function activatePaypalSubscription(sub: {
+	id?: string;
+	plan_id?: string;
+	status?: string;
+	custom_id?: string | null;
+	subscriber?: { payer_id?: string | null; email_address?: string | null };
+}): Promise<boolean> {
 	const paypalSubscriptionId = sub?.id;
 	const planId = sub?.plan_id;
 	const payerId = sub?.subscriber?.payer_id ?? null;
@@ -289,8 +341,8 @@ async function onSubscriptionActive(event: PayPalEvent): Promise<void> {
 	const customId = sub?.custom_id ?? null;
 	const status = sub?.status;
 
-	if (!paypalSubscriptionId) return;
-	if (!["ACTIVE", "APPROVED"].includes(status ?? "")) return;
+	if (!paypalSubscriptionId) return false;
+	if (!["ACTIVE", "APPROVED"].includes(status ?? "")) return false;
 
 	const cust = await resolveCustomer({ customId, payerId, email: subscriberEmail });
 	if (!cust?.id) {
@@ -299,7 +351,13 @@ async function onSubscriptionActive(event: PayPalEvent): Promise<void> {
 			paypalSubscriptionId,
 			customId,
 		});
-		return;
+		return false;
+	}
+
+	// Idempotency: already linked + active for THIS subscription — nothing to
+	// do (the caller still wants its success redirect, hence true).
+	if (cust.paypal_subscription_id === paypalSubscriptionId && cust.paypal_payment_status === "active") {
+		return true;
 	}
 
 	await stampPayerId(cust.id, payerId);
@@ -332,6 +390,46 @@ async function onSubscriptionActive(event: PayPalEvent): Promise<void> {
 		customer_id: cust.id,
 		plan_key: planKey,
 	});
+
+	// First-cycle credit grant: the plan's monthly allowance (e.g. Pro = 100
+	// credits).  Idempotent on the subscription id — renewal cycles arrive as
+	// PAYMENT.SALE.COMPLETED events instead, so this fires once per
+	// subscription, not once per month.
+	if (mapRow?.product_id) {
+		const [grant] = await db
+			.select({ allowance: entitlements.allowance })
+			.from(entitlements)
+			.innerJoin(products, eq(products.internal_id, entitlements.internal_product_id))
+			.innerJoin(features, eq(features.internal_id, entitlements.internal_feature_id))
+			.where(
+				and(
+					eq(products.id, mapRow.product_id),
+					eq(features.id, creditFeatureId()),
+					eq(entitlements.org_id, cust.org_id),
+				),
+			)
+			.limit(1);
+		const monthlyCredits = Number(grant?.allowance ?? 0);
+		if (monthlyCredits > 0) {
+			await grantWalletCredits({
+				customer: cust,
+				amountUsd: monthlyCredits,
+				idempotencyKey: `paypal-sub-cycle:${paypalSubscriptionId}`,
+				eventName: "subscription_cycle",
+				metadata: {
+					subscription_id: paypalSubscriptionId,
+					plan: planKey,
+					cycle: 1,
+				},
+			});
+		}
+	}
+
+	return true;
+}
+
+async function onSubscriptionActive(event: PayPalEvent): Promise<void> {
+	await activatePaypalSubscription(event.resource);
 }
 
 async function onSubscriptionEnded(event: PayPalEvent): Promise<void> {
@@ -393,8 +491,19 @@ async function onSaleCompleted(event: PayPalEvent): Promise<void> {
 	const saleId = event.resource?.id;
 	const subscriptionId = event.resource?.billing_agreement_id;
 	const amount = parseFloat(event.resource?.amount?.total ?? "0");
-
+	const saleCurrency = (
+		event.resource?.amount?.currency_code ?? "USD"
+	).toUpperCase();
 	if (!saleId || !amount) return;
+	if (saleCurrency !== "USD") {
+		// 1 credit = 1 USD — crediting a non-USD amount 1:1 would mint money.
+		logger.warn({
+			msg: "paypal sale: unsupported currency",
+			saleId,
+			currency: saleCurrency,
+		});
+		return;
+	}
 
 	let cust: DbCustomer | null = null;
 	if (subscriptionId) {
@@ -432,18 +541,79 @@ async function onRefund(event: PayPalEvent): Promise<void> {
 	// Reversal / chargeback.  Negative wallet grant, idempotent by refund id.
 	const amount = parseFloat(event.resource?.amount?.total ?? "0");
 	if (!amount) return;
+	const currency = (
+		event.resource?.amount?.currency_code ?? "USD"
+	).toUpperCase();
+	if (currency !== "USD") {
+		logger.warn({
+			msg: "paypal refund: unsupported currency",
+			refundId: event.resource?.id,
+			currency,
+		});
+		return;
+	}
 
-	const cust = await resolveCustomer({
-		email: event.resource?.payer?.email_address ?? null,
-	});
-	if (!cust) return;
+	// Resolve through the ORIGINAL CAPTURE — the refund links to it, and the
+	// capture's custom_id names the customer who was actually paid.  Email
+	// is deliberately NOT consulted: it let a refund debit whichever
+	// customer row happened to share an address (cross-tenant wallet drain).
+	let captureId: string | null = null;
+	for (const link of event.resource?.links ?? []) {
+		if (link.rel === "up" && typeof link.href === "string") {
+			captureId = link.href.split("/").pop() ?? null;
+			break;
+		}
+	}
+
+	let cust: DbCustomer | null = null;
+	let refundCap: number | null = null; // never refund more than was granted
+
+	if (captureId) {
+		const [ledgerRow] = await db
+			.select({
+				customer_id: walletLedger.customer_id,
+				amount_usd: walletLedger.amount_usd,
+			})
+			.from(walletLedger)
+			.where(eq(walletLedger.idempotency_key, `paypal-capture:${captureId}`))
+			.limit(1);
+		if (ledgerRow) {
+			refundCap = ledgerRow.amount_usd ?? null;
+			const [row] = await db
+				.select()
+				.from(customers)
+				.where(eq(customers.id, ledgerRow.customer_id))
+				.limit(1);
+			cust = row ?? null;
+		}
+	}
+
+	if (!cust) {
+		// Fall back to the payer id from the refund event; never email.
+		cust = await resolveCustomer({
+			payerId: event.resource?.payer?.payer_id ?? null,
+		});
+	}
+	if (!cust) {
+		logger.warn({
+			msg: "paypal refund: no customer for refund — skipping",
+			refundId: event.resource?.id,
+			captureId,
+		});
+		return;
+	}
+
+	const refundAmount = Math.min(
+		Math.abs(amount),
+		refundCap != null && refundCap > 0 ? refundCap : Math.abs(amount),
+	);
 
 	await grantWalletCredits({
 		customer: cust,
-		amountUsd: -Math.abs(amount),
+		amountUsd: -refundAmount,
 		idempotencyKey: `paypal-refund:${event.resource?.id}`,
 		eventName: "refund",
-		metadata: { event_type: event.type },
+		metadata: { event_type: event.type, capture_id: captureId },
 	});
 }
 
@@ -516,7 +686,21 @@ async function onInvoicePaid(event: PayPalEvent): Promise<void> {
 			invoice?.amount?.value ??
 			"0",
 	);
+	const invoiceCurrency = (
+		invoice?.detail?.currency_code ??
+		invoice?.amount?.currency_code ??
+		"USD"
+	).toUpperCase();
 	if (!invoiceId || !amount) return;
+	if (invoiceCurrency !== "USD") {
+		// 1 credit = 1 USD — never credit a non-USD invoice 1:1.
+		logger.warn({
+			msg: "paypal invoice paid: unsupported currency",
+			invoiceId,
+			currency: invoiceCurrency,
+		});
+		return;
+	}
 
 	const customCustomerId = reference?.startsWith("mp:")
 		? reference.slice(3)

@@ -159,6 +159,14 @@ def main() -> None:
                         "input_cost": DEMO_RATES["input_cost"],
                         "output_cost": DEMO_RATES["output_cost"],
                     },
+                    # Agnes AI (real model, free trial tier) — same demo rates
+                    # so the wallet visibly drains. Real list prices are
+                    # $0.05/M in, $0.15/M out.
+                    "custom/agnes-2.5-flash": {
+                        "markup": 0,
+                        "input_cost": DEMO_RATES["input_cost"],
+                        "output_cost": DEMO_RATES["output_cost"],
+                    },
                 },
             }
             resp = api_call(c, "POST", "/v1/features", json=body)

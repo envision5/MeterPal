@@ -147,7 +147,15 @@ app.post("/api/paypal/capture/:orderId", async (c) => {
 	const res = await fetch(`${base}/paypal/capture/${encodeURIComponent(orderId)}`, {
 		method: "POST",
 	});
-	return c.json(await res.json());
+	const data = await res.json();
+	// Normalize the billing server's `{ status: "captured", credits }` into
+	// the SDK capture contract `{ captured: true, credits }` so the TopUpModal
+	// treats a successful capture as success.
+	return c.json({
+		captured: data?.status === "captured",
+		credits: data?.credits,
+		status: data?.status,
+	});
 });
 
 // ---- paypal poll proxy (popup checkout finalize) ----
@@ -175,7 +183,9 @@ app.post("/api/chat", async (c) => {
 			"Content-Type": "application/json",
 		},
 		body: JSON.stringify({
-			model: "demo-gpt",
+			// agnes-flash = real model (Agnes AI free tier) — metered for real
+			// by the gateway hook. DEMO_MODEL=demo-gpt falls back to the mock.
+			model: process.env.DEMO_MODEL ?? "agnes-flash",
 			messages: [{ role: "user", content: prompt }],
 			max_tokens: 300,
 			user: customerId,

@@ -9,7 +9,10 @@ export function formatCredits(n: number): string {
   if (!Number.isFinite(n)) return "0";
   if (Math.abs(n) >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (Math.abs(n) >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
-  return n.toFixed(0);
+  // Real-model usage bills fractional credits (a short agnes-flash call is
+  // ~0.01) — show two decimals or the drain is invisible.
+  if (Number.isInteger(n)) return String(n);
+  return n.toFixed(2);
 }
 /**
  * Balance lookup tolerant to both adapter shapes:

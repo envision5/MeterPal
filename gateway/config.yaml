@@ -108,3 +108,12 @@ model_list:
       model: openai/gpt-4o-mini
       api_base: os.environ/MOCK_LLM_BASE_URL
       api_key: os.environ/MOCK_LLM_API_KEY
+  # ─── Agnes AI (real model, free trial tier, OpenAI-compatible) ────────
+  # Base URL + Bearer key per https://wiki.agnes-ai.com/en/docs/overview.
+  # Billed by Autumn as custom/agnes-2.5-flash via the feature's
+  # model_markups (PAB_MODEL_ID_MAP bridges the name).
+  - model_name: agnes-flash
+    litellm_params:
+      model: openai/agnes-2.5-flash
+      api_base: https://apihub.agnes-ai.com/v1
+      api_key: os.environ/AGNES_API_KEY

@@ -16,6 +16,7 @@ import {
 	BillingInterval,
 	PriceType,
 	RecaseError,
+	customers,
 	paypalCatalogMap,
 	paypalOrderIntents,
 	type FullProduct,
@@ -29,14 +30,16 @@ import { createOrder, type OrderResponse } from "@/external/paypal/orders.js";
 import { paypalFetch } from "@/external/paypal/client.js";
 import {
 	approvalLink,
+	cancelSubscription,
 	createBillingPlan,
 	createCatalogProduct,
 	createSubscription,
+	getSubscription,
 	intervalToPaypalUnit,
 } from "@/external/paypal/subscriptions.js";
+import { activatePaypalSubscription } from "@/external/paypal/runPaypalWebhookHandlers.js";
 import type { AppEnv } from "@autumn/shared";
 import { logger } from "@/external/logtail/logtailUtils.js";
-import { captureAndGrant } from "./captureAndGrant.js";
 import { isStripeConnected } from "@/internal/orgs/orgUtils.js";
 
 export function isPaypalConfigured(): boolean {
@@ -138,16 +141,33 @@ async function resolvePaypalProductId({
 	const shared = process.env.PAYPAL_PRODUCT_ID;
 	if (shared) return shared;
 
-	const created = await createCatalogProduct({
-		name: `${org.slug ?? org.id} — ${product.name}`.slice(0, 127),
-		description: `MeterPal plan ${product.id} (${org.slug ?? org.id})`.slice(
-			0,
-			127,
-		),
-		sku: `${org.id}:${env}:${product.id}`.slice(0, 127),
-		idempotencyKey: `mp-catprod-${org.id}-${env}-${product.id}`,
-	});
-	return created.id;
+	try {
+		const created = await createCatalogProduct({
+			name: `${org.slug ?? org.id} — ${product.name}`.slice(0, 127),
+			description: `MeterPal plan ${product.id} (${org.slug ?? org.id})`.slice(
+				0,
+				127,
+			),
+			sku: `${org.id}:${env}:${product.id}`.slice(0, 127),
+			idempotencyKey: `mp-catprod-${org.id}-${env}-${product.id}`,
+		});
+		return created.id;
+	} catch (err) {
+		// Some PayPal sandbox accounts hard-404 the whole catalog API (empty
+		// body on POST and GET).  Plans need a product id, so subscriptions are
+		// blocked until one exists — fail with the fix, not a raw 500.
+		const msg = String(err);
+		if (msg.includes("/v1/catalog/products 404")) {
+			throw new RecaseError({
+				message:
+					"PayPal catalog API is unavailable for this app (404). " +
+					"Create a product in the PayPal business dashboard (Pay & Get Paid → Subscriptions), " +
+					"then set PAYPAL_PRODUCT_ID=<product id> in billing/server/.env and restart the billing server.",
+				statusCode: 502,
+			});
+		}
+		throw err;
+	}
 }
 
 /**
@@ -252,6 +272,13 @@ export async function ensurePaypalPlan({
  * marks them abandoned.  Guarantees at most ONE live order per customer:
  * stale orders can never be approved later (which would charge the buyer
  * for a checkout they've abandoned) and never block the poll.
+ *
+ * NEVER captures here.  An approved-but-uncaptured order has moved no
+ * money — capturing it during a later checkout would charge the buyer for
+ * a payment they never saw complete ("one payment, many processed").
+ * Captures only happen in the flow that owns the order: /paypal/return,
+ * the in-page onApprove capture, and /paypal/poll for the current order.
+ * Uncapturable approvals simply expire at PayPal.
  */
 async function abandonOtherIntents({
 	db,
@@ -273,25 +300,10 @@ async function abandonOtherIntents({
 		);
 	for (const intent of pendings) {
 		if (intent.order_id === exceptOrderId) continue;
-		// Honor real approvals first — never abandon money the buyer paid.
-		try {
-			const result = await captureAndGrant(intent.order_id, "abandon_sweep");
-			if (result.status === "captured") {
-				logger.info({
-					msg: "paypal checkout: captured approved order during sweep",
-					orderId: intent.order_id,
-					credits: result.credits,
-					customerId,
-				});
-				continue;
-			}
-		} catch {
-			// fall through to cancellation
-		}
 		try {
 			// Only CREATED orders are cancellable at PayPal; best-effort either
-			// way — an uncancellable one stays unapproved forever and the poll
-			// simply skips it.
+			// way — APPROVED-but-uncaptured ones are left to expire, charging
+			// nobody.
 			await paypalFetch(
 				`/v2/checkout/orders/${intent.order_id}/cancel`,
 				{ method: "POST", body: "{}" },
@@ -482,6 +494,89 @@ export async function runPaypalCheckout({
 
 	// Recurring plan -> PayPal subscription.
 	const planId = await ensurePaypalPlan({ db, org, env, product });
+
+	// SUBSCRIPTION REUSE: every plan click must NOT mint a new PayPal
+	// subscription — each buyer approval is an immediate real charge.  Track
+	// the customer's latest subscription on the customer row and:
+	//   APPROVED/ACTIVE -> the buyer already paid; activate it, never re-mint
+	//   CREATED (same plan, fresh) -> reuse its approval link
+	//   CREATED (stale)  -> cancel it at PayPal, mint fresh
+	const appUrl =
+		process.env.METERPAL_CHECKOUT_RETURN_URL ?? "http://localhost:5173";
+	const [cusRow] = await db
+		.select({
+			internal_id: customers.internal_id,
+			paypal_subscription_id: customers.paypal_subscription_id,
+			paypal_plan_id: customers.paypal_plan_id,
+			paypal_payment_status: customers.paypal_payment_status,
+		})
+		.from(customers)
+		.where(eq(customers.internal_id, customer.internal_id))
+		.limit(1);
+
+	if (
+		cusRow?.paypal_subscription_id &&
+		cusRow.paypal_payment_status === "active" &&
+		cusRow.paypal_plan_id === planId
+	) {
+		// Already an active subscriber to this plan — nothing to buy.
+		logger.info({
+			msg: "paypal checkout: customer already active on plan",
+			customerId,
+			planId,
+		});
+		return `${appUrl}?payment=success`;
+	}
+
+	if (
+		cusRow?.paypal_subscription_id &&
+		cusRow.paypal_payment_status === "pending"
+	) {
+		try {
+			const existing = await getSubscription(cusRow.paypal_subscription_id);
+			const createTime = existing?.create_time
+				? new Date(existing.create_time).getTime()
+				: 0;
+			const isFresh = Date.now() < createTime + 30 * 60 * 1000;
+
+			if (["APPROVED", "ACTIVE"].includes(existing?.status ?? "")) {
+				// The buyer already approved — and PayPal already charged — this
+				// subscription.  Activate it (idempotent) and land on success.
+				await activatePaypalSubscription(existing);
+				logger.info({
+					msg: "paypal checkout: activated already-approved subscription",
+					subscriptionId: existing.id,
+					customerId,
+				});
+				return `${appUrl}?payment=success`;
+			}
+			if (existing?.status === "CREATED" && isFresh) {
+				const url = approvalLink(existing.links);
+				if (url && cusRow.paypal_plan_id === planId) {
+					logger.info({
+						msg: "paypal checkout: reusing pending subscription",
+						subscriptionId: existing.id,
+						customerId,
+					});
+					return url;
+				}
+			}
+			if (existing?.status === "CREATED") {
+				// Stale or superseded by a different plan — cancel so it can
+				// never be approved later (which would charge the buyer).
+				await cancelSubscription(
+					existing.id,
+					"Superseded by a new MeterPal checkout",
+				).catch(() => {
+					// best-effort — still stop tracking it below
+				});
+			}
+			// anything else (CANCELLED/SUSPENDED/EXPIRED) -> mint fresh
+		} catch {
+			// subscription lookup failed (e.g. deleted) — mint fresh
+		}
+	}
+
 	const subscription = await createSubscription({
 		planId,
 		customId: customerId,
@@ -492,6 +587,17 @@ export async function runPaypalCheckout({
 		idempotencyKey: `mp-sub-${crypto.randomUUID()}`,
 	});
 
+	// Stamp the pending subscription so retries reuse it instead of minting
+	// duplicates.  Cleared/replaced on activation (status -> active).
+	await db
+		.update(customers)
+		.set({
+			paypal_subscription_id: subscription.id,
+			paypal_plan_id: planId,
+			paypal_payment_status: "pending",
+		})
+		.where(eq(customers.internal_id, customer.internal_id));
+
 	const url = approvalLink(subscription.links);
 	if (!url) {
 		throw new RecaseError({
@@ -499,6 +605,27 @@ export async function runPaypalCheckout({
 			statusCode: 500,
 		});
 	}
+
+	// Map the return token (BA-... billing-agreement token from the approval
+	// URL) to the subscription id (I-...) — the browser return route resolves
+	// activations through this row after the buyer approves.
+	const baToken = new URL(url).searchParams.get("token") ?? "";
+	const subPrice = recurringFixedPrice(product);
+	const subAmount = subPrice ? priceAmountUsd(subPrice) ?? 0 : 0;
+	await db
+		.insert(paypalOrderIntents)
+		.values({
+			order_id: baToken,
+			subscription_id: subscription.id,
+			org_id: org.id,
+			env,
+			customer_id: customerId,
+			product_id: product.id,
+			amount_usd: subAmount,
+			status: "pending",
+		})
+		.onConflictDoNothing();
+
 	return url;
 }
 

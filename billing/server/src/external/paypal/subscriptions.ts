@@ -152,6 +152,7 @@ export interface PayPalSubscription {
 	plan_id: string;
 	status: string;
 	custom_id?: string;
+	create_time?: string;
 	subscriber?: {
 		email_address?: string;
 		payer_id?: string;
