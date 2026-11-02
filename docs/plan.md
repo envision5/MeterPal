@@ -10,6 +10,10 @@ LiteLLM's proxy, and the Autumn billing platform you already have cloned
 locally. Where a section touches your own code, it points at the path on
 your machine.
 
+> **Merchant-facing product design (multi-tenant PayPal, the served-model and
+> cost catalog, the shared gateway, and the OpenAI-compatible SDK) is in
+> `docs/architecture.md`.** This document covers the billing core underneath it.
+
 ---
 
 ## 1. The bottom line
