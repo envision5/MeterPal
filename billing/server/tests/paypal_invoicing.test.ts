@@ -3,15 +3,20 @@
 // Unit tests for the PayPal Invoicing API v2 wrappers. Run with:
 //   bun test ./tests/paypal_invoicing.test.ts
 //
-// paypalFetch is mocked at the module level — no network, no credentials.
+// A fake client is passed in — no network, no credentials.
 
-import { describe, it, expect, mock, beforeEach } from "bun:test";
+import { describe, it, expect, beforeEach } from "bun:test";
+import type { PaypalClient } from "../src/external/paypal/paypalClient.js";
 
 type CapturedCall = { path: string; init: Record<string, any> };
 const calls: CapturedCall[] = [];
 
-mock.module("../src/external/paypal/client.js", () => ({
-	paypalFetch: async (path: string, init: Record<string, any> = {}) => {
+// The PayPal client is per-org now, so the tests pass a fake one in
+// instead of mocking a module-level fetch.
+const client = {
+	baseUrl: "https://api-m.sandbox.paypal.com",
+	fromOrg: true,
+	fetch: async (path: string, init: Record<string, any> = {}) => {
 		calls.push({ path, init });
 		return {
 			id: "INV2-XYZ",
@@ -20,9 +25,8 @@ mock.module("../src/external/paypal/client.js", () => ({
 			links: [],
 		};
 	},
-	paypalBaseUrl: () => "https://api-m.sandbox.paypal.com",
 	getAccessToken: async () => "test-token",
-}));
+} as unknown as PaypalClient;
 
 const { createInvoice, sendInvoice, getInvoice, listInvoices } = await import(
 	"../src/external/paypal/invoicing.js"
@@ -37,6 +41,7 @@ const last = () => calls[calls.length - 1];
 describe("createInvoice", () => {
 	it("POSTs a USD invoice with our customer reference and matching totals", async () => {
 		await createInvoice({
+			client,
 			reference: "mp:demo-customer",
 			recipientEmail: "buyer@sandbox.example.com",
 			billerBusinessName: "MeterPal Demo",
@@ -66,6 +71,7 @@ describe("createInvoice", () => {
 
 	it("passes an idempotency key through to PayPal-Request-Id", async () => {
 		await createInvoice({
+			client,
 			reference: "mp:c1",
 			recipientEmail: "a@b.c",
 			itemName: "overage",
@@ -78,7 +84,7 @@ describe("createInvoice", () => {
 
 describe("sendInvoice", () => {
 	it("POSTs to the send endpoint with return=representation", async () => {
-		await sendInvoice("INV2-XYZ");
+		await sendInvoice(client, "INV2-XYZ");
 		expect(last().path).toBe("/v2/invoicing/invoices/INV2-XYZ/send");
 		expect(last().init.method).toBe("POST");
 		expect(last().init.headers.Prefer).toBe("return=representation");
@@ -87,13 +93,13 @@ describe("sendInvoice", () => {
 
 describe("getInvoice / listInvoices", () => {
 	it("GETs an invoice by id", async () => {
-		await getInvoice("INV2-XYZ");
+		await getInvoice(client, "INV2-XYZ");
 		expect(last().path).toBe("/v2/invoicing/invoices/INV2-XYZ");
 		expect(last().init.method).toBe("GET");
 	});
 
 	it("lists invoices with paging params", async () => {
-		await listInvoices({ page: 2, pageSize: 10 });
+		await listInvoices(client, { page: 2, pageSize: 10 });
 		expect(last().path).toContain("/v2/invoicing/invoices?");
 		expect(last().path).toContain("page=2");
 		expect(last().path).toContain("page_size=10");

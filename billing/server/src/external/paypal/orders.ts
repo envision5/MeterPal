@@ -2,8 +2,10 @@
 //
 // Orders v2 wrapper: create / capture / refund.  Used for one-shot credit
 // top-ups (1k / 5k / 25k packs).
+//
+// Every call goes through the ORG's PayPal client.
 
-import { paypalFetch } from "./client.js";
+import type { PaypalClient } from "./paypalClient.js";
 
 export interface OrderCreateArgs {
   intent: "CAPTURE" | "AUTHORIZE";
@@ -43,30 +45,38 @@ export interface OrderResponse {
 }
 
 export async function createOrder(
+  client: PaypalClient,
   args: OrderCreateArgs,
   opts: { idempotencyKey?: string } = {},
 ): Promise<OrderResponse> {
-  return paypalFetch<OrderResponse>("/v2/checkout/orders", {
+  return client.fetch<OrderResponse>("/v2/checkout/orders", {
     method: "POST",
     body: JSON.stringify(args),
     idempotencyKey: opts.idempotencyKey,
   });
 }
 
-export async function captureOrder(orderId: string): Promise<OrderResponse> {
-  return paypalFetch<OrderResponse>(`/v2/checkout/orders/${orderId}/capture`, {
-    method: "POST",
-    body: "{}",
-    headers: { Prefer: "return=representation" },
-  });
+export async function captureOrder(
+  client: PaypalClient,
+  orderId: string,
+): Promise<OrderResponse> {
+  return client.fetch<OrderResponse>(
+    `/v2/checkout/orders/${orderId}/capture`,
+    {
+      method: "POST",
+      body: "{}",
+      headers: { Prefer: "return=representation" },
+    },
+  );
 }
 
 export async function refundCapture(
+  client: PaypalClient,
   captureId: string,
   amount?: { currency_code: string; value: string },
   note?: string,
 ): Promise<{ id: string; status: string }> {
-  return paypalFetch(`/v2/payments/captures/${captureId}/refund`, {
+  return client.fetch(`/v2/payments/captures/${captureId}/refund`, {
     method: "POST",
     body: JSON.stringify({
       amount,

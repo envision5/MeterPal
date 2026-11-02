@@ -27,7 +27,10 @@ import { and, desc, eq } from "drizzle-orm";
 import type { DrizzleCli } from "@/db/initDrizzle.js";
 import type { AttachParams } from "@/internal/customers/cusProducts/AttachParams.js";
 import { createOrder, type OrderResponse } from "@/external/paypal/orders.js";
-import { paypalFetch } from "@/external/paypal/client.js";
+import {
+	getPaypalClient,
+	type PaypalClient,
+} from "@/external/paypal/paypalClient.js";
 import {
 	approvalLink,
 	approvalTokenFromUrl,
@@ -47,22 +50,6 @@ import {
 } from "@/internal/billing/paypal/decideSubscriptionAction.js";
 import type { AppEnv } from "@autumn/shared";
 import { logger } from "@/external/logtail/logtailUtils.js";
-import { isStripeConnected } from "@/internal/orgs/orgUtils.js";
-
-export function isPaypalConfigured(): boolean {
-	return !!process.env.PAYPAL_CLIENT_ID && !!process.env.PAYPAL_CLIENT_SECRET;
-}
-
-/**
- * True when this org bills through PayPal end-to-end (PayPal configured,
- * no Stripe connected) — Stripe-coupled plumbing should skip itself.
- */
-export function isPaypalNativeOrg(ctx: {
-	org: Organization;
-	env: AppEnv;
-}): boolean {
-	return isPaypalConfigured() && !isStripeConnected({ org: ctx.org, env: ctx.env });
-}
 
 /**
  * USD amount for a price, major units.  Handles both stored shapes:
@@ -229,11 +216,13 @@ function newCheckoutToken(): string {
  * accounts return 404 on that endpoint — set PAYPAL_PRODUCT_ID there).
  */
 async function resolvePaypalProductId({
+	client,
 	org,
 	env,
 	product,
 	existingProductId,
 }: {
+	client: PaypalClient;
 	org: Organization;
 	env: AppEnv;
 	product: FullProduct;
@@ -246,6 +235,7 @@ async function resolvePaypalProductId({
 
 	try {
 		const created = await createCatalogProduct({
+			client,
 			name: `${org.slug ?? org.id} — ${product.name}`.slice(0, 127),
 			description: `MeterPal plan ${product.id} (${org.slug ?? org.id})`.slice(
 				0,
@@ -279,11 +269,13 @@ async function resolvePaypalProductId({
  * the catalog sync script (server/scripts/paypalCatalog.ts).
  */
 export async function ensurePaypalPlan({
+	client,
 	db,
 	org,
 	env,
 	product,
 }: {
+	client: PaypalClient;
 	db: DrizzleCli;
 	org: Organization;
 	env: AppEnv;
@@ -324,6 +316,7 @@ export async function ensurePaypalPlan({
 	}
 
 	const paypalProductId = await resolvePaypalProductId({
+		client,
 		org,
 		env,
 		product,
@@ -331,6 +324,7 @@ export async function ensurePaypalPlan({
 	});
 
 	const plan = await createBillingPlan({
+		client,
 		productId: paypalProductId,
 		name: product.name.slice(0, 127),
 		description: `MeterPal plan ${product.id}`.slice(0, 127),
@@ -384,10 +378,12 @@ export async function ensurePaypalPlan({
  * Uncapturable approvals simply expire at PayPal.
  */
 async function abandonOtherIntents({
+	client,
 	db,
 	customerId,
 	exceptOrderId,
 }: {
+	client: PaypalClient;
 	db: DrizzleCli;
 	customerId: string;
 	exceptOrderId?: string;
@@ -411,7 +407,7 @@ async function abandonOtherIntents({
 			// Only CREATED orders are cancellable at PayPal; best-effort either
 			// way — APPROVED-but-uncaptured ones are left to expire, charging
 			// nobody.
-			await paypalFetch(
+			await client.fetch(
 				`/v2/checkout/orders/${intent.order_id}/cancel`,
 				{ method: "POST", body: "{}" },
 			);
@@ -447,6 +443,7 @@ export async function runPaypalCheckout({
 	env: AppEnv;
 }): Promise<string | null> {
 	const { org, customer, products, prices, successUrl } = attachParams;
+	const client = await getPaypalClient({ org, env });
 
 	if (!customer.id) {
 		throw new RecaseError({
@@ -492,7 +489,7 @@ export async function runPaypalCheckout({
 				new Date(pendingIntent.created_at).getTime() + 30 * 60 * 1000;
 			const isFresh = Date.now() < freshUntil;
 			try {
-				const existing = await paypalFetch<Record<string, any>>(
+				const existing = await client.fetch<Record<string, any>>(
 					`/v2/checkout/orders/${pendingIntent.order_id}`,
 					{ method: "GET" },
 				);
@@ -510,6 +507,7 @@ export async function runPaypalCheckout({
 						// Keep the one-live-order invariant: honor any approvals
 						// in older intents, cancel + abandon the rest.
 						await abandonOtherIntents({
+							client,
 							db,
 							customerId,
 							exceptOrderId: pendingIntent.order_id,
@@ -535,11 +533,12 @@ export async function runPaypalCheckout({
 
 		// At most one live order per customer: cancel + abandon every other
 		// pending intent before minting a fresh one.
-		await abandonOtherIntents({ db, customerId });
+		await abandonOtherIntents({ client, db, customerId });
 
 		// Record the intent so the finalize/poll endpoint can capture the
 		// order without depending on PayPal's browser redirect.
 		const order = await createOrder(
+			client,
 			{
 				intent: "CAPTURE",
 				purchase_units: [
@@ -625,7 +624,7 @@ export async function runPaypalCheckout({
 	let existing: PayPalSubscription | null = null;
 	if (cusRow?.paypal_subscription_id) {
 		try {
-			existing = await getSubscription(cusRow.paypal_subscription_id);
+			existing = await getSubscription(client, cusRow.paypal_subscription_id);
 		} catch {
 			// Subscription is gone at PayPal (deleted / never created) — fall
 			// through and mint a fresh one.
@@ -649,6 +648,7 @@ export async function runPaypalCheckout({
 		if (existing) {
 			try {
 				await cancelSubscription(
+					client,
 					existing.id,
 					"Switched to a free MeterPal plan",
 				);
@@ -698,7 +698,7 @@ export async function runPaypalCheckout({
 		return null;
 	}
 
-	const planId = await ensurePaypalPlan({ db, org, env, product });
+	const planId = await ensurePaypalPlan({ client, db, org, env, product });
 
 	// A key WE mint for this checkout attempt.  It travels in the return URL
 	// so the buyer's redirect carries something we can resolve back to the
@@ -756,6 +756,7 @@ export async function runPaypalCheckout({
 		// link for the change.
 		try {
 			const revised = await reviseSubscription({
+				client,
 				subscriptionId: existing!.id,
 				planId,
 				returnUrl,
@@ -835,6 +836,7 @@ export async function runPaypalCheckout({
 		// Stale, or superseded by a different plan — cancel it so it can
 		// never be approved later (which would charge the buyer).
 		await cancelSubscription(
+			client,
 			existing.id,
 			"Superseded by a new MeterPal checkout",
 		).catch((err) => {
@@ -852,6 +854,7 @@ export async function runPaypalCheckout({
 	// No live or reusable subscription -> mint a fresh one and send the
 	// buyer to PayPal to approve it.
 	const subscription = await createSubscription({
+		client,
 		planId,
 		customId: customerId,
 		subscriberEmail: customer.email ?? undefined,

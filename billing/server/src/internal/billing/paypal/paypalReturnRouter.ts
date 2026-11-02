@@ -16,20 +16,19 @@
 
 import { and, desc, eq, isNotNull } from "drizzle-orm";
 import { Hono } from "hono";
-import { customers, paypalOrderIntents } from "@autumn/shared";
+import { paypalOrderIntents, type AppEnv } from "@autumn/shared";
 import { db } from "@/db/initDrizzle.js";
 import { logger } from "@/external/logtail/logtailUtils.js";
-import { paypalFetch } from "@/external/paypal/client.js";
-import { captureOrder } from "@/external/paypal/orders.js";
+import type { PaypalClient } from "@/external/paypal/paypalClient.js";
 import { getSubscription } from "@/external/paypal/subscriptions.js";
 import { isLivePaypalSubscription } from "@/internal/billing/paypal/decideSubscriptionAction.js";
-import {
-	activatePaypalSubscription,
-	grantWalletCredits,
-	resolveCustomer,
-	stampPayerId,
-} from "@/external/paypal/runPaypalWebhookHandlers.js";
+import { activatePaypalSubscription } from "@/external/paypal/runPaypalWebhookHandlers.js";
 import { captureAndGrant } from "./captureAndGrant.js";
+import {
+	getPaypalClientForOrg,
+	getPaypalClientForOrder,
+	getPaypalClientForSubscription,
+} from "./paypalOrgClient.js";
 import type { HonoEnv } from "@/honoUtils/HonoEnv.js";
 
 export const paypalReturnRouter = new Hono<HonoEnv>();
@@ -65,6 +64,11 @@ paypalReturnRouter.use("*", async (c, next) => {
 	await next();
 });
 
+type SubscriptionLookup = {
+	subscriptionId: string;
+	client: PaypalClient;
+} | null;
+
 /**
  * Resolves a key the buyer's redirect can carry back to the subscription it
  * belongs to.
@@ -74,15 +78,28 @@ paypalReturnRouter.use("*", async (c, next) => {
  *   - a checkout token WE mint and put in the return URL.
  *
  * Both are looked up in `paypal_order_intents` (order_id -> subscription_id).
+ * The intent row also names the org, so the subscription is read through that
+ * org's PayPal account — not through whichever account happens to be
+ * configured process-wide.
  */
-async function findSubscriptionIdForKey(key: string): Promise<string | null> {
+async function findSubscriptionForKey(key: string): Promise<SubscriptionLookup> {
 	if (!key) return null;
 	const [intent] = await db
-		.select({ subscription_id: paypalOrderIntents.subscription_id })
+		.select({
+			subscription_id: paypalOrderIntents.subscription_id,
+			org_id: paypalOrderIntents.org_id,
+			env: paypalOrderIntents.env,
+		})
 		.from(paypalOrderIntents)
 		.where(eq(paypalOrderIntents.order_id, key))
 		.limit(1);
-	return intent?.subscription_id ?? null;
+	if (!intent?.subscription_id) return null;
+	const client = await getPaypalClientForOrg(
+		intent.org_id,
+		intent.env as AppEnv,
+	);
+	if (!client) return null;
+	return { subscriptionId: intent.subscription_id, client };
 }
 
 /**
@@ -96,10 +113,15 @@ async function findSubscriptionIdForKey(key: string): Promise<string | null> {
  */
 async function findApprovedSubscriptionByPayer(
 	orderToken: string,
-): Promise<string | null> {
+): Promise<SubscriptionLookup> {
+	// The order was created for one org; only that org's PayPal account is
+	// asked about it.
+	const client = await getPaypalClientForOrder(orderToken);
+	if (!client) return null;
+
 	let payerId: string | undefined;
 	try {
-		const order = await paypalFetch<{ payer?: { payer_id?: string } }>(
+		const order = await client.fetch<{ payer?: { payer_id?: string } }>(
 			`/v2/checkout/orders/${orderToken}`,
 			{ method: "GET" },
 		);
@@ -109,29 +131,30 @@ async function findApprovedSubscriptionByPayer(
 	}
 	if (!payerId) return null;
 
-	// Only customers with a subscription still awaiting approval can match.
+	// Only this org's subscriptions that are still awaiting approval can
+	// match.
 	const pendings = await db
 		.select({
-			subscription_id: customers.paypal_subscription_id,
-			customer_id: customers.id,
+			subscription_id: paypalOrderIntents.subscription_id,
+			org_id: paypalOrderIntents.org_id,
 		})
-		.from(customers)
+		.from(paypalOrderIntents)
 		.where(
 			and(
-				eq(customers.paypal_payment_status, "pending"),
-				isNotNull(customers.paypal_subscription_id),
+				eq(paypalOrderIntents.status, "pending"),
+				isNotNull(paypalOrderIntents.subscription_id),
 			),
 		);
 
 	for (const row of pendings) {
 		if (!row.subscription_id) continue;
 		try {
-			const sub = await getSubscription(row.subscription_id);
+			const sub = await getSubscription(client, row.subscription_id);
 			if (
 				sub?.subscriber?.payer_id === payerId &&
 				isLivePaypalSubscription(sub.status)
 			) {
-				return sub.id;
+				return { subscriptionId: sub.id, client };
 			}
 		} catch {
 			// subscription gone at PayPal — try the next pending one
@@ -176,13 +199,14 @@ paypalReturnRouter.get("/return", async (c) => {
 	// checkout token (our own, in the return URL) is authoritative; the BA-
 	// token from the approval link is the fallback for links created before
 	// the checkout token existed.
-	const subscriptionId =
-		(await findSubscriptionIdForKey(checkout ?? "")) ??
-		(await findSubscriptionIdForKey(token ?? ""));
+	const lookup =
+		(await findSubscriptionForKey(checkout ?? "")) ??
+		(await findSubscriptionForKey(token ?? ""));
 
-	if (subscriptionId) {
+	if (lookup) {
+		const { subscriptionId, client } = lookup;
 		try {
-			const sub = await getSubscription(subscriptionId);
+			const sub = await getSubscription(client, subscriptionId);
 			const activated = await activatePaypalSubscription(sub);
 			if (activated) {
 				logger.info({
@@ -217,10 +241,11 @@ paypalReturnRouter.get("/return", async (c) => {
 	// of the order it created for the approval, not with the BA- token.  Find
 	// the subscription that approval belongs to through the payer.
 	if (token) {
-		const approvedId = await findApprovedSubscriptionByPayer(token);
-		if (approvedId) {
+		const approved = await findApprovedSubscriptionByPayer(token);
+		if (approved) {
+			const { subscriptionId: approvedId, client } = approved;
 			try {
-				const sub = await getSubscription(approvedId);
+				const sub = await getSubscription(client, approvedId);
 				const activated = await activatePaypalSubscription(sub);
 				if (activated) {
 					logger.info({
@@ -248,7 +273,11 @@ paypalReturnRouter.get("/return", async (c) => {
 	// PayPal subscription ids are "I-" prefixed; order ids are not.
 	if (token?.startsWith("I-")) {
 		try {
-			const sub = await getSubscription(token);
+			const client = await getPaypalClientForSubscription(token);
+			if (!client) {
+				return c.redirect(`${appUrl}?payment=error&reason=no_org`, 302);
+			}
+			const sub = await getSubscription(client, token);
 			const activated = await activatePaypalSubscription(sub);
 			if (activated) {
 				logger.info({
@@ -365,7 +394,11 @@ paypalReturnRouter.post("/capture/:order_id", async (c) => {
 paypalReturnRouter.get("/activate/:subscriptionId", async (c) => {
 	const subscriptionId = c.req.param("subscriptionId");
 	try {
-		const sub = await getSubscription(subscriptionId);
+		const client = await getPaypalClientForSubscription(subscriptionId);
+		if (!client) {
+			return c.json({ error: "unknown subscription" }, 404);
+		}
+		const sub = await getSubscription(client, subscriptionId);
 		const activated = await activatePaypalSubscription(sub);
 		return c.json({
 			subscriptionId,

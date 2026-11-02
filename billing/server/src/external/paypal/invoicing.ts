@@ -11,7 +11,7 @@
 //
 // Spec: https://developer.paypal.com/docs/api/invoicing/v2
 
-import { paypalFetch } from "./client.js";
+import type { PaypalClient } from "./paypalClient.js";
 
 export interface PayPalInvoice {
 	id: string;
@@ -30,6 +30,7 @@ export interface PayPalInvoice {
 }
 
 export interface CreateInvoiceArgs {
+	client: PaypalClient;
 	/** Our reference — carries the MeterPal customer id ("mp:<customer_id>"). */
 	reference: string;
 	recipientEmail: string;
@@ -46,6 +47,7 @@ export interface CreateInvoiceArgs {
 }
 
 export async function createInvoice({
+	client,
 	reference,
 	recipientEmail,
 	recipientName,
@@ -63,7 +65,7 @@ export async function createInvoice({
 		maximumFractionDigits: 2,
 	}).format(amountUsd);
 
-	return paypalFetch<PayPalInvoice>("/v2/invoicing/invoices", {
+	return client.fetch<PayPalInvoice>("/v2/invoicing/invoices", {
 		method: "POST",
 		body: JSON.stringify({
 			detail: {
@@ -106,8 +108,11 @@ export async function createInvoice({
 	});
 }
 
-export async function sendInvoice(invoiceId: string): Promise<PayPalInvoice> {
-	return paypalFetch<PayPalInvoice>(
+export async function sendInvoice(
+	client: PaypalClient,
+	invoiceId: string,
+): Promise<PayPalInvoice> {
+	return client.fetch<PayPalInvoice>(
 		`/v2/invoicing/invoices/${invoiceId}/send`,
 		{
 			method: "POST",
@@ -117,13 +122,18 @@ export async function sendInvoice(invoiceId: string): Promise<PayPalInvoice> {
 	);
 }
 
-export async function getInvoice(invoiceId: string): Promise<PayPalInvoice> {
-	return paypalFetch<PayPalInvoice>(`/v2/invoicing/invoices/${invoiceId}`, {
+export async function getInvoice(
+	client: PaypalClient,
+	invoiceId: string,
+): Promise<PayPalInvoice> {
+	return client.fetch<PayPalInvoice>(`/v2/invoicing/invoices/${invoiceId}`, {
 		method: "GET",
 	});
 }
 
-export async function listInvoices(params: {
+export async function listInvoices(
+	client: PaypalClient,
+	params: {
 	page?: number;
 	pageSize?: number;
 } = {}): Promise<{ total_items: number; invoices: PayPalInvoice[] }> {
@@ -131,7 +141,7 @@ export async function listInvoices(params: {
 		page: String(params.page ?? 1),
 		page_size: String(params.pageSize ?? 25),
 	});
-	return paypalFetch<{ total_items: number; invoices: PayPalInvoice[] }>(
+	return client.fetch<{ total_items: number; invoices: PayPalInvoice[] }>(
 		`/v2/invoicing/invoices?${query.toString()}`,
 		{ method: "GET" },
 	);

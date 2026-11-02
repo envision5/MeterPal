@@ -10,6 +10,7 @@ import { z } from "zod/v4";
 import { customers, RecaseError, Scopes } from "@autumn/shared";
 import { createRoute } from "@/honoMiddlewares/routeHandler";
 import { createInvoice, sendInvoice } from "@/external/paypal/invoicing.js";
+import { getPaypalClient } from "@/external/paypal/paypalClient.js";
 import type { HonoEnv } from "@/honoUtils/HonoEnv.js";
 import { Hono } from "hono";
 
@@ -58,7 +59,13 @@ export const handleCreateOverageInvoice = createRoute({
 			});
 		}
 
+		const client = await getPaypalClient({
+			org: ctx.org,
+			env: ctx.env,
+		});
+
 		const invoice = await createInvoice({
+			client,
 			reference: `mp:${customer.id}`,
 			recipientEmail: customer.email,
 			recipientName: customer.name ?? undefined,
@@ -69,7 +76,7 @@ export const handleCreateOverageInvoice = createRoute({
 			memo: params.memo ?? `MeterPal AI usage overage for ${customer.id}`,
 		});
 
-		const sent = await sendInvoice(invoice.id);
+		const sent = await sendInvoice(client, invoice.id);
 
 		return c.json({
 			invoice_id: sent.id,

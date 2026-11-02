@@ -3,11 +3,12 @@
 // Unit tests for the PayPal catalog/subscriptions wrappers. Run with:
 //   bun test ./tests/paypal_subscriptions.test.ts
 //
-// paypalFetch is mocked at the module level — no network, no credentials.
+// A fake client is passed in — no network, no credentials.
 // Asserts request shapes (paths, bodies, idempotency headers) and the pure
 // helpers (interval mapping, USD formatting, approval-link extraction).
 
-import { describe, it, expect, mock, beforeEach } from "bun:test";
+import { describe, it, expect, beforeEach } from "bun:test";
+import type { PaypalClient } from "../src/external/paypal/paypalClient.js";
 
 type CapturedCall = { path: string; init: Record<string, any> };
 const calls: CapturedCall[] = [];
@@ -23,17 +24,20 @@ let nextResponse: any = {
 	],
 };
 
-mock.module("../src/external/paypal/client.js", () => ({
-	paypalFetch: async (path: string, init: Record<string, any> = {}) => {
+// The PayPal client is per-org now, so the tests pass a fake one in
+// instead of mocking a module-level fetch.
+const client = {
+	baseUrl: "https://api-m.sandbox.paypal.com",
+	fromOrg: true,
+	fetch: async (path: string, init: Record<string, any> = {}) => {
 		calls.push({ path, init });
 		if (nextResponse instanceof Error) throw nextResponse;
 		return typeof nextResponse === "function"
 			? nextResponse(path, init)
 			: nextResponse;
 	},
-	paypalBaseUrl: () => "https://api-m.sandbox.paypal.com",
 	getAccessToken: async () => "test-token",
-}));
+} as unknown as PaypalClient;
 
 const {
 	createCatalogProduct,
@@ -136,6 +140,7 @@ describe("approvalTokenFromUrl", () => {
 describe("createCatalogProduct", () => {
 	it("POSTs a SERVICE/SOFTWARE product with an idempotency key", async () => {
 		await createCatalogProduct({
+			client,
 			name: "MeterPal Pro",
 			description: "Pro plan",
 			sku: "org1:sandbox:pro",
@@ -154,6 +159,7 @@ describe("createCatalogProduct", () => {
 describe("createBillingPlan", () => {
 	it("POSTs an ACTIVE plan with a REGULAR fixed-price cycle", async () => {
 		await createBillingPlan({
+			client,
 			productId: "PP-PROD-1",
 			name: "Pro",
 			intervalUnit: "MONTH",
@@ -178,6 +184,7 @@ describe("createBillingPlan", () => {
 
 	it("prepends a TRIAL cycle when trialCycles > 0", async () => {
 		await createBillingPlan({
+			client,
 			productId: "PP-PROD-1",
 			name: "Pro",
 			intervalUnit: "MONTH",
@@ -195,6 +202,7 @@ describe("createBillingPlan", () => {
 describe("createSubscription", () => {
 	it("POSTs a subscription with custom_id, NO_SHIPPING and SUBSCRIBE_NOW", async () => {
 		const sub = await createSubscription({
+			client,
 			planId: "PP-PLAN-123",
 			customId: "demo-customer",
 			subscriberEmail: "buyer@example.com",
@@ -219,23 +227,27 @@ describe("createSubscription", () => {
 
 describe("subscription lifecycle wrappers", () => {
 	it("getSubscription GETs by id", async () => {
-		await getSubscription("I-123");
+		await getSubscription(client, "I-123");
 		expect(last().path).toBe("/v1/billing/subscriptions/I-123");
 		expect(last().init.method).toBe("GET");
 	});
 
 	it("reviseSubscription POSTs the new plan", async () => {
-		await reviseSubscription({ subscriptionId: "I-123", planId: "PP-PLAN-NEW" });
+		await reviseSubscription({
+			client,
+			subscriptionId: "I-123",
+			planId: "PP-PLAN-NEW",
+		});
 		expect(last().path).toBe("/v1/billing/subscriptions/I-123/revise");
 		const body = JSON.parse(last().init.body);
 		expect(body.plan_id).toBe("PP-PLAN-NEW");
 	});
 
 	it("suspendSubscription / cancelSubscription POST with the right payload", async () => {
-		await suspendSubscription("I-123", "paused");
+		await suspendSubscription(client, "I-123", "paused");
 		expect(last().path).toBe("/v1/billing/subscriptions/I-123/suspend");
 		expect(JSON.parse(last().init.body).note).toBe("paused");
-		await cancelSubscription("I-123", "superseded");
+		await cancelSubscription(client, "I-123", "superseded");
 		expect(last().path).toBe("/v1/billing/subscriptions/I-123/cancel");
 		// PayPal's CancelSubscriptionRequest takes `reason` (1..128 chars) —
 		// sending `note` there is rejected as a malformed body.
@@ -331,6 +343,7 @@ describe("decidePaypalSubscriptionAction", () => {
 describe("createWebhook", () => {
 	it("POSTs the event-type list for programmatic webhook registration", async () => {
 		await createWebhook({
+			client,
 			url: "https://tunnel.example.com/webhooks/paypal",
 			eventTypes: ["PAYMENT.CAPTURE.COMPLETED", "BILLING.SUBSCRIPTION.ACTIVATED"],
 		});

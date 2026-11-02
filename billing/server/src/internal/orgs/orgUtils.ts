@@ -11,6 +11,7 @@ import {
 	shouldUseMaster,
 } from "@server/external/connect/connectUtils.js";
 import { createStripeCli } from "@server/external/connect/createStripeCli.js";
+import { hasPaypalConnection } from "@server/external/paypal/paypalClient.js";
 import {
 	decryptData,
 	generatePublishableKey,
@@ -108,8 +109,33 @@ export const isStripeConnected = ({
 	}
 };
 
-const constructOrg = ({ id, slug }: { id: string; slug: string }) => {
-	return {
+/**
+ * True when this org can bill through PayPal in `env`.
+ *
+ * The org's own `paypal_config` answers for the org; an org without one falls
+ * back to the process-wide PAYPAL_* credentials (the single-tenant setup).
+ */
+export const isPaypalConnected = ({
+	org,
+	env,
+}: {
+	org: Organization;
+	env: AppEnv;
+}) => hasPaypalConnection({ org, env });
+
+/**
+ * True when this org bills through PayPal end-to-end (PayPal connected, no
+ * Stripe connected) — Stripe-coupled plumbing should skip itself.
+ */
+export const isPaypalNativeOrg = ({
+	org,
+	env,
+}: {
+	org: Organization;
+	env: AppEnv;
+}) => isPaypalConnected({ org, env }) && !isStripeConnected({ org, env });
+
+const constructOrg = ({ id, slug }: { id: string; slug: string }) => {	return {
 		id,
 		slug,
 		created_at: Date.now(),

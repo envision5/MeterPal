@@ -51,6 +51,9 @@ import {
 import { handleGetInvites } from "./handlers/memberHandlers/handleGetInvites.js";
 import { handleGetOrgMembers } from "./handlers/memberHandlers/handleGetOrgMembers.js";
 import { handleRemoveMember } from "./handlers/memberHandlers/handleRemoveMember.js";
+import { handleConnectPaypal } from "./handlers/paypalHandlers/handleConnectPaypal.js";
+import { handleDeletePaypal } from "./handlers/paypalHandlers/handleDeletePaypal.js";
+import { handleGetPaypalConfig } from "./handlers/paypalHandlers/handleGetPaypalConfig.js";
 import { handleGetRevenueCatOAuthUrl } from "./handlers/revenueCatHandlers/handleGetRevenueCatOAuthUrl.js";
 import { handleConnectStripe } from "./handlers/stripeHandlers/handleConnectStripe.js";
 import { handleDeleteStripe } from "./handlers/stripeHandlers/handleDeleteStripe.js";
@@ -135,6 +138,11 @@ honoOrgRouter.get("/stripe/prices/search", ...handleSearchStripePrices);
 honoOrgRouter.delete("/stripe", ...handleDeleteStripe);
 honoOrgRouter.post("/stripe", ...handleConnectStripe);
 honoOrgRouter.get("/stripe/oauth_url", ...handleGetOAuthUrl);
+
+// PayPal: the org's own PayPal account, per environment.
+honoOrgRouter.get("/paypal", ...handleGetPaypalConfig);
+honoOrgRouter.post("/paypal", ...handleConnectPaypal);
+honoOrgRouter.delete("/paypal", ...handleDeletePaypal);
 honoOrgRouter.post("/reset_default_account", ...handleResetDefaultAccount);
 
 honoOrgRouter.patch("/redis", ...handleUpsertRedisConfig);

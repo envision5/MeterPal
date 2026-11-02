@@ -25,6 +25,7 @@ import {
 	UsersIcon,
 } from "lucide-react";
 import { useSearchParams } from "react-router";
+import { PaypalLogoIcon } from "@phosphor-icons/react";
 import { RevenueCatIcon, StripeIcon } from "@/components/v2/icons/AutumnIcons";
 import { useAutumnFlags } from "@/hooks/common/useAutumnFlags";
 import { useScopes } from "@/hooks/useScopes";
@@ -40,6 +41,7 @@ import { CustomButtonsSection } from "./sections/CustomButtonsSection";
 import { InvoicesSection } from "./sections/InvoicesSection";
 import { MembersSection } from "./sections/MembersSection";
 import { OrganizationSection } from "./sections/OrganizationSection";
+import { PayPalSection } from "./sections/PayPalSection";
 import { RevenueCatSection } from "./sections/RevenueCatSection";
 import { SsoSection } from "./sections/SsoSection";
 import { StripeSection } from "./sections/StripeSection";
@@ -63,6 +65,7 @@ export type SettingsTab =
 	| "usage-alerts"
 	| "transition-rules"
 	| "stripe"
+	| "paypal"
 	| "vercel"
 	| "revenuecat";
 
@@ -164,6 +167,11 @@ export const SETTINGS_GROUPS: readonly SettingsNavGroup[] = [
 				icon: <StripeIcon size={16} />,
 			},
 			{
+				id: "paypal",
+				label: "PayPal",
+				icon: <PaypalLogoIcon size={16} />,
+			},
+			{
 				id: "vercel",
 				label: "Vercel",
 				icon: <TriangleIcon className="size-4" />,
@@ -192,6 +200,7 @@ const SECTION_MAP: Record<SettingsTab, React.ComponentType> = {
 	"usage-alerts": UsageAlertsSection,
 	"transition-rules": TransitionRulesSection,
 	stripe: StripeSection,
+	paypal: PayPalSection,
 	vercel: VercelSection,
 	revenuecat: RevenueCatSection,
 };
@@ -205,6 +214,7 @@ const FLAGGED_TABS: Partial<Record<SettingsTab, "sso" | "vercel">> = {
 /** Integrations were previously behind the developer page's scope. */
 const API_KEY_SCOPED_TABS: readonly SettingsTab[] = [
 	"stripe",
+	"paypal",
 	"vercel",
 	"revenuecat",
 ];

@@ -38,7 +38,8 @@ import { db } from "@/db/initDrizzle.js";
 import { logger } from "@/external/logtail/logtailUtils.js";
 import { createWorkerContext } from "@/queue/createWorkerContext.js";
 import { updateBalanceV2 } from "@/internal/balances/updateBalance/v2/updateBalanceV2.js";
-import { paypalFetch } from "./client.js";
+import type { PaypalClient } from "./paypalClient.js";
+import { getPaypalClientForOrder } from "@/internal/billing/paypal/paypalOrgClient.js";
 
 interface PayPalEvent {
 	id: string;
@@ -70,7 +71,12 @@ function creditFeatureId(): string {
 	return process.env.METERPAL_CREDIT_FEATURE_ID ?? "ai_tokens";
 }
 
-export async function handlePaypalEvent(event: PayPalEvent): Promise<void> {
+export async function handlePaypalEvent(
+	event: PayPalEvent,
+	/** The ORG's PayPal client.  The webhook route resolves the org from
+	 *  the URL, so the event is handled against the right PayPal account. */
+	client?: PaypalClient,
+): Promise<void> {
 	if (!HANDLED_TYPES.has(event.type)) {
 		logger.info({ msg: "paypal: ignoring unhandled event", eventType: event.type });
 		return;
@@ -93,7 +99,7 @@ export async function handlePaypalEvent(event: PayPalEvent): Promise<void> {
 	// FAILED dispatch would defeat PayPal's 25-retry policy and lose the
 	// money event entirely.
 	try {
-		await dispatch(event);
+		await dispatch(event, client);
 	} catch (error) {
 		logger.error({
 			msg: "paypal: dispatch failed — leaving event unrecorded so PayPal retries",
@@ -112,7 +118,10 @@ export async function handlePaypalEvent(event: PayPalEvent): Promise<void> {
 		.onConflictDoNothing();
 }
 
-async function dispatch(event: PayPalEvent): Promise<void> {
+async function dispatch(
+	event: PayPalEvent,
+	client?: PaypalClient,
+): Promise<void> {
 	switch (event.type) {
 		case "BILLING.SUBSCRIPTION.ACTIVATED":
 		case "BILLING.SUBSCRIPTION.CREATED":
@@ -138,7 +147,7 @@ async function dispatch(event: PayPalEvent): Promise<void> {
 			await onRefund(event);
 			break;
 		case "PAYMENT.CAPTURE.COMPLETED":
-			await onCaptureCompleted(event);
+			await onCaptureCompleted(event, client);
 			break;
 		case "CHECKOUT.ORDER.APPROVED":
 			// Early signal only — the money event is PAYMENT.CAPTURE.COMPLETED.
@@ -804,7 +813,10 @@ async function onRefund(event: PayPalEvent): Promise<void> {
 	});
 }
 
-async function onCaptureCompleted(event: PayPalEvent): Promise<void> {
+async function onCaptureCompleted(
+	event: PayPalEvent,
+	client?: PaypalClient,
+): Promise<void> {
 	// A one-shot wallet top-up landed.  The capture webhook carries the order
 	// id in supplementary_data.related_ids.order_id — fetch the order to read
 	// the custom_id we stamped at checkout ("mp:<customer_id>:<product_id>").
@@ -822,17 +834,22 @@ async function onCaptureCompleted(event: PayPalEvent): Promise<void> {
 	let customId: string | null = capture?.custom_id ?? null;
 
 	if (!customId && orderId) {
-		try {
-			const order = await paypalFetch<{
-				purchase_units?: Array<{ custom_id?: string }>;
-			}>(`/v2/checkout/orders/${orderId}`, { method: "GET" });
-			customId = order.purchase_units?.[0]?.custom_id ?? null;
-		} catch (err) {
-			logger.warn({
-				msg: "paypal: order fetch failed",
-				orderId,
-				err: String(err),
-			});
+		// The per-org route hands us the client; the legacy route has no
+		// org, so the order's own intent row names the account to ask.
+		const orderClient = client ?? (await getPaypalClientForOrder(orderId));
+		if (orderClient) {
+			try {
+				const order = await orderClient.fetch<{
+					purchase_units?: Array<{ custom_id?: string }>;
+				}>(`/v2/checkout/orders/${orderId}`, { method: "GET" });
+				customId = order.purchase_units?.[0]?.custom_id ?? null;
+			} catch (err) {
+				logger.warn({
+					msg: "paypal: order fetch failed",
+					orderId,
+					err: String(err),
+				});
+			}
 		}
 	}
 
@@ -931,4 +948,3 @@ function planKeyForPlanId(planId: string | undefined): string {
 }
 
 // Re-export for index
-export { paypalFetch } from "./client.js";

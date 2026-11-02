@@ -6,13 +6,17 @@
 //  - Subscriptions: POST /v1/billing/subscriptions (+ revise / suspend /
 //    cancel / get), used for MeterPal plan checkouts.
 //
+// Every call goes through the ORG's PayPal client (external/paypal/
+// paypalClient.ts), so a subscription is always created against the PayPal
+// account that org connected.
+//
 // Money values are USD decimal strings ("20.00") — the billing server stores
 // prices in major units, so `toUsd(amount)` is the only conversion needed.
 //
 // Spec: https://developer.paypal.com/api/subscriptions/v1 and
 //       https://developer.paypal.com/api/catalog-products/v1
 
-import { paypalFetch } from "./client.js";
+import type { PaypalClient } from "./paypalClient.js";
 
 export type PayPalIntervalUnit = "WEEK" | "MONTH" | "YEAR";
 
@@ -55,17 +59,19 @@ export interface PayPalProduct {
 }
 
 export async function createCatalogProduct({
+	client,
 	name,
 	description,
 	sku,
 	idempotencyKey,
 }: {
+	client: PaypalClient;
 	name: string;
 	description?: string;
 	sku?: string;
 	idempotencyKey?: string;
 }): Promise<PayPalProduct> {
-	return paypalFetch<PayPalProduct>("/v1/catalog/products", {
+	return client.fetch<PayPalProduct>("/v1/catalog/products", {
 		method: "POST",
 		body: JSON.stringify({
 			name,
@@ -86,6 +92,7 @@ export interface PayPalPlan {
 }
 
 export async function createBillingPlan({
+	client,
 	productId,
 	name,
 	description,
@@ -95,6 +102,7 @@ export async function createBillingPlan({
 	trialCycles = 0,
 	idempotencyKey,
 }: {
+	client: PaypalClient;
 	productId: string;
 	name: string;
 	description?: string;
@@ -122,7 +130,7 @@ export async function createBillingPlan({
 		pricing_scheme: { fixed_price: { value: toUsd(amountUsd), currency_code: "USD" } },
 	});
 
-	return paypalFetch<PayPalPlan>("/v1/billing/plans", {
+	return client.fetch<PayPalPlan>("/v1/billing/plans", {
 		method: "POST",
 		body: JSON.stringify({
 			product_id: productId,
@@ -139,8 +147,11 @@ export async function createBillingPlan({
 	});
 }
 
-export async function getBillingPlan(planId: string): Promise<PayPalPlan> {
-	return paypalFetch<PayPalPlan>(`/v1/billing/plans/${planId}`, {
+export async function getBillingPlan(
+	client: PaypalClient,
+	planId: string,
+): Promise<PayPalPlan> {
+	return client.fetch<PayPalPlan>(`/v1/billing/plans/${planId}`, {
 		method: "GET",
 	});
 }
@@ -161,6 +172,7 @@ export interface PayPalSubscription {
 }
 
 export interface CreateSubscriptionArgs {
+	client: PaypalClient;
 	planId: string;
 	customId?: string;
 	subscriberEmail?: string;
@@ -177,6 +189,7 @@ export interface CreateSubscriptionArgs {
  * PAYMENT.SALE.COMPLETED).
  */
 export async function createSubscription({
+	client,
 	planId,
 	customId,
 	subscriberEmail,
@@ -185,7 +198,7 @@ export async function createSubscription({
 	brandName,
 	idempotencyKey,
 }: CreateSubscriptionArgs): Promise<PayPalSubscription> {
-	return paypalFetch<PayPalSubscription>("/v1/billing/subscriptions", {
+	return client.fetch<PayPalSubscription>("/v1/billing/subscriptions", {
 		method: "POST",
 		body: JSON.stringify({
 			plan_id: planId,
@@ -236,28 +249,31 @@ export function approvalTokenFromUrl(url: string): string {
 }
 
 export async function getSubscription(
+	client: PaypalClient,
 	subscriptionId: string,
 ): Promise<PayPalSubscription> {
-	return paypalFetch<PayPalSubscription>(
+	return client.fetch<PayPalSubscription>(
 		`/v1/billing/subscriptions/${subscriptionId}`,
 		{ method: "GET" },
 	);
 }
 
 export async function reviseSubscription({
+	client,
 	subscriptionId,
 	planId,
 	returnUrl,
 	cancelUrl,
 	idempotencyKey,
 }: {
+	client: PaypalClient;
 	subscriptionId: string;
 	planId: string;
 	returnUrl?: string;
 	cancelUrl?: string;
 	idempotencyKey?: string;
 }): Promise<PayPalSubscription & { links?: PayPalLink[] }> {
-	return paypalFetch(`/v1/billing/subscriptions/${subscriptionId}/revise`, {
+	return client.fetch(`/v1/billing/subscriptions/${subscriptionId}/revise`, {
 		method: "POST",
 		body: JSON.stringify({
 			plan_id: planId,
@@ -277,13 +293,17 @@ export async function reviseSubscription({
 }
 
 export async function suspendSubscription(
+	client: PaypalClient,
 	subscriptionId: string,
 	note = "Suspended by MeterPal",
 ): Promise<void> {
-	await paypalFetch(`/v1/billing/subscriptions/${subscriptionId}/suspend`, {
-		method: "POST",
-		body: JSON.stringify({ note }),
-	});
+	await client.fetch(
+		`/v1/billing/subscriptions/${subscriptionId}/suspend`,
+		{
+			method: "POST",
+			body: JSON.stringify({ note }),
+		},
+	);
 }
 
 /**
@@ -294,10 +314,11 @@ export async function suspendSubscription(
  * went through and a stale subscription stayed approvable.
  */
 export async function cancelSubscription(
+	client: PaypalClient,
 	subscriptionId: string,
 	reason = "Cancelled by MeterPal",
 ): Promise<void> {
-	await paypalFetch(`/v1/billing/subscriptions/${subscriptionId}/cancel`, {
+	await client.fetch(`/v1/billing/subscriptions/${subscriptionId}/cancel`, {
 		method: "POST",
 		body: JSON.stringify({ reason: reason.slice(0, 128) }),
 	});
@@ -312,15 +333,17 @@ export interface PayPalWebhook {
 }
 
 export async function createWebhook({
+	client,
 	url,
 	eventTypes,
 	idempotencyKey,
 }: {
+	client: PaypalClient;
 	url: string;
 	eventTypes: string[];
 	idempotencyKey?: string;
 }): Promise<PayPalWebhook> {
-	return paypalFetch<PayPalWebhook>("/v1/notifications/webhooks", {
+	return client.fetch<PayPalWebhook>("/v1/notifications/webhooks", {
 		method: "POST",
 		body: JSON.stringify({
 			url,
@@ -330,10 +353,10 @@ export async function createWebhook({
 	});
 }
 
-export async function listWebhooks(): Promise<{
+export async function listWebhooks(client: PaypalClient): Promise<{
 	webhooks: PayPalWebhook[];
 }> {
-	return paypalFetch<{ webhooks: PayPalWebhook[] }>(
+	return client.fetch<{ webhooks: PayPalWebhook[] }>(
 		"/v1/notifications/webhooks",
 		{ method: "GET" },
 	);

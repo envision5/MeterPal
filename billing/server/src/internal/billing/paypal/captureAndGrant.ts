@@ -11,13 +11,13 @@ import { eq } from "drizzle-orm";
 import { paypalOrderIntents } from "@autumn/shared";
 import { db } from "@/db/initDrizzle.js";
 import { logger } from "@/external/logtail/logtailUtils.js";
-import { paypalFetch } from "@/external/paypal/client.js";
 import { captureOrder } from "@/external/paypal/orders.js";
 import {
 	grantWalletCredits,
 	resolveCustomer,
 	stampPayerId,
 } from "@/external/paypal/runPaypalWebhookHandlers.js";
+import { getPaypalClientForOrder } from "./paypalOrgClient.js";
 
 /**
  * Capture an order (if approved) and grant the wallet credits.  Shared by
@@ -29,7 +29,15 @@ export async function captureAndGrant(
 	via: string,
 ): Promise<{ status: string; credits?: number; reason?: string }> {
 	try {
-		const order = await paypalFetch<Record<string, any>>(
+		// The order was created for one org, so that org's PayPal account is
+		// the only one allowed to capture it.
+		const client = await getPaypalClientForOrder(orderId);
+		if (!client) {
+			logger.error({ msg: "paypal capture: no org for order", orderId, via });
+			return { status: "error", reason: "no_org" };
+		}
+
+		const order = await client.fetch<Record<string, any>>(
 			`/v2/checkout/orders/${orderId}`,
 			{ method: "GET" },
 		);
@@ -38,7 +46,7 @@ export async function captureAndGrant(
 			order?.purchase_units?.[0]?.payments?.captures?.[0];
 
 		if (order?.status === "APPROVED") {
-			const capture = (await captureOrder(orderId)) as Record<string, any>;
+			const capture = (await captureOrder(client, orderId)) as Record<string, any>;
 			captureResource = capture?.purchase_units?.[0]?.payments?.captures?.[0];
 		}
 

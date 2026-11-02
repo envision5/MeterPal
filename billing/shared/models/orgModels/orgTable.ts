@@ -46,6 +46,42 @@ export type StripeConnectConfig = {
 	revoked_account_id?: string;
 };
 
+/**
+ * One PayPal environment's connection for an org.
+ *
+ * `client_secret_enc` holds the secret encrypted with the repo's
+ * `encryptData()` (ENCRYPTION_PASSWORD / ENCRYPTION_IV) — the same treatment
+ * the Stripe keys on this table get.  It is never returned by an API.
+ */
+export type PaypalEnvConfig = {
+	client_id: string;
+	/** AES-256-CBC encrypted client secret via encryptData() */
+	client_secret_enc: string;
+	/** Webhook id this org registered with PayPal for this environment. */
+	webhook_id?: string | null;
+	/** The PayPal account this client acts on behalf of. */
+	account_email?: string | null;
+	/** Epoch ms when the org connected. */
+	connected_at?: number;
+};
+
+/**
+ * Per-org PayPal connection, split by PayPal environment.
+ *
+ * A PayPal REST app is per-environment: the sandbox app and the live app have
+ * different client ids and secrets, so an org keeps one connection per
+ * environment — the same shape the Stripe keys on this table use.
+ *
+ * An org with no `paypal_config` falls back to the PAYPAL_* environment
+ * variables, so the single-tenant deployment keeps working unchanged.  Once an
+ * org manages its own PayPal, the shared account never bills for it again:
+ * a partially configured org is NOT connected in the environment it is missing.
+ */
+export type PaypalConfig = {
+	test?: PaypalEnvConfig | null;
+	live?: PaypalEnvConfig | null;
+};
+
 export type OrgRedisConfig = {
 	/** AES-256-CBC encrypted full Redis connection string via encryptData() */
 	connectionString: string;
@@ -111,6 +147,10 @@ export const organizations = pgTable(
 		// 	.notNull(),
 
 		processor_configs: jsonb("processor_configs").$type<ProcessorConfigs>(),
+
+		// PayPal
+		paypal_connected: boolean("paypal_connected").default(false),
+		paypal_config: jsonb("paypal_config").$type<PaypalConfig>(),
 
 		test_pkey: text("test_pkey"),
 		live_pkey: text("live_pkey"),

@@ -8,9 +8,9 @@ import {
 import { ms } from "@shared/utils/common/unixUtils";
 import { checkoutSessionLock } from "@/external/redis/actions/checkoutSessionLock/checkoutSessionLock.js";
 import {
-	isPaypalNativeOrg,
 	runPaypalCheckout,
 } from "@/internal/billing/paypal/runPaypalCheckout.js";
+import { isPaypalNativeOrg } from "@/internal/orgs/orgUtils.js";
 import type { AutumnContext } from "@/honoUtils/HonoEnv";
 import { computeAttachPlan } from "@/internal/billing/v2/actions/attach/compute/computeAttachPlan";
 import { handleAttachComputeErrors } from "@/internal/billing/v2/actions/attach/errors/handleAttachComputeErrors";
