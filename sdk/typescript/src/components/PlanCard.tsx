@@ -10,6 +10,7 @@ export function PlanCard() {
   const { data: plansData } = useListPlans();
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
 
   // useListPlans unwraps response.list — data is already the plan array.
   const plans: any[] = Array.isArray(plansData)
@@ -20,6 +21,7 @@ export function PlanCard() {
   async function onSwitch(planId: string) {
     setPendingId(planId);
     setError(null);
+    setInfo(null);
     try {
       const result: any = await attach({ planId });
       const checkoutUrl =
@@ -29,6 +31,10 @@ export function PlanCard() {
         result?.url;
       if (checkoutUrl) {
         window.location.href = checkoutUrl;
+      } else {
+        // No checkout needed — the server refused to double-bill because the
+        // customer already has an active subscription to this plan.
+        setInfo("You're already subscribed to this plan.");
       }
     } catch (e: any) {
       setError(e?.message ?? "Failed to switch plan");

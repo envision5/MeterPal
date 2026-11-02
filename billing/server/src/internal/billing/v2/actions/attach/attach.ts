@@ -125,10 +125,12 @@ export async function attach({
 			billingResult: {
 				stripe: {
 					deferred: true,
-					stripeCheckoutSession: {
-						id: `paypal-${crypto.randomUUID()}`,
-						url: checkoutUrl,
-					},
+					stripeCheckoutSession: checkoutUrl
+						? {
+								id: `paypal-${crypto.randomUUID()}`,
+								url: checkoutUrl,
+							}
+						: undefined,
 				},
 			},
 		} as unknown as {

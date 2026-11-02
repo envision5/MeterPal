@@ -338,7 +338,7 @@ export async function runPaypalCheckout({
 	>;
 	db: DrizzleCli;
 	env: AppEnv;
-}): Promise<string> {
+}): Promise<string | null> {
 	const { org, customer, products, prices, successUrl } = attachParams;
 
 	if (!customer.id) {
@@ -519,13 +519,15 @@ export async function runPaypalCheckout({
 		cusRow.paypal_payment_status === "active" &&
 		cusRow.paypal_plan_id === planId
 	) {
-		// Already an active subscriber to this plan — nothing to buy.
+		// Already an active subscriber to this plan — nothing to buy, and no
+		// redirect: returning null tells the SDK to surface "already
+		// subscribed" instead of bouncing the app to a success page.
 		logger.info({
 			msg: "paypal checkout: customer already active on plan",
 			customerId,
 			planId,
 		});
-		return `${appUrl}?payment=success`;
+		return null;
 	}
 
 	if (
@@ -541,14 +543,16 @@ export async function runPaypalCheckout({
 
 			if (["APPROVED", "ACTIVE"].includes(existing?.status ?? "")) {
 				// The buyer already approved — and PayPal already charged — this
-				// subscription.  Activate it (idempotent) and land on success.
+				// subscription.  Activate it (idempotent).  Same plan -> no
+				// checkout (no double-bill); different plan -> success page
+				// (the buyer's new plan is now live).
 				await activatePaypalSubscription(existing);
 				logger.info({
 					msg: "paypal checkout: activated already-approved subscription",
 					subscriptionId: existing.id,
 					customerId,
 				});
-				return `${appUrl}?payment=success`;
+				return cusRow?.paypal_plan_id === planId ? null : `${appUrl}?payment=success`;
 			}
 			if (existing?.status === "CREATED" && isFresh) {
 				const url = approvalLink(existing.links);
