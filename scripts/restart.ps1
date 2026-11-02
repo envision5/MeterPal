@@ -4,6 +4,7 @@
 #   powershell -File scripts\restart.ps1 billing
 #   powershell -File scripts\restart.ps1 gateway
 #   powershell -File scripts\restart.ps1 mock-llm
+#   powershell -File scripts\restart.ps1 dashboard
 #
 # Stops only that service - its scheduled task and the process on its port -
 # then starts it again with the same env-file handling and the same launcher
@@ -11,7 +12,7 @@
 
 param(
 	[Parameter(Mandatory = $true)]
-	[ValidateSet("demo-app", "billing", "gateway", "mock-llm")]
+	[ValidateSet("demo-app", "billing", "gateway", "mock-llm", "dashboard")]
 	[string]$Service
 )
 

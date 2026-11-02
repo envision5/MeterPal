@@ -8,6 +8,7 @@
 #   mock LLM         :9999   (demo/mock_llm.py)
 #   metered gateway  :4000   (gateway)  - loads gateway/.env
 #   demo app         :5173   (demo-app)
+#   dashboard        :3000   (billing/vite) - where merchants connect PayPal
 #
 # Re-running is safe: ports already in use are left alone.
 #
@@ -25,7 +26,7 @@ $ErrorActionPreference = "Continue"
 
 $root = $StackRoot
 $services = Get-StackServices
-$order = @("billing", "mock-llm", "gateway", "demo-app")
+$order = @("billing", "mock-llm", "gateway", "demo-app", "dashboard")
 
 Write-Host "MeterPal stack startup" -ForegroundColor Cyan
 
@@ -64,6 +65,7 @@ foreach ($name in $order) {
 
 Write-Host ""
 Write-Host "Demo app:  http://localhost:5173" -ForegroundColor Yellow
+Write-Host "Dashboard: http://localhost:3000" -ForegroundColor Yellow
 Write-Host "Billing API: http://localhost:8080" -ForegroundColor Yellow
 Write-Host "Logs:       $StackLogDir" -ForegroundColor DarkGray
 Write-Host "If :5433 stayed down, start Docker Desktop first, then re-run." -ForegroundColor DarkGray

@@ -109,6 +109,18 @@ function Get-StackServices {
 			env = @{}
 			log = "demo-app"
 		}
+		# The merchant dashboard: where an org connects PayPal and sets the
+		# models it serves.  Vite proxies nothing here — it talks to the
+		# billing server through VITE_BACKEND_URL.
+		"dashboard" = @{
+			port = 3000
+			dir = "$StackRoot\billing\vite"
+			exe = (Resolve-Executable "bun")
+			args = @("run", "dev")
+			envFile = $null
+			env = @{}
+			log = "dashboard"
+		}
 		"mock-llm" = @{
 			port = 9999
 			dir = "$StackRoot\demo"
@@ -135,6 +147,66 @@ function Get-StackServices {
 # The scheduled-task name for a service.  One namespace for the whole stack.
 function Get-StackTaskName($name) {
 	return "MeterPal - $name"
+}
+
+# Every process in a service's tree, rooted at its scheduled-task runner.
+#
+# The task runs scripts\lib\run-service.ps1, which spawns cmd.exe and then the
+# program.  Killing only the process that holds the port is NOT enough: the
+# billing server runs under node:cluster, so its workers survive the parent and
+# the next start collides with them ("Is port 8080 in use?").
+function Get-StackServiceProcessTree($name) {
+	$all = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue)
+	$roots = @(
+		$all | Where-Object {
+			$_.Name -eq "powershell.exe" -and $_.CommandLine -and
+			$_.CommandLine -like "*run-service.ps1*" -and
+			$_.CommandLine -like "*$name*"
+		}
+	)
+
+	$targets = @()
+	foreach ($root in $roots) {
+		$targets += $root.ProcessId
+		$queue = @($root.ProcessId)
+		while ($queue.Count -gt 0) {
+			$parent = $queue[0]
+			$queue = @($queue | Select-Object -Skip 1)
+			foreach ($child in @($all | Where-Object { $_.ParentProcessId -eq $parent })) {
+				if ($targets -notcontains $child.ProcessId) {
+					$targets += $child.ProcessId
+					$queue += $child.ProcessId
+				}
+			}
+		}
+	}
+	return $targets
+}
+
+# A process and the shell wrappers above it, up to the scheduled-task runner.
+#
+# An orphan left behind by an earlier run has no task runner above it any
+# more, so the tree walk above finds nothing — but its cmd.exe and program
+# parent are still there, holding the port.  Only wrappers are collected: the
+# walk stops at anything that is not a shell or the program itself, so a
+# shared ancestor (services.exe, svchost) is never touched.
+function Get-StackProcessWrappers($procId) {
+	$all = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue)
+	$result = @($procId)
+	$current = $procId
+	for ($i = 0; $i -lt 12; $i++) {
+		$proc = $all | Where-Object { $_.ProcessId -eq $current } | Select-Object -First 1
+		if (-not $proc -or $proc.ParentProcessId -eq 0) { break }
+		$parent = $all | Where-Object { $_.ProcessId -eq $proc.ParentProcessId } | Select-Object -First 1
+		if (-not $parent) { break }
+		$isRunner = $parent.Name -eq "powershell.exe" -and $parent.CommandLine -and
+			$parent.CommandLine -like "*run-service.ps1*"
+		if ($parent.Name -notin @("cmd.exe", "bun.exe", "node.exe", "python.exe", "powershell.exe")) { break }
+		if ($parent.Name -eq "powershell.exe" -and -not $isRunner) { break }
+		$result += $parent.ProcessId
+		$current = $parent.ProcessId
+	}
+	return $result
 }
 
 # Starts a service as a Windows scheduled task.
@@ -166,8 +238,22 @@ function Start-StackService($name, $svc) {
 # program), then whatever is listening on its port.
 function Stop-StackService($name, $svc) {
 	$taskName = Get-StackTaskName $name
+
+	# Capture the tree BEFORE stopping the task: the runner process dies with
+	# the task, but the program it started (and the billing server's cluster
+	# workers) survive as orphans.
+	$tree = Get-StackServiceProcessTree $name
+
 	Stop-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
 	Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction SilentlyContinue
+
+	# Add the port owner's shell wrappers.  An orphan from an earlier run has
+	# no task runner above it any more, so the tree walk finds nothing — but
+	# its cmd.exe and program parent are still holding the port.
+	$owner = Get-PortOwner $svc.port
+	if ($owner) {
+		$tree += Get-StackProcessWrappers $owner
+	}
 
 	# Stopping the task kills the program, but the listening socket can take a
 	# moment to go away.  Kill any holder that is left and wait for the port
@@ -181,6 +267,14 @@ function Stop-StackService($name, $svc) {
 		}
 		Stop-Process -Id $owner -Force -ErrorAction SilentlyContinue
 		Start-Sleep -Milliseconds 700
+	}
+	[void](Wait-PortFree $svc.port)
+
+	# Anything still standing in the tree is an orphan: a cluster worker, or a
+	# grandchild the port check never saw.  It would collide with the next
+	# start, so it goes too.
+	foreach ($procId in ($tree | Select-Object -Unique)) {
+		Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
 	}
 	[void](Wait-PortFree $svc.port)
 
