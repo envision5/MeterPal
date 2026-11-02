@@ -218,6 +218,23 @@ export function approvalLink(links?: PayPalLink[]): string | null {
 	return approve?.href ?? null;
 }
 
+/**
+ * Extracts the billing-agreement token from a PayPal approval link.
+ *
+ * Subscription approval links carry it as `ba_token`; order approval links
+ * carry it as `token`.  Reading only `token` made every subscription approval
+ * unmappable, so the buyer's return from PayPal could not be resolved to the
+ * subscription — the customer paid and nothing happened.
+ */
+export function approvalTokenFromUrl(url: string): string {
+	try {
+		const params = new URL(url).searchParams;
+		return params.get("ba_token") ?? params.get("token") ?? "";
+	} catch {
+		return "";
+	}
+}
+
 export async function getSubscription(
 	subscriptionId: string,
 ): Promise<PayPalSubscription> {
@@ -269,13 +286,20 @@ export async function suspendSubscription(
 	});
 }
 
+/**
+ * Cancels a subscription.
+ *
+ * PayPal's v1 cancel endpoint takes a `reason` (1..128 chars) — sending
+ * `note` there is rejected as a malformed body, so the cancellation never
+ * went through and a stale subscription stayed approvable.
+ */
 export async function cancelSubscription(
 	subscriptionId: string,
-	note = "Cancelled by MeterPal",
+	reason = "Cancelled by MeterPal",
 ): Promise<void> {
 	await paypalFetch(`/v1/billing/subscriptions/${subscriptionId}/cancel`, {
 		method: "POST",
-		body: JSON.stringify({ note }),
+		body: JSON.stringify({ reason: reason.slice(0, 128) }),
 	});
 }
 

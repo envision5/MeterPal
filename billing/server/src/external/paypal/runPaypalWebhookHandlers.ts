@@ -27,11 +27,13 @@ import {
 	features,
 	products,
 	paypalCatalogMap,
+	paypalOrderIntents,
 	stripeWebhookEvents,
 	walletLedger,
 	type AppEnv,
 	type DbCustomer,
 } from "@autumn/shared";
+import { hasActiveCustomerProductForProduct } from "@/internal/customers/cusProducts/hasActiveCustomerProductForProduct";
 import { db } from "@/db/initDrizzle.js";
 import { logger } from "@/external/logtail/logtailUtils.js";
 import { createWorkerContext } from "@/queue/createWorkerContext.js";
@@ -314,6 +316,135 @@ export async function grantWalletCredits({
 	return true;
 }
 
+// ---------- plan attach ----------
+
+/**
+ * Resolves the MeterPal product behind a PayPal billing plan id.
+ */
+async function resolveProductIdForPaypalPlan(
+	paypalPlanId: string | null | undefined,
+): Promise<string | undefined> {
+	if (!paypalPlanId) return undefined;
+	const [row] = await db
+		.select({ productId: paypalCatalogMap.product_id })
+		.from(paypalCatalogMap)
+		.where(eq(paypalCatalogMap.paypal_plan_id, paypalPlanId))
+		.limit(1);
+	return row?.productId;
+}
+
+/**
+ * True when the customer already holds the MeterPal plan behind their PayPal
+ * subscription.  That plan carries the monthly allowance and resets on its
+ * own, so a wallet grant on top of it would credit the customer twice.
+ */
+async function hasActiveMeterPalPlan({
+	customer,
+	productId,
+}: {
+	customer: DbCustomer;
+	productId: string | undefined;
+}): Promise<boolean> {
+	return hasActiveCustomerProductForProduct({
+		db,
+		internalCustomerId: customer.internal_id,
+		productId,
+	});
+}
+
+/**
+ * Attaches the MeterPal plan behind a PayPal subscription so MeterPal's own
+ * view — subscriptions, entitlements, plan card — matches what the customer
+ * is paying for on PayPal.
+ *
+ * Without this, an approved PayPal subscription leaves the customer on their
+ * old MeterPal plan: they are billed for MeterPal Pro while MeterPal still
+ * shows them on Demo Starter, and the "switch plan" button has nothing to
+ * switch to.
+ *
+ * Returns false when the attach could not be performed, so the caller can
+ * fall back to crediting the wallet directly.
+ */
+async function attachPaypalPlanMeterPalSide({
+	customer,
+	productId,
+}: {
+	customer: DbCustomer;
+	productId: string;
+}): Promise<boolean> {
+	const customerId = customer.id;
+	if (!customerId) {
+		logger.error({
+			msg: "paypal: customer has no id, cannot attach the plan",
+			internalCustomerId: customer.internal_id,
+			productId,
+		});
+		return false;
+	}
+
+	const ctx = await createWorkerContext({
+		db,
+		payload: {
+			orgId: customer.org_id,
+			env: customer.env as AppEnv,
+			customerId,
+			requestId: `paypal-attach:${customerId}:${productId}`,
+		},
+		logger,
+	});
+	if (!ctx) {
+		logger.error({
+			msg: "paypal: could not build worker context for plan attach",
+			customerId,
+			productId,
+		});
+		return false;
+	}
+
+	try {
+		// Imported lazily: billingActions -> attach -> runPaypalCheckout ->
+		// this module.  A static import would close that cycle at module load.
+		const { billingActions } = await import("@/internal/billing/v2/actions");
+		await billingActions.attach({
+			ctx,
+			params: {
+				customer_id: customerId,
+				plan_id: productId,
+				redirect_mode: "never",
+			},
+		});
+		logger.info({
+			msg: "paypal: plan attached meterpal-side",
+			customerId,
+			productId,
+		});
+		return true;
+	} catch (err) {
+		logger.error({
+			msg: "paypal: plan attach failed",
+			customerId,
+			productId,
+			error: String(err),
+		});
+		return false;
+	}
+}
+
+/**
+ * Makes sure the MeterPal plan behind a PayPal subscription is attached to the
+ * customer.  Idempotent: a customer who already holds the plan is left alone,
+ * and a failed attach can be retried on the next activation event.
+ */
+async function ensurePaypalPlanAttached(
+	customer: DbCustomer,
+	paypalPlanId: string | null | undefined,
+): Promise<boolean> {
+	const productId = await resolveProductIdForPaypalPlan(paypalPlanId);
+	if (!productId) return false;
+	if (await hasActiveMeterPalPlan({ customer, productId })) return true;
+	return attachPaypalPlanMeterPalSide({ customer, productId });
+}
+
 // ---------- handlers ----------
 
 /**
@@ -327,6 +458,30 @@ export async function grantWalletCredits({
  * fire for the same subscription, so this is idempotent: re-activating an
  * already-active subscription is a no-op that still returns true.
  */
+/**
+ * Marks the approval intents that point at this subscription as settled.
+ *
+ * A subscription checkout records a BA- billing-agreement token -> subscription
+ * id row so the buyer's return from PayPal can be resolved.  Until the buyer
+ * approves, that row stays "pending" — but "pending" is also what the one-off
+ * order path looks for when it abandons stale checkouts, and it would try to
+ * cancel a BA token as if it were an Orders v2 id.  Settling it on activation
+ * keeps the table honest and stops that cross-talk.
+ */
+async function markApprovalIntentsActivated(
+	paypalSubscriptionId: string,
+): Promise<void> {
+	await db
+		.update(paypalOrderIntents)
+		.set({ status: "activated" })
+		.where(
+			and(
+				eq(paypalOrderIntents.subscription_id, paypalSubscriptionId),
+				eq(paypalOrderIntents.status, "pending"),
+			),
+		);
+}
+
 export async function activatePaypalSubscription(sub: {
 	id?: string;
 	plan_id?: string;
@@ -357,6 +512,12 @@ export async function activatePaypalSubscription(sub: {
 	// Idempotency: already linked + active for THIS subscription — nothing to
 	// do (the caller still wants its success redirect, hence true).
 	if (cust.paypal_subscription_id === paypalSubscriptionId && cust.paypal_payment_status === "active") {
+		// The link can outlive a failed plan attach, so make sure the MeterPal
+		// plan landed.  Re-attaching an already-attached plan is a no-op.
+		await ensurePaypalPlanAttached(cust, planId);
+		// The approval intent may still read "pending" if the first activation
+		// failed after PayPal confirmed the subscription — settle it here too.
+		await markApprovalIntentsActivated(paypalSubscriptionId);
 		return true;
 	}
 
@@ -369,6 +530,10 @@ export async function activatePaypalSubscription(sub: {
 			paypal_payment_status: "active",
 		})
 		.where(eq(customers.id, cust.id));
+
+	// The buyer approved: the approval intent (BA- token -> subscription id) is
+	// no longer outstanding.
+	await markApprovalIntentsActivated(paypalSubscriptionId);
 
 	// Resolve the product behind this PayPal plan via the catalog map, falling
 	// back to the id-convention matcher from the baseline.
@@ -410,7 +575,14 @@ export async function activatePaypalSubscription(sub: {
 			)
 			.limit(1);
 		const monthlyCredits = Number(grant?.allowance ?? 0);
-		if (monthlyCredits > 0) {
+
+		// Attach the plan MeterPal-side first: the plan carries the monthly
+		// allowance (and resets it every cycle), so a wallet grant on top of
+		// it would credit the customer twice per cycle.  The wallet grant
+		// stays as the fallback for when the plan cannot be attached.
+		const planAttached = await ensurePaypalPlanAttached(cust, planId);
+
+		if (monthlyCredits > 0 && !planAttached) {
 			await grantWalletCredits({
 				customer: cust,
 				amountUsd: monthlyCredits,
@@ -524,6 +696,21 @@ async function onSaleCompleted(event: PayPalEvent): Promise<void> {
 			msg: "paypal: sale for unknown subscriber",
 			saleId,
 			subscriptionId,
+		});
+		return;
+	}
+
+	// The MeterPal plan behind the subscription carries the monthly allowance
+	// and resets it every cycle, so granting the sale amount on top would
+	// credit the customer twice per cycle.  The wallet grant stays the
+	// fallback for subscriptions with no MeterPal plan behind them.
+	const planProductId = await resolveProductIdForPaypalPlan(cust.paypal_plan_id);
+	if (await hasActiveMeterPalPlan({ customer: cust, productId: planProductId })) {
+		logger.info({
+			msg: "paypal: sale cycle already covered by the meter's plan allowance",
+			subscriptionId,
+			customerId: cust.id,
+			productId: planProductId,
 		});
 		return;
 	}

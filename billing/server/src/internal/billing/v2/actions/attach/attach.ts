@@ -23,10 +23,15 @@ import {
 	listPendingCustomerProducts,
 } from "@/internal/billing/v2/common/pendingInvoiceConflict/findPendingInvoiceConflict";
 import { executeBillingPlan } from "@/internal/billing/v2/execute/executeBillingPlan";
+import { executeAutumnBillingPlan } from "@/internal/billing/v2/execute/executeAutumnBillingPlan";
 import { evaluateStripeBillingPlan } from "@/internal/billing/v2/providers/stripe/actionBuilders/evaluateStripeBillingPlan";
 import { logStripeBillingPlan } from "@/internal/billing/v2/providers/stripe/logs/logStripeBillingPlan";
 import { logStripeBillingResult } from "@/internal/billing/v2/providers/stripe/logs/logStripeBillingResult";
 import { publishBillingTransition } from "@/internal/billing/v2/publish/publishBillingTransition.js";
+import { invalidateCachedFullSubject } from "@/internal/customers/cache/fullSubject/index.js";
+import { hasActiveCustomerProductForProduct } from "@/internal/customers/cusProducts/hasActiveCustomerProductForProduct";
+import { sendBillingUpdatedWebhook } from "@/internal/billing/v2/workflows/sendBillingUpdatedWebhook/sendBillingUpdatedWebhook";
+import { billingPlanToSendProductsUpdated } from "@/internal/billing/v2/workflows/sendProductsUpdated/billingPlanToSendProductsUpdated";
 import { computeAttachPreviewBillingPlan } from "@/internal/billing/v2/utils/billingPlan/preview/computeAttachPreviewBillingPlan";
 import { resolveCarryOverUsagesParam } from "@/internal/billing/v2/utils/handleCarryOvers/resolveCarryOverUsagesParam";
 import { logAutumnBillingPlan } from "@/internal/billing/v2/utils/logs/logAutumnBillingPlan";
@@ -117,6 +122,82 @@ export async function attach({
 			db: ctx.db,
 			env: ctx.env,
 		});
+
+		// No checkout URL means the customer ALREADY holds an active PayPal
+		// subscription for this product: the buyer approved and PayPal already
+		// charged, so there is nothing left to buy.  The money is paid, so
+		// MeterPal still has to reflect the plan — apply the Autumn-side
+		// attach (customer product + entitlements + allowance) right now.
+		//
+		// Returning "no checkout URL" without applying it leaves the customer
+		// billed for a plan they never receive, and makes the UI's plan switch
+		// a silent no-op that looks like it succeeded.
+		if (!checkoutUrl && !preview) {
+			// The plan may already be applied: the PayPal checkout can activate
+			// an approved-but-pending subscription on the way through, and the
+			// activation attaches the plan with it.  The billing context is a
+			// snapshot from before that, so re-read the customer's products.
+			const alreadyOnPlan = await hasActiveCustomerProductForProduct({
+				db: ctx.db,
+				internalCustomerId: billingContext.fullCustomer.internal_id,
+				productId: billingContext.attachProduct?.id,
+			});
+
+			if (alreadyOnPlan) {
+				// Already on this plan MeterPal-side — nothing to apply, and
+				// nothing to pay for (the PayPal subscription is already paid).
+				return {
+					billingContext,
+					billingPlan: { autumn: autumnBillingPlan, stripe: {} },
+					billingResult: { stripe: { deferred: false } },
+				};
+			}
+
+			// The plan is applied right here, so the cached subject (and the
+			// balances on it) are stale the moment this returns.  The PayPal
+			// branch preserves the cache for the checkout flow — where nothing
+			// is applied until the buyer approves — so undo that here and drop
+			// the cache explicitly.  Without this the switch looks like it did
+			// nothing: the API keeps serving the old plan and old balance.
+			ctx.skipSubjectCacheDeletion = false;
+
+			await executeAutumnBillingPlan({
+				ctx,
+				autumnBillingPlan,
+			});
+
+			await invalidateCachedFullSubject({
+				ctx,
+				customerId: billingContext.fullCustomer.id ?? ctx.customerId ?? "",
+				source: "attach:paypal-already-subscribed",
+			});
+
+			await publishBillingTransition({
+				ctx,
+				billingContext,
+				billingPlan: { autumn: autumnBillingPlan, stripe: {} },
+				executionDeferred: false,
+			});
+
+			await billingPlanToSendProductsUpdated({
+				ctx,
+				autumnBillingPlan,
+				billingContext,
+			});
+
+			void sendBillingUpdatedWebhook({
+				ctx,
+				autumnBillingPlan,
+				originalFullCustomer: billingContext.fullCustomer,
+			});
+
+			return {
+				billingContext,
+				billingPlan: { autumn: autumnBillingPlan, stripe: {} },
+				billingResult: { stripe: { deferred: false } },
+			};
+		}
+
 		// Early exit: billingPlan/Stripe evaluation intentionally skipped —
 		// the billingResultToResponse mapper only needs the checkout URL.
 		return {

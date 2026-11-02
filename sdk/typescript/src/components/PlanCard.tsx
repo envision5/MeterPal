@@ -4,13 +4,18 @@ import { useState } from "react";
 import { useCustomer, useListPlans } from "autumn-js/react";
 import { Check } from "lucide-react";
 
+type Feedback = {
+  planId: string;
+  kind: "error" | "info";
+  message: string;
+};
+
 export function PlanCard() {
   // Identity is resolved server-side by the autumn-js backend adapter.
   const { data: customer, attach } = useCustomer();
   const { data: plansData } = useListPlans();
   const [pendingId, setPendingId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [info, setInfo] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
 
   // useListPlans unwraps response.list — data is already the plan array.
   const plans: any[] = Array.isArray(plansData)
@@ -20,8 +25,7 @@ export function PlanCard() {
 
   async function onSwitch(planId: string) {
     setPendingId(planId);
-    setError(null);
-    setInfo(null);
+    setFeedback(null);
     try {
       const result: any = await attach({ planId });
       const checkoutUrl =
@@ -32,12 +36,23 @@ export function PlanCard() {
       if (checkoutUrl) {
         window.location.href = checkoutUrl;
       } else {
-        // No checkout needed — the server refused to double-bill because the
-        // customer already has an active subscription to this plan.
-        setInfo("You're already subscribed to this plan.");
+        // No checkout URL means the server applied the plan without any
+        // payment action.  In a PayPal-native setup that means the buyer's
+        // PayPal subscription was already active, so there was nothing left
+        // to buy — the plan is live now.
+        setFeedback({
+          planId,
+          kind: "info",
+          message:
+            "Plan updated — your PayPal subscription is already active, so there was nothing to pay.",
+        });
       }
     } catch (e: any) {
-      setError(e?.message ?? "Failed to switch plan");
+      setFeedback({
+        planId,
+        kind: "error",
+        message: e?.message ?? "Failed to switch plan",
+      });
     } finally {
       setPendingId(null);
     }
@@ -49,6 +64,7 @@ export function PlanCard() {
         .filter((plan: any) => !plan.addOn)
         .map((plan: any) => {
           const isCurrent = plan.id === currentPlanId;
+          const planFeedback = feedback?.planId === plan.id ? feedback : null;
           // Autumn plan prices are in major units (dollars).
           const firstItem = plan.items?.[0];
           const priceUsd = firstItem?.price?.amount ?? 0;
@@ -105,9 +121,18 @@ export function PlanCard() {
                     ? "Switching..."
                     : `Switch to ${plan.name}`}
               </button>
-              {error && pendingId === plan.id && (
-                <p role="alert" className="mt-2 text-xs text-red-600">
-                  {error}
+              {planFeedback && (
+                <p
+                  role={planFeedback.kind === "error" ? "alert" : "status"}
+                  data-testid={`plan-card-feedback-${plan.id}`}
+                  className={[
+                    "mt-2 text-xs",
+                    planFeedback.kind === "error"
+                      ? "text-red-600"
+                      : "text-muted-foreground",
+                  ].join(" ")}
+                >
+                  {planFeedback.message}
                 </p>
               )}
             </article>

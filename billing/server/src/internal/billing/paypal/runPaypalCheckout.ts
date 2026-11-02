@@ -30,14 +30,21 @@ import { createOrder, type OrderResponse } from "@/external/paypal/orders.js";
 import { paypalFetch } from "@/external/paypal/client.js";
 import {
 	approvalLink,
+	approvalTokenFromUrl,
 	cancelSubscription,
 	createBillingPlan,
 	createCatalogProduct,
 	createSubscription,
 	getSubscription,
 	intervalToPaypalUnit,
+	reviseSubscription,
+	type PayPalSubscription,
 } from "@/external/paypal/subscriptions.js";
 import { activatePaypalSubscription } from "@/external/paypal/runPaypalWebhookHandlers.js";
+import {
+	decidePaypalSubscriptionAction,
+	isLivePaypalSubscription,
+} from "@/internal/billing/paypal/decideSubscriptionAction.js";
 import type { AppEnv } from "@autumn/shared";
 import { logger } from "@/external/logtail/logtailUtils.js";
 import { isStripeConnected } from "@/internal/orgs/orgUtils.js";
@@ -75,6 +82,85 @@ export function priceAmountUsd(price: Price): number | null {
 	return inf?.amount ?? null;
 }
 
+/**
+ * The recurring amount a PayPal subscription for this product charges per
+ * cycle (0 when the product has no fixed recurring price).
+ */
+function subAmountUsd(product: FullProduct): number {
+	const subPrice = recurringFixedPrice(product);
+	return subPrice ? priceAmountUsd(subPrice) ?? 0 : 0;
+}
+
+/**
+ * Records the mapping from every key the buyer's redirect can carry back to
+ * the subscription id (I-...) it approves.
+ *
+ * Two keys are recorded per checkout:
+ *   - the BA- billing-agreement token from the approval link, and
+ *   - a checkout token WE mint and put in the return URL.
+ *
+ * The browser return route resolves the subscription through this mapping.
+ * Without it the buyer comes back from PayPal and the activation cannot be
+ * matched ("no_mapping") — the customer paid and nothing happened.
+ */
+async function recordApprovalIntent({
+	db,
+	url,
+	subscriptionId,
+	orgId,
+	env,
+	customerId,
+	productId,
+	amountUsd,
+	extraTokens = [],
+}: {
+	db: DrizzleCli;
+	url: string;
+	subscriptionId: string;
+	orgId: string;
+	env: AppEnv;
+	customerId: string;
+	productId: string;
+	amountUsd: number;
+	extraTokens?: string[];
+}): Promise<void> {
+	// PayPal puts the token in `ba_token` on a subscription approval link (an
+	// order link uses `token`).  Reading only `token` wrote an EMPTY order_id.
+	const tokens = new Set<string>();
+	const baToken = approvalTokenFromUrl(url);
+	if (baToken) tokens.add(baToken);
+	for (const token of extraTokens) {
+		if (token) tokens.add(token);
+	}
+
+	if (tokens.size === 0) {
+		logger.warn({
+			msg: "paypal checkout: approval link carried no billing-agreement token",
+			subscriptionId,
+			customerId,
+		});
+		return;
+	}
+
+	for (const token of tokens) {
+		await db
+			.insert(paypalOrderIntents)
+			.values({
+				order_id: token,
+				subscription_id: subscriptionId,
+				org_id: orgId,
+				env,
+				customer_id: customerId,
+				product_id: productId,
+				amount_usd: amountUsd,
+				status: "pending",
+			})
+			.onConflictDoNothing();
+	}
+}
+
+export { approvalTokenFromUrl };
+
 /** True when every price on the attach is a one-off charge (credit packs). */
 export function pricesAreOneOff(prices: Price[]): boolean {
 	return (
@@ -109,13 +195,30 @@ function toUsd(amount: number): string {
  * PayPal redirects the buyer's browser here after approval/cancel.  The
  * server-side return route captures the order and credits the wallet —
  * this closes the loop locally without a public webhook URL.
+ *
+ * `checkoutToken` is a key WE mint for this checkout attempt.  It travels in
+ * the return URL so the buyer's redirect carries something we can resolve
+ * back to the subscription: PayPal does NOT redirect a subscription approval
+ * with the BA- token from the approval link, it redirects with the
+ * express-checkout token of the order it created for that approval.
  */
-function paypalRedirectUrls(): { returnUrl: string; cancelUrl: string } {
+function paypalRedirectUrls(checkoutToken?: string): {
+	returnUrl: string;
+	cancelUrl: string;
+} {
 	const base = process.env.METERPAL_PUBLIC_URL ?? "http://localhost:8080";
+	const query = checkoutToken
+		? `?checkout=${encodeURIComponent(checkoutToken)}`
+		: "";
 	return {
-		returnUrl: `${base}/paypal/return`,
-		cancelUrl: `${base}/paypal/return?cancelled=1`,
+		returnUrl: `${base}/paypal/return${query}`,
+		cancelUrl: `${base}/paypal/return${query}${query ? "&" : "?"}cancelled=1`,
 	};
+}
+
+/** A key we mint for one checkout attempt, so the redirect resolves to it. */
+function newCheckoutToken(): string {
+	return `mp-checkout-${crypto.randomUUID()}`;
 }
 
 /**
@@ -300,6 +403,10 @@ async function abandonOtherIntents({
 		);
 	for (const intent of pendings) {
 		if (intent.order_id === exceptOrderId) continue;
+		// Subscription approvals are not Orders v2 — cancelling them here would
+		// 404 at PayPal and would throw away the mapping the buyer's return
+		// needs to resolve.  The subscription flow manages its own intents.
+		if (intent.subscription_id) continue;
 		try {
 			// Only CREATED orders are cancellable at PayPal; best-effort either
 			// way — APPROVED-but-uncaptured ones are left to expire, charging
@@ -358,7 +465,6 @@ export async function runPaypalCheckout({
 	const product = products[0];
 
 	void successUrl; // the server return route owns the landing experience
-	const { returnUrl, cancelUrl } = paypalRedirectUrls();
 
 	if (pricesAreOneOff(prices)) {
 		// One-off credit pack -> Orders v2.
@@ -493,16 +599,13 @@ export async function runPaypalCheckout({
 	}
 
 	// Recurring plan -> PayPal subscription.
-	const planId = await ensurePaypalPlan({ db, org, env, product });
-
+	//
 	// SUBSCRIPTION REUSE: every plan click must NOT mint a new PayPal
 	// subscription — each buyer approval is an immediate real charge.  Track
 	// the customer's latest subscription on the customer row and:
 	//   APPROVED/ACTIVE -> the buyer already paid; activate it, never re-mint
-	//   CREATED (same plan, fresh) -> reuse its approval link
-	//   CREATED (stale)  -> cancel it at PayPal, mint fresh
-	const appUrl =
-		process.env.METERPAL_CHECKOUT_RETURN_URL ?? "http://localhost:5173";
+	//   APPROVAL_PENDING (same plan, fresh) -> reuse its approval link
+	//   APPROVAL_PENDING (stale)         -> cancel it at PayPal, mint fresh
 	const [cusRow] = await db
 		.select({
 			internal_id: customers.internal_id,
@@ -514,73 +617,240 @@ export async function runPaypalCheckout({
 		.where(eq(customers.internal_id, customer.internal_id))
 		.limit(1);
 
-	if (
-		cusRow?.paypal_subscription_id &&
-		cusRow.paypal_payment_status === "active" &&
-		cusRow.paypal_plan_id === planId
-	) {
-		// Already an active subscriber to this plan — nothing to buy, and no
-		// redirect: returning null tells the SDK to surface "already
-		// subscribed" instead of bouncing the app to a success page.
+	// PayPal is the source of truth for the subscription.  The customer row
+	// only remembers WHICH subscription we last started — it goes stale (the
+	// buyer cancels or the subscription expires on PayPal) and trusting it
+	// would hand out a paid plan for free, or skip a purchase that is still
+	// owed.  So ask PayPal before deciding anything.
+	let existing: PayPalSubscription | null = null;
+	if (cusRow?.paypal_subscription_id) {
+		try {
+			existing = await getSubscription(cusRow.paypal_subscription_id);
+		} catch {
+			// Subscription is gone at PayPal (deleted / never created) — fall
+			// through and mint a fresh one.
+			existing = null;
+		}
+	}
+
+	const paypalStatus = existing?.status ?? "";
+	const isLive = isLivePaypalSubscription(paypalStatus);
+	const createTime = existing?.create_time
+		? new Date(existing.create_time).getTime()
+		: 0;
+	const approvalUrl = approvalLink(existing?.links);
+
+	// A plan with NO recurring price is FREE: there is nothing to buy at
+	// PayPal, so no subscription is created and no approval link exists.
+	// Switching to a free plan is a DOWNGRADE — it ends the paid PayPal
+	// subscription the customer is on.  Returning "no checkout URL" lets the
+	// caller apply the free plan directly: no redirect, no charge.
+	if (!recurringFixedPrice(product)) {
+		if (existing) {
+			try {
+				await cancelSubscription(
+					existing.id,
+					"Switched to a free MeterPal plan",
+				);
+				logger.info({
+					msg: "paypal checkout: cancelled the paid subscription for a free-plan switch",
+					subscriptionId: existing.id,
+					status: paypalStatus,
+					customerId,
+				});
+			} catch (err) {
+				if (isLive) {
+					// The buyer is still being billed for the paid plan.  Applying
+					// the free plan now would keep charging them for a plan they
+					// left — fail loudly instead of half-applying the downgrade.
+					logger.error({
+						msg: "paypal checkout: could not cancel the paid subscription for a free-plan switch",
+						subscriptionId: existing.id,
+						customerId,
+						error: String(err),
+					});
+					throw new RecaseError({
+						message:
+							"Could not cancel the PayPal subscription for the plan change",
+						statusCode: 502,
+					});
+				}
+				// An unapproved subscription cannot be cancelled at PayPal (404) —
+				// nothing is being billed, so best effort is enough.
+				logger.warn({
+					msg: "paypal checkout: could not cancel the pending subscription for a free-plan switch",
+					subscriptionId: existing.id,
+					customerId,
+					error: String(err),
+				});
+			}
+			// Stop tracking it either way: a stale subscription id would make the
+			// next upgrade reuse an approval link for a cancelled plan.
+			await db
+				.update(customers)
+				.set({
+					paypal_subscription_id: null,
+					paypal_plan_id: null,
+					paypal_payment_status: "cancelled",
+				})
+				.where(eq(customers.internal_id, customer.internal_id));
+		}
+		return null;
+	}
+
+	const planId = await ensurePaypalPlan({ db, org, env, product });
+
+	// A key WE mint for this checkout attempt.  It travels in the return URL
+	// so the buyer's redirect carries something we can resolve back to the
+	// subscription: PayPal redirects a subscription approval with the
+	// express-checkout token of the order it created for that approval, NOT
+	// with the BA- token from the approval link.
+	const checkoutToken = newCheckoutToken();
+	const { returnUrl, cancelUrl } = paypalRedirectUrls(checkoutToken);
+
+	const action = decidePaypalSubscriptionAction({
+		paypalStatus,
+		subscriptionPlanId: existing?.plan_id,
+		targetPlanId: planId,
+		// Approval links go stale; a week is well inside PayPal's window and
+		// long enough that a buyer who takes an hour to decide still reuses
+		// the subscription instead of accumulating approvable duplicates.
+		isFresh: Date.now() < createTime + 7 * 24 * 60 * 60 * 1000,
+		hasApprovalLink: Boolean(approvalUrl),
+	});
+
+	if (isLive) {
+		// The buyer approved and PayPal already charged.  Make sure the
+		// MeterPal-side state is stamped and the plan attached (idempotent) —
+		// the approval may have landed before we recorded it.
+		if (cusRow?.paypal_payment_status !== "active") {
+			await activatePaypalSubscription(existing!);
+			logger.info({
+				msg: "paypal checkout: activated already-approved subscription",
+				subscriptionId: existing!.id,
+				status: paypalStatus,
+				customerId,
+			});
+		}
+	}
+
+	if (action.type === "already_paid") {
+		// Already paying for THIS PayPal plan: the money moved through PayPal
+		// already, so there is nothing to buy and no redirect.  Returning null
+		// tells the caller to sync the MeterPal plan instead of charging the
+		// buyer again.
 		logger.info({
-			msg: "paypal checkout: customer already active on plan",
+			msg: "paypal checkout: subscription already active on this plan (verified with paypal)",
+			subscriptionId: existing!.id,
+			status: paypalStatus,
 			customerId,
 			planId,
 		});
 		return null;
 	}
 
-	if (
-		cusRow?.paypal_subscription_id &&
-		cusRow.paypal_payment_status === "pending"
-	) {
+	if (action.type === "revise") {
+		// Paying for a DIFFERENT PayPal plan: change the existing subscription
+		// instead of minting a second one — two live subscriptions means the
+		// buyer is billed twice.  PayPal's revise returns a fresh approval
+		// link for the change.
 		try {
-			const existing = await getSubscription(cusRow.paypal_subscription_id);
-			const createTime = existing?.create_time
-				? new Date(existing.create_time).getTime()
-				: 0;
-			const isFresh = Date.now() < createTime + 30 * 60 * 1000;
-
-			if (["APPROVED", "ACTIVE"].includes(existing?.status ?? "")) {
-				// The buyer already approved — and PayPal already charged — this
-				// subscription.  Activate it (idempotent).  Same plan -> no
-				// checkout (no double-bill); different plan -> success page
-				// (the buyer's new plan is now live).
-				await activatePaypalSubscription(existing);
-				logger.info({
-					msg: "paypal checkout: activated already-approved subscription",
-					subscriptionId: existing.id,
-					customerId,
-				});
-				return cusRow?.paypal_plan_id === planId ? null : `${appUrl}?payment=success`;
+			const revised = await reviseSubscription({
+				subscriptionId: existing!.id,
+				planId,
+				returnUrl,
+				cancelUrl,
+				idempotencyKey: `mp-revise-${crypto.randomUUID()}`,
+			});
+			const url = approvalLink(revised.links);
+			if (!url) {
+				throw new Error("no approval link on the revised subscription");
 			}
-			if (existing?.status === "CREATED" && isFresh) {
-				const url = approvalLink(existing.links);
-				if (url && cusRow.paypal_plan_id === planId) {
-					logger.info({
-						msg: "paypal checkout: reusing pending subscription",
-						subscriptionId: existing.id,
-						customerId,
-					});
-					return url;
-				}
-			}
-			if (existing?.status === "CREATED") {
-				// Stale or superseded by a different plan — cancel so it can
-				// never be approved later (which would charge the buyer).
-				await cancelSubscription(
-					existing.id,
-					"Superseded by a new MeterPal checkout",
-				).catch(() => {
-					// best-effort — still stop tracking it below
-				});
-			}
-			// anything else (CANCELLED/SUSPENDED/EXPIRED) -> mint fresh
-		} catch {
-			// subscription lookup failed (e.g. deleted) — mint fresh
+			logger.info({
+				msg: "paypal checkout: revised the live subscription to the new plan",
+				subscriptionId: existing!.id,
+				customerId,
+				planId,
+			});
+			// The revised subscription has its own approval link -> its own BA
+			// token -> the return route needs the mapping for it.
+			await recordApprovalIntent({
+				db,
+				url,
+				subscriptionId: existing!.id,
+				orgId: org.id,
+				env,
+				customerId,
+				productId: product.id,
+				amountUsd: subAmountUsd(product),
+				extraTokens: [checkoutToken],
+			});
+			// The customer row keeps the OLD paypal_plan_id until the buyer
+			// approves the change: until then PayPal still bills the old plan.
+			return url;
+		} catch (err) {
+			// Do NOT fall back to minting a second subscription here — that
+			// would bill the buyer for both plans.
+			logger.error({
+				msg: "paypal checkout: could not revise the live subscription",
+				subscriptionId: existing!.id,
+				customerId,
+				planId,
+				error: String(err),
+			});
+			throw new RecaseError({
+				message: "Could not switch the PayPal subscription to the new plan",
+				statusCode: 502,
+			});
 		}
 	}
 
+	if (action.type === "reuse_approval") {
+		// Reuse the approval link this customer already has.  Minting a second
+		// subscription would leave another one waiting to be approved — an
+		// extra real charge if the buyer clicks both.
+		logger.info({
+			msg: "paypal checkout: reusing the pending approval link",
+			subscriptionId: existing!.id,
+			status: paypalStatus,
+			customerId,
+		});
+		// The mapping may be missing (the subscription was created before the
+		// mapping was recorded, or the row was cleared) — record it again so
+		// the buyer's return from PayPal can be resolved.
+		await recordApprovalIntent({
+			db,
+			url: approvalUrl!,
+			subscriptionId: existing!.id,
+			orgId: org.id,
+			env,
+			customerId,
+			productId: product.id,
+			amountUsd: subAmountUsd(product),
+		});
+		return approvalUrl!;
+	}
+
+	if (action.type === "cancel_and_recreate" && existing) {
+		// Stale, or superseded by a different plan — cancel it so it can
+		// never be approved later (which would charge the buyer).
+		await cancelSubscription(
+			existing.id,
+			"Superseded by a new MeterPal checkout",
+		).catch((err) => {
+			// PayPal refuses to cancel a subscription that was never activated
+			// (404).  Best effort — we stop tracking it below.
+			logger.warn({
+				msg: "paypal checkout: could not cancel the stale subscription",
+				subscriptionId: existing.id,
+				customerId,
+				error: String(err),
+			});
+		});
+	}
+
+	// No live or reusable subscription -> mint a fresh one and send the
+	// buyer to PayPal to approve it.
 	const subscription = await createSubscription({
 		planId,
 		customId: customerId,
@@ -610,25 +880,21 @@ export async function runPaypalCheckout({
 		});
 	}
 
-	// Map the return token (BA-... billing-agreement token from the approval
+	// Map the keys the buyer's redirect can carry (our checkout token from the
+	// return URL, and the BA-... billing-agreement token from the approval
 	// URL) to the subscription id (I-...) — the browser return route resolves
 	// activations through this row after the buyer approves.
-	const baToken = new URL(url).searchParams.get("token") ?? "";
-	const subPrice = recurringFixedPrice(product);
-	const subAmount = subPrice ? priceAmountUsd(subPrice) ?? 0 : 0;
-	await db
-		.insert(paypalOrderIntents)
-		.values({
-			order_id: baToken,
-			subscription_id: subscription.id,
-			org_id: org.id,
-			env,
-			customer_id: customerId,
-			product_id: product.id,
-			amount_usd: subAmount,
-			status: "pending",
-		})
-		.onConflictDoNothing();
+	await recordApprovalIntent({
+		db,
+		url,
+		subscriptionId: subscription.id,
+		orgId: org.id,
+		env,
+		customerId,
+		productId: product.id,
+		amountUsd: subAmountUsd(product),
+		extraTokens: [checkoutToken],
+	});
 
 	return url;
 }

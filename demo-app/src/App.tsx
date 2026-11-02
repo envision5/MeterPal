@@ -50,22 +50,37 @@ function Dashboard({
 	}, []);
 
 	useEffect(() => {
-		// PayPal browser-return landing: the billing server captured the
-		// payment and redirected here (?payment=success&credits=N).
+		// PayPal browser-return landing.  Two shapes:
+		//   ?payment=success&credits=N     -> a one-off credit pack was captured
+		//   ?payment=success&subscription=activated -> a PayPal SUBSCRIPTION was
+		//                                     approved and the plan switched
+		// They are different events and must not claim the same thing.
 		const params = new URLSearchParams(window.location.search);
 		const payment = params.get("payment");
 		if (!payment) return;
 		if (payment === "success") {
 			const credits = params.get("credits");
-			setPaymentNotice(
-				credits
-					? `✅ Payment captured — ${credits} credits added to your wallet.`
-					: "✅ Payment captured — credits added to your wallet.",
-			);
+			const subscription = params.get("subscription");
+			if (subscription === "activated") {
+				setPaymentNotice(
+					"✅ PayPal subscription active — your plan has been switched and your new allowance is live.",
+				);
+			} else {
+				setPaymentNotice(
+					credits
+						? `✅ Payment captured — ${credits} credits added to your wallet.`
+						: "✅ Payment captured.",
+				);
+			}
 		} else if (payment === "cancelled") {
 			setPaymentNotice("Payment cancelled — no charge was made.");
 		} else {
-			setPaymentNotice("⚠️ Payment could not be completed — try again.");
+			const reason = params.get("reason");
+			setPaymentNotice(
+				reason
+					? `⚠️ Payment could not be completed (${reason}) — try again.`
+					: "⚠️ Payment could not be completed — try again.",
+			);
 		}
 		window.history.replaceState({}, "", window.location.pathname);
 	}, []);

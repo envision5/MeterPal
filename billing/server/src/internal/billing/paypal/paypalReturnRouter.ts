@@ -14,7 +14,7 @@
 // Env: METERPAL_CHECKOUT_RETURN_URL (app landing page after capture,
 //      default http://localhost:5173)
 
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNotNull } from "drizzle-orm";
 import { Hono } from "hono";
 import { customers, paypalOrderIntents } from "@autumn/shared";
 import { db } from "@/db/initDrizzle.js";
@@ -22,6 +22,7 @@ import { logger } from "@/external/logtail/logtailUtils.js";
 import { paypalFetch } from "@/external/paypal/client.js";
 import { captureOrder } from "@/external/paypal/orders.js";
 import { getSubscription } from "@/external/paypal/subscriptions.js";
+import { isLivePaypalSubscription } from "@/internal/billing/paypal/decideSubscriptionAction.js";
 import {
 	activatePaypalSubscription,
 	grantWalletCredits,
@@ -65,6 +66,81 @@ paypalReturnRouter.use("*", async (c, next) => {
 });
 
 /**
+ * Resolves a key the buyer's redirect can carry back to the subscription it
+ * belongs to.
+ *
+ * Two keys are recorded per checkout:
+ *   - the BA- billing-agreement token from the approval link, and
+ *   - a checkout token WE mint and put in the return URL.
+ *
+ * Both are looked up in `paypal_order_intents` (order_id -> subscription_id).
+ */
+async function findSubscriptionIdForKey(key: string): Promise<string | null> {
+	if (!key) return null;
+	const [intent] = await db
+		.select({ subscription_id: paypalOrderIntents.subscription_id })
+		.from(paypalOrderIntents)
+		.where(eq(paypalOrderIntents.order_id, key))
+		.limit(1);
+	return intent?.subscription_id ?? null;
+}
+
+/**
+ * Fallback resolution for a redirect token we have never seen.
+ *
+ * PayPal does NOT redirect a subscription approval with the BA- token from the
+ * approval link — it redirects with the express-checkout token of the order it
+ * created for that approval (e.g. "8BU33449JX813240W").  That order names the
+ * payer, and the payer names the subscription: find the customer whose pending
+ * subscription PayPal now reports as ACTIVE for the same payer id.
+ */
+async function findApprovedSubscriptionByPayer(
+	orderToken: string,
+): Promise<string | null> {
+	let payerId: string | undefined;
+	try {
+		const order = await paypalFetch<{ payer?: { payer_id?: string } }>(
+			`/v2/checkout/orders/${orderToken}`,
+			{ method: "GET" },
+		);
+		payerId = order?.payer?.payer_id;
+	} catch {
+		return null;
+	}
+	if (!payerId) return null;
+
+	// Only customers with a subscription still awaiting approval can match.
+	const pendings = await db
+		.select({
+			subscription_id: customers.paypal_subscription_id,
+			customer_id: customers.id,
+		})
+		.from(customers)
+		.where(
+			and(
+				eq(customers.paypal_payment_status, "pending"),
+				isNotNull(customers.paypal_subscription_id),
+			),
+		);
+
+	for (const row of pendings) {
+		if (!row.subscription_id) continue;
+		try {
+			const sub = await getSubscription(row.subscription_id);
+			if (
+				sub?.subscriber?.payer_id === payerId &&
+				isLivePaypalSubscription(sub.status)
+			) {
+				return sub.id;
+			}
+		} catch {
+			// subscription gone at PayPal — try the next pending one
+		}
+	}
+	return null;
+}
+
+/**
  * Browser-return handler — PayPal redirects the buyer's browser here after
  * they approve (orders AND subscriptions both point return_url at this
  * route).  This is what closes the standard (redirect) payment loop locally,
@@ -81,16 +157,96 @@ paypalReturnRouter.get("/return", async (c) => {
 	const appUrl =
 		process.env.METERPAL_CHECKOUT_RETURN_URL ?? "http://localhost:5173";
 	const token = c.req.query("token");
+	const checkout = c.req.query("checkout");
 
 	if (c.req.query("cancelled")) {
 		return c.redirect(`${appUrl}?payment=cancelled`, 302);
 	}
-	if (!token) {
+	if (!token && !checkout) {
 		return c.redirect(`${appUrl}?payment=error&reason=missing_token`, 302);
 	}
 
+	logger.info({
+		msg: "paypal return: buyer came back",
+		token,
+		checkout,
+	});
+
+	// Subscriptions: resolve the key back to the subscription id.  The
+	// checkout token (our own, in the return URL) is authoritative; the BA-
+	// token from the approval link is the fallback for links created before
+	// the checkout token existed.
+	const subscriptionId =
+		(await findSubscriptionIdForKey(checkout ?? "")) ??
+		(await findSubscriptionIdForKey(token ?? ""));
+
+	if (subscriptionId) {
+		try {
+			const sub = await getSubscription(subscriptionId);
+			const activated = await activatePaypalSubscription(sub);
+			if (activated) {
+				logger.info({
+					msg: "paypal return: subscription activated",
+					token,
+					checkout,
+					subscriptionId,
+					status: sub?.status,
+				});
+				return c.redirect(`${appUrl}?payment=success&subscription=activated`, 302);
+			}
+			logger.warn({
+				msg: "paypal return: subscription not activatable",
+				token,
+				checkout,
+				subscriptionId,
+				status: sub?.status,
+			});
+			return c.redirect(`${appUrl}?payment=error&reason=not_approved`, 302);
+		} catch (err) {
+			logger.error({
+				msg: "paypal return: subscription handler failed",
+				token,
+				checkout,
+				error: String(err),
+			});
+			return c.redirect(`${appUrl}?payment=error&reason=exception`, 302);
+		}
+	}
+
+	// PayPal redirects a subscription approval with the express-checkout token
+	// of the order it created for the approval, not with the BA- token.  Find
+	// the subscription that approval belongs to through the payer.
+	if (token) {
+		const approvedId = await findApprovedSubscriptionByPayer(token);
+		if (approvedId) {
+			try {
+				const sub = await getSubscription(approvedId);
+				const activated = await activatePaypalSubscription(sub);
+				if (activated) {
+					logger.info({
+						msg: "paypal return: subscription activated via payer match",
+						token,
+						subscriptionId: approvedId,
+						status: sub?.status,
+					});
+					return c.redirect(
+						`${appUrl}?payment=success&subscription=activated`,
+						302,
+					);
+				}
+			} catch (err) {
+				logger.error({
+					msg: "paypal return: payer-matched subscription failed",
+					token,
+					subscriptionId: approvedId,
+					error: String(err),
+				});
+			}
+		}
+	}
+
 	// PayPal subscription ids are "I-" prefixed; order ids are not.
-	if (token.startsWith("I-")) {
+	if (token?.startsWith("I-")) {
 		try {
 			const sub = await getSubscription(token);
 			const activated = await activatePaypalSubscription(sub);
@@ -118,49 +274,11 @@ paypalReturnRouter.get("/return", async (c) => {
 		}
 	}
 
-	// Subscriptions return with the BA- billing-agreement token, which is NOT
-	// the subscription id.  Resolve the mapping recorded at checkout creation
-	// (order_id = BA- token -> subscription_id = I- ...) and activate.
-	if (token.startsWith("BA-")) {
-		try {
-			const [intent] = await db
-				.select()
-				.from(paypalOrderIntents)
-				.where(eq(paypalOrderIntents.order_id, token))
-				.limit(1);
-			if (!intent?.subscription_id) {
-				logger.warn({
-					msg: "paypal return: no subscription mapping for BA token",
-					token,
-				});
-				return c.redirect(`${appUrl}?payment=error&reason=no_mapping`, 302);
-			}
-			const sub = await getSubscription(intent.subscription_id);
-			const activated = await activatePaypalSubscription(sub);
-			if (activated) {
-				logger.info({
-					msg: "paypal return: subscription activated via BA mapping",
-					token,
-					subscriptionId: intent.subscription_id,
-				});
-				return c.redirect(`${appUrl}?payment=success&subscription=activated`, 302);
-			}
-			return c.redirect(`${appUrl}?payment=error&reason=not_approved`, 302);
-		} catch (err) {
-			logger.error({
-				msg: "paypal return: BA subscription handler failed",
-				token,
-				error: String(err),
-			});
-			return c.redirect(`${appUrl}?payment=error&reason=exception`, 302);
-		}
-	}
-
 	// One-off credit pack (Orders v2).  captureAndGrant is idempotent on the
 	// capture id: a COMPLETED order replays cleanly (no second grant), and the
 	// in-page/poll/webhook paths converge on the same key.
 	try {
-		const result = await captureAndGrant(token, "browser_return");
+		const result = await captureAndGrant(token!, "browser_return");
 		if (result.status === "captured") {
 			return c.redirect(
 				`${appUrl}?payment=success&credits=${result.credits ?? ""}`,

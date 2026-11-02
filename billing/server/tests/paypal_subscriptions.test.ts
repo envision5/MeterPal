@@ -47,7 +47,11 @@ const {
 	intervalToPaypalUnit,
 	toUsd,
 	approvalLink,
+	approvalTokenFromUrl,
 } = await import("../src/external/paypal/subscriptions.js");
+const { decidePaypalSubscriptionAction } = await import(
+	"../src/internal/billing/paypal/decideSubscriptionAction.js"
+);
 
 beforeEach(() => {
 	calls.length = 0;
@@ -100,6 +104,32 @@ describe("approvalLink", () => {
 	it("returns null when absent", () => {
 		expect(approvalLink([{ rel: "self", href: "https://self" }])).toBeNull();
 		expect(approvalLink(undefined)).toBeNull();
+	});
+});
+
+describe("approvalTokenFromUrl", () => {
+	it("reads ba_token from a subscription approval link", () => {
+		// PayPal returns subscriptions with ?ba_token=... — reading `token`
+		// only left the BA->subscription mapping empty, so the buyer's
+		// return from PayPal could not be resolved.
+		expect(
+			approvalTokenFromUrl(
+				"https://www.sandbox.paypal.com/webapps/billing/subscriptions?ba_token=BA-67Y71635N0909491C",
+			),
+		).toBe("BA-67Y71635N0909491C");
+	});
+
+	it("falls back to token for an order approval link", () => {
+		expect(
+			approvalTokenFromUrl(
+				"https://www.sandbox.paypal.com/checkoutnow?token=1NV5590800020512H",
+			),
+		).toBe("1NV5590800020512H");
+	});
+
+	it("returns an empty string when there is no token", () => {
+		expect(approvalTokenFromUrl("https://example.com/nope")).toBe("");
+		expect(approvalTokenFromUrl("not a url")).toBe("");
 	});
 });
 
@@ -201,12 +231,100 @@ describe("subscription lifecycle wrappers", () => {
 		expect(body.plan_id).toBe("PP-PLAN-NEW");
 	});
 
-	it("suspendSubscription / cancelSubscription POST with a note", async () => {
+	it("suspendSubscription / cancelSubscription POST with the right payload", async () => {
 		await suspendSubscription("I-123", "paused");
 		expect(last().path).toBe("/v1/billing/subscriptions/I-123/suspend");
 		expect(JSON.parse(last().init.body).note).toBe("paused");
-		await cancelSubscription("I-123");
+		await cancelSubscription("I-123", "superseded");
 		expect(last().path).toBe("/v1/billing/subscriptions/I-123/cancel");
+		// PayPal's CancelSubscriptionRequest takes `reason` (1..128 chars) —
+		// sending `note` there is rejected as a malformed body.
+		expect(JSON.parse(last().init.body).reason).toBe("superseded");
+		expect(JSON.parse(last().init.body).note).toBeUndefined();
+	});
+});
+
+describe("decidePaypalSubscriptionAction", () => {
+	const base = {
+		targetPlanId: "P-NEW",
+		isFresh: true,
+		hasApprovalLink: true,
+	};
+
+	it("treats an ACTIVE subscription on the same plan as already paid", () => {
+		expect(
+			decidePaypalSubscriptionAction({
+				...base,
+				paypalStatus: "ACTIVE",
+				subscriptionPlanId: "P-NEW",
+			}),
+		).toEqual({ type: "already_paid" });
+	});
+
+	it("treats APPROVED like ACTIVE", () => {
+		expect(
+			decidePaypalSubscriptionAction({
+				...base,
+				paypalStatus: "APPROVED",
+				subscriptionPlanId: "P-NEW",
+			}),
+		).toEqual({ type: "already_paid" });
+	});
+
+	it("revises an active subscription that is on another plan", () => {
+		expect(
+			decidePaypalSubscriptionAction({
+				...base,
+				paypalStatus: "ACTIVE",
+				subscriptionPlanId: "P-OLD",
+			}),
+		).toEqual({ type: "revise" });
+	});
+
+	it("reuses the approval link of a fresh pending subscription on the same plan", () => {
+		// PayPal reports a not-yet-approved subscription as APPROVAL_PENDING,
+		// not CREATED — the old check never matched, so every click minted
+		// another approvable subscription.
+		expect(
+			decidePaypalSubscriptionAction({
+				...base,
+				paypalStatus: "APPROVAL_PENDING",
+				subscriptionPlanId: "P-NEW",
+			}),
+		).toEqual({ type: "reuse_approval" });
+	});
+
+	it("cancels and recreates a stale pending subscription", () => {
+		expect(
+			decidePaypalSubscriptionAction({
+				...base,
+				isFresh: false,
+				paypalStatus: "APPROVAL_PENDING",
+				subscriptionPlanId: "P-NEW",
+			}),
+		).toEqual({ type: "cancel_and_recreate" });
+	});
+
+	it("cancels and recreates a pending subscription for another plan", () => {
+		expect(
+			decidePaypalSubscriptionAction({
+				...base,
+				paypalStatus: "APPROVAL_PENDING",
+				subscriptionPlanId: "P-OLD",
+			}),
+		).toEqual({ type: "cancel_and_recreate" });
+	});
+
+	it("creates a fresh subscription when there is none or it is dead", () => {
+		for (const paypalStatus of [undefined, "CANCELLED", "SUSPENDED", "EXPIRED"]) {
+			expect(
+				decidePaypalSubscriptionAction({
+					...base,
+					paypalStatus,
+					subscriptionPlanId: undefined,
+				}),
+			).toEqual({ type: "create" });
+		}
 	});
 });
 
