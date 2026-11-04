@@ -1,4 +1,3 @@
-import { ApiPriceProcessorsSchema } from "@api/products/components/processors.js";
 import {
 	PLAN_ITEM_PRICE_DESCRIPTION,
 	PlanItemParamsObjectSchema,
@@ -9,18 +8,14 @@ import type { z } from "zod/v4";
 import { catalogPlanItemIdentity } from "./catalogPlanItemIdentity.js";
 
 /**
- * The plan item schema plus Stripe price adoption. Adoption is scoped to the
- * catalog path: `validateAdoptedStripePrices` only runs in the catalogV2 init
+ * The plan item schema plus processor price adoption. Adoption is scoped to the
+ * catalog path: `validateAdoptedProcessorPrices` only runs in the catalogV2 init
  * flow, so a stated price id on attach/customize/migration would be persisted
- * unchecked and only surface as a Stripe error at checkout. Keep `processors`
+ * unchecked and only surface as a processor error at checkout. Keep `processors`
  * here rather than on `CreatePlanItemParamsV1Schema`.
  */
 export const CatalogPlanItemPriceParamsSchema =
 	PlanItemPriceParamsSchema.extend({
-		processors: ApiPriceProcessorsSchema.optional().meta({
-			description:
-				"Adopt an existing Stripe price instead of creating one. The id must already exist in Stripe.",
-		}),
 	});
 
 export const CatalogPlanItemParamsV1Schema = PlanItemParamsObjectSchema.extend({
@@ -37,7 +32,7 @@ export const CatalogPlanItemParamsV1Schema = PlanItemParamsObjectSchema.extend({
 		"x-atmn-identity": catalogPlanItemIdentity,
 		title: "CatalogPlanItem",
 		description:
-			"Configuration for a feature item in a catalog plan, including usage limits, pricing, rollover settings and Stripe price adoption.",
+			"Configuration for a feature item in a catalog plan, including usage limits, pricing, rollover settings and processor price adoption.",
 	});
 
 export type CatalogPlanItemParamsV1 = z.infer<

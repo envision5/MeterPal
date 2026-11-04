@@ -15,8 +15,6 @@ export const buildLineItem = ({
 	context,
 	amount,
 	description,
-	stripePriceId,
-	stripeProductId,
 	shouldProrate = true,
 	chargeImmediately = true,
 	usage,
@@ -25,8 +23,6 @@ export const buildLineItem = ({
 	context: LineItemContext;
 	amount: number;
 	description: string;
-	stripePriceId?: string;
-	stripeProductId?: string;
 	shouldProrate?: boolean;
 	chargeImmediately?: boolean;
 	usage?: number;
@@ -85,8 +81,6 @@ export const buildLineItem = ({
 		amount,
 		description: finalDescription,
 		context: updatedContext,
-		stripePriceId,
-		stripeProductId,
 		chargeImmediately,
 		totalQuantity: usage,
 		paidQuantity: overage,

@@ -13,7 +13,7 @@ description: |
 
 # Set up Autumn Billing
 
-Autumn is a billing and entitlements layer over Stripe. This skill walks through installing the SDK, creating an Autumn customer, and wiring up the payment flow.
+Autumn is a billing and entitlements layer over PayPal. This skill walks through installing the SDK, creating an Autumn customer, and wiring up the payment flow.
 
 > **Before starting:** Check for an \`autumn.config.ts\` in the project root. If it doesn't exist, run \`npx atmn init\` to log in and generate the file (this saves your API key and syncs your config). Then refer to \`autumn.config.ts\` for your product and feature IDs.
 
@@ -171,9 +171,9 @@ console.log("Autumn customer:", data);
 
 Autumn's customer ID is the same as your internal user or org ID from your auth provider. No need to store any extra IDs.
 
-### A5. Stripe Payment Flow
+### A5. Payment Flow
 
-Call \`attach\` when the customer wants to purchase a plan. This returns a Stripe payment URL. Once they pay, Autumn grants access to the features defined in the plan.
+Call \`attach\` when the customer wants to purchase a plan. This returns a payment URL. Once they pay, Autumn grants access to the features defined in the plan.
 
 \`\`\`tsx
 import { useCustomer } from "autumn-js/react";
@@ -199,7 +199,7 @@ export default function PurchaseButton() {
 This handles all plan change scenarios (upgrades, downgrades, one-time topups, renewals, etc).
 
 The \`redirectMode: "always"\` flag always returns a payment URL:
-- New purchases redirect to Stripe Checkout to enter payment details
+- New purchases redirect to a PayPal checkout page to enter payment details
 - Subsequent charges redirect to an Autumn hosted, one-click confirmation page
 
 ---
@@ -277,9 +277,9 @@ curl -X POST https://api.useautumn.com/v1/customers \\
 
 Autumn's customer ID is the same as your internal user or org ID from your auth provider. No need to store any extra IDs.
 
-### B4. Stripe Payment Flow
+### B4. Payment Flow
 
-Call \`attach\` when the customer wants to purchase a plan. This returns a Stripe payment URL. Redirect the customer to complete payment.
+Call \`attach\` when the customer wants to purchase a plan. This returns a payment URL. Redirect the customer to complete payment.
 
 **TypeScript:**
 
@@ -320,7 +320,7 @@ curl -X POST 'https://api.useautumn.com/v1/attach' \\
 This handles all plan change scenarios (upgrades, downgrades, one-time topups, renewals, etc).
 
 The \`redirectMode: "always"\` flag always returns a payment URL:
-- New purchases redirect to Stripe Checkout to enter payment details
+- New purchases redirect to a PayPal checkout page to enter payment details
 - Subsequent charges redirect to an Autumn hosted, one-click confirmation page
 
 ---

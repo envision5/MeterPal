@@ -284,8 +284,6 @@ export const getOrCreateCustomerParamsOutboundSchema = z.object({
 		.union([z.record(z.string(), z.any()), z.undefined()])
 		.optional()
 		.nullable(),
-	stripe_id: z.union([z.string(), z.undefined()]).optional().nullable(),
-	create_in_stripe: z.union([z.boolean(), z.undefined()]).optional(),
 	auto_enable_plan_id: z.union([z.string(), z.undefined()]).optional(),
 	send_email_receipts: z.union([z.boolean(), z.undefined()]).optional(),
 	currency: z.union([z.string(), z.undefined()]).optional().nullable(),
@@ -294,9 +292,6 @@ export const getOrCreateCustomerParamsOutboundSchema = z.object({
 		.optional(),
 	config: z
 		.union([getOrCreateCustomerConfigOutboundSchema, z.undefined()])
-		.optional(),
-	billing_details: z
-		.union([getOrCreateCustomerBillingDetailsOutboundSchema, z.undefined()])
 		.optional(),
 	expand: z.union([z.array(z.string()), z.undefined()]).optional(),
 });
@@ -411,8 +406,6 @@ export const getOrCreateCustomerParamsSchema = z.object({
 		.union([z.record(z.string(), z.any()), z.undefined()])
 		.optional()
 		.nullable(),
-	stripeId: z.union([z.string(), z.undefined()]).optional().nullable(),
-	createInStripe: z.union([z.boolean(), z.undefined()]).optional(),
 	autoEnablePlanId: z.union([z.string(), z.undefined()]).optional(),
 	sendEmailReceipts: z.union([z.boolean(), z.undefined()]).optional(),
 	currency: z.union([z.string(), z.undefined()]).optional().nullable(),
@@ -420,8 +413,5 @@ export const getOrCreateCustomerParamsSchema = z.object({
 		.union([getOrCreateCustomerBillingControlsSchema, z.undefined()])
 		.optional(),
 	config: z.union([getOrCreateCustomerConfigSchema, z.undefined()]).optional(),
-	billingDetails: z
-		.union([getOrCreateCustomerBillingDetailsSchema, z.undefined()])
-		.optional(),
 	expand: z.union([z.array(customerExpandSchema), z.undefined()]).optional(),
 });

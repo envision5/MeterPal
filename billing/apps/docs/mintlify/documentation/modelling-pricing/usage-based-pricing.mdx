@@ -72,7 +72,7 @@ Preview with `atmn push`, then apply with `atmn push --yes`.
 1. A customer's usage is tracked via the [track](/documentation/customers/tracking-usage) endpoint throughout the billing period
 2. Usage first draws down from the **included** amount (if any) at no charge
 3. Usage beyond the included amount is **overage** — billed at the configured rate
-4. At the end of the billing period, MeterPal generates a Stripe invoice for the total overage
+4. At the end of the billing period, MeterPal generates a processor invoice for the total overage
 
 <Note>
 Usage-based features allow overage by default. The `check` endpoint will return `allowed: true` even if the customer has exceeded their included balance, as long as a usage-based price is configured.

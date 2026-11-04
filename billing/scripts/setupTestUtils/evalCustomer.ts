@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
  * Seeds a customer inside an ax-evals throwaway org: create via API, attach a
- * Stripe test payment method, then run attach/license setup calls — so
+ * payment method, then run attach/license setup calls — so
  * integration evals can start from "existing subscriber" states.
  *
  *   bun scripts/setupTestUtils/evalCustomer.ts '<json>'
@@ -18,7 +18,6 @@
  * }
  */
 import { AppEnv, organizations } from "@autumn/shared";
-import { attachPmToCus } from "@server/external/stripe/stripeCusUtils.js";
 import { CusService } from "@server/internal/customers/CusService.js";
 import { eq } from "drizzle-orm";
 
@@ -105,33 +104,6 @@ const main = async () => {
 			email: spec.customer.email,
 		},
 	});
-
-	if (spec.paymentMethod) {
-		const { db, client } = (
-			await import("@server/db/initDrizzle.js")
-		).initDrizzle({ databaseUrl: process.env.DATABASE_URL });
-		try {
-			const org = await db.query.organizations.findFirst({
-				where: eq(organizations.id, spec.orgId),
-			});
-			if (!org) throw new Error(`org ${spec.orgId} not found`);
-			const customer = await CusService.get({
-				db,
-				orgId: spec.orgId,
-				env: AppEnv.Sandbox,
-				idOrInternalId: spec.customer.id,
-			});
-			if (!customer) throw new Error(`customer ${spec.customer.id} not found`);
-			await attachPmToCus({
-				db,
-				customer,
-				org: org as never,
-				env: AppEnv.Sandbox,
-			});
-		} finally {
-			await client.end();
-		}
-	}
 
 	for (const attach of spec.attach ?? []) {
 		await api({

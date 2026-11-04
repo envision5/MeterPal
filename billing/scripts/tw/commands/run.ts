@@ -8,18 +8,17 @@
  *                  `min(workers, fileCount)` (plan §8.7).
  *   2. WARM-UP   — create the warm parent, run `image/warmup.sh <ref>` (checkout,
  *                  install, migrate — FAIL FAST — migrate-functions, seed with
- *                  Stripe disabled), `snapshotAndStop` → warm snapshot.
+ *                  billing disabled), `snapshotAndStop` → warm snapshot.
  *   3. FAN-OUT   — fork N workers from the warm snapshot. One dedicated svix shard
  *                  gets NEEDS_SVIX + SVIX_API_KEY. Per worker: getPublicUrl →
- *                  orchestrator createSandboxSubAccount + registerSubAccountWebhook
- *                  (RECORDED in the registry BEFORE the worker proceeds, §9a) →
- *                  detached `boot.ts` with ORG_ID + STRIPE_ACCOUNT_ID → wait READY.
+ *                  detached `boot.ts` with ORG_ID + the PayPal credentials → wait
+ *                  READY.
  *   4. RUN       — build a WorkerPool + RemoteExecutor, route svix files only onto
  *                  the svix shard and normal files onto the rest, then hand off to
  *                  `runWithExecutor` (the unchanged sliding-window + retry + TUI).
  *   5. TEARDOWN  — idempotent, orchestrator-driven from the registry: per worker
- *                  deleteSubAccount + (svix) deleteSvixApp + deleteSandbox, then
- *                  markCompleted. `--keep` skips teardown.
+ *                  (svix) deleteSvixApp + deleteSandbox, then markCompleted.
+ *                  `--keep` skips teardown.
  *
  * A SIGINT/SIGTERM guard installs the §9a Ctrl+C escape hatch: first signal →
  * stop scheduling + time-boxed teardown + markCancelled + exit 130; second
@@ -47,7 +46,6 @@ import {
 	REGISTRY_DIR,
 	SERVER_PORT,
 	SQS_QUEUE_URL_V2,
-	STRIPE_WEBHOOK_SQS_QUEUE_URL,
 	TRACK_ASYNC_SQS_QUEUE_URL,
 	TRACK_ASYNC_STANDARD_SQS_QUEUE_URL,
 	TRACK_SQS_QUEUE_URL,
@@ -85,13 +83,6 @@ import {
 	summarizeDurations,
 } from "../helpers/durationStats.ts";
 import {
-	type CreateIngressResult,
-	createIngress,
-	pushWorkerMapping,
-} from "../helpers/ingress.ts";
-import { readInlineBunScript } from "../helpers/inlineBunScript.ts";
-import { withGlobalLock } from "../helpers/lock.ts";
-import {
 	disableQuietMode,
 	enableQuietMode,
 	narrate,
@@ -99,7 +90,6 @@ import {
 	sink,
 	sinkLine,
 } from "../helpers/logSink.ts";
-import { spawnDetachedNukeSandbox } from "../helpers/modal.ts";
 import {
 	getOwner,
 	newRunId,
@@ -134,34 +124,13 @@ import {
 	timePhase,
 } from "../helpers/setupTimeline.ts";
 import {
-	createSandboxSubAccount,
-	deleteConnectWebhook,
-	deleteSubAccount,
-	registerConnectIngressWebhook,
-	validateStripeKeyPool,
-} from "../helpers/stripe.ts";
-import { stripeBudgetForRun } from "../helpers/stripeBudget.ts";
-import {
-	allPoolKeys,
-	decodeSubAccount,
-	encodeSubAccount,
-	keyIndexFromWebhookTag,
-	stripeKeyByIndex,
-	stripeKeyForWorker,
-	stripeKeyPoolSize,
-	webhookKeyTag,
-} from "../helpers/stripeKeyPool.ts";
-import { claimPoolAccounts } from "../helpers/stripePool.ts";
-import {
 	createSvixApp as orchestratorCreateSvixApp,
 	partitionShards,
 } from "../helpers/svix.ts";
 import { createTestFileResolver } from "../testDiscovery/createTestFileResolver";
 import { runShardTests } from "../tui/runShardTests.ts";
 import {
-	bumpAccountDone,
 	bumpSandboxDone,
-	bumpStripeDone,
 	bumpWorkerFailed,
 	bumpWorkerReady,
 	getTuiState,
@@ -171,7 +140,6 @@ import {
 	setPhase,
 	setRunMeta,
 	setSummary,
-	setTeardownAccounts,
 	setTeardownSandboxes,
 	setWarmHit,
 } from "../tui/store.ts";
@@ -224,14 +192,10 @@ export const resolveGitSource = (
 /** Path to the per-worker boot script, relative to the in-sandbox repo root. */
 const BOOT_SCRIPT = "scripts/tw/worker/boot.ts";
 
-/** Default owner email stamped on Stripe sub-accounts (contact_email). */
-const OWNER_EMAIL_FALLBACK = "tw@autumn.test";
-
 /** How long a single resource's teardown may take before we give up on it (§9a). */
 const TEARDOWN_PER_RESOURCE_TIMEOUT_MS = 20_000;
 
 /** Bounded concurrency for teardown deletes (serial was the long-pole at N=62). */
-const TEARDOWN_STRIPE_CONCURRENCY = 16;
 const TEARDOWN_SANDBOX_CONCURRENCY = 16;
 
 /**
@@ -423,7 +387,7 @@ const openInBrowser = (url: string): void => {
 	}
 };
 
-// Detached sandbox log streams (worker boot, ingress) reject with a
+// Detached sandbox log streams (worker boot) reject with a
 // `sandbox_stream_closed` StreamError when teardown deletes the sandbox out from
 // under a still-iterating `cmd.logs()` reader — benign end-of-stream, but it
 // surfaces as an UNHANDLED rejection (the iterator isn't inside a try/catch).
@@ -534,33 +498,19 @@ const requireSecret = (name: string): string => {
 
 /**
  * Build the env baked into a worker fork (plan §11a). The localhost service URLs
- * are constants; the encryption/auth secrets + the Stripe platform key are
+ * are constants; the encryption/auth secrets + the PayPal credentials are
  * resolved once on the orchestrator and injected. `SVIX_API_KEY` / `NEEDS_SVIX`
  * are added only for the dedicated svix shard.
  */
 /** Resolved commit sha for this run (set in run()); workers fast-forward to it. */
 let resolvedTargetSha = "";
 
-let stripeBudget = stripeBudgetForRun({
-	workers: 1,
-	keys: stripeKeyPoolSize(),
-});
-
 const buildWorkerEnv = ({
-	stripeAccountId,
-	stripeSecretKey,
 	isSvixShard,
 	svixAppId,
-	ingressUrl,
-	ingressToken,
 }: {
-	stripeAccountId: string;
-	/** This worker's pool key — MUST match the key its sub-account was created on. */
-	stripeSecretKey: string;
 	isSvixShard: boolean;
 	svixAppId?: string;
-	ingressUrl: string;
-	ingressToken: string;
 }): Record<string, string> => {
 	const env: Record<string, string> = {
 		NODE_ENV: "development",
@@ -575,7 +525,6 @@ const buildWorkerEnv = ({
 		CACHE_V2_DRAGONFLY_URL: REDIS_URL,
 		BALANCE_SYNC_SQS_QUEUE_URL,
 		SQS_QUEUE_URL_V2,
-		STRIPE_WEBHOOK_SQS_QUEUE_URL,
 		TRACK_SQS_QUEUE_URL,
 		TRACK_ASYNC_SQS_QUEUE_URL,
 		TRACK_ASYNC_STANDARD_SQS_QUEUE_URL,
@@ -584,18 +533,14 @@ const buildWorkerEnv = ({
 		ENCRYPTION_IV: requireSecret("ENCRYPTION_IV"),
 		ENCRYPTION_PASSWORD: requireSecret("ENCRYPTION_PASSWORD"),
 		BETTER_AUTH_SECRET: requireSecret("BETTER_AUTH_SECRET"),
-		STRIPE_WEBHOOK_SKIP_VERIFY: "true",
-		// per-worker Stripe (this worker's POOL key + the sub-account it binds; the
-		// account was created on this same key, so they share one rate-limit bucket).
-		STRIPE_SANDBOX_SECRET_KEY: stripeSecretKey,
-		// The connect seeder calls getStripeWebhookSecret UNCONDITIONALLY (before the
-		// skip-verify branch) and throws if it's unset; the ingress forwards without an
-		// org_id query, so it falls to this env var. Skip-verify never uses the value,
-		// so a dummy satisfies it (plan §6a) — otherwise the worker 500s every webhook.
-		STRIPE_SANDBOX_WEBHOOK_SECRET: "whsec_tw_skipverify",
-		STRIPE_ACCOUNT_ID: stripeAccountId,
-		TW_STRIPE_INGRESS_URL: ingressUrl,
-		TW_STRIPE_INGRESS_TOKEN: ingressToken,
+		// PayPal is the only processor. The test org carries no `paypal_config`,
+		// so the server falls back to these process-wide credentials
+		// (server/src/external/paypal/paypalClient.ts). Without them the org has no
+		// PayPal connection and every billing call 500s.
+		PAYPAL_CLIENT_ID: requireSecret("PAYPAL_CLIENT_ID"),
+		PAYPAL_CLIENT_SECRET: requireSecret("PAYPAL_CLIENT_SECRET"),
+		// Sandbox by default — `live` only when the orchestrator env says so.
+		PAYPAL_ENV: process.env.PAYPAL_ENV === "live" ? "live" : "sandbox",
 		ORG_ID: TEST_ORG_CONFIG.id,
 		// The exact commit under test — freestyle workers fast-forward to it at
 		// boot (inert on other providers).
@@ -613,13 +558,6 @@ const buildWorkerEnv = ({
 		// Workers have no trigger.dev key: migrations run inline in-process
 		// (shouldRunMigrationInline) instead of via the durable layer.
 		TW_WORKER_MODE: "1",
-		// Reused Stripe accounts retain idempotency responses from earlier cloned databases.
-		TW_STRIPE_IDEMPOTENCY_NAMESPACE: crypto.randomUUID(),
-		// All processes share the same allocation through this worker's Redis.
-		TW_STRIPE_REDIS_URL: REDIS_URL,
-		TW_STRIPE_MAX_RPS: String(stripeBudget.maxRps),
-		TW_STRIPE_MAX_INFLIGHT: String(stripeBudget.maxInFlight),
-		...(process.env.TW_STRIPE_TRACE === "1" ? { TW_STRIPE_TRACE: "1" } : {}),
 		// The µVM is isolated and has NO AWS creds, so the S3-backed edge configs
 		// (rollout, cache-v2-ramp, redis-v2-cache, blue-green, …) can't be read —
 		// they'd poll S3 every 1s and spam CredentialsProviderError, AND the
@@ -646,7 +584,7 @@ const buildWorkerEnv = ({
 		}
 	}
 
-	// Browser tests (Stripe checkout / setup-payment) use the LOCAL Playwright
+	// Browser tests (processor checkout / setup-payment) use the LOCAL Playwright
 	// Chromium baked into the image (build-base §9). `USE_KERNEL_BROWSER` stays
 	// UNSET so browserConfig.ts takes the local `chromium.launch()` path (verified
 	// launching v148 in-µVM). Kernel cloud browsers were crashing every checkout
@@ -676,7 +614,7 @@ const buildWorkerEnv = ({
 /**
  * The warm-up env baked into the warm parent for `warmup.sh` (it `cd`s into the
  * repo and only needs the localhost DB + worker-mode flag; the script sets the
- * rest itself). Mirrors the warmup.sh defaults so the seed runs Stripe-disabled.
+ * rest itself). Mirrors the warmup.sh defaults so the seed runs processor-less.
  */
 const buildWarmEnv = (): Record<string, string> => ({
 	NODE_ENV: "development",
@@ -687,14 +625,12 @@ const buildWarmEnv = (): Record<string, string> => ({
 	CACHE_V2_DRAGONFLY_URL: REDIS_URL,
 	BALANCE_SYNC_SQS_QUEUE_URL,
 	SQS_QUEUE_URL_V2,
-	STRIPE_WEBHOOK_SQS_QUEUE_URL,
 	TRACK_SQS_QUEUE_URL,
 	TRACK_ASYNC_SQS_QUEUE_URL,
 	TRACK_ASYNC_STANDARD_SQS_QUEUE_URL,
 	DYNAMODB_ENDPOINT,
 	AUTUMN_DB_DIRECT: "1",
 	TW_WORKER_MODE: "1",
-	TW_SKIP_STRIPE_ACCOUNT: "1",
 	ENCRYPTION_IV: requireSecret("ENCRYPTION_IV"),
 	ENCRYPTION_PASSWORD: requireSecret("ENCRYPTION_PASSWORD"),
 	BETTER_AUTH_SECRET: requireSecret("BETTER_AUTH_SECRET"),
@@ -836,8 +772,6 @@ type ProvisionedWorker = {
 	sandbox: ProviderSandbox;
 	/** Timings (ms since fan-out start) for benchmarking the provisioning phase. */
 	timing: {
-		/** When this worker's Stripe sub-account was available (claimed/created). */
-		stripeMs: number;
 		/** When the `create`/fork call returned (sandbox object in hand). */
 		createMs: number;
 		/** Part of the fork call spent fast-forwarding the source (stale warm). */
@@ -935,44 +869,9 @@ const waitForReady = async ({
 	await Promise.race([readyPromise, exitedFirst, deadline]);
 };
 
-/** A worker's pre-claimed pool account, or a fresh one RECORDED before it is returned
- * so a fork/boot failure can never orphan an untracked Stripe account (§9a). */
-const resolveWorkerAccount = async ({
-	idx,
-	name,
-	runId,
-	owner,
-	ownerEmail,
-	pooledAccounts,
-}: {
-	idx: number;
-	name: string;
-	runId: string;
-	owner: string;
-	ownerEmail: string;
-	pooledAccounts: Promise<string[] | undefined>;
-}): Promise<string> => {
-	const pooledAccount = (await pooledAccounts)?.[idx];
-	if (pooledAccount) {
-		return decodeSubAccount(pooledAccount).accountId;
-	}
-	const { key: stripeSecretKey, keyIndex } = stripeKeyForWorker(idx);
-	const accountId = await createSandboxSubAccount({
-		orgName: `${TEST_ORG_CONFIG.name} (${name})`,
-		ownerEmail,
-		owner,
-		runId,
-		orgId: TEST_ORG_CONFIG.id,
-		secretKey: stripeSecretKey,
-	});
-	await registry.addSubAccount(runId, encodeSubAccount(accountId, keyIndex));
-	return accountId;
-};
-
 /**
- * Provision one worker: take its Stripe sub-account, fork from the warm snapshot,
- * run the detached boot, wait READY, and push the `{ accountId → workerUrl }`
- * mapping to the shared ingress so the one Connect webhook routes its events here.
+ * Provision one worker: fork from the warm snapshot, run the detached boot, and
+ * wait for READY.
  */
 const provisionWorker = async ({
 	idx,
@@ -980,9 +879,6 @@ const provisionWorker = async ({
 	runId,
 	warmName,
 	isSvixShard,
-	ownerEmail,
-	pooledAccounts,
-	ingress,
 	fanoutStart,
 	signal,
 }: {
@@ -991,33 +887,12 @@ const provisionWorker = async ({
 	runId: string;
 	warmName: string;
 	isSvixShard: boolean;
-	ownerEmail: string;
-	/** The run's pool claim (encoded `acct_*::keyIndex` per worker idx), if pooled. */
-	pooledAccounts: Promise<string[] | undefined>;
-	ingress: Promise<CreateIngressResult>;
 	/** Epoch ms when the fan-out phase began, for per-worker provisioning timings. */
 	fanoutStart: number;
 	signal: AbortSignal;
 }): Promise<ProvisionedWorker> => {
 	const name = sandboxName(owner, runId, idx);
 	const orgId = TEST_ORG_CONFIG.id;
-	// This worker's Stripe pool key (round-robin). The sub-account is CREATED on
-	// this key and the worker's server USES this key, so they share one platform
-	// rate-limit bucket — sharding workers across keys multiplies the ceiling.
-	const { key: stripeSecretKey } = stripeKeyForWorker(idx);
-
-	// Claimed/created concurrently with the warm lookup; the account and ingress feed
-	// the worker env, which boot AND tests read.
-	const accountId = await resolveWorkerAccount({
-		idx,
-		name,
-		runId,
-		owner,
-		ownerEmail,
-		pooledAccounts,
-	});
-	bumpStripeDone();
-	const stripeMs = Date.now() - fanoutStart;
 
 	let svixAppId: string | undefined;
 	if (isSvixShard) {
@@ -1025,19 +900,13 @@ const provisionWorker = async ({
 		await registry.addSvixApp({ runId, svixAppId });
 	}
 
-	const { publicUrl: ingressUrl, token: ingressToken } = await ingress;
-
 	// Fork with the per-worker env (fork does NOT copy env) from the warm image.
 	const sandbox = await forkWorker({
 		sourceSandbox: warmName,
 		name,
 		env: buildWorkerEnv({
-			stripeAccountId: accountId,
-			stripeSecretKey,
 			isSvixShard,
 			svixAppId,
-			ingressUrl,
-			ingressToken,
 		}),
 		tags: vercelTags(owner, runId),
 		signal,
@@ -1056,20 +925,10 @@ const provisionWorker = async ({
 	bumpWorkerReady();
 	const readyMs = Date.now() - fanoutStart;
 
-	// The RUN phase only starts after every provisionTask resolves, so each
-	// mapping is in place before any test fires Stripe events.
-	await pushWorkerMapping({
-		ingressUrl,
-		token: ingressToken,
-		accountId,
-		workerUrl: publicUrl,
-	});
-
 	const handle: WorkerHandle = {
 		name,
 		sandboxId: sandbox.name,
 		publicUrl,
-		accountId,
 		isSvixShard,
 		inFlight: 0,
 	};
@@ -1078,7 +937,6 @@ const provisionWorker = async ({
 		handle,
 		sandbox,
 		timing: {
-			stripeMs,
 			createMs,
 			checkoutMs: sandbox.checkoutMs ?? 0,
 			tunnelMs,
@@ -1089,127 +947,9 @@ const provisionWorker = async ({
 
 const provisionSvixApp = pLimit(10);
 
-/** Register the per-key platform Connect webhooks pointed at the ingress. */
-const registerIngressWebhooks = async ({
-	runId,
-	ingress,
-	usedKeys,
-}: {
-	runId: string;
-	ingress: CreateIngressResult;
-	usedKeys: number;
-}): Promise<void> => {
-	const registerIngress = pLimit(10);
-	const registrations = await Promise.allSettled(
-		Array.from({ length: usedKeys }, (_, keyIndex) =>
-			registerIngress(async () => {
-				const webhookId = await registerConnectIngressWebhook(
-					ingress.publicUrl,
-					stripeKeyByIndex(keyIndex),
-				);
-				await registry.addWebhook(runId, {
-					sandboxName: ingress.sandbox.name,
-					accountId: webhookKeyTag(keyIndex),
-					webhookId,
-				});
-			}),
-		),
-	);
-	// Finish recording concurrent successes before a failure starts teardown.
-	for (const registration of registrations) {
-		if (registration.status === "rejected") throw registration.reason;
-	}
-};
-
-/** Claim the run's pooled sub-accounts under the `stripe-pool` global lock, recorded in
- * one registry write so a crash can't orphan them. Returns encoded accounts by idx. */
-const claimAndRecordPoolAccounts = async ({
-	count,
-	owner,
-	runId,
-	ownerEmail,
-}: {
-	count: number;
-	owner: string;
-	runId: string;
-	ownerEmail: string;
-}): Promise<string[]> => {
-	const claimStart = Date.now();
-	const claim = await withGlobalLock({
-		name: "stripe-pool",
-		meta: { owner, startedAt: Date.now(), runId },
-		log: (line) => log(line),
-		fn: () =>
-			claimPoolAccounts({
-				count,
-				owner,
-				runId,
-				ownerEmail,
-				orgId: TEST_ORG_CONFIG.id,
-				orgNameForIdx: (idx) =>
-					`${TEST_ORG_CONFIG.name} (${sandboxName(owner, runId, idx)})`,
-				log: (line) => log(line),
-			}),
-	});
-	await registry.addSubAccounts(runId, claim.byWorker);
-	milestone(
-		`stripe pool: ${claim.reused} reused + ${claim.created} created in ${Date.now() - claimStart}ms`,
-	);
-	return claim.byWorker;
-};
-
 // ============================================================================
 // Teardown (§9a — idempotent, orchestrator-driven from the registry)
 // ============================================================================
-
-/**
- * Persistent Stripe sub-account pool: claim clean accounts at fan-out, async-
- * nuke at teardown (see STRIPE_POOL_BENCH.md). Modal-only — the detached nuke
- * sandbox is a Modal registry image; other providers keep the create/delete
- * path. `TW_DISABLE_STRIPE_POOL=1` is the escape hatch.
- */
-const stripePoolEnabled = (): boolean =>
-	providerName().startsWith("modal") &&
-	process.env.TW_DISABLE_STRIPE_POOL !== "1";
-
-const NUKE_SCRIPT = "scripts/tw/image/nuke-accounts.mjs";
-
-/**
- * Fire-and-forget the teardown nuke sandbox: it cleans each used account's
- * contents and flips its pool state back to clean (plus reclaims stale-dirty
- * accounts from crashed runs). Returns false if the spawn failed so the caller
- * can fall back to synchronous account deletion.
- */
-const spawnNukeSandbox = async (
-	runId: string,
-	encodedAccounts: string[],
-): Promise<boolean> => {
-	try {
-		const script = readInlineBunScript(NUKE_SCRIPT);
-		const targets = encodedAccounts.map((encoded) => {
-			const { accountId, keyIndex } = decodeSubAccount(encoded);
-			return { accountId, keyIndex };
-		});
-		const sandboxId = await spawnDetachedNukeSandbox({
-			name: `tw-nuke-${runId}`,
-			script,
-			env: {
-				NUKE_TARGETS: JSON.stringify(targets),
-				NUKE_KEYS: JSON.stringify(allPoolKeys()),
-				NUKE_STALE_SWEEP: "1",
-			},
-		});
-		log(
-			`teardown: nuke sandbox ${sandboxId} spawned for ${encodedAccounts.length} account(s) — not waiting`,
-		);
-		return true;
-	} catch (error) {
-		warn(
-			`teardown: nuke sandbox spawn failed (${(error as Error).message}) — falling back to sync deletes`,
-		);
-		return false;
-	}
-};
 
 /**
  * Delete the run's single dedicated Svix shard app (plan §7/§9a teardown step 3).
@@ -1250,47 +990,7 @@ const teardown = async ({
 		return;
 	}
 
-	log(
-		`teardown: ${entry.subAccounts.length} sub-account(s), ${entry.webhooks.length} webhook(s), ${entry.sandboxes.length} sandbox(es)`,
-	);
-
-	// Pool mode: hand the used accounts to a detached nuke sandbox (contents
-	// cleaned + marked clean asynchronously) so the terminal returns immediately.
-	// Fallback (spawn failure / non-modal): delete sub-accounts CONCURRENTLY
-	// (bounded) — serial Stripe deletes are the teardown long-pole.
-	setTeardownAccounts(0, entry.subAccounts.length);
-	const nukeSpawned =
-		stripePoolEnabled() &&
-		entry.subAccounts.length > 0 &&
-		(await spawnNukeSandbox(runId, entry.subAccounts));
-	if (nukeSpawned) {
-		setTeardownAccounts(entry.subAccounts.length, entry.subAccounts.length);
-	} else {
-		const accountLimit = pLimit(TEARDOWN_STRIPE_CONCURRENCY);
-		await Promise.all(
-			entry.subAccounts.map((accountId) =>
-				accountLimit(async () => {
-					await timeBoxed(`delete sub-account ${accountId}`, () =>
-						deleteSubAccount(accountId),
-					);
-					bumpAccountDone();
-				}),
-			),
-		);
-	}
-
-	// Delete recorded webhooks (the shared platform Connect webhook). Unlike a
-	// sub-account's account-scoped webhook, the platform Connect webhook is NOT
-	// cascade-deleted by sub-account deletion, so drop it explicitly (§9a).
-	for (const webhook of entry.webhooks) {
-		// The webhook lives on the pool key tagged in `accountId` ("platform::<idx>").
-		const webhookKey = stripeKeyByIndex(
-			keyIndexFromWebhookTag(webhook.accountId),
-		);
-		await timeBoxed(`delete connect webhook ${webhook.webhookId}`, () =>
-			deleteConnectWebhook(webhook.webhookId, webhookKey),
-		);
-	}
+	log(`teardown: ${entry.sandboxes.length} sandbox(es)`);
 
 	for (const appId of registry.getSvixAppIds(entry)) {
 		await timeBoxed(`delete svix app ${appId}`, () => deleteSvixApp(appId));
@@ -1343,10 +1043,9 @@ const reportFanoutBenchmark = ({
 }): void => {
 	const fanout = {
 		ready: statFor({ provisioned, pick: (t) => t.readyMs }),
-		accountWait: statFor({ provisioned, pick: (t) => t.stripeMs }),
 		create: statFor({
 			provisioned,
-			pick: (t) => t.createMs - t.stripeMs - t.checkoutMs,
+			pick: (t) => t.createMs - t.checkoutMs,
 		}),
 		checkout: statFor({ provisioned, pick: (t) => t.checkoutMs }),
 		restore: statFor({ provisioned, pick: (t) => t.tunnelMs - t.createMs }),
@@ -1362,9 +1061,6 @@ const reportFanoutBenchmark = ({
 		`fan-out benchmark (${provisioned.length}/${effectiveWorkers} workers, ${WORKER_VCPUS} vCPU each):`,
 	);
 	milestone(`  · READY (from fan-out start): ${formatDurations(fanout.ready)}`);
-	milestone(
-		`      ├─ wait for stripe acct:  ${formatDurations(fanout.accountWait)}`,
-	);
 	milestone(
 		`      ├─ create (fork call):    ${formatDurations(fanout.create)}`,
 	);
@@ -1409,10 +1105,9 @@ export const run = async (args: TwRunArgs): Promise<void> => {
 	await setProvider(args.provider);
 	const owner = getOwner();
 	const runId = newRunId();
-	const ownerEmail = process.env.TW_OWNER_EMAIL ?? OWNER_EMAIL_FALLBACK;
 
 	// Point the log sink at this run's log file. During the RUN phase (Ink mounted)
-	// quiet mode routes ALL orchestrator/ingress/worker-boot logging here instead of
+	// quiet mode routes ALL orchestrator/worker-boot logging here instead of
 	// stdout, so Ink owns the terminal; resolve/warm-up/fan-out/teardown still print
 	// to stdout. The file keeps the full firehose for `bun tw` to point the user at.
 	const runLogFile = join(REGISTRY_DIR, "runs", `${runId}.log`);
@@ -1429,31 +1124,6 @@ export const run = async (args: TwRunArgs): Promise<void> => {
 		throw new Error("no test files resolved — nothing to run");
 	}
 
-	// Stripe key-pool preflight (only when a pool is configured): probe each key's
-	// Connect/v2-accounts capability and DROP the dead ones up-front, so workers
-	// aren't assigned to keys that can't create their sub-account (67/90 cryptic
-	// mid-fan-out failures). Read-only + fast; runs before the expensive warm-up.
-	if (stripeKeyPoolSize() > 1) {
-		milestone(`validating ${stripeKeyPoolSize()} Stripe pool key(s)…`);
-		const { usable, dropped } = await timePhase({
-			name: "validate stripe keys",
-			fn: validateStripeKeyPool,
-		});
-		for (const badKey of dropped) {
-			warn(`Stripe key ${badKey.keyPrefix} unusable — ${badKey.reason}`);
-		}
-		if (usable === 0) {
-			throw new Error(
-				"no usable Stripe pool keys: every STRIPE_TEST_KEY_POOL key failed the Connect probe — enable Connect + the v2 Accounts API on those platform accounts",
-			);
-		}
-		milestone(
-			dropped.length > 0
-				? `Stripe key pool: ${usable}/${usable + dropped.length} key(s) usable — sharding across them (enable Connect on the rest to use all ${usable + dropped.length})`
-				: `Stripe key pool: all ${usable} key(s) usable`,
-		);
-	}
-
 	const { svixFiles, normalFiles } = await partitionShards(allFiles);
 
 	const requestedWorkers = Math.max(1, args.workers);
@@ -1467,23 +1137,10 @@ export const run = async (args: TwRunArgs): Promise<void> => {
 		`running ${normalFiles.length} normal and ${svixFiles.length} Svix files on ${effectiveWorkers} isolated workers`,
 	);
 
-	// Size the per-worker Stripe budget now that the pool size is final — every
-	// worker env built below reads it.
-	stripeBudget = stripeBudgetForRun({
-		workers: effectiveWorkers,
-		keys: stripeKeyPoolSize(),
-	});
-
-	// No per-worker webhook cap: the swarm registers ONE shared platform Connect
-	// webhook → the ingress sandbox, which routes each event to the owning worker by
-	// `event.account` (§6a). This removes the old Stripe 16-webhook/account ceiling.
 	const maxParallel = effectiveWorkers * Math.max(1, args.perWorker);
 
 	log(
 		`pool: ${effectiveWorkers} worker(s) (requested ${requestedWorkers}, files ${normalFiles.length}), maxParallel=${maxParallel}`,
-	);
-	log(
-		`stripe budget: ${stripeBudget.maxRps} req/s · ${stripeBudget.maxInFlight} in flight per worker (${stripeKeyPoolSize()} key(s), ~${Math.ceil(effectiveWorkers / stripeKeyPoolSize())} worker(s) per key)`,
 	);
 
 	await registry.createRun({
@@ -1584,10 +1241,8 @@ export const run = async (args: TwRunArgs): Promise<void> => {
 	let teardownDone = false;
 
 	try {
-		// ----- SHARED SETUP (concurrent) ---------------------------------------
-		// Warm lookup, ingress (+ its Connect webhooks) and the Stripe pool claim are
-		// independent. Workers fork as soon as the warm image is known; each awaits
-		// its account right before boot and the ingress right before its map push.
+		// ----- SHARED SETUP ---------------------------------------------------
+		// The warm parent is the only shared resource: every worker forks from it.
 		const refSha = resolveRefSha(args.ref);
 		resolvedTargetSha = refSha;
 		const warmPromise = timePhase({
@@ -1595,66 +1250,7 @@ export const run = async (args: TwRunArgs): Promise<void> => {
 			fn: () => getOrBuildWarmParent({ ref: args.ref, sha: refSha, signal }),
 		});
 
-		// ONE shared Connect webhook ingress: Stripe → the platform Connect webhook →
-		// ingress → the owning worker, routed by `event.account` (replaces the
-		// per-worker webhook + its 16-cap, §6a). Recorded so teardown drops it.
-		log("creating shared Connect webhook ingress");
-		const ingressPromise = timePhase({
-			name: "ingress sandbox",
-			fn: async () => {
-				const created = await createIngress({ owner, runId, signal });
-				await registry.addSandbox(runId, {
-					name: created.sandbox.name,
-					id: created.sandbox.id,
-				});
-				return created;
-			},
-		});
-		// One Connect webhook PER pool key actually in use (each platform key only
-		// delivers events for the accounts it owns). Only needed before tests run.
-		const usedKeys = Math.min(stripeKeyPoolSize(), effectiveWorkers);
-		const webhooksPromise = ingressPromise.then((ingress) =>
-			timePhase({
-				name: "connect webhooks",
-				fn: () =>
-					registerIngressWebhooks({
-						runId,
-						ingress,
-						usedKeys,
-					}),
-			}),
-		);
-
-		// Claim pooled Stripe sub-accounts (reuse clean, create the shortfall) under
-		// the cross-machine git-ref lock — Stripe metadata read-modify-write is racy
-		// when teammates fan out concurrently. Recorded before any worker boots.
-		const pooledAccountsPromise: Promise<string[] | undefined> =
-			stripePoolEnabled()
-				? timePhase({
-						name: "stripe pool claim",
-						fn: () =>
-							claimAndRecordPoolAccounts({
-								count: effectiveWorkers,
-								owner,
-								runId,
-								ownerEmail,
-							}),
-					})
-				: Promise.resolve(undefined);
-
-		const sharedSetup = Promise.allSettled([
-			ingressPromise,
-			webhooksPromise,
-			pooledAccountsPromise,
-		]);
-		let warmName: string;
-		try {
-			warmName = await warmPromise;
-		} catch (error) {
-			// Let in-flight shared resources get recorded before teardown reads them.
-			await sharedSetup;
-			throw error;
-		}
+		const warmName = await warmPromise;
 
 		// ----- FAN-OUT --------------------------------------------------------
 		milestone(
@@ -1680,9 +1276,6 @@ export const run = async (args: TwRunArgs): Promise<void> => {
 					runId,
 					warmName,
 					isSvixShard,
-					ownerEmail,
-					pooledAccounts: pooledAccountsPromise,
-					ingress: ingressPromise,
 					fanoutStart,
 					signal,
 				}).catch((error: unknown) => {
@@ -1695,19 +1288,12 @@ export const run = async (args: TwRunArgs): Promise<void> => {
 				}),
 			);
 		}
-		// Wait for ALL provisionWorker tasks AND the shared setup to SETTLE (not just
-		// bail on the first rejection) so every sub-account/sandbox/webhook is
-		// recorded before teardown reads the registry.
+		// Wait for ALL provisionWorker tasks to SETTLE (not just bail on the first
+		// rejection) so every sandbox is recorded before teardown reads the registry.
 		const settled = await timePhase({
 			name: "fan-out (all workers READY)",
 			fn: () => Promise.allSettled(provisionTasks),
 		});
-		for (const result of await sharedSetup) {
-			if (result.status === "rejected") throw result.reason;
-		}
-		log(
-			`ingress ready (${(await ingressPromise).publicUrl}), ${usedKeys} platform Connect webhook(s) registered across the key pool`,
-		);
 		const provisioned = settled
 			.filter(
 				(r): r is PromiseFulfilledResult<ProvisionedWorker> =>
@@ -1870,9 +1456,9 @@ export const run = async (args: TwRunArgs): Promise<void> => {
 		let costLine: string | undefined;
 		const publishSummary = (lifetimeMs: number): void => {
 			// Cost ESTIMATE (the SDK doesn't expose usage for running sandboxes, see
-			// cost.ts): workers + the ingress at WORKER_VCPUS, alive fan-out→now.
+			// cost.ts): the workers at WORKER_VCPUS, alive fan-out→now.
 			lastRunCost = estimateCost({
-				workers: provisioned.length + 1,
+				workers: provisioned.length,
 				vcpus: WORKER_VCPUS,
 				lifetimeMs,
 			});
@@ -1899,7 +1485,7 @@ export const run = async (args: TwRunArgs): Promise<void> => {
 		milestone(
 			args.keep
 				? "teardown: skipped (--keep) — clean up later with `bun tw kill`"
-				: "teardown: releasing sandboxes + Stripe sub-accounts",
+				: "teardown: releasing sandboxes",
 		);
 		setPhase("teardown");
 		await teardown({ runId, skip: args.keep });

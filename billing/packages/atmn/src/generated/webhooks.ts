@@ -2,15 +2,13 @@
 // Do not edit — run `bun generate` in packages/atmn-generator instead.
 
 export type Webhook = {
-	/** Your ID for the webhook: letters, digits, `-` and `_`. It can't be changed after creation. */
 	id: string;
-	/** The https URL Autumn sends events to. Localhost and private-network addresses are rejected; tunnels such as ngrok work. One URL per environment: `live` is used by `atmn push -p`, `sandbox` by the default sandbox, and a named sandbox's slug (its name, lowercased, e.g. `qa-team`) when that sandbox is targeted. An environment with no key skips this webhook there: nothing is registered and nothing fails. */
+	/** One URL per environment: `live` is used by `atmn push -p`, `sandbox` by the default sandbox, and a named sandbox's slug (its name, lowercased, e.g. `qa-team`) when that sandbox is targeted. An environment with no key skips this webhook there: nothing is registered and nothing fails. */
 	url: {
 		live?: string;
 		sandbox?: string;
 		[sandboxSlug: string]: string | undefined;
 	};
-	/** The events sent to this webhook. At least one. `vercel.*` events can't be mixed with other events. */
 	events: Array<
 		| "customer.products.updated"
 		| "customer.threshold_reached"
@@ -18,6 +16,8 @@ export type Webhook = {
 		| "balances.limit_reached"
 		| "billing.auto_topup_failed"
 		| "billing.auto_topup_succeeded"
+		| "billing.dispute_created"
+		| "billing.dispute_updated"
 		| "billing.updated"
 		| "invoice.finalized"
 		| "vercel.resources.deleted"
@@ -26,9 +26,7 @@ export type Webhook = {
 		| "vercel.webhooks.event"
 		| (string & {})
 	>;
-	/** A note for your own reference. */
 	description?: string;
-	/** When true, no events are sent to the webhook. */
 	disabled?: boolean;
 };
 

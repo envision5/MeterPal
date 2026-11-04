@@ -21,12 +21,10 @@ export const computeMultiAttachPlan = ({
 			billingContext: multiAttachBillingContext,
 		}),
 		billingContext: multiAttachBillingContext,
-		stripeSubscriptionId:
-			multiAttachBillingContext.stripeSubscription?.id ??
-			multiAttachBillingContext.productContexts.find(
-				(productContext) =>
-					productContext.currentCustomerProduct?.subscription_ids?.[0],
-			)?.currentCustomerProduct?.subscription_ids?.[0],
+		processorSubscriptionId: multiAttachBillingContext.productContexts.find(
+			(productContext) =>
+				productContext.currentCustomerProduct?.subscription_ids?.[0],
+		)?.currentCustomerProduct?.subscription_ids?.[0],
 	});
 
 	// Lock the customer's currency on the first paid multi-attach (only when they

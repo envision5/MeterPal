@@ -6,15 +6,11 @@ import type {
 } from "@autumn/shared";
 import {
 	isCustomerProductRevertingTrial,
-	isProductPaidAndRecurring,
 	resolveFreeTrialParam,
 } from "@autumn/shared";
-import type Stripe from "stripe";
-import { isStripeSubscriptionTrialing } from "@/external/stripe/subscriptions/utils/classifyStripeSubscriptionUtils";
 import {
 	handleFreeTrialParam,
 	inheritTrialFromCustomerProduct,
-	inheritTrialFromSubscription,
 } from "@/internal/billing/v2/setup/trialContext";
 
 /**
@@ -23,18 +19,15 @@ import {
  * Logic:
  * 1. If a free_trial param passed (customize.free_trial or the shorthand) → Use it (null removes trial, value sets fresh trial)
  * 2. If revert trial → Inherit from customer product (its subscription belongs to the paused plan)
- * 3. If paid product with trialing subscription → Inherit from subscription
- * 4. If customer product is trialing (free product case) → Inherit from customer product
- * 5. Otherwise → No trial context
+ * 3. If the customer product carries a trial → Inherit from customer product
+ * 4. Otherwise → No trial context
  */
 export const setupUpdateSubscriptionTrialContext = ({
-	stripeSubscription,
 	customerProduct,
 	currentEpochMs,
 	params,
 	fullProduct,
 }: {
-	stripeSubscription?: Stripe.Subscription;
 	customerProduct?: FullCusProduct;
 	currentEpochMs: number;
 	fullProduct: FullProduct;
@@ -47,7 +40,6 @@ export const setupUpdateSubscriptionTrialContext = ({
 	if (freeTrialParam !== undefined) {
 		const trialContext = handleFreeTrialParam({
 			freeTrialParams: freeTrialParam,
-			stripeSubscription,
 			customerProduct,
 			fullProduct,
 			currentEpochMs,
@@ -61,18 +53,7 @@ export const setupUpdateSubscriptionTrialContext = ({
 		return inheritTrialFromCustomerProduct({ customerProduct, currentEpochMs });
 	}
 
-	// Inherit from stripe subscription (paid product case)
-	if (isProductPaidAndRecurring(fullProduct)) {
-		if (
-			stripeSubscription &&
-			isStripeSubscriptionTrialing(stripeSubscription)
-		) {
-			return inheritTrialFromSubscription({ stripeSubscription });
-		}
-		return undefined;
-	}
-
-	// Inherit from customer product (free product case)
+	// Inherit from the customer product's stored trial state
 	if (customerProduct) {
 		return inheritTrialFromCustomerProduct({ customerProduct, currentEpochMs });
 	}

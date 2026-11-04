@@ -241,7 +241,7 @@ class CustomerSpendLimitTypedDict(TypedDict):
     overage_limit: NotRequired[float]
     r"""Overage cap for the feature: absolute units, or a percent (e.g. 120) when limit_type is usage_percentage."""
     skip_overage_billing: NotRequired[bool]
-    r"""When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally."""
+    r"""When true, overage for this feature is not billed to the processor. Usage tracking and balance resets still behave normally."""
     source: NotRequired[SpendLimitSource]
     r"""Response-only: whether the entry is a customer-level override or inherited from an attached plan's defaults."""
 
@@ -260,7 +260,7 @@ class CustomerSpendLimit(BaseModel):
     r"""Overage cap for the feature: absolute units, or a percent (e.g. 120) when limit_type is usage_percentage."""
 
     skip_overage_billing: Optional[bool] = None
-    r"""When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally."""
+    r"""When true, overage for this feature is not billed to the processor. Usage tracking and balance resets still behave normally."""
 
     source: Optional[SpendLimitSource] = None
     r"""Response-only: whether the entry is a customer-level override or inherited from an attached plan's defaults."""
@@ -1592,63 +1592,8 @@ class CustomerDisplay(BaseModel):
         return m
 
 
-class CustomerFlagsStripeTypedDict(TypedDict):
-    product_id: NotRequired[str]
-    r"""Stripe product ID this feature's usage prices bill under."""
-    meter_id: NotRequired[str]
-    r"""Stripe meter ID used to create this feature's metered price."""
-
-
-class CustomerFlagsStripe(BaseModel):
-    product_id: Optional[str] = None
-    r"""Stripe product ID this feature's usage prices bill under."""
-
-    meter_id: Optional[str] = None
-    r"""Stripe meter ID used to create this feature's metered price."""
-
-    @model_serializer(mode="wrap")
-    def serialize_model(self, handler):
-        optional_fields = set(["product_id", "meter_id"])
-        serialized = handler(self)
-        m = {}
-
-        for n, f in type(self).model_fields.items():
-            k = f.alias or n
-            val = serialized.get(k, serialized.get(n))
-
-            if val != UNSET_SENTINEL:
-                if val is not None or k not in optional_fields:
-                    m[k] = val
-
-        return m
-
-
 class CustomerFlagsProcessorsTypedDict(TypedDict):
-    r"""Processor mappings for this feature. Present when a Stripe product or meter is set."""
-
-    stripe: NotRequired[CustomerFlagsStripeTypedDict]
-
-
-class CustomerFlagsProcessors(BaseModel):
-    r"""Processor mappings for this feature. Present when a Stripe product or meter is set."""
-
-    stripe: Optional[CustomerFlagsStripe] = None
-
-    @model_serializer(mode="wrap")
-    def serialize_model(self, handler):
-        optional_fields = set(["stripe"])
-        serialized = handler(self)
-        m = {}
-
-        for n, f in type(self).model_fields.items():
-            k = f.alias or n
-            val = serialized.get(k, serialized.get(n))
-
-            if val != UNSET_SENTINEL:
-                if val is not None or k not in optional_fields:
-                    m[k] = val
-
-        return m
+    r"""Processor mappings for this feature."""
 
 
 class CustomerFeatureTypedDict(TypedDict):
@@ -1676,8 +1621,6 @@ class CustomerFeatureTypedDict(TypedDict):
     r"""Per-provider default markup percentages for AI credit systems."""
     display: NotRequired[CustomerDisplayTypedDict]
     r"""Display names for the feature in billing UI and customer-facing components."""
-    processors: NotRequired[CustomerFlagsProcessorsTypedDict]
-    r"""Processor mappings for this feature. Present when a Stripe product or meter is set."""
 
 
 class CustomerFeature(BaseModel):
@@ -1716,8 +1659,6 @@ class CustomerFeature(BaseModel):
     display: Optional[CustomerDisplay] = None
     r"""Display names for the feature in billing UI and customer-facing components."""
 
-    processors: Optional[CustomerFlagsProcessors] = None
-    r"""Processor mappings for this feature. Present when a Stripe product or meter is set."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -1816,7 +1757,7 @@ class CustomerConfigTypedDict(TypedDict):
     disable_pooled_balance: NotRequired[bool]
     r"""Whether to disable the shared customer-level pool for entities."""
     disable_overage_billing: NotRequired[bool]
-    r"""Stops Autumn from posting usage-overage line items to Stripe for this customer. Check/track and balance resets still behave normally. When set, this overrides the organization-level disable_overage_billing setting."""
+    r"""Stops Autumn from posting usage-overage line items to the processor for this customer. Check/track and balance resets still behave normally. When set, this overrides the organization-level disable_overage_billing setting."""
 
 
 class CustomerConfig(BaseModel):
@@ -1826,7 +1767,7 @@ class CustomerConfig(BaseModel):
     r"""Whether to disable the shared customer-level pool for entities."""
 
     disable_overage_billing: Optional[bool] = None
-    r"""Stops Autumn from posting usage-overage line items to Stripe for this customer. Check/track and balance resets still behave normally. When set, this overrides the organization-level disable_overage_billing setting."""
+    r"""Stops Autumn from posting usage-overage line items to the processor for this customer. Check/track and balance resets still behave normally. When set, this overrides the organization-level disable_overage_billing setting."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -1843,20 +1784,6 @@ class CustomerConfig(BaseModel):
                     m[k] = val
 
         return m
-
-
-class CustomerStripeTypedDict(TypedDict):
-    r"""Stripe processor connection for the customer."""
-
-    id: str
-    r"""Stripe customer ID."""
-
-
-class CustomerStripe(BaseModel):
-    r"""Stripe processor connection for the customer."""
-
-    id: str
-    r"""Stripe customer ID."""
 
 
 class VercelTypedDict(TypedDict):
@@ -1878,60 +1805,22 @@ class Vercel(BaseModel):
     r"""Vercel account ID associated with the installation."""
 
 
-class CustomerRevenuecatTypedDict(TypedDict):
-    r"""RevenueCat processor connection for the customer."""
-
-    id: Nullable[str]
-    r"""Customer's external ID, used as the RevenueCat app user ID. Null if the customer has no external ID set."""
-
-
-class CustomerRevenuecat(BaseModel):
-    r"""RevenueCat processor connection for the customer."""
-
-    id: Nullable[str]
-    r"""Customer's external ID, used as the RevenueCat app user ID. Null if the customer has no external ID set."""
-
-    @model_serializer(mode="wrap")
-    def serialize_model(self, handler):
-        serialized = handler(self)
-        m = {}
-
-        for n, f in type(self).model_fields.items():
-            k = f.alias or n
-            val = serialized.get(k, serialized.get(n))
-
-            if val != UNSET_SENTINEL:
-                m[k] = val
-
-        return m
-
-
 class CustomerProcessorsTypedDict(TypedDict):
-    r"""Payment processors this customer is connected to (Stripe, Vercel, RevenueCat). Omitted entirely when the customer has not been created in any processor."""
+    r"""Payment processors this customer is connected to. Omitted entirely when the customer has not been created in any processor."""
 
-    stripe: NotRequired[CustomerStripeTypedDict]
-    r"""Stripe processor connection for the customer."""
     vercel: NotRequired[VercelTypedDict]
     r"""Vercel processor connection for the customer (public-safe subset)."""
-    revenuecat: NotRequired[CustomerRevenuecatTypedDict]
-    r"""RevenueCat processor connection for the customer."""
 
 
 class CustomerProcessors(BaseModel):
-    r"""Payment processors this customer is connected to (Stripe, Vercel, RevenueCat). Omitted entirely when the customer has not been created in any processor."""
-
-    stripe: Optional[CustomerStripe] = None
-    r"""Stripe processor connection for the customer."""
+    r"""Payment processors this customer is connected to. Omitted entirely when the customer has not been created in any processor."""
 
     vercel: Optional[Vercel] = None
     r"""Vercel processor connection for the customer (public-safe subset)."""
 
-    revenuecat: Optional[CustomerRevenuecat] = None
-    r"""RevenueCat processor connection for the customer."""
-
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
-        optional_fields = set(["stripe", "vercel", "revenuecat"])
+        optional_fields = set(["vercel"])
         serialized = handler(self)
         m = {}
 
@@ -1948,8 +1837,7 @@ class CustomerProcessors(BaseModel):
 
 ProcessorType = Union[
     Literal[
-        "stripe",
-        "revenuecat",
+        "paypal",
     ],
     UnrecognizedStr,
 ]
@@ -1959,8 +1847,8 @@ r"""The billing processor that owns this invoice."""
 class InvoiceTypedDict(TypedDict):
     plan_ids: List[str]
     r"""Array of plan IDs included in this invoice"""
-    stripe_id: str
-    r"""The Stripe invoice ID"""
+    processor_invoice_id: str
+    r"""The processor's stable invoice ID."""
     status: str
     r"""The status of the invoice"""
     total: float
@@ -1972,15 +1860,15 @@ class InvoiceTypedDict(TypedDict):
     processor_type: NotRequired[ProcessorType]
     r"""The billing processor that owns this invoice."""
     hosted_invoice_url: NotRequired[Nullable[str]]
-    r"""URL to the Stripe-hosted invoice page"""
+    r"""The hosted invoice URL, when available."""
 
 
 class Invoice(BaseModel):
     plan_ids: List[str]
     r"""Array of plan IDs included in this invoice"""
 
-    stripe_id: str
-    r"""The Stripe invoice ID"""
+    processor_invoice_id: str
+    r"""The processor's stable invoice ID."""
 
     status: str
     r"""The status of the invoice"""
@@ -1994,11 +1882,11 @@ class Invoice(BaseModel):
     created_at: float
     r"""Timestamp when the invoice was created"""
 
-    processor_type: Optional[ProcessorType] = "stripe"
+    processor_type: Optional[ProcessorType] = "paypal"
     r"""The billing processor that owns this invoice."""
 
     hosted_invoice_url: OptionalNullable[str] = UNSET
-    r"""URL to the Stripe-hosted invoice page"""
+    r"""The hosted invoice URL, when available."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -2341,7 +2229,7 @@ class RewardsDiscountTypedDict(TypedDict):
     end: NotRequired[Nullable[float]]
     r"""Timestamp when the discount expires"""
     subscription_id: NotRequired[Nullable[str]]
-    r"""The Stripe subscription ID this discount is applied to"""
+    r"""The subscription ID this discount is applied to"""
     total_discount_amount: NotRequired[Nullable[float]]
     r"""Total amount saved from this discount"""
 
@@ -2375,7 +2263,7 @@ class RewardsDiscount(BaseModel):
     r"""Timestamp when the discount expires"""
 
     subscription_id: OptionalNullable[str] = UNSET
-    r"""The Stripe subscription ID this discount is applied to"""
+    r"""The subscription ID this discount is applied to"""
 
     total_discount_amount: OptionalNullable[float] = UNSET
     r"""Total amount saved from this discount"""
@@ -2546,14 +2434,14 @@ class BillingDetailsAddress(BaseModel):
 
 class BillingDetailsTaxIDTypedDict(TypedDict):
     type: str
-    r"""Stripe tax ID type, e.g. eu_vat, gb_vat, us_ein. See https://docs.stripe.com/billing/customer/tax-ids#supported-tax-id"""
+    r"""Tax ID type, e.g. eu_vat, gb_vat, us_ein."""
     value: str
     r"""The tax ID, e.g. DE123456789."""
 
 
 class BillingDetailsTaxID(BaseModel):
     type: str
-    r"""Stripe tax ID type, e.g. eu_vat, gb_vat, us_ein. See https://docs.stripe.com/billing/customer/tax-ids#supported-tax-id"""
+    r"""Tax ID type, e.g. eu_vat, gb_vat, us_ein."""
 
     value: str
     r"""The tax ID, e.g. DE123456789."""
@@ -2591,7 +2479,7 @@ class InvoiceSettings(BaseModel):
 
 
 class BillingDetailsTypedDict(TypedDict):
-    r"""Billing details read live from the linked Stripe customer. Null when no Stripe customer is linked."""
+    r"""Billing details read live from the processor. Null when none are available."""
 
     address: Nullable[BillingDetailsAddressTypedDict]
     tax_ids: List[BillingDetailsTaxIDTypedDict]
@@ -2600,7 +2488,7 @@ class BillingDetailsTypedDict(TypedDict):
 
 
 class BillingDetails(BaseModel):
-    r"""Billing details read live from the linked Stripe customer. Null when no Stripe customer is linked."""
+    r"""Billing details read live from the processor. Null when none are available."""
 
     address: Nullable[BillingDetailsAddress]
 
@@ -2636,8 +2524,6 @@ class CustomerTypedDict(TypedDict):
     r"""Timestamp of customer creation in milliseconds since epoch."""
     fingerprint: Nullable[str]
     r"""A unique identifier (eg. serial number) to de-duplicate customers across devices or browsers. For example: apple device ID."""
-    stripe_id: Nullable[str]
-    r"""Stripe customer ID."""
     env: CustomerEnv
     r"""The environment this customer was created in."""
     metadata: Dict[str, Any]
@@ -2659,11 +2545,11 @@ class CustomerTypedDict(TypedDict):
     config: NotRequired[CustomerConfigTypedDict]
     r"""Configuration for the customer."""
     processors: NotRequired[CustomerProcessorsTypedDict]
-    r"""Payment processors this customer is connected to (Stripe, Vercel, RevenueCat). Omitted entirely when the customer has not been created in any processor."""
+    r"""Payment processors this customer is connected to. Omitted entirely when the customer has not been created in any processor."""
     invoices: NotRequired[List[InvoiceTypedDict]]
     r"""Invoices for this customer."""
     invoice_previews: NotRequired[List[InvoicePreviewTypedDict]]
-    r"""Upcoming invoice for each of this customer's Stripe subscriptions."""
+    r"""Upcoming invoice for each of this customer's processor subscriptions."""
     entities: NotRequired[List[EntityTypedDict]]
     r"""Entities associated with this customer."""
     trials_used: NotRequired[List[TrialsUsedTypedDict]]
@@ -2675,7 +2561,7 @@ class CustomerTypedDict(TypedDict):
     payment_method: NotRequired[Nullable[Any]]
     r"""The customer's default payment method."""
     billing_details: NotRequired[Nullable[BillingDetailsTypedDict]]
-    r"""Billing details from the linked Stripe customer. Returned only if billing_details is provided in the expand parameter."""
+    r"""Billing details from the processor. Returned only if billing_details is provided in the expand parameter."""
 
 
 class Customer(BaseModel):
@@ -2693,9 +2579,6 @@ class Customer(BaseModel):
 
     fingerprint: Nullable[str]
     r"""A unique identifier (eg. serial number) to de-duplicate customers across devices or browsers. For example: apple device ID."""
-
-    stripe_id: Nullable[str]
-    r"""Stripe customer ID."""
 
     env: CustomerEnv
     r"""The environment this customer was created in."""
@@ -2728,13 +2611,13 @@ class Customer(BaseModel):
     r"""Configuration for the customer."""
 
     processors: Optional[CustomerProcessors] = None
-    r"""Payment processors this customer is connected to (Stripe, Vercel, RevenueCat). Omitted entirely when the customer has not been created in any processor."""
+    r"""Payment processors this customer is connected to. Omitted entirely when the customer has not been created in any processor."""
 
     invoices: Optional[List[Invoice]] = None
     r"""Invoices for this customer."""
 
     invoice_previews: Optional[List[InvoicePreview]] = None
-    r"""Upcoming invoice for each of this customer's Stripe subscriptions."""
+    r"""Upcoming invoice for each of this customer's processor subscriptions."""
 
     entities: Optional[List[Entity]] = None
     r"""Entities associated with this customer."""
@@ -2752,7 +2635,7 @@ class Customer(BaseModel):
     r"""The customer's default payment method."""
 
     billing_details: OptionalNullable[BillingDetails] = UNSET
-    r"""Billing details from the linked Stripe customer. Returned only if billing_details is provided in the expand parameter."""
+    r"""Billing details from the processor. Returned only if billing_details is provided in the expand parameter."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -2776,7 +2659,6 @@ class Customer(BaseModel):
                 "name",
                 "email",
                 "fingerprint",
-                "stripe_id",
                 "rewards",
                 "payment_method",
                 "billing_details",

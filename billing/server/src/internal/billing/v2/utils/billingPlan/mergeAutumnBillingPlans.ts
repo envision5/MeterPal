@@ -41,11 +41,6 @@ export const mergeAutumnBillingPlans = ({
 			...(incoming.deleteCustomerProducts ?? []),
 		],
 	}),
-	schedulePhaseCustomerProductReplacements: mergeByKey({
-		base: base.schedulePhaseCustomerProductReplacements,
-		incoming: incoming.schedulePhaseCustomerProductReplacements,
-		getKey: (replacement) => replacement.oldCustomerProductId,
-	}),
 	customPrices: mergeById({
 		base: base.customPrices,
 		incoming: incoming.customPrices,
@@ -122,7 +117,7 @@ export const mergeAutumnBillingPlans = ({
 	upsertSubscriptions: mergeByKey({
 		base: base.upsertSubscriptions,
 		incoming: incoming.upsertSubscriptions,
-		getKey: (subscription) => subscription.stripe_id ?? subscription.id,
+		getKey: (subscription) => subscription.processor_id ?? subscription.id,
 	}),
 	upsertInvoice: incoming.upsertInvoice ?? base.upsertInvoice,
 	refundPlan: incoming.refundPlan ?? base.refundPlan,

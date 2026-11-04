@@ -5,11 +5,9 @@ import {
 	type CustomerExportSnapshot,
 } from "@autumn/shared";
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
-import { createBillingVerifyExportStringifier } from "../../csv/createBillingVerifyExportStringifier.js";
 import { createCustomerExportStringifier } from "../../csv/createCustomerExportStringifier.js";
 import type { CustomerExportPopulation } from "../../queries/getCustomerExportScalars.js";
 import type { CustomerExportProgressReporter } from "../customerExportProgressReporter.js";
-import { createBillingVerifyExportRowStream } from "./createBillingVerifyExportRowStream.js";
 import { createCustomerExportRowStream } from "./createCustomerExportRowStream.js";
 
 export type CustomerExportRowStreamFactory = (args: {
@@ -23,21 +21,18 @@ export type CustomerExportRowStreamFactory = (args: {
 	}) => Promise<void> | void;
 }) => Readable;
 
-type CustomerExportProducer = {
+export type CustomerExportProducer = {
 	createRowStream: CustomerExportRowStreamFactory;
 	createStringifier: (args: { fields: CustomerExportField[] }) => Transform;
 };
 
-export const CUSTOMER_EXPORT_PRODUCERS: Record<
-	CustomerExportKind,
-	CustomerExportProducer
+/** The billing-verify export compared MeterPal's records against the
+ *  processor's subscriptions. It has no producer, so the kind is absent. */
+export const CUSTOMER_EXPORT_PRODUCERS: Partial<
+	Record<CustomerExportKind, CustomerExportProducer>
 > = {
 	[CustomerExportKind.Customers]: {
 		createRowStream: createCustomerExportRowStream,
 		createStringifier: createCustomerExportStringifier,
-	},
-	[CustomerExportKind.BillingVerify]: {
-		createRowStream: createBillingVerifyExportRowStream,
-		createStringifier: createBillingVerifyExportStringifier,
 	},
 };

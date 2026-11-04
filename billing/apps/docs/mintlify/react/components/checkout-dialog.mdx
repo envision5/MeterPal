@@ -3,7 +3,7 @@ title: "Payment Confirmation Dialog"
 description: "Drop in MeterPal's Confirm Payment Dialog component to let your customers confirm their payment"
 ---
 
-A users first payment will happen via a Stripe hosted Checkout URL. After that, you can configure the Payment Confirmation dialog to open when a customer wants to make another payment (eg upgrades, downgrades, topups). 
+A users first payment will happen via a processor hosted checkout URL. After that, you can configure the Payment Confirmation dialog to open when a customer wants to make another payment (eg upgrades, downgrades, topups). 
 
 This component allows you to let your customers preview how much will be charged, and confirm the change.
 
@@ -55,7 +55,7 @@ When the customer confirms the purchase, MeterPal will attach the product to the
 
 <Check>
   If there are no inputs required and it's a new customer (without an existing
-  payment method), the customer will be redirected straight to the Stripe
+  payment method), the customer will be redirected straight to the processor's
   checkout page.
 </Check>
 

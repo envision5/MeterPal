@@ -9,7 +9,7 @@ Requires the stack from demo/README.md to be running.  It walks through:
   3. A second model priced from models.dev list rates (no config needed)
   4. Draining the wallet until MeterPal's /check refuses the NEXT call (402)
      -- admission control, before any provider is touched
-  5. A top-up (the API call a Stripe/PayPal webhook will make in prod)
+  5. A top-up (the API call a PayPal webhook will make in prod)
      and the same customer being admitted again
   6. The usage ledger in Postgres: per-call cost, rates, markup, tokens
 
@@ -176,7 +176,7 @@ def main() -> None:
         time.sleep(1.2)  # let the bridge's /check cache expire
     show_balance(autumn_c)
 
-    phase(5, "Top-up (what a Stripe/PayPal webhook triggers in production)")
+    phase(5, "Top-up (what a PayPal webhook triggers in production)")
     # The balances endpoint takes an ABSOLUTE value: raising it grants
     # credits; lowering it would be recorded as consumption.
     resp = autumn_c.post(f"/v1/customers/{CUSTOMER_ID}/balances",
@@ -195,7 +195,7 @@ def main() -> None:
     print("and when the wallet ran dry, admission was refused BEFORE hitting the provider.")
     print(f"{DI}The status=failure row with 0 tokens is the 402-denied call -- recorded")
     print(f"by the bridge's failure hook, billed at 0.{C}")
-    print("What you did NOT see: Stripe/PayPal webhooks driving these balances --")
+    print("What you did NOT see: PayPal webhooks driving these balances --")
     print("that is the only part to swap in when you wire real keys.")
 
 

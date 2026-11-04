@@ -28,7 +28,7 @@ const response = await autumn.billing.multiUpdate({
 });
 ```
 
-```typescript Cancel immediately with a refund and Stripe reason
+```typescript Cancel immediately with a refund and processor reason
 const response = await autumn.billing.multiUpdate({
     customerId: "cus_123",
     updates: [
@@ -64,7 +64,7 @@ const response = await autumn.billing.multiUpdate({
 </DynamicParamField>
 
 <DynamicParamField body="subscription_params" type="object">
-  Additional parameters to pass into the Stripe subscription update or cancel call.
+  Additional parameters to pass into the processor subscription update or cancel call.
 </DynamicParamField>
 
 <DynamicParamField body="updates" type="object[]" required>
@@ -111,8 +111,8 @@ const response = await autumn.billing.multiUpdate({
       The status of the invoice (e.g., 'paid', 'open', 'draft').
     </DynamicResponseField>
 
-    <DynamicResponseField name="stripe_id" type="string">
-      The Stripe invoice ID.
+    <DynamicResponseField name="processor_invoice_id" type="string">
+      The processor invoice ID.
     </DynamicResponseField>
 
     <DynamicResponseField name="total" type="number">
@@ -155,10 +155,10 @@ const response = await autumn.billing.multiUpdate({
   "customer_id": "cus_123",
   "invoice": {
     "status": "paid",
-    "stripe_id": "in_1234",
+    "processor_invoice_id": "in_1234",
     "total": -20,
     "currency": "usd",
-    "hosted_invoice_url": "https://invoice.stripe.com/..."
+    "hosted_invoice_url": "https://example.com/invoice/..."
   },
   "payment_url": null
 }

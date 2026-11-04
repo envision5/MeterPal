@@ -5,13 +5,13 @@ const BUILT_IN_ENVIRONMENTS = {
 	production: {
 		title: "Production",
 		description:
-			"Your live environment. Real customers and real payments through Stripe live mode.",
+			"Your live environment. Real customers and real payments through PayPal live mode.",
 		note: "Production is built in, so it can't be renamed or deleted.",
 	},
 	defaultSandbox: {
 		title: "Sandbox",
 		description:
-			"The default test environment for your organization, using Stripe test mode.",
+			"The default test environment for your organization, using PayPal sandbox mode.",
 		note: "The default sandbox is built in, so it can't be renamed or deleted. Create a custom sandbox for a separate, named test environment.",
 	},
 } as const;

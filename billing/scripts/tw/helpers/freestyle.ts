@@ -4,8 +4,8 @@
  * The differentiator vs Modal/Vercel is MEMORY snapshots: `snapshotAndStop`
  * captures the warm parent with PG + Dragonfly + goaws AND the Autumn server +
  * SQS workers + cron all RUNNING. Every worker restores already serving; boot is
- * swapped for freestyleBoot.ts (bind-only: svix/stripe DB binds + the pool-key
- * file the initMasterStripe seam reads) — seconds to READY, no process startup.
+ * swapped for freestyleBoot.ts (bind-only: the svix DB bind) — seconds to READY,
+ * no process startup.
  *
  * ## Lifecycle mapping
  *   - **createWarmSandbox** — `vms.create()` (fresh Debian) → clone repo @ ref →
@@ -29,7 +29,7 @@
  *   - **runDetached** — nohup + pid/exit files + a polling log pump that feeds
  *     onChunk until the READY sentinel, then slows to a liveness poll.
  *   - **getPublicUrl** — `domains.mappings.create` on `<name>.style.dev` (auto
- *     HTTPS; the inbound Stripe webhook target).
+ *     HTTPS; the worker's public entry point).
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import chalk from "chalk";
@@ -40,11 +40,9 @@ import {
 	DATABASE_URL,
 	DYNAMODB_ENDPOINT,
 	EDGE_CONFIG_OVERRIDE_B64,
-	INGRESS_PORT,
 	REDIS_URL,
 	SERVER_PORT,
 	SQS_QUEUE_URL_V2,
-	STRIPE_WEBHOOK_SQS_QUEUE_URL,
 	TRACK_ASYNC_SQS_QUEUE_URL,
 	TRACK_ASYNC_STANDARD_SQS_QUEUE_URL,
 	TRACK_SQS_QUEUE_URL,
@@ -77,13 +75,11 @@ const START_SERVICES = `${REPO_ROOT}/scripts/tw/image/start-services.sh`;
 /** boot.ts is swapped for this in runDetached: forks resume a RUNNING server,
  * so only per-worker binds run (see worker/freestyleBoot.ts). */
 const FREESTYLE_BOOT_SCRIPT = "scripts/tw/worker/freestyleBoot.ts";
-const STRIPE_KEY_FILE = "/opt/autumn-tw/worker-stripe-key";
 const WARM_SERVER_HEALTH_TIMEOUT_S = 180;
 /** Long enough for apt + initdb on the cold path; execs are buffered. */
 const EXEC_TIMEOUT_MS = 15 * 60 * 1000;
 /** Patience for a paced create (a 199-fleet drains in ~40s at 50/10s). */
 const CREATE_DEADLINE_MS = 5 * 60 * 1000;
-const INGRESS_IDLE_TIMEOUT_S = 3600;
 
 const freestyleApiKey = (): string => {
 	const key = process.env.FREESTYLE_API_KEY;
@@ -314,8 +310,8 @@ const createVmWithBackoff = async (options: {
 	}
 };
 
-/** The env the SNAPSHOTTED server runs with. Per-worker identity (pool key,
- * sub-account, svix) arrives later via the key-file seam + DB binds. */
+/** The env the SNAPSHOTTED server runs with. The PayPal credentials arrive with
+ * the worker fork's env; the Svix identity arrives later via the DB bind. */
 const warmServerEnv = (): Record<string, string> => {
 	const requireSecret = (name: string): string => {
 		const value = process.env[name];
@@ -324,9 +320,6 @@ const warmServerEnv = (): Record<string, string> => {
 		}
 		return value;
 	};
-	const placeholderKey =
-		process.env.STRIPE_TEST_KEY_POOL?.split(",")[0]?.trim() ||
-		requireSecret("STRIPE_SANDBOX_SECRET_KEY");
 	const env: Record<string, string> = {
 		NODE_ENV: "development",
 		SERVER_PORT: String(SERVER_PORT),
@@ -339,7 +332,6 @@ const warmServerEnv = (): Record<string, string> => {
 		CACHE_V2_DRAGONFLY_URL: REDIS_URL,
 		BALANCE_SYNC_SQS_QUEUE_URL,
 		SQS_QUEUE_URL_V2,
-		STRIPE_WEBHOOK_SQS_QUEUE_URL,
 		TRACK_SQS_QUEUE_URL,
 		TRACK_ASYNC_SQS_QUEUE_URL,
 		TRACK_ASYNC_STANDARD_SQS_QUEUE_URL,
@@ -347,9 +339,11 @@ const warmServerEnv = (): Record<string, string> => {
 		ENCRYPTION_IV: requireSecret("ENCRYPTION_IV"),
 		ENCRYPTION_PASSWORD: requireSecret("ENCRYPTION_PASSWORD"),
 		BETTER_AUTH_SECRET: requireSecret("BETTER_AUTH_SECRET"),
-		STRIPE_WEBHOOK_SKIP_VERIFY: "true",
-		STRIPE_SANDBOX_SECRET_KEY: placeholderKey,
-		STRIPE_SANDBOX_WEBHOOK_SECRET: "whsec_tw_skipverify",
+		// The snapshotted server reads the PayPal credentials from its own env —
+		// the test org carries no `paypal_config`, so this is the only connection.
+		PAYPAL_CLIENT_ID: requireSecret("PAYPAL_CLIENT_ID"),
+		PAYPAL_CLIENT_SECRET: requireSecret("PAYPAL_CLIENT_SECRET"),
+		PAYPAL_ENV: process.env.PAYPAL_ENV === "live" ? "live" : "sandbox",
 		AUTUMN_DB_DIRECT: "1",
 		AUTUMN_EDGE_CONFIG_OVERRIDE_B64: EDGE_CONFIG_OVERRIDE_B64,
 		TW_WORKER_MODE: "1",
@@ -716,53 +710,6 @@ export const freestyleProvider: ProviderImpl = {
 		return wrap(opts.name, vm, vmId);
 	},
 
-	async createIngressSandbox(
-		opts: CreateSandboxOptions,
-	): Promise<ProviderSandbox> {
-		// The ingress restores from the newest READY warm snapshot (bun + repo +
-		// services all present) — a fresh Debian VM would need its own provisioning
-		// pass. API lookup, NOT the in-process map (empty on stale warm hits).
-		const newestWarm = await latestWarmSnapshot().catch(() => undefined);
-		const snapshotEntry = newestWarm
-			? ([newestWarm.name, newestWarm.snapshotId] as const)
-			: undefined;
-		const done = stage(`create ingress ${opts.name}`);
-		let vmRef: { vm: Vm; vmId: string };
-		if (snapshotEntry) {
-			vmRef = await createVmWithBackoff({
-				snapshotId: snapshotEntry[1],
-				name: opts.name,
-				idleTimeoutSeconds: INGRESS_IDLE_TIMEOUT_S,
-				ephemeral: true,
-				signal: opts.signal,
-			});
-			// The snapshot's resumed Autumn app holds :8080 — the ingress needs it.
-			await execOnVm(
-				vmRef.vm,
-				"pkill -f 'bun src/index.ts' || true; pkill -f 'bun src/workers.ts' || true; pkill -f 'bun src/cron.ts' || true",
-				30_000,
-			);
-		} else {
-			if (!opts.source) {
-				throw new Error(
-					"freestyle: no warm snapshot and no git source for the ingress",
-				);
-			}
-			vmRef = await createVmWithBackoff({
-				name: opts.name,
-				idleTimeoutSeconds: INGRESS_IDLE_TIMEOUT_S,
-				ephemeral: true,
-				signal: opts.signal,
-			});
-			await cloneRepo(vmRef.vm, opts.source);
-		}
-		liveVms.set(opts.name, vmRef);
-		liveVms.set(vmRef.vmId, vmRef);
-		done();
-		await vmRef.vm.fs.writeTextFile(VM_ENV_FILE, envFileContent(opts.env));
-		return wrap(opts.name, vmRef.vm, vmRef.vmId);
-	},
-
 	async forkWorker(opts: ForkWorkerOptions): Promise<ProviderSandbox> {
 		// Exact-sha snapshot → fresh restore (8s boots). Otherwise restore the
 		// NEWEST generation and mark the worker stale: the orchestrator checks the
@@ -789,7 +736,7 @@ export const freestyleProvider: ProviderImpl = {
 		});
 		liveVms.set(opts.name, { vm, vmId });
 		liveVms.set(vmId, { vm, vmId });
-		// Per-worker env (its pool Stripe key, sub-account, svix flags) replaces the
+		// Per-worker env (PayPal credentials, svix flags) replaces the
 		// warm parent's env file baked into the snapshot.
 		const env = stale ? { ...opts.env, TW_SNAPSHOT_STALE: "1" } : opts.env;
 		await vm.fs.writeTextFile(VM_ENV_FILE, envFileContent(env));
@@ -873,8 +820,6 @@ export const freestyleProvider: ProviderImpl = {
 			[
 				"set -e",
 				`mkdir -p ${TW_PREFIX}/logs`,
-				`printf '%s' ${shellQuote(serverEnv.STRIPE_SANDBOX_SECRET_KEY)} > ${STRIPE_KEY_FILE}`,
-				`chmod 600 ${STRIPE_KEY_FILE}`,
 				`cd ${REPO_ROOT} && bun scripts/tw/worker/prepareBalanceSyncQueue.ts`,
 				`cd ${REPO_ROOT}/server`,
 				`nohup bun src/index.ts > ${TW_PREFIX}/logs/server.log 2>&1 &`,
@@ -989,7 +934,7 @@ export const freestyleProvider: ProviderImpl = {
 			vmPort: port,
 		});
 		domainsBySandbox.set(sandbox.name, domain);
-		if (port !== SERVER_PORT && port !== INGRESS_PORT) {
+		if (port !== SERVER_PORT) {
 			narrate(
 				chalk.yellow(
 					`[freestyle] mapped non-standard port ${port} for ${sandbox.name}`,

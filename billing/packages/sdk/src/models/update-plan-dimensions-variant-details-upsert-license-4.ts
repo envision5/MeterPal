@@ -18,8 +18,6 @@ import {
   UpdatePlanItemAdditionalCurrencyResponse$inboundSchema,
   UpdatePlanItemBillingMethodResponse,
   UpdatePlanItemBillingMethodResponse$inboundSchema,
-  UpdatePlanItemProcessors,
-  UpdatePlanItemProcessors$inboundSchema,
   UpdatePlanItemResetResponse,
   UpdatePlanItemResetResponse$inboundSchema,
   UpdatePlanItemThresholdBillingResponse,
@@ -68,11 +66,7 @@ export type UpdatePlanItemPriceResponse = {
    * Maximum units a customer can purchase beyond included. E.g. if included=100 and max_purchase=300, customer can use up to 400 total before usage is capped. Null for no limit.
    */
   maxPurchase: number | null;
-  /**
-   * Payment processors this item price is connected to. Omitted when unset.
-   */
-  processors?: UpdatePlanItemProcessors | undefined;
-};
+  };
 
 /**
  * Display text for showing this item in pricing pages.
@@ -468,47 +462,6 @@ export type UpdatePlanItem = {
   featureOverride?: UpdatePlanItemFeatureOverrideResponse | undefined;
 };
 
-export type UpdatePlanStripe = {
-  /**
-   * Stripe product ID this plan is billed under.
-   */
-  productId: string;
-  /**
-   * Extra Stripe product IDs aliased to this plan.
-   */
-  additionalProductIds?: Array<string> | undefined;
-};
-
-export type UpdatePlanFeatureQuantity = {
-  featureId: string;
-  quantity?: number | undefined;
-};
-
-export type UpdatePlanProduct = {
-  /**
-   * RevenueCat product ID that grants this plan when purchased.
-   */
-  productId: string;
-  /**
-   * Prepaid quantities granted when this specific RevenueCat product is purchased, in feature units.
-   */
-  featureQuantities?: Array<UpdatePlanFeatureQuantity> | undefined;
-};
-
-export type UpdatePlanRevenuecat = {
-  /**
-   * Every RevenueCat product that maps to this plan. Replaces the current set.
-   */
-  products: Array<UpdatePlanProduct>;
-};
-
-/**
- * Payment processors this plan is connected to. Omitted when unset.
- */
-export type UpdatePlanProcessors = {
-  stripe?: UpdatePlanStripe | null | undefined;
-  revenuecat?: UpdatePlanRevenuecat | null | undefined;
-};
 
 /**
  * Unit of time for the trial duration ('day', 'month', 'year').
@@ -668,7 +621,7 @@ export type UpdatePlanSpendLimitResponse = {
    */
   overageLimit?: number | undefined;
   /**
-   * When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally.
+   * When true, overage for this feature is not posted to the billing processor. Usage tracking and balance resets still behave normally.
    */
   skipOverageBilling?: boolean | undefined;
 };
@@ -912,7 +865,7 @@ export type UpdatePlanPriceVariantDetailsInterval = OpenEnum<
 
 export type UpdatePlanVariantDetailsAdditionalCurrency = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -986,7 +939,7 @@ export type UpdatePlanVariantDetailsReset = {
 
 export type UpdatePlanAddItemAdditionalCurrencyResponse = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -999,7 +952,7 @@ export type UpdatePlanVariantDetailsPriceTo = number | string;
 
 export type UpdatePlanVariantDetailsTierAdditionalCurrency = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -1763,7 +1716,7 @@ export type UpdatePlanVariantDetailsSpendLimit = {
    */
   overageLimit?: number | undefined;
   /**
-   * When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally.
+   * When true, overage for this feature is not posted to the billing processor. Usage tracking and balance resets still behave normally.
    */
   skipOverageBilling?: boolean | undefined;
 };
@@ -1959,7 +1912,7 @@ export type UpdatePlanPriceVariantDetailsUpsertLicenseInterval = OpenEnum<
 
 export type UpdatePlanUpsertLicenseAdditionalCurrencyResponse = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -2033,7 +1986,7 @@ export type UpdatePlanVariantDetailsUpsertLicenseReset = {
 
 export type UpdatePlanUpsertLicenseAddItemAdditionalCurrencyResponse = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -2046,7 +1999,7 @@ export type UpdatePlanVariantDetailsUpsertLicensePriceTo = number | string;
 
 export type UpdatePlanUpsertLicenseTierAdditionalCurrencyResponse = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -2285,7 +2238,6 @@ export const UpdatePlanItemPriceResponse$inboundSchema: z.ZodMiniType<
     billing_units: types.number(),
     billing_method: UpdatePlanItemBillingMethodResponse$inboundSchema,
     max_purchase: types.nullable(types.number()),
-    processors: types.optional(UpdatePlanItemProcessors$inboundSchema),
   }),
   z.transform((v) => {
     return remap$(v, {
@@ -3051,126 +3003,6 @@ export function updatePlanItemFromJSON(
   );
 }
 
-/** @internal */
-export const UpdatePlanStripe$inboundSchema: z.ZodMiniType<
-  UpdatePlanStripe,
-  unknown
-> = z.pipe(
-  z.object({
-    product_id: types.string(),
-    additional_product_ids: types.optional(z.array(types.string())),
-  }),
-  z.transform((v) => {
-    return remap$(v, {
-      "product_id": "productId",
-      "additional_product_ids": "additionalProductIds",
-    });
-  }),
-);
-
-export function updatePlanStripeFromJSON(
-  jsonString: string,
-): SafeParseResult<UpdatePlanStripe, SDKValidationError> {
-  return safeParse(
-    jsonString,
-    (x) => UpdatePlanStripe$inboundSchema.parse(JSON.parse(x)),
-    `Failed to parse 'UpdatePlanStripe' from JSON`,
-  );
-}
-
-/** @internal */
-export const UpdatePlanFeatureQuantity$inboundSchema: z.ZodMiniType<
-  UpdatePlanFeatureQuantity,
-  unknown
-> = z.pipe(
-  z.object({
-    feature_id: types.string(),
-    quantity: types.optional(types.number()),
-  }),
-  z.transform((v) => {
-    return remap$(v, {
-      "feature_id": "featureId",
-    });
-  }),
-);
-
-export function updatePlanFeatureQuantityFromJSON(
-  jsonString: string,
-): SafeParseResult<UpdatePlanFeatureQuantity, SDKValidationError> {
-  return safeParse(
-    jsonString,
-    (x) => UpdatePlanFeatureQuantity$inboundSchema.parse(JSON.parse(x)),
-    `Failed to parse 'UpdatePlanFeatureQuantity' from JSON`,
-  );
-}
-
-/** @internal */
-export const UpdatePlanProduct$inboundSchema: z.ZodMiniType<
-  UpdatePlanProduct,
-  unknown
-> = z.pipe(
-  z.object({
-    product_id: types.string(),
-    feature_quantities: types.optional(
-      z.array(z.lazy(() => UpdatePlanFeatureQuantity$inboundSchema)),
-    ),
-  }),
-  z.transform((v) => {
-    return remap$(v, {
-      "product_id": "productId",
-      "feature_quantities": "featureQuantities",
-    });
-  }),
-);
-
-export function updatePlanProductFromJSON(
-  jsonString: string,
-): SafeParseResult<UpdatePlanProduct, SDKValidationError> {
-  return safeParse(
-    jsonString,
-    (x) => UpdatePlanProduct$inboundSchema.parse(JSON.parse(x)),
-    `Failed to parse 'UpdatePlanProduct' from JSON`,
-  );
-}
-
-/** @internal */
-export const UpdatePlanRevenuecat$inboundSchema: z.ZodMiniType<
-  UpdatePlanRevenuecat,
-  unknown
-> = z.object({
-  products: z.array(z.lazy(() => UpdatePlanProduct$inboundSchema)),
-});
-
-export function updatePlanRevenuecatFromJSON(
-  jsonString: string,
-): SafeParseResult<UpdatePlanRevenuecat, SDKValidationError> {
-  return safeParse(
-    jsonString,
-    (x) => UpdatePlanRevenuecat$inboundSchema.parse(JSON.parse(x)),
-    `Failed to parse 'UpdatePlanRevenuecat' from JSON`,
-  );
-}
-
-/** @internal */
-export const UpdatePlanProcessors$inboundSchema: z.ZodMiniType<
-  UpdatePlanProcessors,
-  unknown
-> = z.object({
-  stripe: z.optional(z.nullable(z.lazy(() => UpdatePlanStripe$inboundSchema))),
-  revenuecat: z.optional(
-    z.nullable(z.lazy(() => UpdatePlanRevenuecat$inboundSchema)),
-  ),
-});
-
-export function updatePlanProcessorsFromJSON(
-  jsonString: string,
-): SafeParseResult<UpdatePlanProcessors, SDKValidationError> {
-  return safeParse(
-    jsonString,
-    (x) => UpdatePlanProcessors$inboundSchema.parse(JSON.parse(x)),
-    `Failed to parse 'UpdatePlanProcessors' from JSON`,
-  );
-}
 
 /** @internal */
 export const UpdatePlanDurationTypeResponse$inboundSchema: z.ZodMiniType<

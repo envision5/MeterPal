@@ -1,14 +1,11 @@
 import { Hono } from "hono";
 import type { HonoEnv } from "@/honoUtils/HonoEnv.js";
 import { handleGetCustomer } from "@/internal/customers/internalHandlers/handleGetCustomer.js";
-import { handleGetPendingPaymentLink } from "@/internal/customers/internalHandlers/handleGetPendingPaymentLink.js";
 import { handleClearCustomerCache } from "./handlers/handleClearCustomerCache.js";
 import { handleListCustomerProducts } from "./handlers/handleListCustomerProducts.js";
-import { handleGetInvoiceMetadata } from "./handlers/handleRefundInvoice/handleGetInvoiceMetadata.js";
 import { handleCountCustomers } from "./internalHandlers/handleCountCustomers.js";
 import { handleCreateCustomerExport } from "./internalHandlers/handleCreateCustomerExport.js";
 import { handleDownloadCustomerExport } from "./internalHandlers/handleDownloadCustomerExport.js";
-import { handleGetCusReferrals } from "./internalHandlers/handleGetCusReferrals.js";
 import { handleGetCustomerProduct } from "./internalHandlers/handleGetCustomerProduct.js";
 import { handleGetCustomerSchedule } from "./internalHandlers/handleGetCustomerSchedule.js";
 import { handleGetFullCustomers } from "./internalHandlers/handleGetFullCustomers.js";
@@ -36,23 +33,14 @@ internalCusRouter.post(
 	...handleDownloadCustomerExport,
 );
 internalCusRouter.get("/:customer_id/products", ...handleListCustomerProducts);
-internalCusRouter.get(
-	"/:customer_id/products/:customer_product_id/payment_link",
-	...handleGetPendingPaymentLink,
-);
 internalCusRouter.get("/:customer_id", ...handleGetCustomer);
 internalCusRouter.get(
 	"/:customer_id/product/:product_id",
 	...handleGetCustomerProduct,
 );
-internalCusRouter.get("/:customer_id/referrals", ...handleGetCusReferrals);
 internalCusRouter.get("/:customer_id/schedule", ...handleGetCustomerSchedule);
 internalCusRouter.get("/:customer_id/entities", ...handleListEntitiesInternal);
 internalCusRouter.post(
 	"/:customer_id/invoice-line-items",
 	...handleGetInvoiceLineItems,
-);
-internalCusRouter.get(
-	"/:customer_id/invoices/:stripe_invoice_id/metadata",
-	...handleGetInvoiceMetadata,
 );

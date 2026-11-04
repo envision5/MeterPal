@@ -37,13 +37,7 @@ Pass `currency` to bill this customer in a currency other than your organization
   Additional metadata for the customer
 </DynamicParamField>
 
-<DynamicParamField body="stripe_id" type="string | null">
-  Stripe customer ID if you already have one
-</DynamicParamField>
 
-<DynamicParamField body="create_in_stripe" type="boolean">
-  Whether to create the customer in Stripe
-</DynamicParamField>
 
 <DynamicParamField body="auto_enable_plan_id" type="string">
   The ID of the free plan to auto-enable for the customer
@@ -128,7 +122,7 @@ Pass `currency` to bill this customer in a currency other than your organization
         </DynamicParamField>
 
         <DynamicParamField body="skip_overage_billing" type="boolean">
-          When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally.
+          When true, overage for this feature is not posted to the payment processor. Usage tracking and balance resets still behave normally.
         </DynamicParamField>
 
       </Expandable>
@@ -231,92 +225,12 @@ Pass `currency` to bill this customer in a currency other than your organization
     </DynamicParamField>
 
     <DynamicParamField body="disable_overage_billing" type="boolean">
-      Stops MeterPal from posting usage-overage line items to Stripe for this customer. Check/track and balance resets still behave normally. When set, this overrides the organization-level disable_overage_billing setting.
+      Stops MeterPal from posting usage-overage line items to the payment processor for this customer. Check/track and balance resets still behave normally. When set, this overrides the organization-level disable_overage_billing setting.
     </DynamicParamField>
 
   </Expandable>
 </DynamicParamField>
 
-<DynamicParamField body="billing_details" type="object">
-  Billing details to set on the Stripe customer. Creates the Stripe customer if needed.
-  <Expandable title="properties">
-    <DynamicParamField body="address" type="object | null">
-      Billing address, used for tax and shown on invoices. Replaces the whole address, as in Stripe; null clears it.
-      <Expandable title="properties">
-        <DynamicParamField body="line1" type="string | null" />
-
-        <DynamicParamField body="line2" type="string | null" />
-
-        <DynamicParamField body="city" type="string | null" />
-
-        <DynamicParamField body="state" type="string | null" />
-
-        <DynamicParamField body="postal_code" type="string | null" />
-
-        <DynamicParamField body="country" type="string | null">
-          Two-letter country code (ISO 3166-1 alpha-2).
-        </DynamicParamField>
-
-      </Expandable>
-    </DynamicParamField>
-
-    <DynamicParamField body="tax_ids" type="object">
-      Tax IDs to add or remove (e.g. VAT). Stripe tax IDs cannot be edited, so change one by removing the old ID and adding the new one. IDs not listed are kept.
-      <Expandable title="properties">
-        <DynamicParamField body="add" type="object[]">
-          Tax IDs to add. IDs the customer already has are ignored.
-          <Expandable title="properties">
-            <DynamicParamField body="type" type="string" required>
-              Stripe tax ID type, e.g. eu_vat, gb_vat, us_ein. See https://docs.stripe.com/billing/customer/tax-ids#supported-tax-id
-            </DynamicParamField>
-
-            <DynamicParamField body="value" type="string" required>
-              The tax ID, e.g. DE123456789.
-            </DynamicParamField>
-
-          </Expandable>
-        </DynamicParamField>
-
-        <DynamicParamField body="remove" type="object[]">
-          Tax IDs to remove, matched by type and value. IDs the customer doesn't have are ignored.
-          <Expandable title="properties">
-            <DynamicParamField body="type" type="string" required>
-              Stripe tax ID type, e.g. eu_vat, gb_vat, us_ein. See https://docs.stripe.com/billing/customer/tax-ids#supported-tax-id
-            </DynamicParamField>
-
-            <DynamicParamField body="value" type="string" required>
-              The tax ID, e.g. DE123456789.
-            </DynamicParamField>
-
-          </Expandable>
-        </DynamicParamField>
-
-      </Expandable>
-    </DynamicParamField>
-
-    <DynamicParamField body="tax_exempt" type="'none' | 'exempt' | 'reverse'">
-      Tax exemption status. Use reverse for reverse-charge customers.
-    </DynamicParamField>
-
-    <DynamicParamField body="invoice_settings" type="object">
-      <Expandable title="properties">
-        <DynamicParamField body="custom_fields" type="object[] | null">
-          Up to 4 custom fields shown on every invoice, e.g. a PO number. Replaces the existing list; null clears it.
-          <Expandable title="properties">
-            <DynamicParamField body="name" type="string" required>
-              Label, e.g. PO Number.
-            </DynamicParamField>
-
-            <DynamicParamField body="value" type="string" required />
-
-          </Expandable>
-        </DynamicParamField>
-
-      </Expandable>
-    </DynamicParamField>
-
-  </Expandable>
-</DynamicParamField>
 
 <DynamicParamField body="expand" type="('invoices' | 'invoice_previews' | 'trials_used' | 'rewards' | 'entities' | 'referrals' | 'payment_method' | 'billing_details' | 'subscriptions.plan' | 'purchases.plan' | 'balances.feature' | 'flags.feature' | 'billing_controls.auto_topups.purchase_limit')[]">
   Fields to expand in the returned customer response, such as subscriptions.plan, purchases.plan, balances.feature, or flags.feature.
@@ -345,9 +259,6 @@ Pass `currency` to bill this customer in a currency other than your organization
   A unique identifier (eg. serial number) to de-duplicate customers across devices or browsers. For example: apple device ID.
 </DynamicResponseField>
 
-<DynamicResponseField name="stripe_id" type="string | null">
-  Stripe customer ID.
-</DynamicResponseField>
 
 <DynamicResponseField name="env" type="'sandbox' | 'live'">
   The environment this customer was created in.
@@ -440,7 +351,7 @@ Pass `currency` to bill this customer in a currency other than your organization
         </DynamicResponseField>
 
         <DynamicResponseField name="skip_overage_billing" type="boolean">
-          When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally.
+          When true, overage for this feature is not posted to the payment processor. Usage tracking and balance resets still behave normally.
         </DynamicResponseField>
 
         <DynamicResponseField name="source" type="'customer' | 'plan'">
@@ -612,7 +523,7 @@ Pass `currency` to bill this customer in a currency other than your organization
               Base price amounts in additional currencies. The base 'amount' is in the org's default currency.
               <Expandable title="properties">
                 <DynamicResponseField name="currency" type="string">
-                  Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                  Three-letter currency code (e.g. 'eur', 'gbp').
                 </DynamicResponseField>
 
                 <DynamicResponseField name="amount" type="number">
@@ -644,20 +555,6 @@ Pass `currency` to bill this customer in a currency other than your organization
               </Expandable>
             </DynamicResponseField>
 
-            <DynamicResponseField name="processors" type="object">
-              Payment processors this base price is connected to. Omitted when unset.
-              <Expandable title="properties">
-                <DynamicResponseField name="stripe" type="object | null">
-                  <Expandable title="properties">
-                    <DynamicResponseField name="price_id" type="string">
-                      Stripe price ID. For prepaid with included > 0 this is the V2 price.
-                    </DynamicResponseField>
-
-                  </Expandable>
-                </DynamicResponseField>
-
-              </Expandable>
-            </DynamicResponseField>
 
           </Expandable>
         </DynamicResponseField>
@@ -764,7 +661,7 @@ Pass `currency` to bill this customer in a currency other than your organization
                   Amounts in additional currencies for this flat price. The base 'amount' is in the org's default currency. Only valid with 'amount', not 'tiers' (tiered prices carry per-currency amounts on each tier).
                   <Expandable title="properties">
                     <DynamicResponseField name="currency" type="string">
-                      Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                      Three-letter currency code (e.g. 'eur', 'gbp').
                     </DynamicResponseField>
 
                     <DynamicResponseField name="amount" type="number">
@@ -786,7 +683,7 @@ Pass `currency` to bill this customer in a currency other than your organization
                     <DynamicResponseField name="additional_currencies" type="object[]">
                       <Expandable title="properties">
                         <DynamicResponseField name="currency" type="string">
-                          Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                          Three-letter currency code (e.g. 'eur', 'gbp').
                         </DynamicResponseField>
 
                         <DynamicResponseField name="amount" type="number">
@@ -825,20 +722,6 @@ Pass `currency` to bill this customer in a currency other than your organization
                   Maximum units a customer can purchase beyond included. E.g. if included=100 and max_purchase=300, customer can use up to 400 total before usage is capped. Null for no limit.
                 </DynamicResponseField>
 
-                <DynamicResponseField name="processors" type="object">
-                  Payment processors this item price is connected to. Omitted when unset.
-                  <Expandable title="properties">
-                    <DynamicResponseField name="stripe" type="object | null">
-                      <Expandable title="properties">
-                        <DynamicResponseField name="price_id" type="string">
-                          Stripe price ID. For prepaid with included > 0 this is the V2 price.
-                        </DynamicResponseField>
-
-                      </Expandable>
-                    </DynamicResponseField>
-
-                  </Expandable>
-                </DynamicResponseField>
 
               </Expandable>
             </DynamicResponseField>
@@ -1008,49 +891,6 @@ Pass `currency` to bill this customer in a currency other than your organization
           </Expandable>
         </DynamicResponseField>
 
-        <DynamicResponseField name="processors" type="object">
-          Payment processors this plan is connected to. Omitted when unset.
-          <Expandable title="properties">
-            <DynamicResponseField name="stripe" type="object | null">
-              <Expandable title="properties">
-                <DynamicResponseField name="product_id" type="string">
-                  Stripe product ID this plan is billed under.
-                </DynamicResponseField>
-
-                <DynamicResponseField name="additional_product_ids" type="string[]">
-                  Extra Stripe product IDs aliased to this plan.
-                </DynamicResponseField>
-
-              </Expandable>
-            </DynamicResponseField>
-
-            <DynamicResponseField name="revenuecat" type="object | null">
-              <Expandable title="properties">
-                <DynamicResponseField name="products" type="object[]">
-                  Every RevenueCat product that maps to this plan. Replaces the current set.
-                  <Expandable title="properties">
-                    <DynamicResponseField name="product_id" type="string">
-                      RevenueCat product ID that grants this plan when purchased.
-                    </DynamicResponseField>
-
-                    <DynamicResponseField name="feature_quantities" type="object[]">
-                      Prepaid quantities granted when this specific RevenueCat product is purchased, in feature units.
-                      <Expandable title="properties">
-                        <DynamicResponseField name="feature_id" type="string" />
-
-                        <DynamicResponseField name="quantity" type="number" />
-
-                      </Expandable>
-                    </DynamicResponseField>
-
-                  </Expandable>
-                </DynamicResponseField>
-
-              </Expandable>
-            </DynamicResponseField>
-
-          </Expandable>
-        </DynamicResponseField>
 
         <DynamicResponseField name="free_trial" type="object">
           Free trial configuration. If set, new customers can try this plan before being charged.
@@ -1163,7 +1003,7 @@ Pass `currency` to bill this customer in a currency other than your organization
                 </DynamicResponseField>
 
                 <DynamicResponseField name="skip_overage_billing" type="boolean">
-                  When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally.
+                  When true, overage for this feature is not posted to the payment processor. Usage tracking and balance resets still behave normally.
                 </DynamicResponseField>
 
               </Expandable>
@@ -1320,7 +1160,7 @@ Pass `currency` to bill this customer in a currency other than your organization
                       Base price amounts in additional currencies. The base 'amount' is in the org's default currency.
                       <Expandable title="properties">
                         <DynamicResponseField name="currency" type="string">
-                          Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                          Three-letter currency code (e.g. 'eur', 'gbp').
                         </DynamicResponseField>
 
                         <DynamicResponseField name="amount" type="number">
@@ -1385,7 +1225,7 @@ Pass `currency` to bill this customer in a currency other than your organization
                           Amounts in additional currencies for this flat price. The base 'amount' is in the org's default currency. Only valid with 'amount', not 'tiers'.
                           <Expandable title="properties">
                             <DynamicResponseField name="currency" type="string">
-                              Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                              Three-letter currency code (e.g. 'eur', 'gbp').
                             </DynamicResponseField>
 
                             <DynamicResponseField name="amount" type="number">
@@ -1407,7 +1247,7 @@ Pass `currency` to bill this customer in a currency other than your organization
                             <DynamicResponseField name="additional_currencies" type="object[]">
                               <Expandable title="properties">
                                 <DynamicResponseField name="currency" type="string">
-                                  Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                  Three-letter currency code (e.g. 'eur', 'gbp').
                                 </DynamicResponseField>
 
                                 <DynamicResponseField name="amount" type="number">
@@ -1733,7 +1573,7 @@ Pass `currency` to bill this customer in a currency other than your organization
                         </DynamicResponseField>
 
                         <DynamicResponseField name="skip_overage_billing" type="boolean">
-                          When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally.
+                          When true, overage for this feature is not posted to the payment processor. Usage tracking and balance resets still behave normally.
                         </DynamicResponseField>
 
                       </Expandable>
@@ -1860,7 +1700,7 @@ Pass `currency` to bill this customer in a currency other than your organization
                               Base price amounts in additional currencies. The base 'amount' is in the org's default currency.
                               <Expandable title="properties">
                                 <DynamicResponseField name="currency" type="string">
-                                  Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                  Three-letter currency code (e.g. 'eur', 'gbp').
                                 </DynamicResponseField>
 
                                 <DynamicResponseField name="amount" type="number">
@@ -1924,7 +1764,7 @@ Pass `currency` to bill this customer in a currency other than your organization
                                   Amounts in additional currencies for this flat price. The base 'amount' is in the org's default currency. Only valid with 'amount', not 'tiers'.
                                   <Expandable title="properties">
                                     <DynamicResponseField name="currency" type="string">
-                                      Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                      Three-letter currency code (e.g. 'eur', 'gbp').
                                     </DynamicResponseField>
 
                                     <DynamicResponseField name="amount" type="number">
@@ -1946,7 +1786,7 @@ Pass `currency` to bill this customer in a currency other than your organization
                                     <DynamicResponseField name="additional_currencies" type="object[]">
                                       <Expandable title="properties">
                                         <DynamicResponseField name="currency" type="string">
-                                          Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                          Three-letter currency code (e.g. 'eur', 'gbp').
                                         </DynamicResponseField>
 
                                         <DynamicResponseField name="amount" type="number">
@@ -2311,7 +2151,7 @@ Pass `currency` to bill this customer in a currency other than your organization
               Base price amounts in additional currencies. The base 'amount' is in the org's default currency.
               <Expandable title="properties">
                 <DynamicResponseField name="currency" type="string">
-                  Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                  Three-letter currency code (e.g. 'eur', 'gbp').
                 </DynamicResponseField>
 
                 <DynamicResponseField name="amount" type="number">
@@ -2343,20 +2183,6 @@ Pass `currency` to bill this customer in a currency other than your organization
               </Expandable>
             </DynamicResponseField>
 
-            <DynamicResponseField name="processors" type="object">
-              Payment processors this base price is connected to. Omitted when unset.
-              <Expandable title="properties">
-                <DynamicResponseField name="stripe" type="object | null">
-                  <Expandable title="properties">
-                    <DynamicResponseField name="price_id" type="string">
-                      Stripe price ID. For prepaid with included > 0 this is the V2 price.
-                    </DynamicResponseField>
-
-                  </Expandable>
-                </DynamicResponseField>
-
-              </Expandable>
-            </DynamicResponseField>
 
           </Expandable>
         </DynamicResponseField>
@@ -2463,7 +2289,7 @@ Pass `currency` to bill this customer in a currency other than your organization
                   Amounts in additional currencies for this flat price. The base 'amount' is in the org's default currency. Only valid with 'amount', not 'tiers' (tiered prices carry per-currency amounts on each tier).
                   <Expandable title="properties">
                     <DynamicResponseField name="currency" type="string">
-                      Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                      Three-letter currency code (e.g. 'eur', 'gbp').
                     </DynamicResponseField>
 
                     <DynamicResponseField name="amount" type="number">
@@ -2485,7 +2311,7 @@ Pass `currency` to bill this customer in a currency other than your organization
                     <DynamicResponseField name="additional_currencies" type="object[]">
                       <Expandable title="properties">
                         <DynamicResponseField name="currency" type="string">
-                          Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                          Three-letter currency code (e.g. 'eur', 'gbp').
                         </DynamicResponseField>
 
                         <DynamicResponseField name="amount" type="number">
@@ -2524,20 +2350,6 @@ Pass `currency` to bill this customer in a currency other than your organization
                   Maximum units a customer can purchase beyond included. E.g. if included=100 and max_purchase=300, customer can use up to 400 total before usage is capped. Null for no limit.
                 </DynamicResponseField>
 
-                <DynamicResponseField name="processors" type="object">
-                  Payment processors this item price is connected to. Omitted when unset.
-                  <Expandable title="properties">
-                    <DynamicResponseField name="stripe" type="object | null">
-                      <Expandable title="properties">
-                        <DynamicResponseField name="price_id" type="string">
-                          Stripe price ID. For prepaid with included > 0 this is the V2 price.
-                        </DynamicResponseField>
-
-                      </Expandable>
-                    </DynamicResponseField>
-
-                  </Expandable>
-                </DynamicResponseField>
 
               </Expandable>
             </DynamicResponseField>
@@ -2707,49 +2519,6 @@ Pass `currency` to bill this customer in a currency other than your organization
           </Expandable>
         </DynamicResponseField>
 
-        <DynamicResponseField name="processors" type="object">
-          Payment processors this plan is connected to. Omitted when unset.
-          <Expandable title="properties">
-            <DynamicResponseField name="stripe" type="object | null">
-              <Expandable title="properties">
-                <DynamicResponseField name="product_id" type="string">
-                  Stripe product ID this plan is billed under.
-                </DynamicResponseField>
-
-                <DynamicResponseField name="additional_product_ids" type="string[]">
-                  Extra Stripe product IDs aliased to this plan.
-                </DynamicResponseField>
-
-              </Expandable>
-            </DynamicResponseField>
-
-            <DynamicResponseField name="revenuecat" type="object | null">
-              <Expandable title="properties">
-                <DynamicResponseField name="products" type="object[]">
-                  Every RevenueCat product that maps to this plan. Replaces the current set.
-                  <Expandable title="properties">
-                    <DynamicResponseField name="product_id" type="string">
-                      RevenueCat product ID that grants this plan when purchased.
-                    </DynamicResponseField>
-
-                    <DynamicResponseField name="feature_quantities" type="object[]">
-                      Prepaid quantities granted when this specific RevenueCat product is purchased, in feature units.
-                      <Expandable title="properties">
-                        <DynamicResponseField name="feature_id" type="string" />
-
-                        <DynamicResponseField name="quantity" type="number" />
-
-                      </Expandable>
-                    </DynamicResponseField>
-
-                  </Expandable>
-                </DynamicResponseField>
-
-              </Expandable>
-            </DynamicResponseField>
-
-          </Expandable>
-        </DynamicResponseField>
 
         <DynamicResponseField name="free_trial" type="object">
           Free trial configuration. If set, new customers can try this plan before being charged.
@@ -2862,7 +2631,7 @@ Pass `currency` to bill this customer in a currency other than your organization
                 </DynamicResponseField>
 
                 <DynamicResponseField name="skip_overage_billing" type="boolean">
-                  When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally.
+                  When true, overage for this feature is not posted to the payment processor. Usage tracking and balance resets still behave normally.
                 </DynamicResponseField>
 
               </Expandable>
@@ -3019,7 +2788,7 @@ Pass `currency` to bill this customer in a currency other than your organization
                       Base price amounts in additional currencies. The base 'amount' is in the org's default currency.
                       <Expandable title="properties">
                         <DynamicResponseField name="currency" type="string">
-                          Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                          Three-letter currency code (e.g. 'eur', 'gbp').
                         </DynamicResponseField>
 
                         <DynamicResponseField name="amount" type="number">
@@ -3084,7 +2853,7 @@ Pass `currency` to bill this customer in a currency other than your organization
                           Amounts in additional currencies for this flat price. The base 'amount' is in the org's default currency. Only valid with 'amount', not 'tiers'.
                           <Expandable title="properties">
                             <DynamicResponseField name="currency" type="string">
-                              Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                              Three-letter currency code (e.g. 'eur', 'gbp').
                             </DynamicResponseField>
 
                             <DynamicResponseField name="amount" type="number">
@@ -3106,7 +2875,7 @@ Pass `currency` to bill this customer in a currency other than your organization
                             <DynamicResponseField name="additional_currencies" type="object[]">
                               <Expandable title="properties">
                                 <DynamicResponseField name="currency" type="string">
-                                  Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                  Three-letter currency code (e.g. 'eur', 'gbp').
                                 </DynamicResponseField>
 
                                 <DynamicResponseField name="amount" type="number">
@@ -3432,7 +3201,7 @@ Pass `currency` to bill this customer in a currency other than your organization
                         </DynamicResponseField>
 
                         <DynamicResponseField name="skip_overage_billing" type="boolean">
-                          When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally.
+                          When true, overage for this feature is not posted to the payment processor. Usage tracking and balance resets still behave normally.
                         </DynamicResponseField>
 
                       </Expandable>
@@ -3559,7 +3328,7 @@ Pass `currency` to bill this customer in a currency other than your organization
                               Base price amounts in additional currencies. The base 'amount' is in the org's default currency.
                               <Expandable title="properties">
                                 <DynamicResponseField name="currency" type="string">
-                                  Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                  Three-letter currency code (e.g. 'eur', 'gbp').
                                 </DynamicResponseField>
 
                                 <DynamicResponseField name="amount" type="number">
@@ -3623,7 +3392,7 @@ Pass `currency` to bill this customer in a currency other than your organization
                                   Amounts in additional currencies for this flat price. The base 'amount' is in the org's default currency. Only valid with 'amount', not 'tiers'.
                                   <Expandable title="properties">
                                     <DynamicResponseField name="currency" type="string">
-                                      Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                      Three-letter currency code (e.g. 'eur', 'gbp').
                                     </DynamicResponseField>
 
                                     <DynamicResponseField name="amount" type="number">
@@ -3645,7 +3414,7 @@ Pass `currency` to bill this customer in a currency other than your organization
                                     <DynamicResponseField name="additional_currencies" type="object[]">
                                       <Expandable title="properties">
                                         <DynamicResponseField name="currency" type="string">
-                                          Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                          Three-letter currency code (e.g. 'eur', 'gbp').
                                         </DynamicResponseField>
 
                                         <DynamicResponseField name="amount" type="number">
@@ -4111,24 +3880,6 @@ Pass `currency` to bill this customer in a currency other than your organization
           Whether the feature is archived and hidden from the dashboard.
         </DynamicResponseField>
 
-        <DynamicResponseField name="processors" type="object">
-          Processor mappings for this feature. Present when a Stripe product or meter is set.
-          <Expandable title="properties">
-            <DynamicResponseField name="stripe" type="object">
-              <Expandable title="properties">
-                <DynamicResponseField name="product_id" type="string">
-                  Stripe product ID this feature's usage prices bill under.
-                </DynamicResponseField>
-
-                <DynamicResponseField name="meter_id" type="string">
-                  Stripe meter ID used to create this feature's metered price.
-                </DynamicResponseField>
-
-              </Expandable>
-            </DynamicResponseField>
-
-          </Expandable>
-        </DynamicResponseField>
 
       </Expandable>
     </DynamicResponseField>
@@ -4440,24 +4191,6 @@ Pass `currency` to bill this customer in a currency other than your organization
           Whether the feature is archived and hidden from the dashboard.
         </DynamicResponseField>
 
-        <DynamicResponseField name="processors" type="object">
-          Processor mappings for this feature. Present when a Stripe product or meter is set.
-          <Expandable title="properties">
-            <DynamicResponseField name="stripe" type="object">
-              <Expandable title="properties">
-                <DynamicResponseField name="product_id" type="string">
-                  Stripe product ID this feature's usage prices bill under.
-                </DynamicResponseField>
-
-                <DynamicResponseField name="meter_id" type="string">
-                  Stripe meter ID used to create this feature's metered price.
-                </DynamicResponseField>
-
-              </Expandable>
-            </DynamicResponseField>
-
-          </Expandable>
-        </DynamicResponseField>
 
       </Expandable>
     </DynamicResponseField>
@@ -4473,51 +4206,12 @@ Pass `currency` to bill this customer in a currency other than your organization
     </DynamicResponseField>
 
     <DynamicResponseField name="disable_overage_billing" type="boolean">
-      Stops MeterPal from posting usage-overage line items to Stripe for this customer. Check/track and balance resets still behave normally. When set, this overrides the organization-level disable_overage_billing setting.
+      Stops MeterPal from posting usage-overage line items to the payment processor for this customer. Check/track and balance resets still behave normally. When set, this overrides the organization-level disable_overage_billing setting.
     </DynamicResponseField>
 
   </Expandable>
 </DynamicResponseField>
 
-<DynamicResponseField name="processors" type="object">
-  Payment processors this customer is connected to (Stripe, Vercel, RevenueCat). Omitted entirely when the customer has not been created in any processor.
-  <Expandable title="properties">
-    <DynamicResponseField name="stripe" type="object">
-      Stripe processor connection for the customer.
-      <Expandable title="properties">
-        <DynamicResponseField name="id" type="string">
-          Stripe customer ID.
-        </DynamicResponseField>
-
-      </Expandable>
-    </DynamicResponseField>
-
-    <DynamicResponseField name="vercel" type="object">
-      Vercel processor connection for the customer (public-safe subset).
-      <Expandable title="properties">
-        <DynamicResponseField name="installation_id" type="string">
-          Vercel marketplace installation ID for this customer.
-        </DynamicResponseField>
-
-        <DynamicResponseField name="account_id" type="string">
-          Vercel account ID associated with the installation.
-        </DynamicResponseField>
-
-      </Expandable>
-    </DynamicResponseField>
-
-    <DynamicResponseField name="revenuecat" type="object">
-      RevenueCat processor connection for the customer.
-      <Expandable title="properties">
-        <DynamicResponseField name="id" type="string | null">
-          Customer's external ID, used as the RevenueCat app user ID. Null if the customer has no external ID set.
-        </DynamicResponseField>
-
-      </Expandable>
-    </DynamicResponseField>
-
-  </Expandable>
-</DynamicResponseField>
 
 <DynamicResponseField name="invoices" type="object[]">
   Invoices for this customer.
@@ -4526,11 +4220,11 @@ Pass `currency` to bill this customer in a currency other than your organization
       Array of plan IDs included in this invoice
     </DynamicResponseField>
 
-    <DynamicResponseField name="stripe_id" type="string">
-      The Stripe invoice ID
+    <DynamicResponseField name="processor_invoice_id" type="string">
+      The processor invoice ID
     </DynamicResponseField>
 
-    <DynamicResponseField name="processor_type" type="'stripe' | 'revenuecat'">
+    <DynamicResponseField name="processor_type" type="'paypal'">
       The billing processor that owns this invoice.
     </DynamicResponseField>
 
@@ -4551,14 +4245,14 @@ Pass `currency` to bill this customer in a currency other than your organization
     </DynamicResponseField>
 
     <DynamicResponseField name="hosted_invoice_url" type="string | null">
-      URL to the Stripe-hosted invoice page
+      URL to the processor-hosted invoice page
     </DynamicResponseField>
 
   </Expandable>
 </DynamicResponseField>
 
 <DynamicResponseField name="invoice_previews" type="object[]">
-  Upcoming invoice for each of this customer's Stripe subscriptions.
+  Upcoming invoice for each of this customer's processor subscriptions.
   <Expandable title="properties">
     <DynamicResponseField name="plan_ids" type="string[]">
       Plan IDs contributing line items to this invoice.
@@ -4730,7 +4424,7 @@ Pass `currency` to bill this customer in a currency other than your organization
         </DynamicResponseField>
 
         <DynamicResponseField name="subscription_id" type="string | null">
-          The Stripe subscription ID this discount is applied to
+          The processor subscription ID this discount is applied to
         </DynamicResponseField>
 
         <DynamicResponseField name="total_discount_amount" type="number | null">
@@ -4771,7 +4465,7 @@ Pass `currency` to bill this customer in a currency other than your organization
 </DynamicResponseField>
 
 <DynamicResponseField name="billing_details" type="object | null">
-  Billing details read live from the linked Stripe customer. Null when no Stripe customer is linked.
+  Billing details read live from the linked processor customer. Null when no processor customer is linked.
   <Expandable title="properties">
     <DynamicResponseField name="address" type="object | null">
       <Expandable title="properties">
@@ -4795,7 +4489,7 @@ Pass `currency` to bill this customer in a currency other than your organization
     <DynamicResponseField name="tax_ids" type="object[]">
       <Expandable title="properties">
         <DynamicResponseField name="type" type="string">
-          Stripe tax ID type, e.g. eu_vat, gb_vat, us_ein. See https://docs.stripe.com/billing/customer/tax-ids#supported-tax-id
+          Tax ID type, e.g. eu_vat, gb_vat, us_ein.
         </DynamicResponseField>
 
         <DynamicResponseField name="value" type="string">
@@ -4835,12 +4529,6 @@ Pass `currency` to bill this customer in a currency other than your organization
   "email": "patrick@useautumn.com",
   "createdAt": 1771409161016,
   "fingerprint": null,
-  "stripeId": "cus_U0BKxpq1mFhuJO",
-  "processors": {
-    "stripe": {
-      "id": "cus_U0BKxpq1mFhuJO"
-    }
-  },
   "env": "sandbox",
   "metadata": {},
   "sendEmailReceipts": false,

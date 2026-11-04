@@ -17,7 +17,7 @@ import { CusProductService } from "@/internal/customers/cusProducts/CusProductSe
  * 2. Updates the FullCustomer in memory
  * 3. Sends products_updated + billing.updated webhooks
  *
- * Used by RevenueCat billing issue webhooks and any external billing issue flow.
+ * Used by processor billing issue webhooks and any external billing issue flow.
  */
 export const markCustomerProductPastDue = async ({
 	ctx,

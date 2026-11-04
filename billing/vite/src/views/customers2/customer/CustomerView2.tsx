@@ -1,11 +1,6 @@
 "use client";
 
-import {
-	AppEnv,
-	CusProductStatus,
-	type FullCusProduct,
-	ProcessorType,
-} from "@autumn/shared";
+import { AppEnv, CusProductStatus, type FullCusProduct } from "@autumn/shared";
 import {
 	Tooltip,
 	TooltipContent,
@@ -15,7 +10,6 @@ import {
 import { ClockIcon } from "@phosphor-icons/react";
 import { useState } from "react";
 import { Link } from "react-router";
-import { RevenueCatIcon } from "@/components/v2/icons/AutumnIcons";
 import { useCusRewardsQuery } from "@/hooks/queries/useCusRewardsQuery";
 import { useEntity } from "@/hooks/stores/useSubscriptionStore";
 import { cn } from "@/lib/utils";
@@ -83,12 +77,6 @@ export default function CustomerView2() {
 		);
 	}
 
-	const isRevenueCatCustomer = customer.customer_products.some(
-		(cp) =>
-			cp.status !== CusProductStatus.Expired &&
-			cp.processor?.type === ProcessorType.RevenueCat,
-	);
-
 	return (
 		<CustomerContext.Provider
 			value={{
@@ -124,40 +112,6 @@ export default function CustomerView2() {
 											>
 												{customer.name || customer.email || customer.id}
 											</h3>
-											{Boolean(customer.processors?.vercel) && (
-												<TooltipProvider>
-													<Tooltip delayDuration={0}>
-														<TooltipTrigger>
-															<svg
-																fill="currentColor"
-																xmlns="http://www.w3.org/2000/svg"
-																viewBox="0 0 1155 1000"
-																className="w-3 h-3 text-black dark:text-white"
-															>
-																<title>Vercel Marketplace Customer</title>
-																<path d="m577.3 0 577.4 1000H0z" />
-															</svg>
-														</TooltipTrigger>
-														<TooltipContent>
-															<span>Vercel Marketplace Customer</span>
-														</TooltipContent>
-													</Tooltip>
-												</TooltipProvider>
-											)}
-											{isRevenueCatCustomer && (
-												<TooltipProvider>
-													<Tooltip delayDuration={0}>
-														<TooltipTrigger>
-															<span className="text-[#ff5f45] dark:text-[#ff8b78]">
-																<RevenueCatIcon size={12} />
-															</span>
-														</TooltipTrigger>
-														<TooltipContent>
-															<span>RevenueCat Customer</span>
-														</TooltipContent>
-													</Tooltip>
-												</TooltipProvider>
-											)}
 											{testClockFrozenTimeMs != null && (
 												<TooltipProvider>
 													<Tooltip delayDuration={0}>

@@ -4,9 +4,7 @@ import type {
 	LogAppContext,
 	LogRedisData,
 	LogRequestContext,
-	LogStripeEventContext,
 	LogTriggerContext,
-	LogVercelEventContext,
 	LogWorkflowContext,
 } from "./loggerTypes.js";
 
@@ -43,26 +41,6 @@ export const addAppContextToLogs = ({
 	appContext: LogAppContext;
 }): Logger => {
 	return logger.child({ context: { context: appContext } });
-};
-
-export const addStripeEventToLogs = ({
-	logger,
-	stripeEventContext,
-}: {
-	logger: Logger;
-	stripeEventContext: LogStripeEventContext;
-}): Logger => {
-	return logger.child({ context: { stripe_event: stripeEventContext } });
-};
-
-export const addVercelEventToLogs = ({
-	logger,
-	vercelEventContext,
-}: {
-	logger: Logger;
-	vercelEventContext: LogVercelEventContext;
-}): Logger => {
-	return logger.child({ context: { vercel_event: vercelEventContext } });
 };
 
 export const addWorkflowToLogs = ({

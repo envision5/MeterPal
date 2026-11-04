@@ -18,7 +18,6 @@ import { saveLockReceipt } from "../../utils/lock/saveLockReceipt.js";
 import type { DeductionUpdate } from "../../utils/types/deductionUpdate.js";
 import type { FeatureDeduction } from "../../utils/types/featureDeduction.js";
 import type { MutationLogItem } from "../../utils/types/mutationLogItem.js";
-import { createAllocatedInvoice } from "../allocatedInvoice/createAllocatedInvoice.js";
 import type { DeductionOptions } from "../types/deductionTypes.js";
 import { applyRolloverUpdatesToFullCustomer } from "./applyRolloverUpdatesToFullCustomer.js";
 import { logDeductionUpdates } from "./logDeductionUpdates.js";
@@ -193,13 +192,6 @@ export const executePostgresDeduction = async ({
 					const cusEnt = customerEntitlements.find((ce) => ce.id === cusEntId);
 
 					if (!cusEnt) continue;
-
-					await createAllocatedInvoice({
-						ctx,
-						customerEntitlement: cusEnt,
-						oldFullCustomer: oldFullCus,
-						update,
-					});
 
 					applyDeductionUpdateToFullCustomer({
 						fullCus: fullCustomer,

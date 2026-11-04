@@ -11,11 +11,7 @@ import type { DrizzleCli } from "@server/db/initDrizzle.js";
 import { and, eq } from "drizzle-orm";
 import type { Logger } from "@/external/logtail/logtailUtils.js";
 import { clearOrgWithFeaturesCache } from "@/external/redis/actions/orgWithFeaturesCache/orgWithFeaturesCache.js";
-import {
-	deleteStripeAccounts,
-	deleteStripeWebhooks,
-	deleteSvixWebhooks,
-} from "@/internal/orgs/orgUtils/deleteOrgUtils.js";
+import { deleteSvixWebhooks } from "@/internal/orgs/orgUtils/deleteOrgUtils.js";
 
 /**
  * Deletes a platform-created sub-org and all its dependencies.
@@ -51,23 +47,17 @@ export const deletePlatformSubOrg = async ({
 	logger.info("1. Deleting svix webhooks");
 	await deleteSvixWebhooks({ org, logger });
 
-	logger.info("2. Deleting stripe webhooks");
-	await deleteStripeWebhooks({ org, logger });
-
-	logger.info("3. Deleting stripe accounts");
-	await deleteStripeAccounts({ org, logger });
-
-	logger.info("4. Deleting sandbox customers");
+	logger.info("2. Deleting sandbox customers");
 	await db
 		.delete(customers)
 		.where(
 			and(eq(customers.org_id, org.id), eq(customers.env, AppEnv.Sandbox)),
 		);
 
-	logger.info("5. Deleting org memberships");
+	logger.info("3. Deleting org memberships");
 	await db.delete(member).where(eq(member.organizationId, org.id));
 
-	logger.info("6. Deleting organization");
+	logger.info("4. Deleting organization");
 	await db.delete(organizations).where(eq(organizations.id, org.id));
 	await clearOrgWithFeaturesCache({ orgId: org.id });
 };

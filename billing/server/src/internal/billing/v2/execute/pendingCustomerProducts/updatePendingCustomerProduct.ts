@@ -84,7 +84,7 @@ export const updatePendingCustomerProduct = async ({
 
 	await inheritPendingCreatedAt({
 		ctx,
-		metadataId: billingResult.stripe.deferredMetadataId,
+		metadataId: billingResult.processor?.deferredMetadataId,
 		createdAt: customerProduct.created_at,
 	});
 

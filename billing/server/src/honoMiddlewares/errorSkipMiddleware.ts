@@ -1,7 +1,6 @@
 import { ErrCode, RecaseError } from "@autumn/shared";
 import type { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
-import Stripe from "stripe";
 import { ZodError } from "zod/v4";
 import { formatZodError } from "@/errors/formatZodError.js";
 import type { HonoEnv } from "@/honoUtils/HonoEnv.js";
@@ -41,99 +40,7 @@ const ROUTE_SPECIFIC_RULES: Array<{
 	name: string;
 	match: (err: Error, c: Context<HonoEnv>) => boolean;
 	statusCode: ContentfulStatusCode;
-}> = [
-	{
-		name: "Stripe webhook secret not set in development",
-		match: (err: Error) =>
-			err.message.includes(
-				"STRIPE_WEBHOOK_SECRET env variable is not set (live)",
-			) && process.env.NODE_ENV === "development",
-		statusCode: 500,
-	},
-];
-
-/** Stripe-specific error handling rules */
-const STRIPE_RULES = [
-	{
-		name: "Stripe rate limit exceeded",
-		match: (err: Error) =>
-			err instanceof Stripe.errors.StripeError &&
-			(err.type === "StripeRateLimitError" || err.statusCode === 429),
-		statusCode: 429,
-		code: "stripe_rate_limit_exceeded",
-	},
-	{
-		name: "Exchange router invalid API key",
-		match: (err: Error, c: Context<HonoEnv>) =>
-			err instanceof Stripe.errors.StripeError &&
-			c.req.url.includes("/exchange") &&
-			err.message.includes("Invalid API Key provided"),
-		statusCode: 400,
-		code: ErrCode.InvalidRequest,
-	},
-	{
-		name: "Billing portal config error",
-		match: (err: Error, c: Context<HonoEnv>) =>
-			err instanceof Stripe.errors.StripeError &&
-			c.req.url.includes("/billing_portal") &&
-			err.message.includes("Provide a configuration or create your default"),
-		statusCode: 404,
-		code: ErrCode.InvalidRequest,
-	},
-	{
-		name: "Billing portal return_url error",
-		match: (err: Error, c: Context<HonoEnv>) =>
-			err instanceof Stripe.errors.StripeError &&
-			c.req.url.includes("/billing_portal") &&
-			err.message.includes("Invalid URL: An explicit scheme (such as https)"),
-		statusCode: 400,
-		code: ErrCode.InvalidRequest,
-	},
-	{
-		name: "Card declined error",
-		match: (err: Error) =>
-			err instanceof Stripe.errors.StripeError &&
-			err.message.includes("Your card was declined."),
-		statusCode: 400,
-		code: ErrCode.InvalidRequest,
-	},
-	{
-		name: "Cannot delete org with production customers",
-		match: (err: Error) =>
-			err instanceof Stripe.errors.StripeError &&
-			err.message.includes("Cannot delete org with production mode customers"),
-		statusCode: 400,
-		code: ErrCode.InvalidRequest,
-	},
-	{
-		name: "Webhook endpoint limit reached",
-		match: (err: Error) =>
-			err instanceof Stripe.errors.StripeError &&
-			err.message.includes(
-				"You have reached the maximum of 16 test webhook endpoints",
-			),
-		statusCode: 400,
-		code: ErrCode.InvalidRequest,
-	},
-	{
-		name: "Invalid URL scheme error",
-		match: (err: Error) =>
-			err instanceof Stripe.errors.StripeError &&
-			err.message.includes(
-				"Invalid URL: An explicit scheme (such as https) must be provided",
-			),
-		statusCode: 400,
-		code: ErrCode.InvalidRequest,
-	},
-	{
-		name: "Not a valid URL error",
-		match: (err: Error) =>
-			err instanceof Stripe.errors.StripeError &&
-			err.message.includes("Not a valid URL"),
-		statusCode: 400,
-		code: ErrCode.InvalidRequest,
-	},
-] as const;
+}> = [];
 
 /** Zod-specific error handling rules */
 const ZOD_RULES = [
@@ -223,22 +130,7 @@ export const handleErrorSkip = (err: Error, c: Context<HonoEnv>) => {
 		}
 	}
 
-	// 3. Check Stripe-specific rules
-	for (const rule of STRIPE_RULES) {
-		if (rule.match(err, c)) {
-			const stripeErr = err as Stripe.errors.StripeError;
-			logger.warn(`${rule.name}, org: ${ctx.org?.slug || "unknown"}`);
-			return createErrorResponse({
-				c,
-				ctx,
-				message: stripeErr.message,
-				code: rule.code,
-				statusCode: rule.statusCode,
-			});
-		}
-	}
-
-	// 4. Check Zod-specific rules
+	// 3. Check Zod-specific rules
 	for (const rule of ZOD_RULES) {
 		if (rule.match(err, c)) {
 			const zodErr = err as ZodError;

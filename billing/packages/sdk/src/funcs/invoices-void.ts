@@ -27,7 +27,7 @@ import { APICall, APIPromise } from "../types/async.js";
 import { Result } from "../types/fp.js";
 
 /**
- * Voids an open or uncollectible Stripe invoice. Any plan still waiting on the invoice to be paid expires. Voiding an unpaid subscription invoice lets Stripe re-derive the subscription status from its remaining invoices, which can move a past-due subscription back to active. Already-void invoices are returned unchanged.
+ * Voids an open or uncollectible processor invoice. Any plan still waiting on the invoice to be paid expires. Voiding an unpaid subscription invoice releases the pending plan. Already-void invoices are returned unchanged.
  */
 export function invoicesVoid(
   client: AutumnCore,

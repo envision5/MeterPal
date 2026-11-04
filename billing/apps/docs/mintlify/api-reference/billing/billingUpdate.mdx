@@ -121,7 +121,7 @@ const response = await autumn.billing.update({
           Base price amounts in additional currencies. The base 'amount' is in the org's default currency.
           <Expandable title="properties">
             <DynamicParamField body="currency" type="string" required>
-              Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+              Three-letter currency code (e.g. 'eur', 'gbp').
             </DynamicParamField>
 
             <DynamicParamField body="amount" type="number" required>
@@ -186,7 +186,7 @@ const response = await autumn.billing.update({
               Amounts in additional currencies for this flat price. The base 'amount' is in the org's default currency. Only valid with 'amount', not 'tiers'.
               <Expandable title="properties">
                 <DynamicParamField body="currency" type="string" required>
-                  Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                  Three-letter currency code (e.g. 'eur', 'gbp').
                 </DynamicParamField>
 
                 <DynamicParamField body="amount" type="number" required>
@@ -209,7 +209,7 @@ const response = await autumn.billing.update({
                   Per-currency amounts for this tier. Tier boundaries ('to') are shared across all currencies.
                   <Expandable title="properties">
                     <DynamicParamField body="currency" type="string" required>
-                      Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                      Three-letter currency code (e.g. 'eur', 'gbp').
                     </DynamicParamField>
 
                     <DynamicParamField body="amount" type="number">
@@ -468,7 +468,7 @@ const response = await autumn.billing.update({
               Amounts in additional currencies for this flat price. The base 'amount' is in the org's default currency. Only valid with 'amount', not 'tiers'.
               <Expandable title="properties">
                 <DynamicParamField body="currency" type="string" required>
-                  Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                  Three-letter currency code (e.g. 'eur', 'gbp').
                 </DynamicParamField>
 
                 <DynamicParamField body="amount" type="number" required>
@@ -491,7 +491,7 @@ const response = await autumn.billing.update({
                   Per-currency amounts for this tier. Tier boundaries ('to') are shared across all currencies.
                   <Expandable title="properties">
                     <DynamicParamField body="currency" type="string" required>
-                      Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                      Three-letter currency code (e.g. 'eur', 'gbp').
                     </DynamicParamField>
 
                     <DynamicParamField body="amount" type="number">
@@ -817,7 +817,7 @@ const response = await autumn.billing.update({
             </DynamicParamField>
 
             <DynamicParamField body="skip_overage_billing" type="boolean">
-              When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally.
+              When true, overage for this feature is not posted to the payment processor. Usage tracking and balance resets still behave normally.
             </DynamicParamField>
 
           </Expandable>
@@ -944,7 +944,7 @@ const response = await autumn.billing.update({
                   Base price amounts in additional currencies. The base 'amount' is in the org's default currency.
                   <Expandable title="properties">
                     <DynamicParamField body="currency" type="string" required>
-                      Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                      Three-letter currency code (e.g. 'eur', 'gbp').
                     </DynamicParamField>
 
                     <DynamicParamField body="amount" type="number" required>
@@ -1008,7 +1008,7 @@ const response = await autumn.billing.update({
                       Amounts in additional currencies for this flat price. The base 'amount' is in the org's default currency. Only valid with 'amount', not 'tiers'.
                       <Expandable title="properties">
                         <DynamicParamField body="currency" type="string" required>
-                          Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                          Three-letter currency code (e.g. 'eur', 'gbp').
                         </DynamicParamField>
 
                         <DynamicParamField body="amount" type="number" required>
@@ -1031,7 +1031,7 @@ const response = await autumn.billing.update({
                           Per-currency amounts for this tier. Tier boundaries ('to') are shared across all currencies.
                           <Expandable title="properties">
                             <DynamicParamField body="currency" type="string" required>
-                              Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                              Three-letter currency code (e.g. 'eur', 'gbp').
                             </DynamicParamField>
 
                             <DynamicParamField body="amount" type="number">
@@ -1283,10 +1283,10 @@ const response = await autumn.billing.update({
 </DynamicParamField>
 
 <DynamicParamField body="invoice_mode" type="object">
-  Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses Stripe's send_invoice collection method.
+  Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses the processor's send_invoice collection method.
   <Expandable title="properties">
     <DynamicParamField body="enabled" type="boolean" required>
-      When true, creates an invoice and sends it to the customer instead of charging their card immediately. Uses Stripe's send_invoice collection method.
+      When true, creates an invoice and sends it to the customer instead of charging their card immediately. Uses the processor's send_invoice collection method.
     </DynamicParamField>
 
     <DynamicParamField body="enable_plan_immediately" type="boolean">
@@ -1302,7 +1302,7 @@ const response = await autumn.billing.update({
     </DynamicParamField>
 
     <DynamicParamField body="net_terms_days" type="integer">
-      Number of days the customer has to pay the invoice before it is due (Stripe days_until_due).
+      Number of days the customer has to pay the invoice before it is due (processor days_until_due).
     </DynamicParamField>
 
   </Expandable>
@@ -1321,7 +1321,7 @@ const response = await autumn.billing.update({
 </DynamicParamField>
 
 <DynamicParamField body="discounts" type="object[]">
-  List of discounts to apply. Each discount can be an MeterPal reward ID, Stripe coupon ID, or Stripe promotion code.
+  List of discounts to apply. Each discount can be a MeterPal reward ID or a promotion code.
   <Expandable title="properties">
     <DynamicParamField body="reward_id" type="string">
       The ID of the reward to apply as a discount.
@@ -1338,7 +1338,7 @@ const response = await autumn.billing.update({
   Discounts to remove from the subscription, by reward ID. Discounts not listed are left unchanged.
   <Expandable title="properties">
     <DynamicParamField body="reward_id" type="string" required>
-      The ID of the reward (or Stripe coupon) to remove.
+      The ID of the reward to remove.
     </DynamicParamField>
 
   </Expandable>
@@ -1367,7 +1367,7 @@ const response = await autumn.billing.update({
 </DynamicParamField>
 
 <DynamicParamField body="no_billing_changes" type="boolean">
-  If true, the subscription is updated internally without applying billing changes in Stripe.
+  If true, the subscription is updated internally without applying billing changes to the processor.
 </DynamicParamField>
 
 <DynamicParamField body="refund_last_payment" type="'prorated' | 'full'">
@@ -1375,7 +1375,7 @@ const response = await autumn.billing.update({
 </DynamicParamField>
 
 <DynamicParamField body="subscription_params" type="object">
-  Additional parameters to pass into the Stripe subscription update or cancel call.
+  Additional parameters to pass into the processor subscription update or cancel call.
 </DynamicParamField>
 
 <DynamicParamField body="recalculate_balances" type="object">
@@ -1434,8 +1434,8 @@ const response = await autumn.billing.update({
       The status of the invoice (e.g., 'paid', 'open', 'draft').
     </DynamicResponseField>
 
-    <DynamicResponseField name="stripe_id" type="string">
-      The Stripe invoice ID.
+    <DynamicResponseField name="processor_invoice_id" type="string">
+      The processor invoice ID.
     </DynamicResponseField>
 
     <DynamicResponseField name="total" type="number">
@@ -1478,10 +1478,10 @@ const response = await autumn.billing.update({
   "customer_id": "cus_123",
   "invoice": {
     "status": "paid",
-    "stripe_id": "in_1234",
+    "processor_invoice_id": "in_1234",
     "total": 1500,
     "currency": "usd",
-    "hosted_invoice_url": "https://invoice.stripe.com/..."
+    "hosted_invoice_url": "https://example.com/invoice/..."
   },
   "payment_url": null
 }

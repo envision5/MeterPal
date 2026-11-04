@@ -119,7 +119,7 @@ const comparableCustomerProduct = (customerProduct: FullCusProduct) => ({
 
 const comparableSubscription = (subscription: Subscription) => ({
 	id: subscription.id,
-	stripe_id: subscription.stripe_id,
+	processor_id: subscription.processor_id,
 	current_period_start: subscription.current_period_start,
 	current_period_end: subscription.current_period_end,
 	usage_features: [...subscription.usage_features].sort(),
@@ -128,7 +128,7 @@ const comparableSubscription = (subscription: Subscription) => ({
 const comparableInvoice = (invoice: Invoice) => ({
 	id: invoice.id,
 	internal_entity_id: invoice.internal_entity_id,
-	stripe_id: invoice.stripe_id,
+	processor_invoice_id: invoice.processor_invoice_id,
 	status: invoice.status,
 	total: invoice.total,
 	currency: invoice.currency,

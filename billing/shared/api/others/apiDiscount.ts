@@ -46,7 +46,7 @@ export const ApiDiscountSchema = z.object({
 	}),
 
 	subscription_id: z.string().nullish().meta({
-		description: "The Stripe subscription ID this discount is applied to",
+		description: "The processor subscription ID this discount is applied to",
 		example: "sub_1A2B3C4D5E6F7G8H",
 	}),
 	total_discount_amount: z.number().nullish().meta({

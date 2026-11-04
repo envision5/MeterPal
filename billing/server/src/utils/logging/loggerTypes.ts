@@ -41,23 +41,6 @@ export type LogAppContext = {
 	full_subject_rollout_enabled?: boolean;
 };
 
-/** Stripe webhook event context */
-export type LogStripeEventContext = {
-	id: string;
-	type: string;
-	object_id: string;
-};
-
-/** Vercel webhook event context */
-export type LogVercelEventContext = {
-	id?: string;
-	type?: string;
-	installation_id?: string;
-	invoice_id?: string;
-	external_invoice_id?: string;
-	resource_id?: string;
-};
-
 /** Background worker context */
 export type LogWorkflowContext = {
 	id: string;

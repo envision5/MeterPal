@@ -20,7 +20,7 @@ export type PollableExpectParams<C> = {
 
 /**
  * Webhook-driven state (checkout.session.completed, invoice.*) travels
- * Stripe → one shared ingress sandbox → the µVM, and Stripe retries a missed
+ * The processor → one shared ingress sandbox → the µVM, and the processor retries a missed
  * delivery on its own backoff — measured arriving well past 30s in `bun tw`,
  * after the test had already given up. Locally the same hop is seconds, so only
  * the contended environment pays the longer ceiling. Polling exits as soon as
@@ -32,10 +32,10 @@ export const DEFAULT_SETTLE_TIMEOUT_MS =
 	Number(process.env.TEST_FILE_CONCURRENCY || "0") > 1 ? 45_000 : 30_000;
 
 /**
- * For assertions gated on a Stripe webhook (checkout completion, cancellation
+ * For assertions gated on a processor webhook (checkout completion, cancellation
  * scheduling, invoice finalisation). Measured arriving past a minute in `bun
- * tw`, where the hop is Stripe → one shared ingress sandbox → the µVM and
- * Stripe retries a miss on its own backoff.
+ * tw`, where the hop is the processor → one shared ingress sandbox → the µVM and
+ * the processor retries a miss on its own backoff.
  */
 export const WEBHOOK_SETTLE_TIMEOUT_MS =
 	Number(process.env.TEST_FILE_CONCURRENCY || "0") > 1 ? 150_000 : 30_000;
@@ -48,7 +48,7 @@ export const WEBHOOK_TEST_TIMEOUT_MS = 5 * 60_000;
  *
  * Wraps an expect helper so a caller may pass `customerId` instead of a
  * pre-fetched `customer`, and the helper re-fetches until its own assertions
- * hold — for state that settles asynchronously (Stripe webhooks, queue
+ * hold — for state that settles asynchronously (processor webhooks, queue
  * workers), which is far slower on a contended CI box than locally.
  *
  * Passing `customer` keeps the original SYNCHRONOUS behaviour, so the hundreds

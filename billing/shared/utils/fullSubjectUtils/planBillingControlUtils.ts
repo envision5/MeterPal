@@ -29,7 +29,7 @@ const appliesNow = ({
 	customerProduct: FullCusProduct;
 	now: number;
 }) => {
-	// Active statuses are authoritative when Stripe test clocks run ahead.
+	// Active statuses are authoritative when the processor's test clocks run ahead.
 	const statusAwareNow = Math.max(now, customerProduct.starts_at ?? now);
 	return (
 		(customerProduct.access_starts_at ?? customerProduct.starts_at ?? 0) <=

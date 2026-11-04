@@ -1196,9 +1196,9 @@ export const IconMinus = ({ className, ...props }: SvgIconProps) => (
 export const faqData = [
 	{
 		id: 1,
-		question: "Do I still need Stripe?",
+		question: "Do I need my own payment processor?",
 		answer:
-			"Yes. MeterPal works with Stripe—it handles the billing logic that Stripe doesn't. You keep your Stripe account, your customer relationships, and your payment data. MeterPal sits between your app and Stripe, managing webhooks, usage limits, and state.\n\nYou're never locked in. Your subscriptions live in Stripe.",
+			"No. MeterPal bills natively through PayPal—it handles the billing logic end to end. You keep your customer relationships, and your payment data. MeterPal manages webhooks, usage limits, and state.\n\nYou're never locked in. You can export your data anytime.",
 	},
 	{
 		id: 7,
@@ -1216,13 +1216,13 @@ export const faqData = [
 		id: 3,
 		question: "How is MeterPal different from Orb or Metronome?",
 		answer:
-			"Orb and Metronome focus on usage metering—tracking how much customers consume, suitable for end of month invoicing. You still have to build access control and state management separately, meaning you'll wire together your own logic, Stripe billing and a metering provider.\n\nMeterPal is a complete system of record. We handle usage metering + entitlements + feature gating + billing state in one API. `check()` tells you if a user can access a feature in <50ms.",
+			"Orb and Metronome focus on usage metering—tracking how much customers consume, suitable for end of month invoicing. You still have to build access control and state management separately, meaning you'll wire together your own logic, billing and a metering provider.\n\nMeterPal is a complete system of record. We handle usage metering + entitlements + feature gating + billing state in one API. `check()` tells you if a user can access a feature in <50ms.",
 	},
 	{
 		id: 4,
 		question: "What if I need to move off MeterPal? Am I locked in?",
 		answer:
-			"MeterPal is open source. You can self-host anytime, or export all your data. Your Stripe subscriptions, customers and payment details remain yours. Moving off MeterPal is simply a case of building what you would have built in-house anyway (but this has never happened, touch wood!). \n\n You can even do this gradually: first by replicating customer state into your own system via our webhooks, then making a full transition after.",
+			"MeterPal is open source. You can self-host anytime, or export all your data. Your subscriptions, customers and payment details remain yours. Moving off MeterPal is simply a case of building what you would have built in-house anyway (but this has never happened, touch wood!). \n\n You can even do this gradually: first by replicating customer state into your own system via our webhooks, then making a full transition after.",
 	},
 	{
 		id: 5,
@@ -1248,7 +1248,7 @@ export const featuresData = [
 	{
 		title: "Instant pricing changes",
 		description:
-			"Change your pricing model without breaking existing customers. Grandfather old plans or migrate users gradually. No database or Stripe migrations.",
+			"Change your pricing model without breaking existing customers. Grandfather old plans or migrate users gradually. No database migrations.",
 		Icon: IconVersioning,
 	},
 	{
@@ -1385,7 +1385,7 @@ export const customerStoriesData: CustomerStory[] = [
 		stats: [
 			{ value: "5x", label: "Faster billing launch" },
 			{ value: "120K", label: "Active developers" },
-			{ value: "0", label: "Stripe webhooks written" },
+			{ value: "0", label: "Billing webhooks written" },
 		],
 		quote:
 			"I would literally recommend MeterPal to every person who asked. Since the migration, I have a lot more confidence that customers are actually getting what they're paying for.",
@@ -1405,7 +1405,7 @@ export const customerStoriesData: CustomerStory[] = [
 		founderImage: "/images/customers/firecrawl-founder.png",
 		headline: {
 			lead: "Firecrawl metered every crawl with MeterPal",
-			emphasis: "without touching Stripe.",
+			emphasis: "without touching payment infrastructure.",
 		},
 		stats: [
 			{ value: "9.2M", label: "Pages metered / mo" },

@@ -782,6 +782,9 @@ Pay-per-use (usage-based) pricing charges customers based on how much of a featu
 
 ## Setting up
 
+
+
+
 Create a consumable feature with a `usage_based` price:
 
 ```ts autumn.config.ts
@@ -820,18 +823,24 @@ export default atmn({ features: [notifications], plans: [payAsYouGo] });
 
 Preview with `atmn push`, then apply with `atmn push --yes`.
 
+
+
+
+
 ## How it works
 
 1. A customer's usage is tracked via the [track](/documentation/customers/tracking-usage) endpoint throughout the billing period
 2. Usage first draws down from the **included** amount (if any) at no charge
 3. Usage beyond the included amount is **overage** — billed at the configured rate
-4. At the end of the billing period, Autumn generates a Stripe invoice for the total overage
+4. At the end of the billing period, MeterPal generates a processor invoice for the total overage
+
 
 Usage-based features allow overage by default. The `check` endpoint will return `allowed: true` even if the customer has exceeded their included balance, as long as a usage-based price is configured.
 
+
 ## Tracking usage
 
-Track usage as it occurs — Autumn accumulates it over the billing period:
+Track usage as it occurs — MeterPal accumulates it over the billing period:
 
 <CodeGroup>
 
@@ -910,6 +919,7 @@ curl -X POST "https://api.useautumn.com/v1/check" \
 
 </CodeGroup>
 
+
 ```json
 {
   "allowed": true,
@@ -925,6 +935,7 @@ curl -X POST "https://api.useautumn.com/v1/check" \
   }
 }
 ```
+
 
 ## Combining with free tiers
 
@@ -948,6 +959,9 @@ This is in contrast to [usage-based pricing](/documentation/modelling-pricing/us
 > A customer selects 3,000 credits and 10 seats. They pay $20 base + $25 for 2,500 extra credits + $35 for 7 extra seats = $80/month.
 
 ## Setting up
+
+
+
 
 Create your features and add them to a plan with `prepaid` prices:
 
@@ -1002,6 +1016,10 @@ export default atmn({ features: [apiCredits, seats], plans: [pro] });
 
 Preview with `atmn push`, then apply with `atmn push --yes`.
 
+
+
+
+
 ## How it works
 
 When a plan has prepaid features, customers select a **quantity** at purchase time. This quantity determines:
@@ -1015,7 +1033,9 @@ Using our example plan:
 - A customer selects **3,000 API credits**. 500 are included, so they pay for 2,500 → $10 × (2,500 / 1,000) = **$25/month** for credits.
 - The same customer selects **10 seats**. 3 are included, so they pay for 7 → $5 × 7 = **$35/month** for seats.
 
+
 If you pass a `quantity` equal to or less than the included amount, the customer gets the included amount and pays nothing extra for that feature.
+
 
 ## Passing `feature_quantities`
 
@@ -1117,7 +1137,8 @@ curl -X POST "https://api.useautumn.com/v1/billing/update" \
 
 </CodeGroup>
 
-See [Updating Subscriptions](/documentation/customers/updating-subscriptions) for more on previewing changes. When quantities change mid-cycle, Autumn can prorate the charge — see [Proration](/documentation/modelling-pricing/proration) for configuration options.
+See [Updating Subscriptions](/documentation/customers/updating-subscriptions) for more on previewing changes. When quantities change mid-cycle, MeterPal can prorate the charge — see [Proration](/documentation/modelling-pricing/proration) for configuration options.
+
 
 ## Understanding prepaid balances
 
@@ -1130,6 +1151,7 @@ Once a customer is attached to a plan with prepaid features, their balance `brea
 | `granted` | Top-level total: `included_grant + prepaid_grant` summed across all breakdown items. |
 | `remaining` | How much is left to use. |
 | `usage` | How much has been consumed. |
+
 
 Using the plan from our setup, a customer who attaches with 3,000 credits and 10 seats will have:
 
@@ -1217,6 +1239,9 @@ Volume-based pricing uses tiers to determine a single flat charge based on the t
 
 ## Setting up
 
+
+
+
 Use the `tiers` array with `tierBehavior: 'volume'` on a plan item price:
 
 ```ts autumn.config.ts
@@ -1258,9 +1283,13 @@ export default atmn({ features: [records], plans: [pro] });
 
 Preview with `atmn push`, then apply with `atmn push --yes`.
 
+
+
+
+
 ## How volume-based pricing works
 
-Autumn:
+MeterPal:
 
 1. Looks at the total volume for the feature
 2. Finds the tier the total falls into
@@ -1284,7 +1313,9 @@ Each tier has the following fields:
 | `flatAmount` | number | Flat fee charged when the total volume falls in this tier (`flat_amount` over the API) |
 | `amount` | number | Optional per-unit price applied to the total volume when this tier is the matching tier |
 
+
 Tiers must be in ascending order by `to`. The final tier should use `"inf"`.
+
 
 ## Combining flat and per-unit amounts
 
@@ -1323,6 +1354,9 @@ Per-unit pricing charges customers based on the quantity of a resource they use 
 
 ## Setting up
 
+
+
+
 Create a `non-consumable` metered feature and add it to a plan with a per-unit price:
 
 ```ts autumn.config.ts
@@ -1359,6 +1393,10 @@ export default atmn({ features: [seats], plans: [pro] });
 
 Preview with `atmn push`, then apply with `atmn push --yes`.
 
+
+
+
+
 ## Billing methods
 
 | Method | When charged | Quantity | Best for |
@@ -1368,7 +1406,7 @@ Preview with `atmn push`, then apply with `atmn push --yes`.
 
 ### Prepaid per-unit
 
-With prepaid, the customer selects a **total quantity** when purchasing. The `quantity` includes any free included amount — Autumn subtracts the included amount and charges for the remainder.
+With prepaid, the customer selects a **total quantity** when purchasing. The `quantity` includes any free included amount — MeterPal subtracts the included amount and charges for the remainder.
 
 For example, with 5 included seats at $10/extra seat, a customer who selects `quantity: 10` gets 10 seats total and pays for 5 extra seats ($50/month).
 
@@ -1424,11 +1462,13 @@ curl -X POST "https://api.useautumn.com/v1/billing/attach" \
 
 The customer's balance is set to the total quantity (10). If they're upgrading and already have seats in use, the existing usage is carried over — so a customer with 3 seats in use would see a remaining balance of 7.
 
-Autumn does not prevent you from passing a `quantity` lower than the customer's current usage. If the customer has 5 seats in use and you pass `quantity: 3`, the balance goes negative (-2). The `check` endpoint will return `allowed: false`, preventing new seats from being added, but existing seats are not forcibly removed.
+
+MeterPal does not prevent you from passing a `quantity` lower than the customer's current usage. If the customer has 5 seats in use and you pass `quantity: 3`, the balance goes negative (-2). The `check` endpoint will return `allowed: false`, preventing new seats from being added, but existing seats are not forcibly removed.
+
 
 ### Usage-based per-unit
 
-With usage-based billing, no quantity is needed at purchase time. Track seat additions and removals as they happen, and Autumn bills for the actual number of seats in use.
+With usage-based billing, no quantity is needed at purchase time. Track seat additions and removals as they happen, and MeterPal bills for the actual number of seats in use.
 
 <CodeGroup>
 
@@ -1495,7 +1535,7 @@ When a customer purchases the plan, any seats already in use are **automatically
 
 ## Existing usage on upgrade
 
-When a customer upgrades from one plan to another, Autumn **automatically carries over** their current seat usage to the new plan. This ensures there's no gap in tracking — existing seats don't disappear or go unbilled.
+When a customer upgrades from one plan to another, MeterPal **automatically carries over** their current seat usage to the new plan. This ensures there's no gap in tracking — existing seats don't disappear or go unbilled.
 
 ### Prepaid
 
@@ -1504,16 +1544,16 @@ The customer's balance is set to their chosen quantity. Existing usage is then d
 > **Example**: Customer has **3 seats** in use. They purchase a plan with 5 included seats, passing `quantity: 10`.
 > - Balance is set to 10 (5 included + 5 purchased)
 > - 3 existing seats are deducted → **7 remaining**
-> - Stripe charges for 10 seats (with 5 in the free tier)
+> - The processor charges for 10 seats (with 5 in the free tier)
 
 ### Usage-based
 
-No quantity is needed. The Stripe subscription quantity is set to the customer's current usage automatically.
+No quantity is needed. The processor subscription quantity is set to the customer's current usage automatically.
 
 > **Example**: Customer has **3 seats** in use. They purchase a plan with 5 included seats at $10/extra seat.
 > - Balance starts at 5 (included amount)
 > - 3 existing seats are deducted → **2 remaining**
-> - Stripe subscription reflects 3 seats in use (within the free tier, so no extra charge)
+> - Processor subscription reflects 3 seats in use (within the free tier, so no extra charge)
 > - When they add a 6th seat, billing begins at $10/seat for the overage
 
 | Scenario | Prepaid (qty: 8) | Usage-based |
@@ -1577,6 +1617,9 @@ Recurring plans let you grant customers a fixed allowance of consumable features
 
 ## Setting up
 
+
+
+
 Define a recurring plan in your `autumn.config.ts`:
 
 ```ts autumn.config.ts expandable
@@ -1608,6 +1651,10 @@ export default atmn({ features: [messages], plans: [pro] });
 ```
 
 Preview with `atmn push`, then apply with `atmn push --yes`.
+
+
+
+
 
 ## Attaching a subscription
 
@@ -1661,6 +1708,7 @@ curl -X POST "https://api.useautumn.com/v1/attach" \
 
 </CodeGroup>
 
+
 ```json
 {
   "id": "user_123",
@@ -1668,7 +1716,6 @@ curl -X POST "https://api.useautumn.com/v1/attach" \
   "email": "jane@example.com",
   "createdAt": 1771409161016,
   "fingerprint": null,
-  "stripeId": "cus_U0BKxpq1mFhuJO",
   "env": "sandbox",
   "metadata": {},
   "sendEmailReceipts": false,
@@ -1724,9 +1771,10 @@ curl -X POST "https://api.useautumn.com/v1/attach" \
 }
 ```
 
-When a subscription is created, Autumn:
 
-1. Creates a Stripe subscription with the plan's prices
+When a subscription is created, MeterPal:
+
+1. Creates a processor subscription with the plan's prices
 2. Grants the customer their included [balances](/documentation/concepts/balances) for each consumable feature
 3. Starts the billing cycle -- balances reset automatically at the start of each period
 
@@ -1781,6 +1829,9 @@ One-off purchases are single-charge plans that don't recur. They're used for one
 
 ## Setting up
 
+
+
+
 Set `interval: "one_off"` on the plan's `price`, or on the item price, for a one-time charge:
 
 ```ts autumn.config.ts
@@ -1816,15 +1867,21 @@ export default atmn({ features: [credits], plans: [creditTopUp] });
 
 Preview with `atmn push`, then apply with `atmn push --yes`.
 
+
+
+
+
 ## How it works
 
 When a customer purchases a one-off plan:
 
-- Autumn creates a Stripe invoice (not a subscription) and charges it immediately
+- MeterPal creates a processor invoice (not a subscription) and charges it immediately
 - The feature balance is provisioned with the purchased quantity
 - The balance has a `one_off` interval — it never resets or expires
 
-One-off purchases don't create Stripe subscriptions. They generate a one-time invoice instead.
+
+One-off purchases don't create processor subscriptions. They generate a one-time invoice instead.
+
 
 ## Purchasing a one-off plan
 
@@ -1880,15 +1937,18 @@ curl -X POST "https://api.useautumn.com/v1/checkout" \
 
 ## One-off prices within a subscription
 
-A subscription plan can include both recurring and one-off prices. When it does, Autumn splits them at checkout:
+A subscription plan can include both recurring and one-off prices. When it does, MeterPal splits them at checkout:
 
-- **Recurring prices** bill every cycle as part of the Stripe subscription
+- **Recurring prices** bill every cycle as part of the processor subscription
 - **One-off prices** are charged once on the first invoice only
 
 This is useful for setup fees, one-time credit grants, or any charge that should happen once when the customer subscribes.
 
 > **Example** <br />
 > A Pro plan charges $20/month plus a one-time $50 setup fee. The customer's first invoice is $70, and subsequent invoices are $20.
+
+
+
 
 Add a non-consumable feature for the setup fee, then include it as a separate one-off item alongside the recurring base price:
 
@@ -1925,9 +1985,13 @@ export default atmn({ features: [setupFee], plans: [pro] });
 
 When you attach the plan, you can select a quantity for the setup fee. The $20/month base price recurs on every invoice. The setup fee item is charged once on the first invoice only.
 
+
+
+
+
 ## Balance stacking
 
-One-off balances stack with existing balances from subscriptions. Autumn uses [deduction order](/documentation/concepts/balances#deduction-order) to ensure shorter-interval balances (e.g., monthly) are used before one-off (lifetime) balances.
+One-off balances stack with existing balances from subscriptions. MeterPal uses [deduction order](/documentation/concepts/balances#deduction-order) to ensure shorter-interval balances (e.g., monthly) are used before one-off (lifetime) balances.
 
 ## Use cases
 
@@ -1942,7 +2006,7 @@ One-off balances stack with existing balances from subscriptions. Autumn uses [d
 Auto top-ups automatically purchase additional balance for a customer when their usage drops below a configured threshold. This prevents service interruptions for customers who don't want to manually manage their balance.
 
 > **Example** <br />
-> A customer on the Standard plan gets 5,000 credits per month. When their balance drops below 500, Autumn automatically purchases 1,000 more credits at $10 using the plan's one-off prepaid price.
+> A customer on the Standard plan gets 5,000 credits per month. When their balance drops below 500, MeterPal automatically purchases 1,000 more credits at $10 using the plan's one-off prepaid price.
 
 ## Prerequisites
 
@@ -1951,6 +2015,9 @@ Auto top-ups require:
 2. The customer must have a saved payment method on file
 
 ## Setting up
+
+
+
 
 Auto top-ups are configured per customer, not in `autumn.config.ts`. Your plan needs a one-off prepaid item for the feature you want to auto top-up:
 
@@ -1991,7 +2058,11 @@ export const standard = plan({
 export default atmn({ features: [credits], plans: [standard] });
 ```
 
-The one-off prepaid item (`$10 per 1,000 credits`) is what Autumn uses to replenish the balance. Configure auto top-ups per customer via the API (see below).
+The one-off prepaid item (`$10 per 1,000 credits`) is what MeterPal uses to replenish the balance. Configure auto top-ups per customer via the API (see below).
+
+
+
+
 
 ## Configuring auto top-ups via API
 
@@ -2082,13 +2153,15 @@ This limits the customer to 5 auto top-ups per month. Supported intervals: `hour
 
 ## How it works
 
-1. After every usage event (via `track`), Autumn checks the customer's remaining balance
+1. After every usage event (via `track`), MeterPal checks the customer's remaining balance
 2. If the balance falls below the configured `threshold`, an auto top-up is triggered
-3. Autumn creates an invoice for the configured `quantity` using the one-off prepaid price from the customer's plan
+3. MeterPal creates an invoice for the configured `quantity` using the one-off prepaid price from the customer's plan
 4. The invoice is charged to the customer's saved payment method
 5. The balance is replenished with the purchased amount
 
+
 Auto top-ups use burst suppression to prevent duplicate purchases when multiple track events happen in quick succession. There's a 30-second cooldown between top-ups for the same feature.
+
 
 ## Notifications
 
@@ -2105,6 +2178,9 @@ Rollovers let unused feature balances carry forward to the next billing cycle in
 > A customer on a plan with 1,000 credits/month only uses 600 in January. With rollovers enabled, the remaining 400 credits carry over — giving them 1,400 credits available in February.
 
 ## Setting up
+
+
+
 
 Add a `rollover` config to a plan item:
 
@@ -2143,6 +2219,10 @@ export default atmn({ features: [credits], plans: [pro] });
 
 Preview with `atmn push`, then apply with `atmn push --yes`.
 
+
+
+
+
 ## Rollover configuration
 
 | Field | Description |
@@ -2155,7 +2235,7 @@ Preview with `atmn push`, then apply with `atmn push --yes`.
 
 At the end of each billing cycle, when a feature's balance resets:
 
-1. Autumn checks how much unused balance remains
+1. MeterPal checks how much unused balance remains
 2. If rollovers are configured, the unused balance is saved as a **rollover balance**
 3. The feature resets to its granted amount, and the rollover is added on top
 4. If a `max` cap is set, the oldest rollover balances are trimmed first (FIFO)
@@ -2164,6 +2244,7 @@ At the end of each billing cycle, when a feature's balance resets:
 ## Viewing rollover balances
 
 Rollover balances appear in the `breakdown` array when you retrieve a customer's balances. Each rollover entry has its own expiry date:
+
 
 ```json
 {
@@ -2195,29 +2276,35 @@ Rollover balances appear in the `breakdown` array when you retrieve a customer's
 }
 ```
 
+
 ## Deduction order
 
-Rollovers are deducted **before** a customer's main balances for the same feature. Within the rollover pool, balances are consumed in `expires_at` order: soonest-expiring first, with rollovers that never expire going last. Only once all rollover balances are drained does Autumn fall through to the regular [deduction order](/documentation/concepts/balances#deduction-order) over the main entitlements.
+Rollovers are deducted **before** a customer's main balances for the same feature. Within the rollover pool, balances are consumed in `expires_at` order: soonest-expiring first, with rollovers that never expire going last. Only once all rollover balances are drained does MeterPal fall through to the regular [deduction order](/documentation/concepts/balances#deduction-order) over the main entitlements.
 
 This means carried-over balance is used up before fresh monthly allocation, so rollovers you're about to lose to expiry get spent first.
 
 > **Example** <br />
 > A customer has a 1,000 credits/month balance that just reset, plus a 400 credits rollover from last month. They use 300 credits. <br />
-> Autumn deducts all 300 from the rollover, leaving 100 credits in rollover and the full 1,000 credits monthly untouched.
+> MeterPal deducts all 300 from the rollover, leaving 100 credits in rollover and the full 1,000 credits monthly untouched.
+
 
 Rollovers are only available on `consumable` features with a reset interval. Non-consumable features (like seats) don't reset and therefore don't support rollovers.
+
 
 ## Entity rollovers
 
 If you're using [entity plans](/documentation/modelling-pricing/entity-plans), rollovers are tracked per entity. Each entity's unused balance rolls over independently.
 ## Trials
 
-Free trials give customers temporary access to a paid plan before they're charged. Autumn supports two trial modes: **card required** (collect payment info upfront, bill when trial ends) and **card not required** (no payment info needed, access expires automatically).
+Free trials give customers temporary access to a paid plan before they're charged. MeterPal supports two trial modes: **card required** (collect payment info upfront, bill when trial ends) and **card not required** (no payment info needed, access expires automatically).
 
 > **Example** <br />
 > A SaaS tool offers a 14-day free trial of their Pro plan. If the customer doesn't cancel, billing begins on day 15.
 
 ## Setting up
+
+
+
 
 Add a `freeTrial` object to your plan:
 
@@ -2259,9 +2346,13 @@ Trial duration types: `day`, `month`, `year`.
 
 Preview with `atmn push`, then apply with `atmn push --yes`.
 
+
+
+
+
 ## Card required trials
 
-When `cardRequired` is `true`, the customer must provide payment information to start the trial. Stripe creates a subscription with a trial period — no charge occurs until the trial ends.
+When `cardRequired` is `true`, the customer must provide payment information to start the trial. The processor creates a subscription with a trial period — no charge occurs until the trial ends.
 
 <CodeGroup>
 
@@ -2275,7 +2366,7 @@ const { data } = await autumn.checkout({
   plan_id: "pro",
 });
 
-// Returns Stripe Checkout URL — customer adds card and starts trial
+// Returns the checkout URL — customer adds card and starts trial
 ```
 
 ```python Python
@@ -2287,7 +2378,7 @@ response = await autumn.checkout(
     customer_id="user_123",
     plan_id="pro",
 )
-# Returns Stripe Checkout URL
+# Returns the checkout URL
 ```
 
 ```bash cURL
@@ -2338,7 +2429,13 @@ curl -X POST "https://api.useautumn.com/v1/attach" \
 
 When the trial expires, the customer loses access unless they add a payment method. If a [free plan](/documentation/modelling-pricing/free-plans) with `autoEnable` exists in the same group, it's activated as a fallback.
 
+
 You can combine `autoEnable` with `cardRequired: false` to create an **auto-trial** plan. The trial starts automatically when a customer is created, and expires after the trial period — no API call needed.
+
+
+
+
+
 
 ## Checking trial status
 
@@ -2366,11 +2463,20 @@ for sub in response.subscriptions:
 
 </CodeGroup>
 
+
+
+
+
+
+
+
+
+
 ## Trial deduplication
 
 Each customer can only use a plan's trial **once**. If they try to attach the same plan again, the trial is skipped and they're billed immediately.
 
-To prevent trial abuse across multiple accounts, set a `fingerprint` when creating a customer (e.g., device ID, browser fingerprint). Autumn checks whether any customer with the same fingerprint has already used the trial.
+To prevent trial abuse across multiple accounts, set a `fingerprint` when creating a customer (e.g., device ID, browser fingerprint). MeterPal checks whether any customer with the same fingerprint has already used the trial.
 
 <CodeGroup>
 
@@ -2406,7 +2512,10 @@ curl -X POST "https://api.useautumn.com/v1/customers" \
 
 </CodeGroup>
 
+
 Custom trials passed via `customize.freeTrial` always **bypass** deduplication. Use this for support cases where you want to grant a second trial.
+
+
 
 You can check which trials a customer has already used by expanding `trials_used` on the customer object:
 
@@ -2439,6 +2548,11 @@ curl -X POST "https://api.useautumn.com/v1/customers" \
 
 </CodeGroup>
 
+
+
+
+
+
 ## Upgrades and Downgrades
 
 When upgrading to a plan with a trial, the trial behavior depends on the customer's current state and whether the new plan has an unused trial:
@@ -2452,11 +2566,16 @@ When upgrading to a plan with a trial, the trial behavior depends on the custome
 
 When a customer downgrades during a trial, the lower plan is scheduled to activate when the trial ends. The lower plan's own trial is not applied - you cannot get a new trial on a downgrade.
 
+
 You can override any of these behaviors by passing `customize.freeTrial` on the attach call. See [Overriding trial behavior](#overriding-trial-behavior) below.
+
 
 ## Overriding trial behavior
 
 You can override the default trial behavior on any `/attach` or `/update-subscription` call by passing `customize.freeTrial`:
+
+
+
 
 Pass a `freeTrial` object to start a trial with a custom duration. This **bypasses deduplication** — the customer always gets the trial, even if they've trialed this plan before.
 
@@ -2509,6 +2628,9 @@ curl -X POST "https://api.useautumn.com/v1/attach" \
 
 </CodeGroup>
 
+
+
+
 Pass `freeTrial: null` to skip the trial entirely and begin billing immediately — even if the plan has a trial configured.
 
 <CodeGroup>
@@ -2547,6 +2669,9 @@ curl -X POST "https://api.useautumn.com/v1/attach" \
 
 You can also pass `freeTrial: null` on `/update-subscription` to end an active trial early and start billing right away.
 
+
+
+
 To extend a trial, call `/update-subscription` with a new `customize.freeTrial`. The new trial duration is computed **from now** — it replaces the current trial end date rather than adding to it.
 
 <CodeGroup>
@@ -2581,13 +2706,30 @@ await autumn.update_subscription(
 
 </CodeGroup>
 
+
 Trial extensions are **replacement**, not additive. If a customer is 5 days into a 14-day trial and you set a new 14-day trial, they get 14 days from today (19 days total from the original start), not 14 days added to the remaining 9.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ## Trials with shared subscriptions
 
-When using [entities](/documentation/modelling-pricing/entity-plans) or add-ons, trial state is shared across the same Stripe subscription. This is because Stripe manages trials at the subscription level.
+When using [entities](/documentation/modelling-pricing/entity-plans) or add-ons, trial state is shared across the same processor subscription. This is because the processor manages trials at the subscription level.
+
 
 You can pass in `newBillingSubscription: true` to create a new subscription for each plan, rather than merging into the existing subscription.
+
 
 Here are some principles to keep in mind when using trials with shared subscriptions:
 
@@ -2607,11 +2749,14 @@ Because entities (by default) share a subscription, trial state changes affect *
 - **Entity upgrade to a plan without a trial**: the trial ends for **all** entities, and they're all billed immediately.
 - **Entity downgrade during trial**: the downgrade is scheduled for when the trial ends.
 
+
 Passing `customize.freeTrial` on an entity attach or upgrade affects the **shared subscription**, so all entities are affected. Similarly, passing `freeTrial: null` ends the trial for all entities on the subscription.
 
 ## Resetting usage after trial 
 
+
 This feature is coming soon.
+
 
 By default, feature usage during a trial carries over into the paid period. If you want usage to **reset when billing starts**, pass `transition_rules.reset_after_trial_end` with the feature IDs to reset:
 
@@ -2687,11 +2832,16 @@ Pick with one question: **do you sell capacity before you know who fills it?**
 
 Different tiers per entity work in **both** modes — attach different plans to different entities, or offer more than one license plan under the same parent.
 
+
 Entities are created with a `feature_id` identifying their type (e.g. a non-consumable `seats` or `workspaces` feature). If you only need to *count* seats and bill for them, with no per-seat balances or identity, you don't need entities at all — see [per-seat pricing](/documentation/modelling-pricing/per-unit-pricing).
+
 
 ## Attaching plans directly
 
 Create your plans as normal — no entity-specific configuration on the plan itself. Put plans that should replace each other on upgrade/downgrade in the same `group`.
+
+
+
 
 ```ts autumn.config.ts
 import { atmn, feature, plan } from "atmn";
@@ -2741,6 +2891,10 @@ export default atmn({
 ```
 
 Preview with `atmn push`, then apply with `atmn push --yes`.
+
+
+
+
 
 #### Create the entity
 
@@ -2821,7 +2975,7 @@ curl -X POST "https://api.useautumn.com/v1/billing.attach" \
 
 </CodeGroup>
 
-Each entity's subscription is created separately in Stripe, with billing cycles synced to the parent customer.
+Each entity's subscription is created separately with the payment processor, with billing cycles synced to the parent customer.
 
 To upgrade or downgrade, attach the new plan with the same `entityId` — the usual [upgrade/downgrade](/documentation/customers/subscription-lifecycle) logic applies.
 
@@ -2877,6 +3031,9 @@ team plan  ──licenses: [{ seat, included: 1 }]──►  pool of seats
 
 The pool has a `granted` size (included seats plus any paid seats), a `usage` count (seats currently assigned), and a `remaining` count. Assigning consumes a seat; releasing gives it back.
 
+
+
+
 Create the feature each seat consumes, then a license plan holding what one seat gets. Link it from the parent plan via `licenses`:
 
 ```ts autumn.config.ts
@@ -2927,7 +3084,13 @@ export default atmn({ features: [summaries], plans: [seat, team] });
 
 Preview with `atmn push`, then apply with `atmn push --yes`.
 
+
 Give the license plan its own `group`. Attaching a plan replaces other plans in the same group, so a license plan sharing a group with its parent would knock the parent off.
+
+
+
+
+
 
 #### Buy seats
 
@@ -2972,9 +3135,11 @@ curl -X POST "https://api.useautumn.com/v1/billing.attach" \
 
 </CodeGroup>
 
-With 1 included seat and `quantity: 5`, the customer gets 5 seats and pays for 4. Attach again with a new `quantity` to change the count later — Autumn prorates the difference.
+With 1 included seat and `quantity: 5`, the customer gets 5 seats and pays for 4. Attach again with a new `quantity` to change the count later — MeterPal prorates the difference.
+
 
 A **priced** license plan must be attached at the customer level before it can be assigned to entities. Buying seats with `licenseQuantities` does this for you.
+
 
 #### Assign a license
 
@@ -3017,9 +3182,11 @@ curl -X POST "https://api.useautumn.com/v1/licenses.attach" \
 
 </CodeGroup>
 
-`feature_id` is the entity type and is required only when the entity doesn't exist yet — Autumn creates it for you. You can pass several entities in one call.
+`feature_id` is the entity type and is required only when the entity doesn't exist yet — MeterPal creates it for you. You can pass several entities in one call.
+
 
 Assignment is idempotent. Re-assigning an entity that already holds an active license for the same plan succeeds without consuming another seat. If the pool has no seats left, the call errors — buy more seats first.
+
 
 #### Release a license
 
@@ -3155,7 +3322,9 @@ curl -X POST "https://api.useautumn.com/v1/track" \
 | **Entity-level** | Pass `entity_id` in check/track | Checks/deducts from that entity's individual balance |
 | **Customer-level** | Omit `entity_id` | Returns the total balance across all entities |
 
+
 When tracking at the customer level (without `entity_id`), usage is deducted from the first-assigned entity to keep entity-level totals in sync with the customer-level total.
+
 
 ## Worked example
 
@@ -3166,6 +3335,7 @@ Credit systems let you track actions with different credit costs from a single b
 
 A credit system is made up of a list of [features](/documentation/concepts/features) that can draw from it, and a credit cost per unit of usage for each feature.
 
+
 > **Example** <br />
 > You have a Pro plan that gives users `100 basic messages` per month, and `10 premium messages` per month. These 2 balances are separate and independent of each other.
 > To give your users more flexibility, you instead decide to use a credit system, where:
@@ -3174,10 +3344,18 @@ A credit system is made up of a list of [features](/documentation/concepts/featu
 >
 > Instead of having 2 separate balances for each message type, your Pro plan can have `200 credits` per month. Your users can use the credits in any combination of basic and premium messages they want.
 
+
+
+
 ## Creating a credit system
+
 
   Make sure you have some metered features created before creating a credit
   system.
+
+
+
+
 
 Define metered features, then create a `credit_system` feature with a `creditSchema` that maps each feature to a credit cost:
 
@@ -3231,9 +3409,16 @@ export default atmn({
 
 Preview with `atmn push`, then apply with `atmn push --yes`.
 
+
+
+
+
+
 **Example**
 
 If each `premium_request` is worth 3 credits, then using 6 premium requests will cost 18 credits.
+
+
 
 Now you can add this credit system to a plan, such as granting 50 credits per month or charging $1 per credit.
 
@@ -3287,6 +3472,7 @@ curl -X POST "https://api.useautumn.com/v1/check" \
 
 </CodeGroup>
 
+
 The response will contain the balance for the credit system that is being deducted from.
 
 ```json
@@ -3306,9 +3492,12 @@ The response will contain the balance for the credit system that is being deduct
 }
 ```
 
+
 In this case, we have a balance of 100 credits remaining, so we're allowed to use our 6 "premium requests" feature.
 
+
   If a feature is not defined in the credit system, it will return `allowed: false`
+
 
 #### Tracking usage
 
@@ -3354,6 +3543,7 @@ curl -X POST "https://api.useautumn.com/v1/track" \
 
 </CodeGroup>
 
+
 ```json
 {
   "customerId": "user_123",
@@ -3369,6 +3559,7 @@ curl -X POST "https://api.useautumn.com/v1/track" \
   }
 }
 ```
+
 
 Since the customer started with a balance of 100 credits, and used 18 credits, their remaining balance is 82 credits.
 
@@ -3447,15 +3638,19 @@ Property values are compared as strings, so `{ size: 1 }` and `{ size: '1' }` ma
 
 Usage is attributed per dimension, so graduated dimensions progress through their own tiers, and invoice credit line items are broken down by feature and dimension.
 
+
   A plan item can override its credit system's rate card for customers on that plan via `featureOverride: { creditSchema: [...] }`. The override replaces the rate card entirely, dimensions included.
+
 
 ## Itemized invoice credits
 
-When a plan bills a credit system **pay-per-use at exactly one currency unit per credit** (for example `$1` per credit, or `$100` per 100 credits), Autumn treats the balance as invoice credits: every tracked usage is attributed to the feature that spent it, and the invoice lists one line per feature ("Premium messages, 40 units … $8") plus a "Credits applied" line for the credits the plan included. Balances like this can only be moved by tracked usage and cycle resets, so the invoice always matches the ledger.
+When a plan bills a credit system **pay-per-use at exactly one currency unit per credit** (for example `$1` per credit, or `$100` per 100 credits), MeterPal treats the balance as invoice credits: every tracked usage is attributed to the feature that spent it, and the invoice lists one line per feature ("Premium messages, 40 units … $8") plus a "Credits applied" line for the credits the plan included. Balances like this can only be moved by tracked usage and cycle resets, so the invoice always matches the ledger.
 
 Any other price shape (a fractional price per credit, prepaid packs, included-only or pooled items) bills as an ordinary overage. The decision is made per customer when the plan is attached, so changing a plan's price later never rewrites an existing customer's invoices.
 
+
   There is no switch to turn this on. The plan item's price decides, so a credit system can itemize on one plan and bill plainly on another.
+
 
 ## Stacking with direct balances
 
@@ -3463,9 +3658,11 @@ A feature can have both a direct balance **and** belong to a credit system. When
 
 > **Example** <br />
 > A customer's plan grants `10 premium messages` per month directly, plus `200 credits` per month from a credit system (where each premium message costs 10 credits). <br /><br />
-> When the customer sends a premium message, Autumn deducts from the direct premium message balance first. Once those 10 direct messages are used up, subsequent premium messages draw from the credit pool instead.
+> When the customer sends a premium message, MeterPal deducts from the direct premium message balance first. Once those 10 direct messages are used up, subsequent premium messages draw from the credit pool instead.
+
 
   The `check` endpoint accounts for both balances. If the customer has 5 direct premium messages remaining plus 100 credits (enough for 10 more premium messages), `check` will report that the customer is allowed.
+
 
 ## Monetary credits
 
@@ -3481,11 +3678,17 @@ You may want your credit system to represent a monetary value: eg, $10 of credit
 
 3. When charging for the credits, set the cost of each credit to 1 cent
 
+
 See the credits pricing guide for a more detailed example of setting up a monetary credits system
+
+
 
 ## AI Credit Systems
 
 For AI applications that need to track token usage with per-model pricing, you can create an AI credit system. This lets you define markup percentages for each model and automatically calculate costs based on input/output tokens.
+
+
+
 
 Markups are optional. `defaultMarkup` applies to every model unless overridden — by `providerMarkups` (keyed by the first segment of the model ID, e.g. `openrouter`), or by `modelMarkups` for a specific model, which takes highest priority. With no markups set, models are billed at their Models.dev base cost.
 
@@ -3544,6 +3747,10 @@ export default atmn({ features: [aiCredits], plans: [pro] });
 ```
 
 Preview with `atmn push`, then apply with `atmn push --yes`.
+
+
+
+
 
 ### Model ID Format
 
@@ -3612,6 +3819,9 @@ Free plans let you give every new customer access to a limited set of features a
 
 ## Setting up
 
+
+
+
 Create a plan with no `price` and set `autoEnable: true`:
 
 ```ts autumn.config.ts
@@ -3656,11 +3866,17 @@ export default atmn({ features: [apiRequests, workspaces], plans: [free] });
 
 Preview with `atmn push`, then apply with `atmn push --yes`.
 
+
+
+
+
 ## How it works
 
 When `autoEnable` is set, every new customer created via the API or SDK is automatically assigned this plan. This flag can only be set if there are no prices on the plan. Since there are no prices, no payment is required.
 
+
 If a customer cancels their paid plan and you have an auto-enabled free plan in the same group, the free plan will be re-activated automatically.
+
 
 ## Gating features
 
@@ -3718,6 +3934,9 @@ Add-ons are plans that can be purchased alongside a customer's existing plan, ra
 > A customer on the Pro plan can purchase a "Storage Add-On" for an extra 100GB/month, or a one-time "Credit Top-Up" of 500 credits.
 
 ## Setting up
+
+
+
 
 Set `addOn: true` on the plan:
 
@@ -3780,6 +3999,10 @@ export default atmn({
 
 Preview with `atmn push`, then apply with `atmn push --yes`.
 
+
+
+
+
 ## How add-ons work
 
 Without the add-on flag, attaching a new plan replaces the customer's current plan (within the same [group](/documentation/concepts/plans#plan-properties)). With the add-on flag:
@@ -3795,7 +4018,7 @@ When an add-on provides the same feature as the customer's main plan, the balanc
 > **Example** <br />
 > A customer's Pro plan grants 1,000 credits/month. They purchase a one-time top-up of 500 credits. Their total balance is 1,500 credits, tracked as two separate sources.
 
-Autumn uses [deduction order](/documentation/concepts/balances#deduction-order) to consume shorter-interval balances first (monthly before lifetime).
+MeterPal uses [deduction order](/documentation/concepts/balances#deduction-order) to consume shorter-interval balances first (monthly before lifetime).
 
 ## Purchasing add-ons
 
@@ -3904,6 +4127,9 @@ Variants are most useful for:
 
 ## Setting up
 
+
+
+
 Each variant is its own `variant({...})` fixture, listed in the base plan's `variants`:
 
 ```ts autumn.config.ts
@@ -3973,9 +4199,13 @@ export default atmn({ features: [emails], plans: [pro] });
 
 Preview with `atmn push`, then apply with `atmn push --yes`.
 
+
+
+
+
 ## How variants work
 
-Each variant is still a plan you can attach by ID, such as `pro_annual` or `pro_100k`. The difference is that Autumn keeps it connected to the base plan.
+Each variant is still a plan you can attach by ID, such as `pro_annual` or `pro_100k`. The difference is that MeterPal keeps it connected to the base plan.
 
 Use variants when plans share most of their features. If a variant changes many unrelated parts of the plan, create a separate plan instead.
 

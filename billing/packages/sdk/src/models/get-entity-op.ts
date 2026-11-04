@@ -507,23 +507,7 @@ export type GetEntityDisplay = {
   plural?: string | null | undefined;
 };
 
-export type GetEntityStripe = {
-  /**
-   * Stripe product ID this feature's usage prices bill under.
-   */
-  productId?: string | undefined;
-  /**
-   * Stripe meter ID used to create this feature's metered price.
-   */
-  meterId?: string | undefined;
-};
 
-/**
- * Processor mappings for this feature. Present when a Stripe product or meter is set.
- */
-export type GetEntityProcessors = {
-  stripe?: GetEntityStripe | undefined;
-};
 
 /**
  * The full feature object if expanded.
@@ -580,11 +564,7 @@ export type GetEntityFeature = {
    * Whether the feature is archived and hidden from the dashboard.
    */
   archived: boolean;
-  /**
-   * Processor mappings for this feature. Present when a Stripe product or meter is set.
-   */
-  processors?: GetEntityProcessors | undefined;
-};
+  };
 
 export type GetEntityFlags = {
   /**
@@ -653,7 +633,7 @@ export type GetEntitySpendLimit = {
    */
   overageLimit?: number | undefined;
   /**
-   * When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally.
+   * When true, overage for this feature is not posted to the billing processor. Usage tracking and balance resets still behave normally.
    */
   skipOverageBilling?: boolean | undefined;
   /**
@@ -883,8 +863,7 @@ export type GetEntityBillingControls = {
  * The billing processor that owns this invoice.
  */
 export const GetEntityProcessorType = {
-  Stripe: "stripe",
-  Revenuecat: "revenuecat",
+  Paypal: "paypal",
 } as const;
 /**
  * The billing processor that owns this invoice.
@@ -897,9 +876,9 @@ export type GetEntityInvoice = {
    */
   planIds: Array<string>;
   /**
-   * The Stripe invoice ID
+   * The processor invoice ID
    */
-  stripeId: string;
+  processorInvoiceId: string;
   /**
    * The billing processor that owns this invoice.
    */
@@ -921,7 +900,7 @@ export type GetEntityInvoice = {
    */
   createdAt: number;
   /**
-   * URL to the Stripe-hosted invoice page
+   * URL to the processor-hosted invoice page
    */
   hostedInvoiceUrl?: string | null | undefined;
 };
@@ -1781,50 +1760,9 @@ export function getEntityDisplayFromJSON(
   );
 }
 
-/** @internal */
-export const GetEntityStripe$inboundSchema: z.ZodMiniType<
-  GetEntityStripe,
-  unknown
-> = z.pipe(
-  z.object({
-    product_id: types.optional(types.string()),
-    meter_id: types.optional(types.string()),
-  }),
-  z.transform((v) => {
-    return remap$(v, {
-      "product_id": "productId",
-      "meter_id": "meterId",
-    });
-  }),
-);
 
-export function getEntityStripeFromJSON(
-  jsonString: string,
-): SafeParseResult<GetEntityStripe, SDKValidationError> {
-  return safeParse(
-    jsonString,
-    (x) => GetEntityStripe$inboundSchema.parse(JSON.parse(x)),
-    `Failed to parse 'GetEntityStripe' from JSON`,
-  );
-}
 
-/** @internal */
-export const GetEntityProcessors$inboundSchema: z.ZodMiniType<
-  GetEntityProcessors,
-  unknown
-> = z.object({
-  stripe: types.optional(z.lazy(() => GetEntityStripe$inboundSchema)),
-});
 
-export function getEntityProcessorsFromJSON(
-  jsonString: string,
-): SafeParseResult<GetEntityProcessors, SDKValidationError> {
-  return safeParse(
-    jsonString,
-    (x) => GetEntityProcessors$inboundSchema.parse(JSON.parse(x)),
-    `Failed to parse 'GetEntityProcessors' from JSON`,
-  );
-}
 
 /** @internal */
 export const GetEntityFeature$inboundSchema: z.ZodMiniType<
@@ -1857,9 +1795,6 @@ export const GetEntityFeature$inboundSchema: z.ZodMiniType<
       GetEntityDisplay$inboundSchema
     )),
     archived: types.boolean(),
-    processors: types.optional(z.lazy(() =>
-      GetEntityProcessors$inboundSchema
-    )),
   }),
   z.transform((v) => {
     return remap$(v, {
@@ -2184,8 +2119,8 @@ export const GetEntityInvoice$inboundSchema: z.ZodMiniType<
 > = z.pipe(
   z.object({
     plan_ids: z.array(types.string()),
-    stripe_id: types.string(),
-    processor_type: z._default(GetEntityProcessorType$inboundSchema, "stripe"),
+    processor_invoice_id: types.string(),
+    processor_type: z._default(GetEntityProcessorType$inboundSchema, "paypal"),
     status: types.string(),
     total: types.number(),
     currency: types.string(),
@@ -2195,7 +2130,7 @@ export const GetEntityInvoice$inboundSchema: z.ZodMiniType<
   z.transform((v) => {
     return remap$(v, {
       "plan_ids": "planIds",
-      "stripe_id": "stripeId",
+      "processor_invoice_id": "processorInvoiceId",
       "processor_type": "processorType",
       "created_at": "createdAt",
       "hosted_invoice_url": "hostedInvoiceUrl",

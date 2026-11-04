@@ -1,4 +1,4 @@
-import type { FullProduct, RewardProgram } from "@autumn/shared";
+import type { FullProduct } from "@autumn/shared";
 import { productKeyToString, productToProductKey } from "@autumn/shared";
 import type {
 	ProductState,
@@ -14,20 +14,16 @@ export const buildProductStatesContext = ({
 	planIds,
 	versionsByPlanId,
 	usageByInternalId,
-	rewardProgramsByPlanId,
 	maxVersionByPlanId,
 }: {
 	planIds: string[];
 	versionsByPlanId: Map<string, FullProduct[]>;
 	usageByInternalId: Map<string, CustomerProductVersioningFlags>;
-	rewardProgramsByPlanId: Map<string, RewardProgram[]>;
 	maxVersionByPlanId?: Record<string, number>;
 }): ProductStatesContext => {
 	const statesByPlanVersion: Record<string, ProductState> = {};
 	const versionsByPlanIdRecord: ProductStatesContext["versionsByPlanId"] = {};
 	const maxVersionByPlanIdRecord: ProductStatesContext["maxVersionByPlanId"] =
-		{};
-	const rewardProgramsByPlanIdRecord: ProductStatesContext["rewardProgramsByPlanId"] =
 		{};
 
 	for (const planId of planIds) {
@@ -40,8 +36,6 @@ export const buildProductStatesContext = ({
 			maxVersionByPlanId?.[planId] ?? 0,
 			...versions.map((product) => product.version),
 		);
-		rewardProgramsByPlanIdRecord[planId] =
-			rewardProgramsByPlanId.get(planId) ?? [];
 
 		for (const currentFullProduct of liveVersions) {
 			const productKey = productToProductKey({ product: currentFullProduct });
@@ -59,6 +53,5 @@ export const buildProductStatesContext = ({
 		statesByPlanVersion,
 		versionsByPlanId: versionsByPlanIdRecord,
 		maxVersionByPlanId: maxVersionByPlanIdRecord,
-		rewardProgramsByPlanId: rewardProgramsByPlanIdRecord,
 	};
 };

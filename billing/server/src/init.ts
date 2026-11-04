@@ -35,7 +35,6 @@ import "./internal/misc/rollouts/rolloutConfigStore.js";
 import "./internal/misc/featureFlags/featureFlagStore.js";
 import "./internal/misc/customerBlocks/customerBlockStore.js";
 import "./internal/misc/edgeConfig/orgLimitsStore.js";
-import "./internal/misc/stripeSync/stripeSyncStore.js";
 import "./internal/misc/redisV2Cache/redisV2CacheStore.js";
 import "./internal/misc/miscRedisConfig/miscRedisConfigStore.js";
 import "./internal/misc/cacheV2Ramp/cacheV2RampStore.js";
@@ -49,7 +48,6 @@ import "./internal/misc/rateLimiter/public/agentProvisionRateLimit/agentProvisio
 
 // Side-effect: configures trigger.dev SDK to use TRIGGER_SERVER_SECRET_KEY.
 import "./trigger/configureTrigger.js";
-import { closeStripeSyncEngine } from "@autumn/stripe-sync";
 import { prewarmMotherDuckResolver } from "./external/motherduck/initMotherDuck.js";
 import { primeRedisMonitor } from "./external/redis/availabilityMonitor/redisAvailability.js";
 import {
@@ -388,7 +386,6 @@ async function gracefulShutdown() {
 			clientCritical.end(),
 			clientReplica?.end(),
 			clientReplicaSlow?.end(),
-			closeStripeSyncEngine(),
 		]);
 		console.log("Shutdown complete. Exiting process.");
 		process.exit(0);

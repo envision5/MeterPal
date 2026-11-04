@@ -6,9 +6,7 @@ import type {
 import type { AutumnContext } from "@/honoUtils/HonoEnv";
 import { handleCancelEndOfCycleErrors } from "@/internal/billing/v2/actions/updateSubscription/errors/handleCancelEndOfCycleErrors";
 import { handleProrationBehaviorErrors } from "@/internal/billing/v2/common/errors/handleBillingBehaviorErrors";
-import { handleExternalPSPErrors } from "@/internal/billing/v2/common/errors/handleExternalPSPErrors";
 import { handleRevertTrialErrors } from "@/internal/billing/v2/common/errors/handleRevertTrialErrors";
-import { handleStripeBillingPlanErrors } from "@/internal/billing/v2/providers/stripe/errors/handleStripeBillingPlanErrors";
 import { computeFieldUpdates } from "../compute/computeFieldUpdates.js";
 import { handleCurrentCustomerProductErrors } from "./handleCurrentCustomerProductErrors.js";
 import { handleCustomPlanErrors } from "./handleCustomPlanErrors.js";
@@ -38,16 +36,6 @@ export const handleUpdateSubscriptionErrors = async ({
 	const { customerProduct } = billingContext;
 
 	const { autumn: autumnBillingPlan } = billingPlan;
-
-	// 1. External PSP errors (RevenueCat)
-	handleExternalPSPErrors({
-		customerProduct,
-		action: "update",
-		cancelAction: params.cancel_action,
-		noBillingChanges: params.no_billing_changes,
-		intent: billingContext.intent,
-		hasFieldUpdates: Object.keys(computeFieldUpdates({ params })).length > 0,
-	});
 
 	// 1. Current customer product errors
 	handleCurrentCustomerProductErrors({ billingContext });
@@ -106,7 +94,4 @@ export const handleUpdateSubscriptionErrors = async ({
 
 	// 11. Update checkout errors
 	handleUpdateCheckoutErrors({ billingContext });
-
-	// 12. Stripe billing plan errors (validate Stripe resources)
-	handleStripeBillingPlanErrors({ ctx, billingContext, billingPlan });
 };

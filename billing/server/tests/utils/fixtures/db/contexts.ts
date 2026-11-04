@@ -8,9 +8,7 @@ import {
 	type FullCusProduct,
 	type FullProduct,
 } from "@autumn/shared";
-import type Stripe from "stripe";
 import type { AutumnContext } from "@/honoUtils/HonoEnv";
-import { stripeCustomers } from "../stripe/customers";
 import { customers } from "./customers";
 
 const createTestLogger = () => ({
@@ -29,7 +27,6 @@ const createOrg = () => ({
 	name: "Test Organization",
 	slug: "test-org",
 	default_currency: "usd",
-	stripe_account_id: "acct_test",
 });
 
 /**
@@ -56,8 +53,6 @@ const create = ({
 const createBilling = ({
 	customerProducts = [],
 	fullProducts = [],
-	stripeSubscription,
-	stripeSubscriptionSchedule,
 	currentEpochMs = Date.now(),
 	billingCycleAnchorMs = "now",
 	resetCycleAnchorMs = "now",
@@ -65,22 +60,17 @@ const createBilling = ({
 }: {
 	customerProducts?: FullCusProduct[];
 	fullProducts?: FullProduct[];
-	stripeSubscription?: Stripe.Subscription;
-	stripeSubscriptionSchedule?: Stripe.SubscriptionSchedule;
 	currentEpochMs?: number;
 	billingCycleAnchorMs?: number | "now";
 	resetCycleAnchorMs?: number | "now";
 	billingVersion?: BillingVersion;
 }): BillingContext => ({
 	fullCustomer: customers.create({ customerProducts }),
-	stripeCustomer: stripeCustomers.create(),
 	fullProducts,
 	featureQuantities: [],
 	currentEpochMs,
 	billingCycleAnchorMs,
 	resetCycleAnchorMs,
-	stripeSubscription,
-	stripeSubscriptionSchedule,
 	customPrices: [],
 	customEnts: [],
 	isCustom: false,

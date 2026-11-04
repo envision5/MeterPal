@@ -1,4 +1,4 @@
-import type { BillingResult, InsertAutoTopupLimitState } from "@autumn/shared";
+import type { InsertAutoTopupLimitState } from "@autumn/shared";
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
 import type { AutoTopupAttemptContext } from "../../autoTopupContext";
 import { autoTopupLimitRepo } from "../../repos";
@@ -18,31 +18,19 @@ export const MAX_CONSECUTIVE_AUTO_TOPUP_FAILURES = 3;
 export const recordAutoTopupAttempt = async ({
 	ctx,
 	autoTopupContext,
-	billingResult,
 	forceFailure = false,
 	overrideOutcome,
 }: {
 	ctx: AutumnContext;
 	autoTopupContext: AutoTopupAttemptContext;
-	billingResult?: BillingResult;
 	/** Records a failure when execution threw before producing a result. */
 	forceFailure?: boolean;
-	/**
-	 * Explicit outcome for non-Stripe executors (PayPal): their billingResult
-	 * carries no Stripe invoice to infer from.
-	 */
+	/** Explicit outcome — the executor knows whether the charge settled. */
 	overrideOutcome?: "success" | "failure";
 }) => {
 	const now = Date.now();
 	const { limitState: state, autoTopupConfig } = autoTopupContext;
-	const invoiceStatus = billingResult?.stripe?.stripeInvoice?.status;
-	const isInvoiceMode = Boolean(autoTopupContext.invoiceMode);
-	const succeeded =
-		overrideOutcome === "success" ||
-		(!forceFailure &&
-			overrideOutcome === undefined &&
-			(invoiceStatus === "paid" ||
-				(isInvoiceMode && invoiceStatus === "open")));
+	const succeeded = overrideOutcome === "success";
 	const outcome = succeeded ? "success" : "failure";
 
 	const { purchaseLimit, attemptLimit, failedAttemptLimit } =

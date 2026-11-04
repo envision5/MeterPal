@@ -41,28 +41,6 @@ const BUN_VERSION = readFileSync(
 	"utf8",
 ).trim();
 
-/**
- * Tiny image for the ingress sandbox: debian + git + bun, nothing else. The
- * ingress server (scripts/tw/ingress/server.mjs) is a self-contained http server
- * using only node built-ins, so it needs neither node_modules nor PG/Dragonfly/
- * goaws/chromium — building the full base image for it just wastes ~2-3 min and
- * couples ingress to a build that can fail independently of the ingress code.
- */
-export const buildIngressImage = (
-	modal: ModalClient,
-	app: App,
-): Promise<Image> =>
-	// oven/bun:1 (same proven base as the nuke sandbox — pulls + builds reliably in
-	// Modal's builder, where debian:bookworm-slim's apt/bun bootstrap does not). Bun
-	// is already present; we only add git for cloneRepo.
-	modal.images
-		.fromRegistry("oven/bun:1")
-		.dockerfileCommands([
-			"RUN apt-get update && apt-get install -y --no-install-recommends " +
-				"git ca-certificates && rm -rf /var/lib/apt/lists/* && mkdir -p /repo",
-		])
-		.build(app);
-
 /** Inputs for baking node_modules into the base image (see buildBaseImage). */
 export type BaseImageDeps = {
 	/** Clone URL — anonymous for the public repo; only carries a token if
@@ -163,12 +141,12 @@ export const buildBaseImage = (
 					"'  Port: 9324' '  Region: us-east-1' '  AccountId: \"000000000000\"' " +
 					"'  LogToFile: false' '  LogLevel: warn' '  EnableDuplicates: true' " +
 					"'  Queues:' '    - Name: autumn.fifo' '    - Name: autumn-track.fifo' " +
-					"'    - Name: autumn-track-async' '    - Name: autumn-stripe-webhook.fifo' " +
+					"'    - Name: autumn-track-async' " +
 					`> ${TW_PREFIX}/goaws/goaws.yaml`,
 			])
 			// 6. bun → /usr/local/bin/bun (pinned to .bun-version, so `bun` resolves for
-			//    warmup / boot / tests). `node` → bun too: the ingress server and any
-			//    `env node` install shebang (e.g. better-sqlite3's prebuild-install) run
+			//    warmup / boot / tests). `node` → bun too: any `env node` install
+			//    shebang (e.g. better-sqlite3's prebuild-install) runs
 			//    on bun's Node 24 compat, which HAS prebuilds — no native compile, no
 			//    Python/build toolchain needed.
 			.dockerfileCommands([

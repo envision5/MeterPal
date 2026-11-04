@@ -4,7 +4,6 @@ import {
 	type AppEnv,
 	BillingInterval,
 	BillWhen,
-	CouponDurationType,
 	type CreateFreeTrial,
 	EntInterval,
 	type Entitlement,
@@ -14,12 +13,8 @@ import {
 	type Organization,
 	PriceType,
 	type ProductItem,
-	RewardReceivedBy,
-	RewardTriggerEvent,
-	RewardType,
 } from "@autumn/shared";
 import type { DrizzleCli } from "@/db/initDrizzle.js";
-import { attachPmToCus } from "@/external/stripe/stripeCusUtils.js";
 import { generateId } from "@/utils/genUtils.js";
 import { getAxiosInstance } from "./setup.js";
 
@@ -268,11 +263,9 @@ export const initProduct = ({
 export const initCustomer = async ({
 	customer_data,
 	customerId,
-	attachPm = false,
 	db,
 	org,
 	env,
-	testClockId,
 }: {
 	customer_data?: {
 		id: string;
@@ -281,11 +274,9 @@ export const initCustomer = async ({
 		fingerprint?: string;
 	};
 	customerId?: string;
-	attachPm?: boolean;
 	db: DrizzleCli;
 	org: Organization;
 	env: AppEnv;
-	testClockId?: string;
 }) => {
 	const axiosInstance = getAxiosInstance();
 
@@ -311,106 +302,8 @@ export const initCustomer = async ({
 
 	try {
 		const { data } = await axiosInstance.post(`/v1/customers`, customerData);
-		// Attach stripe card
-
-		if (attachPm) {
-			await attachPmToCus({
-				customer: data.customer,
-				org: org,
-				env: env,
-				db: db,
-				testClockId: testClockId,
-			});
-		}
-
 		return data.customer;
 	} catch (error) {
 		console.log("Failed to create customer", error);
 	}
-};
-
-// Init Reward
-export const initReward = ({
-	id,
-	type = RewardType.PercentageDiscount,
-	discountValue,
-	durationType = CouponDurationType.OneOff,
-	durationValue = 0,
-	onlyUsagePrices = false,
-	productIds,
-	applyToAll = false,
-	freeProductId,
-	freeProductConfig,
-}: {
-	id: string;
-	type?: RewardType;
-	discountValue?: number;
-	durationType?: CouponDurationType;
-	durationValue?: number;
-	onlyUsagePrices?: boolean;
-	productIds?: string[];
-	applyToAll?: boolean;
-	freeProductId?: string;
-	freeProductConfig?: {
-		durationType: CouponDurationType;
-		durationValue: number;
-	};
-}): any => {
-	if (
-		type === RewardType.PercentageDiscount ||
-		type === RewardType.FixedDiscount ||
-		type === RewardType.InvoiceCredits
-	) {
-		return {
-			id,
-			name: keyToTitle(id),
-			type,
-
-			only_usage_prices: onlyUsagePrices,
-			product_ids: productIds,
-
-			discount_config: {
-				discount_value: discountValue,
-				duration_type: durationType,
-				duration_value: durationValue,
-				apply_to_all: applyToAll,
-			},
-		};
-	} else if (type === RewardType.FreeProduct) {
-		return {
-			id,
-			name: keyToTitle(id),
-			type,
-			free_product_id: freeProductId,
-			free_product_config: {
-				duration_type: freeProductConfig?.durationType,
-				duration_value: freeProductConfig?.durationValue,
-			},
-		};
-	}
-};
-
-export const initRewardProgram = ({
-	id,
-	when = RewardTriggerEvent.CustomerCreation,
-	productIds = [],
-	internalRewardId,
-	maxRedemptions = 2,
-	receivedBy = RewardReceivedBy.Referrer,
-}: {
-	id: string;
-	productIds?: string[];
-	internalRewardId: string;
-	when?: RewardTriggerEvent;
-	maxRedemptions?: number;
-	receivedBy?: RewardReceivedBy;
-}): any => {
-	return {
-		id,
-		when,
-		product_ids: productIds,
-		internal_reward_id: internalRewardId,
-		max_redemptions: maxRedemptions,
-		received_by: receivedBy,
-	};
 };

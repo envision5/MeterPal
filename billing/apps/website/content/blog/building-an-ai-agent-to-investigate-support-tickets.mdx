@@ -58,13 +58,13 @@ For each endpoint, as we walk through the request, we intentionally write functi
 
 ```tsx
 {
-    "checkoutMode": "stripe_checkout",
+    "checkoutMode": "processor_checkout",
     "invoiceMode": "default",
     "planTiming": "immediate",
     "product": "premium (v1) standard",
     "currentProduct": "free",
     "scheduledCustomerProduct": "none",
-    "stripe": "no sub | no schedule",
+    "processor": "no sub | no schedule",
     "timestamps": "Current: 25 May 2026 09:33:34 | Billing Anchor: now | Reset: now",
     "transition": "free -> premium (immediate)",
     "trialContext": "none"
@@ -78,7 +78,7 @@ With our logs structure in place, investigations became much more definable. It'
 To pass this information to an agent, all we did was:
 
 - Hook Claude Code up to Axiom's MCP and skills
-- Write a couple of custom skills detailing how we structure our logs, the different "domains" of investigations (billing, stripe webhooks, entitlements, etc.)
+- Write a couple of custom skills detailing how we structure our logs, the different "domains" of investigations (billing, processor webhooks, entitlements, etc.)
 - For each domain, add core pieces of information on how it roughly works under the hood (for instance, with entitlements, how our caching structure works)
 
 Here's an example of the top level skill and one of the domain specific reference files:
@@ -107,7 +107,7 @@ When confirmation requires live DB state, use the `planetscale` MCP to query dir
 
 Never use `search` unless absolutely necessary. Broad search scans every field across many rows, which is slow, expensive, and usually less precise.
 
-Prefer structured filters on fields like `context.customer_id`, `context.org_slug`, `req.url`, `stripe_event.*`, and `workflow.*`. When listing requests, add `isnotnull(statusCode)` so you fetch the one result log per request instead of every internal log line for that request.
+Prefer structured filters on fields like `context.customer_id`, `context.org_slug`, `req.url`, `processor_event.*`, and `workflow.*`. When listing requests, add `isnotnull(statusCode)` so you fetch the one result log per request instead of every internal log line for that request.
 
 ## Dataset
 
@@ -121,7 +121,7 @@ Every log line has standard Pino fields plus structured bindings:
 |------|--------|-------------|
 | `context.*` | `org_id`, `org_slug`, `env`, `customer_id`, `auth_type`, `user_id`, `user_email`, `api_version` | App context -- org, customer, auth |
 | `req.*` | `id`, `name`, `url`, `method`, `body`, `query`, `user_agent`, `ip_address`, `timestamp` | Request metadata. `req.id` is the trace ID for correlating logs within one request. |
-| `stripe_event.*` | `id`, `type`, `object_id` | Stripe webhook event context |
+| `processor_event.*` | `id`, `type`, `object_id` | Processor webhook event context |
 | `workflow.*` | `id`, `name`, `payload` | Background worker/job context |
 | (top-level) | `msg`, `level`, `statusCode`, `durationMs`, `res`, `extras`, `error`, `done` | Per-log-line fields |
 
@@ -129,7 +129,7 @@ Every log line has standard Pino fields plus structured bindings:
 
 **`extras`** is a JSON object with domain-specific data (billing plans, webhook changes, etc.). Parse with `parse_json(tostring(extras))`.
 
-**`auth_type`** values: `PublicKey`, `SecretKey`, `Stripe`, `Worker`, `Vercel`, `Revenuecat`.
+**`auth_type`** values: `PublicKey`, `SecretKey`, `Worker`, `Vercel`.
 
 ## Investigation workflow
 
@@ -160,7 +160,7 @@ Inside the narrowed window, look at errors and warnings first (`level == "ERROR"
 
 ### 4. Trace
 
-Use `req.id` to follow a single request across all its log lines. Use `stripe_event.id` to trace a webhook through its handlers.
+Use `req.id` to follow a single request across all its log lines. Use `processor_event.id` to trace a webhook through its handlers.
 
 ## Query templates
 
@@ -179,11 +179,11 @@ Use `req.id` to follow a single request across all its log lines. Use `stripe_ev
 | sort by _time desc
 ```
 
-**Stripe webhook events for a customer/org:**
+**Processor webhook events for a customer/org:**
 ```
 ['express']
 | where ['context.org_slug'] == 'ORG_SLUG'
-| where isnotempty(['stripe_event.type'])
+| where isnotempty(['processor_event.type'])
 | sort by _time desc
 ```
 
@@ -207,7 +207,7 @@ Read these when the investigation falls into a specific domain:
 
 - **Billing** (attach, upgrade, downgrade, cancel, payment, checkout, auto top-up): read [billing-investigation.md](billing-investigation.md)
 - **Entitlements** (check, track, balances, rollovers, `allowed`): read [entitlement-investigation.md](entitlement-investigation.md)
-- **Stripe Webhooks** (subscription lifecycle, invoice payment/failure, checkout, schedule changes, customer timeline): read [stripe-webhook-investigation.md](stripe-webhook-investigation.md)
+- **Processor Webhooks** (subscription lifecycle, invoice payment/failure, checkout, schedule changes, customer timeline): read [processor-webhook-investigation.md](processor-webhook-investigation.md)
 - **Redis slow commands** (latency, cache perf, SLO breaches, V2 FullSubject cache): read [redis-slow-command-investigation.md](redis-slow-command-investigation.md)
 - **Infrastructure** (worker queues, rate limiting): _coming soon_
 ````

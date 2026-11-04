@@ -9,7 +9,7 @@ export function FirstTimeTransactionTooltip() {
 			</TooltipTrigger>
 			<TooltipContent>
 				Applies when the customer has no prior successful payments or invoices
-				in Stripe.
+				in MeterPal.
 			</TooltipContent>
 		</Tooltip>
 	);

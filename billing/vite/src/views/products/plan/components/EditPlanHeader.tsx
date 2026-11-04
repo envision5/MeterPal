@@ -12,22 +12,18 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@autumn/ui";
-import { TriangleIcon, UserIcon } from "@phosphor-icons/react";
+import { UserIcon } from "@phosphor-icons/react";
 import { PlusIcon } from "lucide-react";
 import { parseAsString, useQueryStates } from "nuqs";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useNavigate } from "react-router";
 import { AdminHover } from "@/components/general/AdminHover";
 import V2Breadcrumb from "@/components/v2/breadcrumb";
-import { RevenueCatIcon } from "@/components/v2/icons/AutumnIcons";
-import { useOrg } from "@/hooks/common/useOrg";
-import { useRCMappings } from "@/hooks/queries/revcat/useRCMappings";
 import { useProductsQuery } from "@/hooks/queries/useProductsQuery";
 import {
 	useIsCusPlanEditor,
 	useProductStore,
 } from "@/hooks/stores/useProductStore.ts";
-import { useEnv } from "@/utils/envUtils";
 import { pushPage } from "@/utils/genUtils";
 import { useCusQuery } from "@/views/customers/customer/hooks/useCusQuery.tsx";
 import { useCusProductQuery } from "@/views/customers/customer/product/hooks/useCusProductQuery.tsx";
@@ -39,10 +35,6 @@ import {
 	useProductQueryState,
 } from "../../product/hooks/useProductQuery";
 import { useCreateVariant } from "../hooks/useCreateVariant";
-import {
-	MigrateCustomersDialog,
-	useMigratableVersions,
-} from "../versioning/MigrateCustomersDialog";
 import { CreateVariantButton } from "./CreateVariantButton";
 import { CreateVariantDialog } from "./CreateVariantDialog";
 import { PlanToolbar } from "./PlanToolbar.tsx";
@@ -61,58 +53,12 @@ export const EditPlanHeader = () => {
 	);
 	const navigate = useNavigate();
 	const isCusPlanEditor = useIsCusPlanEditor();
-	const { mappings } = useRCMappings();
-	const { org } = useOrg({ skipSandbox: false });
-	const env = useEnv();
-	const currency = org?.default_currency ?? "USD";
-	const [migrateDialogOpen, setMigrateDialogOpen] = useState(false);
-
-	const pastVersionsWithCustomers = useMemo(() => {
-		if (!numVersions || numVersions <= 1) return [];
-		return Object.entries(versionCounts)
-			.filter(([version, counts]) => {
-				const v = Number(version);
-				if (v >= numVersions) return false;
-				return (counts.active ?? 0) > 0;
-			})
-			.map(([version]) => Number(version));
-	}, [numVersions, versionCounts]);
-	const migratableVersions = useMigratableVersions({
-		productId: product.id,
-		latestVersion: numVersions,
-		pastVersions: pastVersionsWithCustomers,
-		currency,
-	});
-
-	const hasRCMapping =
-		!!org?.processor_configs?.revenuecat.connected &&
-		mappings.some(
-			(m) =>
-				m.autumn_product_id === product.id &&
-				m.revenuecat_product_ids.length > 0,
-		);
-
-	const vercelConfig = org?.processor_configs?.vercel;
-	const vercelAllowedIds =
-		env === "live"
-			? vercelConfig?.allowed_product_ids_live
-			: vercelConfig?.allowed_product_ids_sandbox;
-	const hasVercelLink =
-		!!vercelConfig?.connected &&
-		!!vercelAllowedIds?.length &&
-		vercelAllowedIds.includes(product.id);
-
-	const canMigrate = pastVersionsWithCustomers.length > 0 && !isCusPlanEditor;
 
 	const getProductAdminHover = () => {
 		return [
 			{
 				key: "internal_product_id",
 				value: product.internal_id,
-			},
-			{
-				key: "stripe_id",
-				value: product.stripe_id || "N/A",
 			},
 			{
 				key: "customer_product_id",
@@ -136,15 +82,6 @@ export const EditPlanHeader = () => {
 
 	return (
 		<>
-			<MigrateCustomersDialog
-				open={migrateDialogOpen}
-				onOpenChange={setMigrateDialogOpen}
-				productId={product.id}
-				latestVersion={numVersions}
-				migratableVersions={migratableVersions}
-				pastVersions={pastVersionsWithCustomers}
-				versionCounts={versionCounts}
-			/>
 			<div className="flex flex-col gap-2 p-4 pb-3  border-none shadow-none w-full max-w-[1600px] mx-auto pt-4 sm:pt-8 px-4 sm:px-12">
 				{isCusPlanEditor ? (
 					<CustomerBreadcrumbs />
@@ -209,46 +146,13 @@ export const EditPlanHeader = () => {
 								</IconBadge>
 							</Button>
 						</AdminHover>
-						{hasRCMapping && (
-							<Tooltip>
-								<TooltipTrigger>
-									<IconBadge
-										variant="muted"
-										icon={<RevenueCatIcon size={14} />}
-									>
-										RC
-									</IconBadge>
-								</TooltipTrigger>
-								<TooltipContent>
-									This plan is linked to RevenueCat for mobile billing
-								</TooltipContent>
-							</Tooltip>
-						)}
-						{hasVercelLink && (
-							<Tooltip>
-								<TooltipTrigger>
-									<IconBadge
-										variant="muted"
-										icon={<TriangleIcon size={12} weight="fill" />}
-									></IconBadge>
-								</TooltipTrigger>
-								<TooltipContent>
-									This plan is linked to Vercel Marketplace
-								</TooltipContent>
-							</Tooltip>
-						)}
 					</div>
 
 					<div className="flex flex-row gap-2 items-center">
 						{/* Left of the selectors so showing it never shifts them. */}
 						<PromoteToActiveButton />
 						<VariantSelect />
-						{product.id && (
-							<PlanVersionSelect
-								canMigrate={canMigrate}
-								onMigrateCustomers={() => setMigrateDialogOpen(true)}
-							/>
-						)}
+						{product.id && <PlanVersionSelect />}
 						{!isCusPlanEditor && (
 							<>
 								<BackToPlanButton />

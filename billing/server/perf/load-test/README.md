@@ -1,16 +1,13 @@
 # Load Testing
 
-Artillery-based load tests for the Autumn server, with Stripe-integrated attach cycling.
+Artillery-based load tests for the Autumn server, with attach cycling.
 
 ## Quick Start
 
 ```bash
 cd server
 
-# 1. One-time setup (creates products + 500 customers with Stripe PMs)
-bun loadtest:setup
-
-# 2. Run load test
+# 1. Run load test
 bun loadtest:leak    # memory leak detection (11 min, ~30 req/s)
 bun loadtest         # general load test (4 min, up to ~75 req/s)
 ```
@@ -19,13 +16,11 @@ bun loadtest         # general load test (4 min, up to ~75 req/s)
 
 1. Server running on `localhost:8080` (`bun d`)
 2. `UNIT_TEST_AUTUMN_SECRET_KEY` and `TESTS_ORG` available via infisical (the npm scripts handle this)
-3. Setup script has been run at least once (`bun loadtest:setup`)
+3. `.customers.json` exists in this directory (see Setup below)
 
-## Setup Script
+## Setup
 
-`setup.ts` creates everything needed for the load test:
-
-**Products** (all in the `load-test` group for upgrade/downgrade):
+The load test needs 500 seeded customers and the four `load-test` products:
 
 | Product ID | Type | Price | Features |
 |---|---|---|---|
@@ -34,12 +29,14 @@ bun loadtest         # general load test (4 min, up to ~75 req/s)
 | `load-premium` | Subscription | $50/mo | dashboard, messages (unlimited) |
 | `load-messages` | Add-on (one-off) | $10 | messages (+500, one-time) |
 
-**Customers**: 500 customers (`load-cus-001` to `load-cus-500`), each with:
-- A Stripe customer with `tok_visa` payment method attached
-- Auto-assigned `load-free` via default product group
-- Mapping saved to `.customers.json` (gitignored)
+Seed them into the `TESTS_ORG` org and write the customer-id mapping to
+`.customers.json` (gitignored) next to this README. The file maps each
+customer id (`load-cus-001` .. `load-cus-500`) to its processor id.
 
-The setup script is idempotent — safe to re-run.
+Paid attaches need a payment method on the customer, which the processor
+supplies through its own hosted approval flow — a load test cannot complete
+that, so paid-product attaches are expected to come back with a payment URL
+rather than succeeding.
 
 ## Scenarios
 
@@ -58,7 +55,7 @@ Each VU makes 2 requests:
 1. `POST /v1/billing.attach` — upgrade/downgrade to a random product
 2. `POST /v1/check` — check feature access after attach
 
-Since all subscription products share the `load-test` group, attaching a different product triggers an upgrade or downgrade through Stripe. Attaching the same product the customer already has is handled gracefully (no-op or returns existing).
+Since all subscription products share the `load-test` group, attaching a different product triggers an upgrade or downgrade. Attaching the same product the customer already has is handled gracefully (no-op or returns existing).
 
 ## Load Profiles
 
@@ -99,11 +96,10 @@ Heap snapshots are saved to `server/perf/snapshots/` (gitignored).
 ```
 server/perf/
 ├── load-test/
-│   ├── setup.ts           # Creates products + customers (run once)
 │   ├── processor.mjs      # Artillery helper functions (picks random customers/products)
 │   ├── artillery.yml      # General load test config
 │   ├── memoryLeak.yml     # Memory leak detection config
-│   ├── .customers.json    # Generated customer->stripeId mapping (gitignored)
+│   ├── .customers.json    # Generated customer->processorId mapping (gitignored)
 │   ├── .gitignore
 │   └── README.md
 └── snapshots/

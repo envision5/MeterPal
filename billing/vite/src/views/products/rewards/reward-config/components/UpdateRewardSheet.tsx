@@ -148,7 +148,7 @@ export function UpdateRewardSheet({
 	const handleUpdate = async () => {
 		if (!selectedReward || !isFormValid()) return;
 
-		// Stripe can't update coupons in place, so discount updates delete & recreate.
+		// Discounts can't be updated in place, so discount updates delete & recreate.
 		if (reward.rewardCategory === "discount") {
 			setConfirmCouponOpen(true);
 			return;
@@ -218,7 +218,7 @@ export function UpdateRewardSheet({
 					<DialogHeader>
 						<DialogTitle>Update coupon?</DialogTitle>
 						<DialogDescription>
-							Stripe doesn't have functionality to update coupons. This will
+							Discounts can't be updated in place. This will
 							delete it and recreate it. Existing customers that have this
 							coupon will be unaffected.
 						</DialogDescription>

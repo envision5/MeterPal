@@ -1169,10 +1169,6 @@ trackedFiles:
     id: 65773ade2bd3
     last_write_checksum: sha1:95c21d4a5c3d0d3e435a56af6072ec3ecd75f0c7
     pristine_git_object: 0cff1e271da835a9481f7e0d341ae9de1182c183
-  docs/models/balance-stripe.md:
-    id: 12b21a2693f1
-    last_write_checksum: sha1:16dbba85fe7276642b3e1805e144b8de2791d74e
-    pristine_git_object: 182653105f759b2fae960862531c4872b38ea64e
   docs/models/balance-tier-behavior.md:
     id: 49fad040b38f
     last_write_checksum: sha1:5c91cc7adf35dafa7e966d2d35937f92a46d3d25
@@ -2521,14 +2517,6 @@ trackedFiles:
     id: 9153e9a0f0a6
     last_write_checksum: sha1:4a6de93675c65a99451c44620bb6f2b04b0abd61
     pristine_git_object: 28b5b1f48ca25039f14fdfe31494f6e964e59231
-  docs/models/check-stripe1.md:
-    id: de85bf32d002
-    last_write_checksum: sha1:938b9e571cb46a7a5065bb80b414a803a624b08b
-    pristine_git_object: 9eecab5a20072603fe6a81bbb50df2b76ccd5638
-  docs/models/check-stripe2.md:
-    id: b3741654af3a
-    last_write_checksum: sha1:a07007936e6708775f21d9d2ffe73228c9203857
-    pristine_git_object: be8808448caff0342130fa323256e764effb522d
   docs/models/check-threshold-type1.md:
     id: 57ad8c87c4d4
     last_write_checksum: sha1:7dc2795ae4c20f5c29db96eb82686eb359463f56
@@ -2881,10 +2869,6 @@ trackedFiles:
     id: 658f1e6dd4d5
     last_write_checksum: sha1:0aa5d631d7d9ba0d9a0a42870153e7242b5b2ced
     pristine_git_object: 788878d27119dc82e2877df317b425a1599a7f12
-  docs/models/create-entity-stripe.md:
-    id: 4b6c2ecb1439
-    last_write_checksum: sha1:96d1fb3092c325bce66d16bf069b35ee56b76c49
-    pristine_git_object: 70bfe1baa480b22b24c24f135517fe97c6f13f75
   docs/models/create-entity-subscription-scope.md:
     id: 8c58223a908a
     last_write_checksum: sha1:e430e2156c76e071afe660d3464b544381888f85
@@ -3197,10 +3181,6 @@ trackedFiles:
     id: bad8a652a8ee
     last_write_checksum: sha1:ea7a4af2b403509431a018081dd103c2cb5b345b
     pristine_git_object: 50ab8c5b41619a7917c386c717add2a4c020d7c9
-  docs/models/create-feature-stripe.md:
-    id: b3ce7d5fc08c
-    last_write_checksum: sha1:05c6d0617048085d4ac2dbe55f79ca7e4d0b1015
-    pristine_git_object: f7aecac97e46429b46aeb46ef44346430197b358
   docs/models/create-feature-tier-request-body.md:
     id: bda2c8e19371
     last_write_checksum: sha1:170b968ff96e8e94f06b76f4d7f9f8b0778bd209
@@ -3393,10 +3373,6 @@ trackedFiles:
     id: 9d2f9ddf4e32
     last_write_checksum: sha1:03d9e75a1e9b7609e6c4d4c4ba296b5e8f4f30ed
     pristine_git_object: 31ccb61025d79ef903f9584d59754bb5b923bf00
-  docs/models/create-invoice-item-stripe.md:
-    id: 1a8962f4262e
-    last_write_checksum: sha1:01acb73949db0ccbab3616a13db5dc14a66860a7
-    pristine_git_object: d9a3f2bd4ab0dc0e53ffa93141e955e18b21c6aa
   docs/models/create-invoice-license-quantity-billing-behavior.md:
     id: 449a38f625a9
     last_write_checksum: sha1:f2891af0892194d66196f8fdf84e4295cdaa927e
@@ -3417,10 +3393,6 @@ trackedFiles:
     id: 49060bbe1554
     last_write_checksum: sha1:0042518856007b1ff0f912a782ef0ae367177971
     pristine_git_object: fe60c9be48df77c6a722ac909aff011923c17d71
-  docs/models/create-invoice-license-quantity-stripe.md:
-    id: b3ed7a42ba5c
-    last_write_checksum: sha1:06f31e9c9a26dc58109f610cf6076c203b557dfd
-    pristine_git_object: 29058df748091a77574e2c11b0b401727c03e681
   docs/models/create-invoice-license-quantity-usage.md:
     id: 505b9378e5d4
     last_write_checksum: sha1:cf20204298fda298d2b99f64698d71429bc85937
@@ -3489,10 +3461,6 @@ trackedFiles:
     id: 3688f3b2ca92
     last_write_checksum: sha1:78bf646efaccc924e8c483675645608ef25401d3
     pristine_git_object: b7918d507b51d1942492ef184f0a9fd0c1cf8db7
-  docs/models/create-invoice-stripe.md:
-    id: fcdfcedf824b
-    last_write_checksum: sha1:363a4dd3dbc45cce3392b8c56b625ea26d564535
-    pristine_git_object: 21f003da21244b59bfc59ba9501493a94625a7f0
   docs/models/create-invoice-tax.md:
     id: aa89e3e98fd7
     last_write_checksum: sha1:5e45b35b5db660ebd5cbe3b49be77add25fe548f
@@ -4125,10 +4093,6 @@ trackedFiles:
     id: e7c5d4f89e09
     last_write_checksum: sha1:7fd036170948a9f1401dc8cce0537b8eafc7d78a
     pristine_git_object: 400232972390a2c7624523b8fe69defda42e3340
-  docs/models/create-plan-item-stripe.md:
-    id: f9f33116a3a6
-    last_write_checksum: sha1:06a39d871527f66421b3e8f42bd02bd566130c84
-    pristine_git_object: 1de1c21a13437064307184ef9b5faf4b277a5f2a
   docs/models/create-plan-item-threshold-billing-request-body.md:
     id: e1f5c6ce7ca3
     last_write_checksum: sha1:39da52b2e603d8ab1a524a6763a668d3365782a9
@@ -4397,10 +4361,6 @@ trackedFiles:
     id: 9d8f1ded12b9
     last_write_checksum: sha1:23c2246c7a0fc87d86eab377afa348d61f895293
     pristine_git_object: a9e0dfb8bbe6079a4aa296ca183a7481950f81a2
-  docs/models/create-plan-price-stripe.md:
-    id: a0df05a422d4
-    last_write_checksum: sha1:c4695f3e70f01111a3a30dcb91446554cfa724f8
-    pristine_git_object: 88f0e9a6358e1d5f07bebd5e7b0dbab9e89d7706
   docs/models/create-plan-price-upsert-license-interval.md:
     id: d4328b127e1b
     last_write_checksum: sha1:fcb81407a3d17bf9e126e35b75b441c72dadb325
@@ -4445,10 +4405,6 @@ trackedFiles:
     id: f48e8b1136af
     last_write_checksum: sha1:99a4e5b4aec1928a17c3bfb8935a54bee6df592c
     pristine_git_object: 3c93521df7e191300e52c6355ae57ca426082258
-  docs/models/create-plan-revenuecat.md:
-    id: f97461a4b933
-    last_write_checksum: sha1:8707d2f6c9eef3b20c69729a29e2e738d0d038af
-    pristine_git_object: 3ccbd6f361e5694ac748f09734e48e68ba857c96
   docs/models/create-plan-spend-limit-request-body.md:
     id: 8684a5c4d2da
     last_write_checksum: sha1:a02abd88b16c86c6ab43704b229c22d1b74aa442
@@ -4461,10 +4417,6 @@ trackedFiles:
     id: cb2e4b4b718d
     last_write_checksum: sha1:5d4dcc420558a49ccdaf2931738ebbe09dfbb2f5
     pristine_git_object: 01165a04e3c5887958957a73150ea166229d86f7
-  docs/models/create-plan-stripe.md:
-    id: 0d3b617d5138
-    last_write_checksum: sha1:c19d9db37a805706a07eb6f492c69a470ec6f5d3
-    pristine_git_object: 658b662bdd838d1ea32d3683778942183c48b06b
   docs/models/create-plan-threshold-type-request-body.md:
     id: e77f6966a875
     last_write_checksum: sha1:fd1434956e365358048465d2c531ec696c890758
@@ -5333,10 +5285,6 @@ trackedFiles:
     id: dac6751d7653
     last_write_checksum: sha1:b10dda4b98e683e87ef00b0b70ff7544a67568be
     pristine_git_object: 5d918648a17f1e7bb1dc6e082a344c42ca9e6ec0
-  docs/models/customer-flags-stripe.md:
-    id: c8aa705b74ce
-    last_write_checksum: sha1:83aeb9ad58c55588fa989584fc3ebf93d2914955
-    pristine_git_object: d396a93caed52489116c7193263acbb75fa8ae86
   docs/models/customer-flags-type.md:
     id: 42f5241c0bbc
     last_write_checksum: sha1:c75e3853e821a19050e7e2982e881696755303b9
@@ -5385,10 +5333,6 @@ trackedFiles:
     id: ca9a3dcd29f5
     last_write_checksum: sha1:369eaf569e97295146831a83f08e0d5745c70ed6
     pristine_git_object: b4ef1ab503742e3b07f90a5bd03e8da2ced8cb2c
-  docs/models/customer-revenuecat.md:
-    id: 8545c3d36b71
-    last_write_checksum: sha1:df492bb2cc0a1b98f852f216df36917dc62f2327
-    pristine_git_object: b522f78f8ace6ede020d8d18431a0fb8d56ed271
   docs/models/customer-spend-limit.md:
     id: 235dc68f4e77
     last_write_checksum: sha1:e8a9c87b0d645984c7df475f3e30e3657a6f3a35
@@ -5397,10 +5341,6 @@ trackedFiles:
     id: e9ed998dbc6f
     last_write_checksum: sha1:e2cbeeda5d8612ec18a98fd9e8a9c34af483753c
     pristine_git_object: 30609b6ffb83a8ae805e29085c45246fefebb0f4
-  docs/models/customer-stripe.md:
-    id: 848d422f1dc1
-    last_write_checksum: sha1:465b26f6f2e6564fcb18da974815cefde3baac18
-    pristine_git_object: 177ca9feffe0a32586dd5294ffcc47812ee414b7
   docs/models/customer-threshold-type.md:
     id: 7b025bd502e0
     last_write_checksum: sha1:4031b0410b1905dbf76d795de37da4fb69e52622
@@ -5817,22 +5757,6 @@ trackedFiles:
     id: 149f259e6014
     last_write_checksum: sha1:ae78791cb506bec60dd1fe800b56e4b30f52981c
     pristine_git_object: 54b427023fe04a6fcd0b65e3a7b773353882a25b
-  docs/models/disconnect-stripe-env.md:
-    id: 1f608fb792bb
-    last_write_checksum: sha1:288a7e07577f7df8a36a9f7ed9f773475a4894eb
-    pristine_git_object: 383ee11cdc91ff939b1c95ffceeb7145facf43c9
-  docs/models/disconnect-stripe-globals.md:
-    id: 85702ca3ea8e
-    last_write_checksum: sha1:775bf9f827abe8f991bfb6b25b1325346b799e00
-    pristine_git_object: d57106a69ce6859f3c5cfd5376be1a6e8c1d0fb7
-  docs/models/disconnect-stripe-params.md:
-    id: d3810c80c1bd
-    last_write_checksum: sha1:a396bc6158fbd21a3e116d48b622e4d4cc46255f
-    pristine_git_object: e0f673f3aa0f1c96b2cabb3bf4b2335731a78f8d
-  docs/models/disconnect-stripe-response.md:
-    id: 47874f55a10f
-    last_write_checksum: sha1:9749e0dcdbc5b9c961c1a47fc5a6b940bad691e6
-    pristine_git_object: 8f3a656c17931426674b6fd678ef27f39e487d93
   docs/models/duration-type-request-body.md:
     id: e8ae4339e070
     last_write_checksum: sha1:2f1c42e144eb3ab192cffa73b09e899cd9642207
@@ -6105,10 +6029,6 @@ trackedFiles:
     id: c29bcdcc617f
     last_write_checksum: sha1:7ab4dd660a5bbdfcd08851c829e40828890cc8e7
     pristine_git_object: 25e97a7ab931617b579775115c3e35dd9d1460a5
-  docs/models/get-customer-flags-stripe.md:
-    id: a4dd224a58a1
-    last_write_checksum: sha1:8f9d68ce90e558ed7f46b237c675630f7a9d9535
-    pristine_git_object: bbea713351af963c0909d73c2d5911ebd51a6ab8
   docs/models/get-customer-flags-type.md:
     id: 01974cc324fb
     last_write_checksum: sha1:f7b918dd286ccb7001a4377707520e50a3c3ef13
@@ -6221,10 +6141,6 @@ trackedFiles:
     id: c61dbc2f2610
     last_write_checksum: sha1:1a1070dae0da14ed8bacdc5d6cbbfefa4ae87d91
     pristine_git_object: 65ffb1838648dc38b3d47b67cb864ade277d779e
-  docs/models/get-customer-revenuecat.md:
-    id: 323b4b5f8375
-    last_write_checksum: sha1:7cbf6cc784920cf186e4c58e09fc103b1867e8f5
-    pristine_git_object: 7a49df38a7c36e97638e64d43a7fdde336b52200
   docs/models/get-customer-rewards-discount.md:
     id: 164ccb29a559
     last_write_checksum: sha1:78c9115771bca4a086491509623b645ebbed9b9e
@@ -6245,10 +6161,6 @@ trackedFiles:
     id: fff8bb6eac7d
     last_write_checksum: sha1:04e9c868e5c33b3c0656665522ae9174a39cad2e
     pristine_git_object: 69e544a88585ee654d9ad9d64f6d0c0342b30e5c
-  docs/models/get-customer-stripe.md:
-    id: 00d031bb21a8
-    last_write_checksum: sha1:93f8cf1938038e9e796298a88f87aee4f0fab49e
-    pristine_git_object: 8da278a5a7d8d2e15220036049c36fddfa713704
   docs/models/get-customer-subscription-scope.md:
     id: 8bdb5ddadf4e
     last_write_checksum: sha1:16c5ce804e6aa9a7d0dd83dc52c4aca790d86de6
@@ -6509,10 +6421,6 @@ trackedFiles:
     id: 06f4024e9973
     last_write_checksum: sha1:c8b7df3b5f53540a93ad059be38d7f7f8abea440
     pristine_git_object: 525aa382f4566aa0945589bb2f76bd30dc734080
-  docs/models/get-entity-stripe.md:
-    id: aec191e51972
-    last_write_checksum: sha1:f6890ea32637acabc561ad345f8f96c980125a77
-    pristine_git_object: 394ff65fb62e50183d5d523fea80c4199abf353d
   docs/models/get-entity-subscription-scope.md:
     id: 16eb526e6ad3
     last_write_checksum: sha1:1e55d52a7565b20a375394e0d81e4e6ff394d2ca
@@ -6693,10 +6601,6 @@ trackedFiles:
     id: 5ad49696a299
     last_write_checksum: sha1:9c640c83b76ece85538694651d4845ae9d9c7553
     pristine_git_object: 534fc88436f01bf1a63659f67ffbd7b97f2e691a
-  docs/models/get-feature-stripe.md:
-    id: 2fedb73589bd
-    last_write_checksum: sha1:e0183e38c9e095644158155a812150e542e538b9
-    pristine_git_object: db600e80d476c629da7bad07ebb9aec797da8196
   docs/models/get-feature-tier.md:
     id: 71dffcc13df2
     last_write_checksum: sha1:b09d9cd925717a4ea484549d8b0131ce610cb79b
@@ -7169,10 +7073,6 @@ trackedFiles:
     id: e8771bd05caf
     last_write_checksum: sha1:4bf4b0f4fde3233c73a702e717276cf1e3b50a06
     pristine_git_object: 656a0f426f96e9ae5277da6a99884e69da532f70
-  docs/models/get-plan-item-stripe.md:
-    id: 8952581fa225
-    last_write_checksum: sha1:4f4cdee4918e53c50cc90f46a758b5dad0aed4ad
-    pristine_git_object: 28e5f7f818534d4cf6a9a8c5efd47115224eb181
   docs/models/get-plan-item-threshold-billing.md:
     id: d526f7680205
     last_write_checksum: sha1:7e67c1f81b0a8497c561d42068610734e782f986
@@ -7245,10 +7145,6 @@ trackedFiles:
     id: 41a70a9e8a3d
     last_write_checksum: sha1:ffa71b9596a44d5e37b9f9ad9a0cc78f13b845b9
     pristine_git_object: 196a840042d4fbacb6f47b0e514f7b5e06d1345c
-  docs/models/get-plan-price-stripe.md:
-    id: 03b3284ecbac
-    last_write_checksum: sha1:1287a681795456dbdd6f87f1f14ec7b0b27c7fb7
-    pristine_git_object: 749b5de5817f4ee321e382e93b32bf1aff5640d4
   docs/models/get-plan-price-upsert-license-interval.md:
     id: 1d35ffd2e3cf
     last_write_checksum: sha1:b352bb2fe3d9a68068cadb14675d743ae69e41e9
@@ -7293,10 +7189,6 @@ trackedFiles:
     id: fd0d6a5893f8
     last_write_checksum: sha1:be41642a75f1237f96c356905c8b8fcfb17cf5b6
     pristine_git_object: 0b8b536fac1c0aa0350db8bf54e2e804df30ba92
-  docs/models/get-plan-revenuecat.md:
-    id: 4abd750b8274
-    last_write_checksum: sha1:0cdb8fa55f1e9addbdb0a3a27d6426bbb24b7bb6
-    pristine_git_object: d4f6b20e706d13adaca5ec9619459c9684c4c89c
   docs/models/get-plan-spend-limit.md:
     id: cd78283c1a92
     last_write_checksum: sha1:b9598e7bbf91b09bd9e4b9f5c0b1b9f42492c7e0
@@ -7305,10 +7197,6 @@ trackedFiles:
     id: b2b6fd3f7f36
     last_write_checksum: sha1:57e8addd1b9b62b57a14a4ffbb5e25d83f3d0dcd
     pristine_git_object: 4d5fab597cb8830b619c94f124a30ac6fb6d3087
-  docs/models/get-plan-stripe.md:
-    id: 50a90039e8b4
-    last_write_checksum: sha1:21053e549e4a7295d2d47359f7fb04df7d252b92
-    pristine_git_object: aa01381fb865b860cb8a2a2831faa43f23790ba3
   docs/models/get-plan-threshold-type.md:
     id: 4c400a679209
     last_write_checksum: sha1:767b24b474f5f104ecc6dce59884fddf67c17817
@@ -7753,22 +7641,6 @@ trackedFiles:
     id: 943769a48bc7
     last_write_checksum: sha1:fef6e3aa1f697d42c77258785d071339d55a9ea5
     pristine_git_object: c6708782fae0cd9a1a55b2647fc5d411a0fe07bf
-  docs/models/get-stripe-connection-env.md:
-    id: dfa3c08860da
-    last_write_checksum: sha1:63c31781f3816a31300c2ed9e3cda29f0012bb69
-    pristine_git_object: 3d9ea2d5c0a208c6b91750d134aa1206281f3b0f
-  docs/models/get-stripe-connection-globals.md:
-    id: b75281014d8c
-    last_write_checksum: sha1:8759716edc7cdaf609ef32ed1c0a50d3b816da96
-    pristine_git_object: 01c369161eeba950ca629052c46902e1422a3a43
-  docs/models/get-stripe-connection-params.md:
-    id: ced6d87a5a8c
-    last_write_checksum: sha1:7631f9409e8f24942b96566bd6669b71fe611f89
-    pristine_git_object: 124ee06cf43c1bccb93ccc3e2f46e5e746f96feb
-  docs/models/get-stripe-connection-response.md:
-    id: 03e0ff4c9081
-    last_write_checksum: sha1:9348804bde9e042ef11af4972fc5e9bdea24d70c
-    pristine_git_object: d5671b5ce9ec236bd7e035a945b0766e8b146663
   docs/models/grouped-values.md:
     id: 11810a623639
     last_write_checksum: sha1:0e3cf27d00027057eff5f2fecaac8f03d4e4a08e
@@ -8101,10 +7973,6 @@ trackedFiles:
     id: 6d15b47b28c0
     last_write_checksum: sha1:7cd9bfda74e27be6cacc777bb71ad1a8ccecf201
     pristine_git_object: 5673d8160bdfe688046f1ebde60c199290178186
-  docs/models/list-customers-flags-stripe.md:
-    id: 89f1232ac685
-    last_write_checksum: sha1:7c31aef49a4c9bd13a336d6a86f9f39f601cd233
-    pristine_git_object: 11f918fa483dd03cfc64e7e23db57ca87eb32fc3
   docs/models/list-customers-flags.md:
     id: dca06a30b2ba
     last_write_checksum: sha1:63d353e7a5aa0743127df5761a621545c9d79056
@@ -8193,10 +8061,6 @@ trackedFiles:
     id: a8afc03241c9
     last_write_checksum: sha1:0abdba5316a70a907a0295f6233c5d317822b8f3
     pristine_git_object: f4e365524ad01e82b3b717db75880140700a29cb
-  docs/models/list-customers-revenuecat.md:
-    id: bf00bed8af84
-    last_write_checksum: sha1:4997229789224aaae363f4dc1362709c5a378de1
-    pristine_git_object: 7d020059df1ddb44e736fa1b7c317f73e74a23dd
   docs/models/list-customers-spend-limit-source.md:
     id: 728531fdbbf2
     last_write_checksum: sha1:1c32ebf729eb24c3d6e1b1c10e0473f87708b7a8
@@ -8209,10 +8073,6 @@ trackedFiles:
     id: a101fc59dad3
     last_write_checksum: sha1:d17ff581b24d4b6ae97ac01f672c6ccd2619e1e9
     pristine_git_object: ebb49c197b1cec0e7efbfbed9ff9d1429a5043e5
-  docs/models/list-customers-stripe.md:
-    id: 0fa8c9ecbeb2
-    last_write_checksum: sha1:4745367469b72b1c04ecb39f99bdc3d889e6fdc3
-    pristine_git_object: 3b72ceb1546d65c53809555eb63d99f194d58ae0
   docs/models/list-customers-subscription-scope.md:
     id: c761b9e6a1e4
     last_write_checksum: sha1:3d2c6cced35d90964022d33abb92cefe4a2ef0e8
@@ -8485,10 +8345,6 @@ trackedFiles:
     id: 0e71f886891a
     last_write_checksum: sha1:e725694ea7c6bfd2e5a9537bbbd82277870865c0
     pristine_git_object: 7b1f7773116909a2dca69809da34861a2fe93ad0
-  docs/models/list-entities-stripe.md:
-    id: 29ef995731d9
-    last_write_checksum: sha1:beb65e5e2d1335cb67217145e635076065844dcd
-    pristine_git_object: 286641be1a88f987f0219758a2a97be790877dca
   docs/models/list-entities-subscription-scope.md:
     id: c3e1281bd134
     last_write_checksum: sha1:ecee6371a005ea170eea3b5dcf2f413aaaa21526
@@ -8709,10 +8565,6 @@ trackedFiles:
     id: c8769886520b
     last_write_checksum: sha1:fa7d54784d26b27f8f6f8af851d8a6ddcb3899fc
     pristine_git_object: b4ab86d4b5ca500d8869996c31423005554d3bae
-  docs/models/list-features-stripe.md:
-    id: 4bb620ad8245
-    last_write_checksum: sha1:b7e9c8f5e07c709010b13b40b7dd811d92b6f37d
-    pristine_git_object: e25aa5c98fd5e559f83c0ab26fccf5ec63130271
   docs/models/list-features-tier.md:
     id: 631aae8402a2
     last_write_checksum: sha1:c8e10fe6e4ff4eb5093f6ecfe38594d5e7a81c80
@@ -9245,10 +9097,6 @@ trackedFiles:
     id: 55acb419b43f
     last_write_checksum: sha1:92b85afacbb21c5a939f4ca2967b960f8d98d01d
     pristine_git_object: dfbb552a29e4b3b0811d7230726a5cb50daccb9a
-  docs/models/list-plans-item-stripe.md:
-    id: fbd3e0eb485f
-    last_write_checksum: sha1:29a9f3cd7d59d5b1516393e135d018cf898b5b73
-    pristine_git_object: 8ae163169e369dafaecff326ab6cdbdd20da536d
   docs/models/list-plans-item-threshold-billing.md:
     id: 3515ad36f005
     last_write_checksum: sha1:1e82c8959ba5278cf9ef78258e9921dce352583c
@@ -9465,10 +9313,6 @@ trackedFiles:
     id: 1dbcc92f82ea
     last_write_checksum: sha1:119f90e83ad44d6328e8f97fb03c4f95efec0716
     pristine_git_object: 7e552b206b606f63fed982d56b0a2703091c4989
-  docs/models/list-plans-price-stripe.md:
-    id: 0f71fde5e7b0
-    last_write_checksum: sha1:5ff090fd13500cb418b9cd3dbb98593f5ec32ba8
-    pristine_git_object: 48de3a0b8fb153daefb0878e8f2811b11535bbbe
   docs/models/list-plans-price-variant-customize-interval.md:
     id: 0278537be553
     last_write_checksum: sha1:63aabc328b97fa6bcf4241ef6fc1f1d7a9c38776
@@ -9509,10 +9353,6 @@ trackedFiles:
     id: 9441ad31d57f
     last_write_checksum: sha1:2dc4732a1391f7216cdbad8ff0b7aea4174e573c
     pristine_git_object: 83d179e1fab7058ecd10c6756c06413dbfd369d9
-  docs/models/list-plans-revenuecat.md:
-    id: 294264c854f2
-    last_write_checksum: sha1:da45251ff014ce5b430d92bd0b91c5e9c6e80957
-    pristine_git_object: d95832229d0dc6b690de533e7484000e1b4465f6
   docs/models/list-plans-spend-limit.md:
     id: a4cf3cd45fc3
     last_write_checksum: sha1:11b1e3134e895e0d8e7b342409b12b24792a1cb3
@@ -9521,10 +9361,6 @@ trackedFiles:
     id: b9f9a3b52ac5
     last_write_checksum: sha1:55cb11b9ddb0d3bb84effcefda0112a6fab859c3
     pristine_git_object: ca021a4fac21f62f99ca1fd50c7c284720e57caa
-  docs/models/list-plans-stripe.md:
-    id: 5e0d9f85a94d
-    last_write_checksum: sha1:05e0b83d3b9ed58d9d56b45b409b366632407870
-    pristine_git_object: a7fd123eddc2d1aa0d17ecd3805dbce500c084ce
   docs/models/list-plans-threshold-type.md:
     id: 44c392a4e04e
     last_write_checksum: sha1:a7242fa3ff6983f378a59f31c853241f25fabeec
@@ -11897,10 +11733,6 @@ trackedFiles:
     id: e7fd36e32642
     last_write_checksum: sha1:8dee11805168920abb096138ae602a14af394d85
     pristine_git_object: c1da59a489171f257959b7dbccdc7253e1934c51
-  docs/models/plan-item-stripe.md:
-    id: dfdc4f618b01
-    last_write_checksum: sha1:3ab8315bc84632517dccef8094f2668a868bf3bc
-    pristine_git_object: a720743eb347c98b461818b8e69bbfbe20c093fe
   docs/models/plan-item-tier-behavior.md:
     id: 765700d89a27
     last_write_checksum: sha1:e6146a55dd97f4aaae13ba1e58b608fd3ddc0953
@@ -11941,10 +11773,6 @@ trackedFiles:
     id: 8468cb29c6bd
     last_write_checksum: sha1:3eebd11aff1ae83d0451b7b192a34d3480f37914
     pristine_git_object: f15bb419c48efd051f250497bd7d97c0cd69ca41
-  docs/models/plan-price-stripe.md:
-    id: 5739af72cf05
-    last_write_checksum: sha1:b1131a8164f1d73d2007d7e4b09f5286b9508664
-    pristine_git_object: 46e5a90450ad3abc4780817b96b73ce6a102c700
   docs/models/plan-price-upsert-license-interval.md:
     id: e803191e2805
     last_write_checksum: sha1:9d9ed0d72f261fe7a4031eba600a0d528dfc5f49
@@ -11973,10 +11801,6 @@ trackedFiles:
     id: 5cb8ae3bac95
     last_write_checksum: sha1:85a50c225f0bd18de00285d38cb40f11233fa91c
     pristine_git_object: b2f70393c10be9960edeed34ddd69e0914d0ea0c
-  docs/models/plan-revenuecat.md:
-    id: 72de61bcc98f
-    last_write_checksum: sha1:0fee02863011604a9d5b33af5432a0a8be6c4f3d
-    pristine_git_object: 84903b76b7fa50a2375b55667aeff2ba7930836f
   docs/models/plan-spend-limit.md:
     id: 44eaf4ab4328
     last_write_checksum: sha1:03b0c4fd2da719b8218e4cb49721cbafeb4c3c50
@@ -11985,10 +11809,6 @@ trackedFiles:
     id: 3be17dca36b3
     last_write_checksum: sha1:fe2d18a5114bcc66f1f598d7930381a199e1488f
     pristine_git_object: c201b3b3faa9c9f9e6ca5e6857d43ddad6b9fc00
-  docs/models/plan-stripe.md:
-    id: 3efd53c1c0b7
-    last_write_checksum: sha1:3c35f0ab2f56c4033bf6790db4dfb611bf89395d
-    pristine_git_object: f03f30f0c5efeb70914ec6ba52fd141cd90ea66b
   docs/models/plan-threshold-type.md:
     id: 7914e212d2dc
     last_write_checksum: sha1:d5c2ba873964f3919a86eed307f231ff3911d85c
@@ -14513,10 +14333,6 @@ trackedFiles:
     id: fc6b9e21b917
     last_write_checksum: sha1:d52ad67e8868dd8a66ac5cc8745261e974feaed5
     pristine_git_object: 92a263c1cfabaf7f183a9589c52baca215c91ec8
-  docs/models/price-variant-stripe.md:
-    id: ed7c4033764f
-    last_write_checksum: sha1:e908898a135917dbb108369642673d1cb87c526a
-    pristine_git_object: 541062a4707e509378dcd69f91b25fa36c5a1365
   docs/models/processor-type.md:
     id: 4e1ee9632454
     last_write_checksum: sha1:e5c091efb3ac5d256119b589918fb9e3fd91b92f
@@ -14769,10 +14585,6 @@ trackedFiles:
     id: da71d7f923a5
     last_write_checksum: sha1:e90a71e69a046fe3dbab31ffe60af7f4a48bd91b
     pristine_git_object: 075084fd95ef1fd796b39f65cb479baa192faa4f
-  docs/models/reissue-invoice-item-stripe.md:
-    id: df144c5ef81f
-    last_write_checksum: sha1:fcb6a08801be538992ad366c293adc4557188cd4
-    pristine_git_object: cfe9bc975fad7649d2f9a87e3c54ab939842da54
   docs/models/reissue-invoice-license-quantity-billing-behavior.md:
     id: 1fd6c5171f13
     last_write_checksum: sha1:e2516bd2f990a5f94b90a411161bfcb985cd5ec7
@@ -14793,10 +14605,6 @@ trackedFiles:
     id: 4e287f3aafba
     last_write_checksum: sha1:6f2167bf8027bb5c574f97f7221ade714f856866
     pristine_git_object: 4d05fa0d080ccc40f5e52b97dbf79255c70d0ae9
-  docs/models/reissue-invoice-license-quantity-stripe.md:
-    id: feef0a64fdb4
-    last_write_checksum: sha1:1ceb11500ca884dabeec368ebe6e18715d60f5a1
-    pristine_git_object: 4a5e5c69b33c79b6fb380a6df378ac58e070016d
   docs/models/reissue-invoice-license-quantity-usage.md:
     id: 8626a744b81d
     last_write_checksum: sha1:6231289a55a0aa9f7b19f32147e4ea48a485d997
@@ -14861,10 +14669,6 @@ trackedFiles:
     id: d99042d94b39
     last_write_checksum: sha1:8f78829bc2d9d2a35001e0cfed871a765849005f
     pristine_git_object: a34f1a0f37b064f1c7043f11d1cb4622ce7a3857
-  docs/models/reissue-invoice-stripe.md:
-    id: eca365ecb9b9
-    last_write_checksum: sha1:a2cda898492200e15a1771ab28851f8b4c776a8a
-    pristine_git_object: 9bd6205ce4abd651778ed8e01b59f5d5386680cb
   docs/models/reissue-invoice-tax.md:
     id: 834da8e15a9a
     last_write_checksum: sha1:d135264ff6c80948b0db6a59919643a932f14361
@@ -14985,10 +14789,6 @@ trackedFiles:
     id: 2b4c5931498a
     last_write_checksum: sha1:e6c120f88ff0e3b462772982c4ad2580b04ae540
     pristine_git_object: ca0a9d547416ce50c31bea10f52438b4bef6f11b
-  docs/models/search-request-logs-stripe.md:
-    id: 40d651dea25a
-    last_write_checksum: sha1:edf60d6e14f07d6dc17ad3a55e0b6e45b4d503cd
-    pristine_git_object: cbf507bc2082438572990aa6f59fa3f0d34de1e3
   docs/models/security.md:
     id: 452e4d4eb67a
     last_write_checksum: sha1:d2af82412a97b139d12d416d11a235638001243b
@@ -16713,10 +16513,6 @@ trackedFiles:
     id: 4171777c107c
     last_write_checksum: sha1:b71207863353e47ab3b6d397a066108826ae558a
     pristine_git_object: 61a9ade623f71d4bf3f03923397bf436bcec1f65
-  docs/models/update-customer-flags-stripe.md:
-    id: 958a16be3843
-    last_write_checksum: sha1:795134bc7159be106b3a5631c35ca8f3f91fcf67
-    pristine_git_object: 680322bc7b1b6b5c7c172d2a53af514637119238
   docs/models/update-customer-flags.md:
     id: b8425c14de67
     last_write_checksum: sha1:f4a4276653dd7cdc854f2fda1498237887270fba
@@ -16813,10 +16609,6 @@ trackedFiles:
     id: 605a24a7d121
     last_write_checksum: sha1:edc2a0f42dd5ec9f1be5ffc73a4d14365cd57854
     pristine_git_object: 445be1badb2664e2598ff67e7b476245f182e2a6
-  docs/models/update-customer-revenuecat.md:
-    id: 3b0802b1cc4e
-    last_write_checksum: sha1:779972b8ea42017ea95ad1e5ed829a008820532f
-    pristine_git_object: 9d7fcff19e6c948c7f13d599f83acbf383ac1936
   docs/models/update-customer-source-request1.md:
     id: 2c6822407c78
     last_write_checksum: sha1:686db3506cdc9357ab814e8a1169c98213268734
@@ -16841,10 +16633,6 @@ trackedFiles:
     id: 37adfd15b5dc
     last_write_checksum: sha1:c1d49cd41fc2323c5e7b22807963efa958f9a4f9
     pristine_git_object: 3effcadf96576c9a9918ff1ec7329d28cede6dcc
-  docs/models/update-customer-stripe.md:
-    id: f4aad0f18c09
-    last_write_checksum: sha1:7915f7fde15fdf9ca4ff321710b4de6f573aadd3
-    pristine_git_object: c375e2054c07eb91679ea5178cfa759ceb6f2382
   docs/models/update-customer-subscription-scope.md:
     id: b1b11407edf5
     last_write_checksum: sha1:26e0637f3d5335076c52babbefc001e1a3be73ef
@@ -17193,10 +16981,6 @@ trackedFiles:
     id: a123286977c4
     last_write_checksum: sha1:3b260455837c095923e54a862f811e23fc09e75e
     pristine_git_object: 0a022e6eb0c5caf8ec0020f2b8778c0ac5f41cbf
-  docs/models/update-entity-stripe.md:
-    id: 3e073bae8056
-    last_write_checksum: sha1:ea2cdad4ddd32249ccdedc69821bc688a72e7395
-    pristine_git_object: d3cd89107f8f49f5a5a99bf3a43870fc78a73bc9
   docs/models/update-entity-subscription-scope.md:
     id: 6e8b6a69976c
     last_write_checksum: sha1:142b90a0f4b5d1a6e5b7244f1c4104142a1cc0aa
@@ -17525,10 +17309,6 @@ trackedFiles:
     id: bbe6d9dc68d6
     last_write_checksum: sha1:1b3b39658b1318ee752a8c34ea2eb2617bf0ab36
     pristine_git_object: a620b64ccb521cc821121f5a7d3bf295829b8451
-  docs/models/update-feature-stripe.md:
-    id: 6eb5548b5397
-    last_write_checksum: sha1:d9e2092287cda8c7f7967ab05f5ca7c28cc8ddf8
-    pristine_git_object: 19ec264b4ad34ce710092639706bd5f965efe377
   docs/models/update-feature-tier-request-body.md:
     id: 89620085f045
     last_write_checksum: sha1:58fef0d211c995e50a300834e178f2a807a87be3
@@ -18293,10 +18073,6 @@ trackedFiles:
     id: 02ad98aca9d0
     last_write_checksum: sha1:525faf5c5509ea95e70268b05d0c830bb7746140
     pristine_git_object: d3b8178c45ef52c19b121fa5a1233fc8b46e6038
-  docs/models/update-plan-item-stripe.md:
-    id: 269d130e7d5d
-    last_write_checksum: sha1:e4fb5ab06ee7a074788881a85b15ad269e436037
-    pristine_git_object: 6fae506a0b040f5e7406c172464a55a5eea9a2fb
   docs/models/update-plan-item-threshold-billing-request-body.md:
     id: fe4e352c1ee6
     last_write_checksum: sha1:8767ef13e4bf6b2bbe0d0013811dfa4b53885e3f
@@ -18561,10 +18337,6 @@ trackedFiles:
     id: 60c497fb4b67
     last_write_checksum: sha1:e5857c37c355d1b657c8390ce10200c1163f0423
     pristine_git_object: ed747d876dafef3f75874b8593a67a4c23ae0b3a
-  docs/models/update-plan-price-stripe.md:
-    id: 0ced71fc4c1e
-    last_write_checksum: sha1:041ad3dbd98cab80b5912efd6eaf956c5264e032
-    pristine_git_object: 7923e42388637a8e74560fb41b0bb1f8f2458fcf
   docs/models/update-plan-price-variant-details-interval.md:
     id: ead345576adb
     last_write_checksum: sha1:39e741be4c62eb776ca079ce7d41a2258646a80a
@@ -18617,10 +18389,6 @@ trackedFiles:
     id: 438137d6d905
     last_write_checksum: sha1:0d69ef4c66b7de03d9a9b05de16ee3dc6417ebff
     pristine_git_object: d6ec424c09a43f4e8ba25856521ae4a673e099b4
-  docs/models/update-plan-revenuecat.md:
-    id: 9abd4ec390dd
-    last_write_checksum: sha1:3998cb4758615df90ec7286ebff7e39dfea00120
-    pristine_git_object: 89aae74b0d787122f4a85f836326779a584ffc55
   docs/models/update-plan-spend-limit-request-body.md:
     id: 7fbd1de83a77
     last_write_checksum: sha1:c2ee0cd3771b9e0ff5e32b49f6f44a9da75a6f77
@@ -18633,10 +18401,6 @@ trackedFiles:
     id: f2d8e8969aac
     last_write_checksum: sha1:0c7f9b87be7ec7992c7a7cfae8889af100c4b5b2
     pristine_git_object: d8f5473b55509af4d6b3ca9a5100516c32944f61
-  docs/models/update-plan-stripe.md:
-    id: f837af399c97
-    last_write_checksum: sha1:9d9d3165a6c65983fcc3d5eec1d4dde86e8ef101
-    pristine_git_object: 170fb61fff2d0a6ffd14d75b95c4c879991e48b9
   docs/models/update-plan-threshold-type-request-body.md:
     id: 4af48e14e6d7
     last_write_checksum: sha1:57559dd1fe6aeba340f161bc3f33b34a4f7d6eff
@@ -19721,10 +19485,6 @@ trackedFiles:
     id: 893e307e7039
     last_write_checksum: sha1:6e97f3b2b0a5d1c04ed5c61946be586500c24888
     pristine_git_object: 6f28e336078e11fa84a368462ee199d67b79e835
-  docs/models/variant-item-stripe.md:
-    id: f6d2dcd79502
-    last_write_checksum: sha1:1f63db929aedaa1d31e18247649fab0ef2a8feaf
-    pristine_git_object: 812336f7c6ca652b3eb63fd4a4184a323b3b3ede
   docs/models/variant-item-tier-additional-currency.md:
     id: 0d87a0656b85
     last_write_checksum: sha1:d4e0f46588e585e38b745bd9fd193a40f9695568
@@ -19901,18 +19661,10 @@ trackedFiles:
     id: a569bf7c8d4c
     last_write_checksum: sha1:8c38863e93e0647f7d07d42859cfc42814f51b79
     pristine_git_object: 4478bbed368e93c01579c6f75410165970a35ee7
-  docs/models/variant-revenuecat.md:
-    id: 17d0e1227a21
-    last_write_checksum: sha1:49c4c1751d988f99236da197fd33eeb58cd6518f
-    pristine_git_object: be27ce766b94e97433496cd28aadeeda166cfd93
   docs/models/variant-status.md:
     id: 0f226b19fef2
     last_write_checksum: sha1:df5ace7d7bd3473d917fcb6bc2b19173232c270b
     pristine_git_object: 628ed92e1764fa03b51d16019ebef279e14b0ef1
-  docs/models/variant-stripe.md:
-    id: 880359f1dd41
-    last_write_checksum: sha1:87930dbb85064746acf555c1427e4d8e7f7e9705
-    pristine_git_object: 281d310d3d957876eaf9da02b0b6b8582fd19dd8
   docs/models/variant-type.md:
     id: 980e06f214c5
     last_write_checksum: sha1:698e52c7d4049ef80def5c97e52ed0028673de66
@@ -20277,18 +20029,10 @@ trackedFiles:
     id: 86e469e08973
     last_write_checksum: sha1:88f88761210e842454d0410d5d43e707ee731e15
     pristine_git_object: e979aed821b2a64bbb18e831876e556d97470c86
-  src/funcs/platform-disconnect-stripe.ts:
-    id: a9305b8f3180
-    last_write_checksum: sha1:feea74f4a19edf8773c64b43ac84e454efdf7303
-    pristine_git_object: 212f428fa2e914d11c91d70ccfcb41d82f9349f9
   src/funcs/platform-get-revenue-cat-keys.ts:
     id: 3f6df7d12152
     last_write_checksum: sha1:ea7b7e7d13cec4a7dc9dfb20431bc67e91f6efb6
     pristine_git_object: 7cbda750834f8f08674bec0a634512e0a8371319
-  src/funcs/platform-get-stripe-connection.ts:
-    id: 780d7b04e54c
-    last_write_checksum: sha1:00e7d57583cd649df26eaaeda91fb251e430d671
-    pristine_git_object: 376d7dbb8233f940887eec79d92ee4cd15cf3ff2
   src/funcs/platform-link-revenue-cat.ts:
     id: 8f8f215b8cf9
     last_write_checksum: sha1:4fda8ddda1ef317eb44ee94ec61ccc4686144450
@@ -20593,10 +20337,6 @@ trackedFiles:
     id: b75f0945e197
     last_write_checksum: sha1:dde5e0436e1b265e191123d2f4014c4632d7d047
     pristine_git_object: e95e970a44f6e6c302883f64aeeda8dce32f7790
-  src/models/disconnect-stripe-op.ts:
-    id: 36afdc7034de
-    last_write_checksum: sha1:77d46f09618faa413bdfb6d9a5cdce705b7e1c14
-    pristine_git_object: 10f04030f3aba2c3057b2afb91f5befa1882a92a
   src/models/finalize-lock-op.ts:
     id: 8b7c7048d1dd
     last_write_checksum: sha1:0cf743c389926a7ea378ca58f3fb5ebd70a27ee9
@@ -20637,10 +20377,6 @@ trackedFiles:
     id: 429f1ac3ac85
     last_write_checksum: sha1:c44c1fa5bed13dd9208be0421b85754a5c019cc7
     pristine_git_object: e741f5ffd712e5190bb78f5de6d3ceccace9964d
-  src/models/get-stripe-connection-op.ts:
-    id: c38ba4b61896
-    last_write_checksum: sha1:2cc0f47a87ac50497113f566cca8a5d04f9b1fb9
-    pristine_git_object: 81be48a103155532488fc30d11b3344b88d78cd2
   src/models/http-client-errors.ts:
     id: 5f17dcf0d62b
     last_write_checksum: sha1:994ced121c54fecd0af038ccfb7855fbfd3868ec
@@ -21061,7 +20797,7 @@ examples:
           x-api-version: "2.0"
       responses:
         "200":
-          application/json: {"id": "<id>", "name": "<value>", "email": "Hubert_Ward@hotmail.com", "created_at": 5722.41, "fingerprint": null, "stripe_id": "<id>", "env": "live", "metadata": {"key": "<value>", "key1": "<value>", "key2": "<value>"}, "send_email_receipts": true, "subscriptions": [], "scheduled_subscriptions": [], "balances": {}, "invoices": [{"plan_ids": ["pro_plan", "addon_feature"], "stripe_id": "in_1A2B3C4D5E6F7G8H", "status": "paid", "total": 2999, "currency": "usd", "created_at": 1759247877000, "hosted_invoice_url": "https://invoice.stripe.com/i/acct_123/test_456"}], "rewards": {"discounts": [{"id": "disc_123456", "name": "SUMMER20", "type": "fixed_discount", "discount_value": 20, "duration_type": "forever"}]}}
+          application/json: {"id": "<id>", "name": "<value>", "email": "Hubert_Ward@hotmail.com", "created_at": 5722.41, "fingerprint": null, "env": "live", "metadata": {"key": "<value>", "key1": "<value>", "key2": "<value>"}, "send_email_receipts": true, "subscriptions": [], "scheduled_subscriptions": [], "balances": {}, "invoices": [{"plan_ids": ["pro_plan", "addon_feature"], "processor_invoice_id": "pp-cap-8FJ0231A", "status": "paid", "total": 2999, "currency": "usd", "created_at": 1759247877000, "hosted_invoice_url": "https://invoice.example.com/i/acct_123/test_456"}], "rewards": {"discounts": [{"id": "disc_123456", "name": "SUMMER20", "type": "fixed_discount", "discount_value": 20, "duration_type": "forever"}]}}
   post_/customers/list:
     speakeasy-default-post-/customers/list:
       parameters:
@@ -21081,7 +20817,7 @@ examples:
           x-api-version: "2.0"
       responses:
         "200":
-          application/json: {"id": "<id>", "name": "<value>", "email": "Misael42@hotmail.com", "created_at": 8082.89, "fingerprint": null, "stripe_id": "<id>", "env": "sandbox", "metadata": {"key": "<value>", "key1": "<value>"}, "send_email_receipts": true, "subscriptions": [{"plan_id": "<id>", "default": false, "add_on": true, "status": "active", "past_due": false, "canceled_at": 6523.76, "expires_at": 5149.44, "trial_ends_at": 9371.1, "started_at": 8105.92, "current_period_start": null, "current_period_end": 2173.93, "quantity": 4148.86}], "scheduled_subscriptions": [{"plan_id": "<id>", "default": true, "add_on": true, "status": "scheduled", "past_due": false, "canceled_at": 6107.36, "expires_at": 9627.99, "trial_ends_at": 186.11, "started_at": 224.37, "current_period_start": 1652.16, "current_period_end": 7681.72, "quantity": 5256.16}], "balances": {"key": {"feature_id": "<id>", "unlimited": true, "granted_balance": 148.18, "purchased_balance": 5679.37, "current_balance": 4190.04, "usage": 9988.63, "overage_allowed": false, "max_purchase": 4521.63, "reset": {"interval": "one_off", "resets_at": 8023.24}, "plan_id": "<id>"}}, "invoices": [{"plan_ids": ["pro_plan", "addon_feature"], "stripe_id": "in_1A2B3C4D5E6F7G8H", "status": "paid", "total": 2999, "currency": "usd", "created_at": 1759247877000, "hosted_invoice_url": "https://invoice.stripe.com/i/acct_123/test_456"}], "rewards": {"discounts": [{"id": "disc_123456", "name": "SUMMER20", "type": "free_product", "discount_value": 20, "duration_type": "forever"}]}}
+          application/json: {"id": "<id>", "name": "<value>", "email": "Misael42@hotmail.com", "created_at": 8082.89, "fingerprint": null, "env": "sandbox", "metadata": {"key": "<value>", "key1": "<value>"}, "send_email_receipts": true, "subscriptions": [{"plan_id": "<id>", "default": false, "add_on": true, "status": "active", "past_due": false, "canceled_at": 6523.76, "expires_at": 5149.44, "trial_ends_at": 9371.1, "started_at": 8105.92, "current_period_start": null, "current_period_end": 2173.93, "quantity": 4148.86}], "scheduled_subscriptions": [{"plan_id": "<id>", "default": true, "add_on": true, "status": "scheduled", "past_due": false, "canceled_at": 6107.36, "expires_at": 9627.99, "trial_ends_at": 186.11, "started_at": 224.37, "current_period_start": 1652.16, "current_period_end": 7681.72, "quantity": 5256.16}], "balances": {"key": {"feature_id": "<id>", "unlimited": true, "granted_balance": 148.18, "purchased_balance": 5679.37, "current_balance": 4190.04, "usage": 9988.63, "overage_allowed": false, "max_purchase": 4521.63, "reset": {"interval": "one_off", "resets_at": 8023.24}, "plan_id": "<id>"}}, "invoices": [{"plan_ids": ["pro_plan", "addon_feature"], "processor_invoice_id": "pp-cap-8FJ0231A", "status": "paid", "total": 2999, "currency": "usd", "created_at": 1759247877000, "hosted_invoice_url": "https://invoice.example.com/i/acct_123/test_456"}], "rewards": {"discounts": [{"id": "disc_123456", "name": "SUMMER20", "type": "free_product", "discount_value": 20, "duration_type": "forever"}]}}
   post_/customers/{customer_id}:
     speakeasy-default-post-/customers/{customer-id}:
       parameters:
@@ -21091,7 +20827,7 @@ examples:
           x-api-version: "2.0"
       responses:
         "200":
-          application/json: {"id": "<id>", "name": null, "email": "Carson91@hotmail.com", "created_at": 8040.12, "fingerprint": "<value>", "stripe_id": null, "env": "sandbox", "metadata": {"key": "<value>"}, "send_email_receipts": true, "subscriptions": [], "scheduled_subscriptions": [], "balances": {"key": {"feature_id": "<id>", "unlimited": false, "granted_balance": 8307.05, "purchased_balance": 1790.84, "current_balance": 994.81, "usage": 5319.57, "overage_allowed": true, "max_purchase": 7521.49, "reset": {"interval": "hour", "resets_at": null}, "plan_id": "<id>"}}, "invoices": [{"plan_ids": ["pro_plan", "addon_feature"], "stripe_id": "in_1A2B3C4D5E6F7G8H", "status": "paid", "total": 2999, "currency": "usd", "created_at": 1759247877000, "hosted_invoice_url": "https://invoice.stripe.com/i/acct_123/test_456"}], "rewards": {"discounts": [{"id": "disc_123456", "name": "SUMMER20", "type": "invoice_credits", "discount_value": 20, "duration_type": "forever"}]}}
+          application/json: {"id": "<id>", "name": null, "email": "Carson91@hotmail.com", "created_at": 8040.12, "fingerprint": "<value>", "env": "sandbox", "metadata": {"key": "<value>"}, "send_email_receipts": true, "subscriptions": [], "scheduled_subscriptions": [], "balances": {"key": {"feature_id": "<id>", "unlimited": false, "granted_balance": 8307.05, "purchased_balance": 1790.84, "current_balance": 994.81, "usage": 5319.57, "overage_allowed": true, "max_purchase": 7521.49, "reset": {"interval": "hour", "resets_at": null}, "plan_id": "<id>"}}, "invoices": [{"plan_ids": ["pro_plan", "addon_feature"], "processor_invoice_id": "pp-cap-8FJ0231A", "status": "paid", "total": 2999, "currency": "usd", "created_at": 1759247877000, "hosted_invoice_url": "https://invoice.example.com/i/acct_123/test_456"}], "rewards": {"discounts": [{"id": "disc_123456", "name": "SUMMER20", "type": "invoice_credits", "discount_value": 20, "duration_type": "forever"}]}}
   delete_/customers/{customer_id}:
     speakeasy-default-delete-/customers/{customer-id}:
       parameters:
@@ -21111,7 +20847,7 @@ examples:
           x-api-version: "2.0"
       responses:
         "200":
-          application/json: {"id": "<id>", "name": "<value>", "created_at": 8943.92, "env": "sandbox", "subscriptions": [], "scheduled_subscriptions": [{"plan_id": "<id>", "default": true, "add_on": true, "status": "scheduled", "past_due": false, "canceled_at": 5476.87, "expires_at": null, "trial_ends_at": 3033.39, "started_at": 8529.79, "current_period_start": null, "current_period_end": 4292.69, "quantity": 8166.4}], "invoices": [{"plan_ids": ["pro_plan", "addon_feature"], "stripe_id": "in_1A2B3C4D5E6F7G8H", "status": "paid", "total": 2999, "currency": "usd", "created_at": 1759247877000, "hosted_invoice_url": "https://invoice.stripe.com/i/acct_123/test_456"}]}
+          application/json: {"id": "<id>", "name": "<value>", "created_at": 8943.92, "env": "sandbox", "subscriptions": [], "scheduled_subscriptions": [{"plan_id": "<id>", "default": true, "add_on": true, "status": "scheduled", "past_due": false, "canceled_at": 5476.87, "expires_at": null, "trial_ends_at": 3033.39, "started_at": 8529.79, "current_period_start": null, "current_period_end": 4292.69, "quantity": 8166.4}], "invoices": [{"plan_ids": ["pro_plan", "addon_feature"], "processor_invoice_id": "pp-cap-8FJ0231A", "status": "paid", "total": 2999, "currency": "usd", "created_at": 1759247877000, "hosted_invoice_url": "https://invoice.example.com/i/acct_123/test_456"}]}
   get_/customers/{customer_id}/entities/{entity_id}:
     speakeasy-default-get-/customers/{customer-id}/entities/{entity-id}:
       parameters:
@@ -21122,7 +20858,7 @@ examples:
           x-api-version: "2.0"
       responses:
         "200":
-          application/json: {"id": "<id>", "name": "<value>", "created_at": 2283.36, "env": "sandbox", "subscriptions": [], "scheduled_subscriptions": [], "invoices": [{"plan_ids": ["pro_plan", "addon_feature"], "stripe_id": "in_1A2B3C4D5E6F7G8H", "status": "paid", "total": 2999, "currency": "usd", "created_at": 1759247877000, "hosted_invoice_url": "https://invoice.stripe.com/i/acct_123/test_456"}]}
+          application/json: {"id": "<id>", "name": "<value>", "created_at": 2283.36, "env": "sandbox", "subscriptions": [], "scheduled_subscriptions": [], "invoices": [{"plan_ids": ["pro_plan", "addon_feature"], "processor_invoice_id": "pp-cap-8FJ0231A", "status": "paid", "total": 2999, "currency": "usd", "created_at": 1759247877000, "hosted_invoice_url": "https://invoice.example.com/i/acct_123/test_456"}]}
   delete_/customers/{customer_id}/entities/{entity_id}:
     speakeasy-default-delete-/customers/{customer-id}/entities/{entity-id}:
       parameters:
@@ -21278,7 +21014,7 @@ examples:
         application/json: {"customer_id": "cus_123", "name": "John Doe", "email": "john@example.com"}
       responses:
         "200":
-          application/json: {"id": "2ee25a41-0d81-4ad2-8451-ec1aadaefe58", "name": "Patrick", "email": "patrick@useautumn.com", "created_at": 1717000000, "fingerprint": null, "stripe_id": "cus_123", "env": "sandbox", "metadata": {}, "send_email_receipts": true, "billing_controls": {}, "subscriptions": [{"id": "<id>", "plan_id": "plan_123", "auto_enable": false, "add_on": false, "status": "active", "past_due": false, "canceled_at": 9611.97, "expires_at": 7806.81, "trial_ends_at": null, "started_at": 6124.93, "current_period_start": null, "current_period_end": 9733.97, "quantity": 1}], "purchases": [], "licenses": [], "balances": {"messages": {"feature_id": "<id>", "granted": 100, "remaining": 0, "usage": 100, "unlimited": false, "overage_allowed": false, "max_purchase": 9758.06, "next_reset_at": 9611.97, "breakdown": [{"id": "cus_ent_39qmLooixXLAqMywgXywjAz96rV", "plan_id": "<id>", "included_grant": 7806.81, "prepaid_grant": 455.92, "remaining": 0, "usage": 100, "unlimited": false, "reset": {"interval": "month", "resets_at": 875.56}, "price": null, "expires_at": 9733.97}]}}, "flags": {"advanced_workflows": {"id": "cus_ent_abc123", "plan_id": "pro_plan", "expires_at": null, "feature_id": "advanced_workflows"}}, "config": {"disable_pooled_balance": false, "disable_overage_billing": false}, "processors": {"stripe": {"id": "cus_U0BKxpq1mFhuJO"}}}
+          application/json: {"id": "2ee25a41-0d81-4ad2-8451-ec1aadaefe58", "name": "Patrick", "email": "patrick@useautumn.com", "created_at": 1717000000, "fingerprint": null, "env": "sandbox", "metadata": {}, "send_email_receipts": true, "billing_controls": {}, "subscriptions": [{"id": "<id>", "plan_id": "plan_123", "auto_enable": false, "add_on": false, "status": "active", "past_due": false, "canceled_at": 9611.97, "expires_at": 7806.81, "trial_ends_at": null, "started_at": 6124.93, "current_period_start": null, "current_period_end": 9733.97, "quantity": 1}], "purchases": [], "licenses": [], "balances": {"messages": {"feature_id": "<id>", "granted": 100, "remaining": 0, "usage": 100, "unlimited": false, "overage_allowed": false, "max_purchase": 9758.06, "next_reset_at": 9611.97, "breakdown": [{"id": "cus_ent_39qmLooixXLAqMywgXywjAz96rV", "plan_id": "<id>", "included_grant": 7806.81, "prepaid_grant": 455.92, "remaining": 0, "usage": 100, "unlimited": false, "reset": {"interval": "month", "resets_at": 875.56}, "price": null, "expires_at": 9733.97}]}}, "flags": {"advanced_workflows": {"id": "cus_ent_abc123", "plan_id": "pro_plan", "expires_at": null, "feature_id": "advanced_workflows"}}, "config": {"disable_pooled_balance": false, "disable_overage_billing": false}}
   listPlans:
     speakeasy-default-list-plans:
       parameters:
@@ -21298,7 +21034,7 @@ examples:
         application/json: {"customer_id": "cus_123", "plan_id": "pro_plan", "redirect_mode": "if_required"}
       responses:
         "200":
-          application/json: {"customer_id": "cus_123", "payment_url": "https://checkout.stripe.com/..."}
+          application/json: {"customer_id": "cus_123", "payment_url": "https://www.paypal.com/checkoutnow?token=EC-123"}
   getOrCreate:
     speakeasy-default-get-or-create:
       parameters:
@@ -21308,7 +21044,7 @@ examples:
         application/json: {"customer_id": "cus_123", "name": "John Doe", "email": "john@example.com"}
       responses:
         "200":
-          application/json: {"name": "John Doe", "email": "john@example.com", "fingerprint": "1234567890", "stripe_id": "cus_123", "env": "sandbox", "metadata": {}, "send_email_receipts": false, "subscriptions": [{"plan_id": "plan_123", "auto_enable": true, "add_on": false, "status": "active", "past_due": false, "canceled_at": 1668.32, "expires_at": 9089.12, "trial_ends_at": 9379.96, "started_at": 2917.49, "current_period_start": 8238.87, "current_period_end": 5653, "quantity": 1}], "purchases": [], "balances": {"balance_1": {"feature_id": "<id>", "granted": 124.65, "remaining": 8304.41, "usage": 3422.44, "unlimited": false, "overage_allowed": false, "max_purchase": 7932.64, "next_reset_at": 7580.04}}}
+          application/json: {"name": "John Doe", "email": "john@example.com", "fingerprint": "1234567890", "env": "sandbox", "metadata": {}, "send_email_receipts": false, "subscriptions": [{"plan_id": "plan_123", "auto_enable": true, "add_on": false, "status": "active", "past_due": false, "canceled_at": 1668.32, "expires_at": 9089.12, "trial_ends_at": 9379.96, "started_at": 2917.49, "current_period_start": 8238.87, "current_period_end": 5653, "quantity": 1}], "purchases": [], "balances": {"balance_1": {"feature_id": "<id>", "granted": 124.65, "remaining": 8304.41, "usage": 3422.44, "unlimited": false, "overage_allowed": false, "max_purchase": 7932.64, "next_reset_at": 7580.04}}}
   list:
     speakeasy-default-list:
       parameters:
@@ -21326,7 +21062,7 @@ examples:
         application/json: {"start_cursor": "", "limit": 10}
       responses:
         "200":
-          application/json: {"list": [{"id": "2ee25a41-0d81-4ad2-8451-ec1aadaefe58", "name": "Patrick", "email": "patrick@useautumn.com", "created_at": 2358.1, "fingerprint": null, "stripe_id": null, "env": "sandbox", "metadata": {}, "send_email_receipts": false, "billing_controls": {}, "subscriptions": [{"id": "<id>", "plan_id": "<id>", "auto_enable": true, "add_on": false, "status": "active", "past_due": true, "canceled_at": 1145.98, "expires_at": 4027.68, "trial_ends_at": 910.35, "started_at": 7325.71, "current_period_start": 406.39, "current_period_end": 2629.33, "quantity": 1}], "purchases": [], "licenses": [], "balances": {"messages": {"feature_id": "<id>", "granted": 100, "remaining": 0, "usage": 100, "unlimited": false, "overage_allowed": false, "max_purchase": 4531.44, "next_reset_at": 1010.14, "breakdown": [{"id": "cus_ent_39qmLooixXLAqMywgXywjAz96rV", "plan_id": "<id>", "included_grant": 4967.46, "prepaid_grant": 6928.7, "remaining": 0, "usage": 100, "unlimited": false, "reset": {"interval": "month", "resets_at": 7938.58}, "price": null, "expires_at": 7264.51}]}}, "flags": {"advanced_workflows": {"id": "cus_ent_abc123", "plan_id": "pro_plan", "expires_at": null, "feature_id": "advanced_workflows"}}, "config": {"disable_pooled_balance": false, "disable_overage_billing": false}, "processors": {"stripe": {"id": "cus_U0BKxpq1mFhuJO"}}}], "next_cursor": null}
+          application/json: {"list": [{"id": "2ee25a41-0d81-4ad2-8451-ec1aadaefe58", "name": "Patrick", "email": "patrick@useautumn.com", "created_at": 2358.1, "fingerprint": null, "env": "sandbox", "metadata": {}, "send_email_receipts": false, "billing_controls": {}, "subscriptions": [{"id": "<id>", "plan_id": "<id>", "auto_enable": true, "add_on": false, "status": "active", "past_due": true, "canceled_at": 1145.98, "expires_at": 4027.68, "trial_ends_at": 910.35, "started_at": 7325.71, "current_period_start": 406.39, "current_period_end": 2629.33, "quantity": 1}], "purchases": [], "licenses": [], "balances": {"messages": {"feature_id": "<id>", "granted": 100, "remaining": 0, "usage": 100, "unlimited": false, "overage_allowed": false, "max_purchase": 4531.44, "next_reset_at": 1010.14, "breakdown": [{"id": "cus_ent_39qmLooixXLAqMywgXywjAz96rV", "plan_id": "<id>", "included_grant": 4967.46, "prepaid_grant": 6928.7, "remaining": 0, "usage": 100, "unlimited": false, "reset": {"interval": "month", "resets_at": 7938.58}, "price": null, "expires_at": 7264.51}]}}, "flags": {"advanced_workflows": {"id": "cus_ent_abc123", "plan_id": "pro_plan", "expires_at": null, "feature_id": "advanced_workflows"}}, "config": {"disable_pooled_balance": false, "disable_overage_billing": false}}], "next_cursor": null}
   updateCustomer:
     speakeasy-default-update-customer:
       parameters:
@@ -21336,14 +21072,14 @@ examples:
         application/json: {"customer_id": "cus_123", "name": "Jane Doe", "email": "jane@example.com"}
       responses:
         "200":
-          application/json: {"id": "2ee25a41-0d81-4ad2-8451-ec1aadaefe58", "name": "Patrick", "email": "patrick@useautumn.com", "created_at": 1717000000, "fingerprint": null, "stripe_id": "cus_123", "env": "sandbox", "metadata": {}, "send_email_receipts": true, "billing_controls": {}, "subscriptions": [{"id": "<id>", "plan_id": "plan_123", "auto_enable": true, "add_on": true, "status": "active", "past_due": true, "canceled_at": 8303.59, "expires_at": 2755.88, "trial_ends_at": 1461.02, "started_at": 1649.05, "current_period_start": 8034.1, "current_period_end": 8058.66, "quantity": 1}], "purchases": [], "licenses": [], "balances": {"messages": {"feature_id": "<id>", "granted": 100, "remaining": 0, "usage": 100, "unlimited": false, "overage_allowed": true, "max_purchase": 351.74, "next_reset_at": 3436.48, "breakdown": [{"id": "cus_ent_39qmLooixXLAqMywgXywjAz96rV", "plan_id": "<id>", "included_grant": 7153.13, "prepaid_grant": 2755.88, "remaining": 0, "usage": 100, "unlimited": false, "reset": {"interval": "month", "resets_at": 1461.02}, "price": null, "expires_at": 1881.65}]}}, "flags": {"advanced_workflows": {"id": "cus_ent_abc123", "plan_id": "pro_plan", "expires_at": null, "feature_id": "advanced_workflows"}}, "config": {"disable_pooled_balance": false, "disable_overage_billing": false}, "processors": {"stripe": {"id": "cus_U0BKxpq1mFhuJO"}}}
+          application/json: {"id": "2ee25a41-0d81-4ad2-8451-ec1aadaefe58", "name": "Patrick", "email": "patrick@useautumn.com", "created_at": 1717000000, "fingerprint": null, "env": "sandbox", "metadata": {}, "send_email_receipts": true, "billing_controls": {}, "subscriptions": [{"id": "<id>", "plan_id": "plan_123", "auto_enable": true, "add_on": true, "status": "active", "past_due": true, "canceled_at": 8303.59, "expires_at": 2755.88, "trial_ends_at": 1461.02, "started_at": 1649.05, "current_period_start": 8034.1, "current_period_end": 8058.66, "quantity": 1}], "purchases": [], "licenses": [], "balances": {"messages": {"feature_id": "<id>", "granted": 100, "remaining": 0, "usage": 100, "unlimited": false, "overage_allowed": true, "max_purchase": 351.74, "next_reset_at": 3436.48, "breakdown": [{"id": "cus_ent_39qmLooixXLAqMywgXywjAz96rV", "plan_id": "<id>", "included_grant": 7153.13, "prepaid_grant": 2755.88, "remaining": 0, "usage": 100, "unlimited": false, "reset": {"interval": "month", "resets_at": 1461.02}, "price": null, "expires_at": 1881.65}]}}, "flags": {"advanced_workflows": {"id": "cus_ent_abc123", "plan_id": "pro_plan", "expires_at": null, "feature_id": "advanced_workflows"}}, "config": {"disable_pooled_balance": false, "disable_overage_billing": false}}
   deleteCustomer:
     speakeasy-default-delete-customer:
       parameters:
         header:
           x-api-version: "2.4.0"
       requestBody:
-        application/json: {"customer_id": "cus_123", "delete_in_stripe": false}
+        application/json: {"customer_id": "cus_123"}
       responses:
         "200":
           application/json: {"success": true}
@@ -21356,7 +21092,7 @@ examples:
         application/json: {"customer_id": "cus_123", "plan_id": "pro_plan"}
       responses:
         "200":
-          application/json: {"customer_id": "cus_123", "payment_url": "https://checkout.stripe.com/..."}
+          application/json: {"customer_id": "cus_123", "payment_url": "https://www.paypal.com/checkoutnow?token=EC-123"}
   billingPreviewAttach:
     speakeasy-default-billing-preview-attach:
       parameters:
@@ -21376,7 +21112,7 @@ examples:
         application/json: {"customer_id": "cus_123", "plan_id": "pro_plan", "feature_quantities": [{"feature_id": "seats", "quantity": 10}], "redirect_mode": "if_required"}
       responses:
         "200":
-          application/json: {"customer_id": "cus_123", "invoice": {"status": "paid", "stripe_id": "in_1234", "total": 1500, "currency": "usd", "hosted_invoice_url": "https://invoice.stripe.com/..."}, "payment_url": null}
+          application/json: {"customer_id": "cus_123", "invoice": {"status": "paid", "processor_invoice_id": "pp-cap-8FJ0231A", "total": 1500, "currency": "usd", "hosted_invoice_url": "https://invoice.example.com/..."}, "payment_url": null}
   billingPreviewUpdate:
     speakeasy-default-billing-preview-update:
       parameters:
@@ -21446,7 +21182,7 @@ examples:
         application/json: {"customer_id": "cus_123", "plan_id": "pro_plan", "redirect_mode": "if_required"}
       responses:
         "200":
-          application/json: {"customer_id": "<id>", "line_items": [], "subtotal": 20, "total": 20, "currency": "usd", "incoming": [], "outgoing": [], "redirect_to_checkout": true, "checkout_type": "stripe_checkout"}
+          application/json: {"customer_id": "<id>", "line_items": [], "subtotal": 20, "total": 20, "currency": "usd", "incoming": [], "outgoing": [], "redirect_to_checkout": true, "checkout_type": "processor_checkout"}
   updateSubscription:
     speakeasy-default-update-subscription:
       parameters:
@@ -21476,7 +21212,7 @@ examples:
         application/json: {"customer_id": "cus_123", "success_url": "https://example.com/account/billing"}
       responses:
         "200":
-          application/json: {"customer_id": "cus_123", "url": "https://checkout.stripe.com/..."}
+          application/json: {"customer_id": "cus_123", "url": "https://www.paypal.com/checkoutnow?token=EC-123"}
   previewBillingUpdate:
     speakeasy-default-preview-billing-update:
       parameters:
@@ -21506,7 +21242,7 @@ examples:
         application/json: {"customer_id": "cus_123", "return_url": "https://useautumn.com"}
       responses:
         "200":
-          application/json: {"customer_id": "cus_123", "url": "https://billing.stripe.com/session/..."}
+          application/json: {"customer_id": "cus_123", "url": "https://www.paypal.com/checkoutnow?token=EC-123"}
   previewUpdate:
     speakeasy-default-preview-update:
       parameters:
@@ -21705,7 +21441,7 @@ examples:
         header:
           x-api-version: "2.4.0"
       requestBody:
-        application/json: {"plan_id": "free_plan", "group": "", "name": "Free", "add_on": false, "auto_enable": true, "items": [{"feature_id": "messages", "included": 100, "pooled": false, "reset": {"interval": "month", "interval_count": 1}}], "create_in_stripe": true}
+        application/json: {"plan_id": "free_plan", "group": "", "name": "Free", "add_on": false, "auto_enable": true, "items": [{"feature_id": "messages", "included": 100, "pooled": false, "reset": {"interval": "month", "interval_count": 1}}], "auto_enable": true}
       responses:
         "200":
           application/json: {"id": "pro", "name": "Pro Plan", "description": null, "group": null, "version": 1, "version_slug": "v1", "active": true, "add_on": false, "auto_enable": false, "price": {"amount": 10, "interval": "month", "display": {"primary_text": "<value>"}}, "items": [{"feature_id": "<id>", "included": 100, "unlimited": false, "pooled": false, "reset": {"interval": "month"}, "price": {"amount": 0.5, "interval": "month", "billing_units": 4655.71, "billing_method": "prepaid", "max_purchase": 8104.69}, "display": {"primary_text": "<value>"}}, {"feature_id": "<id>", "included": 0, "unlimited": false, "pooled": false, "reset": null, "price": {"amount": 10, "interval": "month", "billing_units": 5104.62, "billing_method": "prepaid", "max_purchase": null}, "display": {"primary_text": "<value>"}}], "created_at": 1016.83, "env": "sandbox", "archived": false, "config": {"ignore_past_due": false}, "billing_controls": {}, "metadata": {}, "base_variant_id": "<id>"}
@@ -21725,7 +21461,7 @@ examples:
         header:
           x-api-version: "2.4.0"
       requestBody:
-        application/json: {"plan_id": "pro_plan", "name": "Pro Plan (Updated)", "price": {"amount": 15, "interval": "month", "interval_count": 1}, "create_in_stripe": true, "archived": false}
+        application/json: {"plan_id": "pro_plan", "name": "Pro Plan (Updated)", "price": {"amount": 15, "interval": "month", "interval_count": 1}, "auto_enable": true, "archived": false}
       responses:
         "200":
           application/json: {"id": "pro", "name": "Pro Plan", "description": null, "group": null, "version": 1, "version_slug": "v1", "active": true, "add_on": true, "auto_enable": true, "price": {"amount": 10, "interval": "month", "display": {"primary_text": "<value>"}}, "items": [{"feature_id": "<id>", "included": 100, "unlimited": false, "pooled": false, "reset": {"interval": "month"}, "price": {"amount": 0.5, "interval": "month", "billing_units": 4113.21, "billing_method": "usage_based", "max_purchase": 5381.55}, "display": {"primary_text": "<value>"}}, {"feature_id": "<id>", "included": 0, "unlimited": false, "pooled": false, "reset": null, "price": {"amount": 10, "interval": "month", "billing_units": 3844.43, "billing_method": "prepaid", "max_purchase": 1075.8}, "display": {"primary_text": "<value>"}}], "created_at": 5898.47, "env": "sandbox", "archived": false, "config": {"ignore_past_due": false}, "billing_controls": {}, "metadata": {}, "base_variant_id": null}
@@ -21748,7 +21484,7 @@ examples:
         application/json: {"customer_id": "cus_123", "plans": [{"plan_id": "pro_plan"}, {"plan_id": "addon_seats", "feature_quantities": [{"feature_id": "seats", "quantity": 5}]}], "redirect_mode": "if_required"}
       responses:
         "200":
-          application/json: {"customer_id": "cus_123", "invoice": {"status": "paid", "stripe_id": "in_1234", "total": 4900, "currency": "usd", "hosted_invoice_url": "https://invoice.stripe.com/..."}, "payment_url": null}
+          application/json: {"customer_id": "cus_123", "invoice": {"status": "paid", "processor_invoice_id": "pp-cap-8FJ0231A", "total": 4900, "currency": "usd", "hosted_invoice_url": "https://invoice.example.com/..."}, "payment_url": null}
   previewMultiAttach:
     speakeasy-default-preview-multi-attach:
       parameters:
@@ -21768,7 +21504,7 @@ examples:
         application/json: {"customer_id": "cus_123", "plans": [{"plan_id": "pro_plan"}, {"plan_id": "addon_seats", "feature_quantities": [{"feature_id": "seats", "quantity": 5}]}], "billing_cycle_anchor": "now", "redirect_mode": "if_required"}
       responses:
         "200":
-          application/json: {"customer_id": "cus_123", "invoice": {"status": "paid", "stripe_id": "in_1234", "total": 4900, "currency": "usd", "hosted_invoice_url": "https://invoice.stripe.com/..."}, "payment_url": null}
+          application/json: {"customer_id": "cus_123", "invoice": {"status": "paid", "processor_invoice_id": "pp-cap-8FJ0231A", "total": 4900, "currency": "usd", "hosted_invoice_url": "https://invoice.example.com/..."}, "payment_url": null}
   deleteBalance:
     speakeasy-default-delete-balance:
       parameters:
@@ -21820,7 +21556,7 @@ examples:
         application/json: {"customer_id": "cus_123"}
       responses:
         "200":
-          application/json: {"id": "2ee25a41-0d81-4ad2-8451-ec1aadaefe58", "name": "Patrick", "email": "patrick@useautumn.com", "created_at": 1555.93, "fingerprint": null, "stripe_id": "<id>", "env": "sandbox", "metadata": {}, "send_email_receipts": true, "billing_controls": {}, "subscriptions": [{"id": "<id>", "plan_id": "<id>", "auto_enable": true, "add_on": false, "status": "active", "past_due": false, "canceled_at": 6241.27, "expires_at": 6335.21, "trial_ends_at": 3224.34, "started_at": 8234.53, "current_period_start": 1986.12, "current_period_end": 8143.9, "quantity": 1}], "purchases": [], "licenses": [], "balances": {"messages": {"feature_id": "<id>", "granted": 100, "remaining": 0, "usage": 100, "unlimited": false, "overage_allowed": true, "max_purchase": 8544.34, "next_reset_at": 4875.58, "breakdown": [{"id": "cus_ent_39qmLooixXLAqMywgXywjAz96rV", "plan_id": "<id>", "included_grant": 8826.95, "prepaid_grant": 3799.11, "remaining": 0, "usage": 100, "unlimited": false, "reset": {"interval": "month", "resets_at": 8927.45}, "price": null, "expires_at": 3678.26}]}}, "flags": {"advanced_workflows": {"id": "cus_ent_abc123", "plan_id": "pro_plan", "expires_at": null, "feature_id": "advanced_workflows"}}, "config": {"disable_pooled_balance": false, "disable_overage_billing": false}, "processors": {"stripe": {"id": "cus_U0BKxpq1mFhuJO"}}}
+          application/json: {"id": "2ee25a41-0d81-4ad2-8451-ec1aadaefe58", "name": "Patrick", "email": "patrick@useautumn.com", "created_at": 1555.93, "fingerprint": null, "env": "sandbox", "metadata": {}, "send_email_receipts": true, "billing_controls": {}, "subscriptions": [{"id": "<id>", "plan_id": "<id>", "auto_enable": true, "add_on": false, "status": "active", "past_due": false, "canceled_at": 6241.27, "expires_at": 6335.21, "trial_ends_at": 3224.34, "started_at": 8234.53, "current_period_start": 1986.12, "current_period_end": 8143.9, "quantity": 1}], "purchases": [], "licenses": [], "balances": {"messages": {"feature_id": "<id>", "granted": 100, "remaining": 0, "usage": 100, "unlimited": false, "overage_allowed": true, "max_purchase": 8544.34, "next_reset_at": 4875.58, "breakdown": [{"id": "cus_ent_39qmLooixXLAqMywgXywjAz96rV", "plan_id": "<id>", "included_grant": 8826.95, "prepaid_grant": 3799.11, "remaining": 0, "usage": 100, "unlimited": false, "reset": {"interval": "month", "resets_at": 8927.45}, "price": null, "expires_at": 3678.26}]}}, "flags": {"advanced_workflows": {"id": "cus_ent_abc123", "plan_id": "pro_plan", "expires_at": null, "feature_id": "advanced_workflows"}}, "config": {"disable_pooled_balance": false, "disable_overage_billing": false}}
   createSchedule:
     speakeasy-default-create-schedule:
       parameters:
@@ -21830,7 +21566,7 @@ examples:
         application/json: {"customer_id": "cus_123", "redirect_mode": "if_required", "billing_cycle_anchor": "now", "phases": [{"starts_at": 1735689600000, "plans": [{"plan_id": "trial_plan"}]}, {"starts_at": 1736899200000, "plans": [{"plan_id": "pro_plan"}]}]}
       responses:
         "200":
-          application/json: {"customer_id": "cus_123", "entity_id": null, "status": "created", "schedule_id": "sch_1234", "phases": [{"phase_id": "sphs_1111", "starts_at": 1735689600000, "customer_product_ids": ["cus_prod_1111"]}, {"phase_id": "sphs_2222", "starts_at": 1736899200000, "customer_product_ids": ["cus_prod_2222"]}], "invoice": {"status": "<value>", "stripe_id": "<id>", "total": 6782.1, "currency": "Iranian Rial", "hosted_invoice_url": "https://partial-unibody.org/"}, "payment_url": null}
+          application/json: {"customer_id": "cus_123", "entity_id": null, "status": "created", "schedule_id": "sch_1234", "phases": [{"phase_id": "sphs_1111", "starts_at": 1735689600000, "customer_product_ids": ["cus_prod_1111"]}, {"phase_id": "sphs_2222", "starts_at": 1736899200000, "customer_product_ids": ["cus_prod_2222"]}], "invoice": {"status": "<value>", "total": 6782.1, "currency": "Iranian Rial", "hosted_invoice_url": "https://partial-unibody.org/"}, "payment_url": null}
   listEntities:
     speakeasy-default-list-entities:
       parameters:
@@ -21861,36 +21597,6 @@ examples:
       responses:
         "202":
           application/json: {"success": true}
-  linkRevenueCat:
-    speakeasy-default-link-revenue-cat:
-      parameters:
-        header:
-          x-api-version: "2.4.0"
-      requestBody:
-        application/json: {"organization_slug": "acme", "env": "test", "project_name": "acme-mobile", "redirect_url": "https://dashboard.useautumn.com/dev?tab=revenuecat"}
-      responses:
-        "200":
-          application/json: {"oauth_url": "https://api.revenuecat.com/oauth2/authorize?client_id=...&redirect_uri=...&response_type=code&scope=project.read+project.write"}
-  syncRevenueCat:
-    speakeasy-default-sync-revenue-cat:
-      parameters:
-        header:
-          x-api-version: "2.4.0"
-      requestBody:
-        application/json: {"organization_slug": "acme", "env": "test", "product_ids": ["pro", "premium"]}
-      responses:
-        "200":
-          application/json: {"results": [{"plan_id": "pro", "status": "synced", "store_identifier": "autumn.sandbox.org_123.pro", "apps": [{"app_id": "app_test", "app_type": "test_store", "product": "created", "store_push": "skipped", "price": "set"}]}]}
-  getRevenueCatKeys:
-    speakeasy-default-get-revenue-cat-keys:
-      parameters:
-        header:
-          x-api-version: "2.4.0"
-      requestBody:
-        application/json: {"organization_slug": "acme", "env": "test"}
-      responses:
-        "200":
-          application/json: {"apps": [{"app_id": "app1a2b3c4d", "app_type": "test_store", "name": "Acme (Test Store)", "api_keys": [{"id": "apikey12345", "key": "test_aBcDeFgHiJkLmNoPqRsTuVwXyZ", "environment": "production", "app_id": "app1a2b3c4"}]}], "oauth_access_token": "atk_aBcDeFgHiJkLmNoPqRsTuVwXyZ"}
   trackTokens:
     speakeasy-default-track-tokens:
       parameters:
@@ -21949,20 +21655,20 @@ examples:
         header:
           x-api-version: "2.3.0"
       requestBody:
-        application/json: {"customer_id": "cus_123", "processors": [{"type": "stripe", "id": "cus_stripe_123"}], "billables": [{"processor": "stripe", "link": {"subscription_id": "sub_123"}, "plan": {"plan_id": "pro", "status": "active", "balances": [{"feature_id": "messages", "usage": 10}]}}]}
+        application/json: {"customer_id": "cus_123", "billables": [{"processor": "paypal", "link": {"subscription_id": "sub_123"}, "plan": {"plan_id": "pro", "status": "active", "balances": [{"feature_id": "messages", "usage": 10}]}}]}
       responses:
         "200":
-          application/json: {"customer_id": "cus_123", "flashed": [{"plan_id": "pro", "processor": "stripe", "customer_product_id": "cus_prod_123", "status": "active", "skipped": false}], "customer": {"id": "cus_123", "name": "Jane Doe", "email": "jane@example.com", "created_at": 9273.76, "fingerprint": null, "stripe_id": "<id>", "env": "sandbox", "metadata": {}, "send_email_receipts": true, "billing_controls": {}, "subscriptions": [{"id": "<id>", "plan_id": "<id>", "auto_enable": true, "add_on": true, "status": "active", "past_due": false, "canceled_at": 3752.76, "expires_at": 966.71, "trial_ends_at": 6932.52, "started_at": 8313.45, "current_period_start": 7438.22, "current_period_end": 2758.24, "quantity": 1}], "purchases": [], "balances": {"messages": {"feature_id": "<id>", "granted": 100, "remaining": 90, "usage": 10, "unlimited": false, "overage_allowed": false, "max_purchase": 1490.99, "next_reset_at": 1741.23, "breakdown": [{"id": "cus_ent_39qmLooixXLAqMywgXywjAz96rV", "plan_id": null, "included_grant": 9781.9, "prepaid_grant": 4999.31, "remaining": 90, "usage": 10, "unlimited": false, "reset": {"interval": "month", "resets_at": 1279.77}, "price": null, "expires_at": 221.18}]}}, "flags": {}, "config": {"disable_pooled_balance": false, "disable_overage_billing": false}, "processors": {"stripe": {"id": "cus_stripe_123"}}}}
+          application/json: {"customer_id": "cus_123", "flashed": [{"plan_id": "pro", "processor": "paypal", "customer_product_id": "cus_prod_123", "status": "active", "skipped": false}], "customer": {"id": "cus_123", "name": "Jane Doe", "email": "jane@example.com", "created_at": 9273.76, "fingerprint": null, "env": "sandbox", "metadata": {}, "send_email_receipts": true, "billing_controls": {}, "subscriptions": [{"id": "<id>", "plan_id": "<id>", "auto_enable": true, "add_on": true, "status": "active", "past_due": false, "canceled_at": 3752.76, "expires_at": 966.71, "trial_ends_at": 6932.52, "started_at": 8313.45, "current_period_start": 7438.22, "current_period_end": 2758.24, "quantity": 1}], "purchases": [], "balances": {"messages": {"feature_id": "<id>", "granted": 100, "remaining": 90, "usage": 10, "unlimited": false, "overage_allowed": false, "max_purchase": 1490.99, "next_reset_at": 1741.23, "breakdown": [{"id": "cus_ent_39qmLooixXLAqMywgXywjAz96rV", "plan_id": null, "included_grant": 9781.9, "prepaid_grant": 4999.31, "remaining": 90, "usage": 10, "unlimited": false, "reset": {"interval": "month", "resets_at": 1279.77}, "price": null, "expires_at": 221.18}]}}, "flags": {}, "config": {"disable_pooled_balance": false, "disable_overage_billing": false}}}
   import:
     speakeasy-default-import:
       parameters:
         header:
           x-api-version: "2.4.0"
       requestBody:
-        application/json: {"customer_id": "cus_123", "processors": [{"type": "stripe", "id": "cus_stripe_123"}], "billables": [{"processor": "stripe", "link": {"subscription_id": "sub_123"}, "plan": {"plan_id": "pro", "status": "active", "balances": [{"feature_id": "messages", "usage": 10}]}}]}
+        application/json: {"customer_id": "cus_123", "billables": [{"processor": "paypal", "link": {"subscription_id": "sub_123"}, "plan": {"plan_id": "pro", "status": "active", "balances": [{"feature_id": "messages", "usage": 10}]}}]}
       responses:
         "200":
-          application/json: {"customer_id": "cus_123", "flashed": [{"plan_id": "pro", "processor": "stripe", "customer_product_id": "cus_prod_123", "status": "active", "skipped": false}], "customer": {"id": "cus_123", "name": "Jane Doe", "email": "jane@example.com", "created_at": 8387.42, "fingerprint": null, "stripe_id": "<id>", "env": "sandbox", "metadata": {}, "send_email_receipts": true, "billing_controls": {}, "subscriptions": [{"id": "<id>", "plan_id": "<id>", "auto_enable": true, "add_on": false, "status": "active", "past_due": false, "canceled_at": 8149.43, "expires_at": 398.01, "trial_ends_at": 9729.29, "started_at": 3708.7, "current_period_start": 7654.7, "current_period_end": null, "quantity": 1}], "purchases": [], "licenses": [{"license_plan_id": "<id>", "parent_plan_id": "<id>", "license_plan_name": "<value>", "granted": 8501.74, "usage": 489.34, "remaining": 3570.29, "paid_quantity": 7529.44}], "balances": {"messages": {"feature_id": "<id>", "granted": 100, "remaining": 90, "usage": 10, "unlimited": false, "overage_allowed": false, "max_purchase": null, "next_reset_at": 9146.35, "breakdown": [{"id": "cus_ent_39qmLooixXLAqMywgXywjAz96rV", "plan_id": "<id>", "included_grant": 6476.22, "prepaid_grant": 2345.43, "remaining": 90, "usage": 10, "unlimited": false, "reset": {"interval": "month", "resets_at": 8821.22}, "price": null, "expires_at": 3653.25}]}}, "flags": {}, "config": {"disable_pooled_balance": false, "disable_overage_billing": false}, "processors": {"stripe": {"id": "cus_stripe_123"}}}}
+          application/json: {"customer_id": "cus_123", "flashed": [{"plan_id": "pro", "processor": "paypal", "customer_product_id": "cus_prod_123", "status": "active", "skipped": false}], "customer": {"id": "cus_123", "name": "Jane Doe", "email": "jane@example.com", "created_at": 8387.42, "fingerprint": null, "env": "sandbox", "metadata": {}, "send_email_receipts": true, "billing_controls": {}, "subscriptions": [{"id": "<id>", "plan_id": "<id>", "auto_enable": true, "add_on": false, "status": "active", "past_due": false, "canceled_at": 8149.43, "expires_at": 398.01, "trial_ends_at": 9729.29, "started_at": 3708.7, "current_period_start": 7654.7, "current_period_end": null, "quantity": 1}], "purchases": [], "licenses": [{"license_plan_id": "<id>", "parent_plan_id": "<id>", "license_plan_name": "<value>", "granted": 8501.74, "usage": 489.34, "remaining": 3570.29, "paid_quantity": 7529.44}], "balances": {"messages": {"feature_id": "<id>", "granted": 100, "remaining": 90, "usage": 10, "unlimited": false, "overage_allowed": false, "max_purchase": null, "next_reset_at": 9146.35, "breakdown": [{"id": "cus_ent_39qmLooixXLAqMywgXywjAz96rV", "plan_id": "<id>", "included_grant": 6476.22, "prepaid_grant": 2345.43, "remaining": 90, "usage": 10, "unlimited": false, "reset": {"interval": "month", "resets_at": 8821.22}, "price": null, "expires_at": 3653.25}]}}, "flags": {}, "config": {"disable_pooled_balance": false, "disable_overage_billing": false}}}
   multiUpdate:
     speakeasy-default-multi-update:
       parameters:
@@ -21972,7 +21678,7 @@ examples:
         application/json: {"customer_id": "cus_123", "updates": [{"plan_id": "pro_plan", "cancel_action": "cancel_end_of_cycle"}, {"plan_id": "addon_seats", "cancel_action": "cancel_end_of_cycle"}]}
       responses:
         "200":
-          application/json: {"customer_id": "cus_123", "invoice": {"status": "paid", "stripe_id": "in_1234", "total": -20, "currency": "usd", "hosted_invoice_url": "https://invoice.stripe.com/..."}, "payment_url": null}
+          application/json: {"customer_id": "cus_123", "invoice": {"status": "paid", "processor_invoice_id": "pp-cap-8FJ0231A", "total": -20, "currency": "usd", "hosted_invoice_url": "https://invoice.example.com/..."}, "payment_url": null}
   previewMultiUpdate:
     speakeasy-default-preview-multi-update:
       parameters:
@@ -21992,7 +21698,7 @@ examples:
         application/json: {"start_cursor": "", "limit": 10, "customer_id": "cus_123", "status": ["open", "paid"]}
       responses:
         "200":
-          application/json: {"list": [{"plan_ids": ["pro_plan"], "stripe_id": "in_1A2B3C4D5E6F7G8H", "processor_type": "stripe", "status": "paid", "total": 29.99, "currency": "usd", "created_at": 1759247877000, "hosted_invoice_url": "https://invoice.stripe.com/i/acct_123/test_456", "id": "inv_2b3c4d5e6f7g8h", "customer_id": "cus_123", "entity_id": null, "amount_paid": 29.99, "refunded_amount": 0, "items": [{"id": "invoice_li_2b3c4d5e6f7g8h", "description": "Pro plan", "period_start": 1759247877000, "period_end": 1761839877000, "plan_id": "pro_plan", "feature_id": null, "feature_name": null, "quantity": null, "amount": 20, "entities": []}, {"id": "invoice_li_3c4d5e6f7g8h9i", "description": "AI credits", "period_start": 1759247877000, "period_end": 1761839877000, "plan_id": "pro_plan", "feature_id": "ai_credits", "feature_name": "AI Credits", "quantity": 4995, "amount": 9.99, "entities": [{"entity_id": "acme-docs-prod", "quantity": 4995, "amount": 9.99}]}]}], "next_cursor": null}
+          application/json: {"list": [{"plan_ids": ["pro_plan"], "processor_invoice_id": "pp-cap-8FJ0231A", "processor_type": "paypal", "status": "paid", "total": 29.99, "currency": "usd", "created_at": 1759247877000, "hosted_invoice_url": "https://invoice.example.com/i/acct_123/test_456", "id": "inv_2b3c4d5e6f7g8h", "customer_id": "cus_123", "entity_id": null, "amount_paid": 29.99, "refunded_amount": 0, "items": [{"id": "invoice_li_2b3c4d5e6f7g8h", "description": "Pro plan", "period_start": 1759247877000, "period_end": 1761839877000, "plan_id": "pro_plan", "feature_id": null, "feature_name": null, "quantity": null, "amount": 20, "entities": []}, {"id": "invoice_li_3c4d5e6f7g8h9i", "description": "AI credits", "period_start": 1759247877000, "period_end": 1761839877000, "plan_id": "pro_plan", "feature_id": "ai_credits", "feature_name": "AI Credits", "quantity": 4995, "amount": 9.99, "entities": [{"entity_id": "acme-docs-prod", "quantity": 4995, "amount": 9.99}]}]}], "next_cursor": null}
   attachLicense:
     speakeasy-default-attach-license:
       parameters:
@@ -22039,10 +21745,10 @@ examples:
         header:
           x-api-version: "2.4.0"
       requestBody:
-        application/json: {"invoices": [{"customer_id": "cus_123", "plan_ids": ["pro"], "stripe_id": "in_legacy_123", "processor_type": "stripe", "status": "paid", "total": 29.99, "amount_paid": 29.99, "refunded_amount": 0, "currency": "usd", "created_at": 1451606400000, "hosted_invoice_url": "https://billing.example.com/invoices/legacy-123"}]}
+        application/json: {"invoices": [{"customer_id": "cus_123", "plan_ids": ["pro"], "processor_invoice_id": "pp-sale-legacy_123", "processor_type": "paypal", "status": "paid", "total": 29.99, "amount_paid": 29.99, "refunded_amount": 0, "currency": "usd", "created_at": 1451606400000, "hosted_invoice_url": "https://billing.example.com/invoices/legacy-123"}]}
       responses:
         "200":
-          application/json: {"invoices": [{"plan_ids": ["pro"], "stripe_id": "in_legacy_123", "processor_type": "stripe", "status": "paid", "total": 29.99, "currency": "usd", "created_at": 1451606400000, "hosted_invoice_url": "https://billing.example.com/invoices/legacy-123", "id": "inv_2b3c4d5e6f7g8h", "customer_id": "cus_123", "amount_paid": 29.99, "refunded_amount": 0}]}
+          application/json: {"invoices": [{"plan_ids": ["pro"], "processor_invoice_id": "pp-sale-legacy_123", "processor_type": "paypal", "status": "paid", "total": 29.99, "currency": "usd", "created_at": 1451606400000, "hosted_invoice_url": "https://billing.example.com/invoices/legacy-123", "id": "inv_2b3c4d5e6f7g8h", "customer_id": "cus_123", "amount_paid": 29.99, "refunded_amount": 0}]}
   createReward:
     speakeasy-default-create-reward:
       parameters:
@@ -22182,7 +21888,7 @@ examples:
         application/json: {"invoice_id": "inv_2b3c4d5e6f7g8h"}
       responses:
         "200":
-          application/json: {"invoice": {"plan_ids": ["pro_plan"], "stripe_id": "in_1A2B3C4D5E6F7G8H", "processor_type": "stripe", "status": "paid", "total": 29.99, "currency": "usd", "created_at": 1759247877000, "hosted_invoice_url": "https://invoice.stripe.com/i/acct_123/test_456", "id": "inv_2b3c4d5e6f7g8h", "customer_id": "cus_123", "entity_id": null, "amount_paid": 29.99, "refunded_amount": 0, "items": [{"id": "invoice_li_2b3c4d5e6f7g8h", "description": "Pro plan", "period_start": 1759247877000, "period_end": 1761839877000, "plan_id": "pro_plan", "feature_id": null, "feature_name": null, "quantity": null, "amount": 20, "entities": []}, {"id": "invoice_li_3c4d5e6f7g8h9i", "description": "AI credits", "period_start": 1759247877000, "period_end": 1761839877000, "plan_id": "pro_plan", "feature_id": "ai_credits", "feature_name": "AI Credits", "quantity": 4995, "amount": 9.99, "entities": [{"entity_id": "acme-docs-prod", "quantity": 4995, "amount": 9.99}]}]}}
+          application/json: {"invoice": {"plan_ids": ["pro_plan"], "processor_invoice_id": "pp-cap-8FJ0231A", "processor_type": "paypal", "status": "paid", "total": 29.99, "currency": "usd", "created_at": 1759247877000, "hosted_invoice_url": "https://invoice.example.com/i/acct_123/test_456", "id": "inv_2b3c4d5e6f7g8h", "customer_id": "cus_123", "entity_id": null, "amount_paid": 29.99, "refunded_amount": 0, "items": [{"id": "invoice_li_2b3c4d5e6f7g8h", "description": "Pro plan", "period_start": 1759247877000, "period_end": 1761839877000, "plan_id": "pro_plan", "feature_id": null, "feature_name": null, "quantity": null, "amount": 20, "entities": []}, {"id": "invoice_li_3c4d5e6f7g8h9i", "description": "AI credits", "period_start": 1759247877000, "period_end": 1761839877000, "plan_id": "pro_plan", "feature_id": "ai_credits", "feature_name": "AI Credits", "quantity": 4995, "amount": 9.99, "entities": [{"entity_id": "acme-docs-prod", "quantity": 4995, "amount": 9.99}]}]}}
   advanceTestClock:
     speakeasy-default-advance-test-clock:
       parameters:
@@ -22202,7 +21908,7 @@ examples:
         application/json: {"customer_id": "cus_123", "plans": [{"plan_id": "pro", "feature_quantities": [{"feature_id": "seats", "billing_behavior": "prepaid", "quantity": 5}, {"feature_id": "credits", "billing_behavior": "usage_based", "quantity": 2500}]}], "custom_line_items": [{"amount": 500, "description": "Implementation services"}], "net_terms_days": 30}
       responses:
         "200":
-          application/json: {"invoice": {"plan_ids": ["pro_plan"], "stripe_id": "in_1A2B3C4D5E6F7G8H", "processor_type": "stripe", "status": "open", "total": 29.99, "currency": "usd", "created_at": 1759247877000, "hosted_invoice_url": "https://invoice.stripe.com/i/acct_123/test_456", "id": "inv_2b3c4d5e6f7g8h", "customer_id": "cus_123", "entity_id": null, "amount_paid": 29.99, "refunded_amount": 0, "items": [{"id": "invoice_li_2b3c4d5e6f7g8h", "description": "Pro plan", "period_start": 1759247877000, "period_end": 1761839877000, "plan_id": "pro_plan", "feature_id": null, "feature_name": null, "quantity": null, "amount": 20, "entities": []}, {"id": "invoice_li_3c4d5e6f7g8h9i", "description": "AI credits", "period_start": 1759247877000, "period_end": 1761839877000, "plan_id": "pro_plan", "feature_id": "ai_credits", "feature_name": "AI Credits", "quantity": 4995, "amount": 9.99, "entities": [{"entity_id": "acme-docs-prod", "quantity": 4995, "amount": 9.99}]}]}, "preview": {"currency": "usd", "lines": [], "subtotal": 29.99, "discount_total": 0, "tax": null, "total": 29.99, "invoice_credits": {"balance": 10, "applied": 10, "currency": "usd"}, "amount_due": 19.99, "issue_date": 7918.57, "due_date": 1761839877000}}
+          application/json: {"invoice": {"plan_ids": ["pro_plan"], "processor_invoice_id": "pp-cap-8FJ0231A", "processor_type": "paypal", "status": "open", "total": 29.99, "currency": "usd", "created_at": 1759247877000, "hosted_invoice_url": "https://invoice.example.com/i/acct_123/test_456", "id": "inv_2b3c4d5e6f7g8h", "customer_id": "cus_123", "entity_id": null, "amount_paid": 29.99, "refunded_amount": 0, "items": [{"id": "invoice_li_2b3c4d5e6f7g8h", "description": "Pro plan", "period_start": 1759247877000, "period_end": 1761839877000, "plan_id": "pro_plan", "feature_id": null, "feature_name": null, "quantity": null, "amount": 20, "entities": []}, {"id": "invoice_li_3c4d5e6f7g8h9i", "description": "AI credits", "period_start": 1759247877000, "period_end": 1761839877000, "plan_id": "pro_plan", "feature_id": "ai_credits", "feature_name": "AI Credits", "quantity": 4995, "amount": 9.99, "entities": [{"entity_id": "acme-docs-prod", "quantity": 4995, "amount": 9.99}]}]}, "preview": {"currency": "usd", "lines": [], "subtotal": 29.99, "discount_total": 0, "tax": null, "total": 29.99, "invoice_credits": {"balance": 10, "applied": 10, "currency": "usd"}, "amount_due": 19.99, "issue_date": 7918.57, "due_date": 1761839877000}}
   listInvoiceTemplates:
     speakeasy-default-list-invoice-templates:
       parameters:
@@ -22222,7 +21928,7 @@ examples:
         application/json: {"invoice_id": "inv_2b3c4d5e6f7g8h", "invoice_template_id": "inv_tmpl_bank_transfer"}
       responses:
         "200":
-          application/json: {"invoice": {"plan_ids": ["pro_plan"], "stripe_id": "in_1A2B3C4D5E6F7G8H", "processor_type": "stripe", "status": "open", "total": 29.99, "currency": "usd", "created_at": 1759247877000, "hosted_invoice_url": "https://invoice.stripe.com/i/acct_123/test_456", "id": "inv_3c4d5e6f7g8h9i", "customer_id": "cus_123", "entity_id": null, "amount_paid": 29.99, "refunded_amount": 0, "items": [{"id": "invoice_li_2b3c4d5e6f7g8h", "description": "Pro plan", "period_start": 1759247877000, "period_end": 1761839877000, "plan_id": "pro_plan", "feature_id": null, "feature_name": null, "quantity": null, "amount": 20, "entities": []}, {"id": "invoice_li_3c4d5e6f7g8h9i", "description": "AI credits", "period_start": 1759247877000, "period_end": 1761839877000, "plan_id": "pro_plan", "feature_id": "ai_credits", "feature_name": "AI Credits", "quantity": 4995, "amount": 9.99, "entities": [{"entity_id": "acme-docs-prod", "quantity": 4995, "amount": 9.99}]}]}, "voided_invoice_id": "inv_2b3c4d5e6f7g8h", "credit_note_id": "<id>", "preview": {"currency": "usd", "lines": [], "subtotal": 29.99, "discount_total": 0, "tax": null, "total": 29.99, "amount_due": 29.99, "issue_date": 5088.9, "due_date": 1761839877000}}
+          application/json: {"invoice": {"plan_ids": ["pro_plan"], "processor_invoice_id": "pp-cap-8FJ0231A", "processor_type": "paypal", "status": "open", "total": 29.99, "currency": "usd", "created_at": 1759247877000, "hosted_invoice_url": "https://invoice.example.com/i/acct_123/test_456", "id": "inv_3c4d5e6f7g8h9i", "customer_id": "cus_123", "entity_id": null, "amount_paid": 29.99, "refunded_amount": 0, "items": [{"id": "invoice_li_2b3c4d5e6f7g8h", "description": "Pro plan", "period_start": 1759247877000, "period_end": 1761839877000, "plan_id": "pro_plan", "feature_id": null, "feature_name": null, "quantity": null, "amount": 20, "entities": []}, {"id": "invoice_li_3c4d5e6f7g8h9i", "description": "AI credits", "period_start": 1759247877000, "period_end": 1761839877000, "plan_id": "pro_plan", "feature_id": "ai_credits", "feature_name": "AI Credits", "quantity": 4995, "amount": 9.99, "entities": [{"entity_id": "acme-docs-prod", "quantity": 4995, "amount": 9.99}]}]}, "voided_invoice_id": "inv_2b3c4d5e6f7g8h", "credit_note_id": "<id>", "preview": {"currency": "usd", "lines": [], "subtotal": 29.99, "discount_total": 0, "tax": null, "total": 29.99, "amount_due": 29.99, "issue_date": 5088.9, "due_date": 1761839877000}}
   voidInvoice:
     speakeasy-default-void-invoice:
       parameters:
@@ -22232,7 +21938,7 @@ examples:
         application/json: {"invoice_id": "inv_2b3c4d5e6f7g8h"}
       responses:
         "200":
-          application/json: {"invoice": {"plan_ids": ["pro_plan"], "stripe_id": "in_1A2B3C4D5E6F7G8H", "processor_type": "stripe", "status": "void", "total": 29.99, "currency": "usd", "created_at": 1759247877000, "hosted_invoice_url": "https://invoice.stripe.com/i/acct_123/test_456", "id": "inv_2b3c4d5e6f7g8h", "customer_id": "cus_123", "entity_id": null, "amount_paid": 29.99, "refunded_amount": 0, "items": [{"id": "invoice_li_2b3c4d5e6f7g8h", "description": "Pro plan", "period_start": 1759247877000, "period_end": 1761839877000, "plan_id": "pro_plan", "feature_id": null, "feature_name": null, "quantity": null, "amount": 20, "entities": []}, {"id": "invoice_li_3c4d5e6f7g8h9i", "description": "AI credits", "period_start": 1759247877000, "period_end": 1761839877000, "plan_id": "pro_plan", "feature_id": "ai_credits", "feature_name": "AI Credits", "quantity": 4995, "amount": 9.99, "entities": [{"entity_id": "acme-docs-prod", "quantity": 4995, "amount": 9.99}]}]}}
+          application/json: {"invoice": {"plan_ids": ["pro_plan"], "processor_invoice_id": "pp-cap-8FJ0231A", "processor_type": "paypal", "status": "void", "total": 29.99, "currency": "usd", "created_at": 1759247877000, "hosted_invoice_url": "https://invoice.example.com/i/acct_123/test_456", "id": "inv_2b3c4d5e6f7g8h", "customer_id": "cus_123", "entity_id": null, "amount_paid": 29.99, "refunded_amount": 0, "items": [{"id": "invoice_li_2b3c4d5e6f7g8h", "description": "Pro plan", "period_start": 1759247877000, "period_end": 1761839877000, "plan_id": "pro_plan", "feature_id": null, "feature_name": null, "quantity": null, "amount": 20, "entities": []}, {"id": "invoice_li_3c4d5e6f7g8h9i", "description": "AI credits", "period_start": 1759247877000, "period_end": 1761839877000, "plan_id": "pro_plan", "feature_id": "ai_credits", "feature_name": "AI Credits", "quantity": 4995, "amount": 9.99, "entities": [{"entity_id": "acme-docs-prod", "quantity": 4995, "amount": 9.99}]}]}}
   searchRequestLogs:
     speakeasy-default-search-request-logs:
       parameters:
@@ -22242,25 +21948,5 @@ examples:
         application/json: {"query": "where status_code >= 400 | order by timestamp desc", "limit": 50}
       responses:
         "200":
-          application/json: {"list": [{"timestamp": "2026-09-21T12:00:00Z", "source": "api_request", "status_code": 200, "request": {"method": "POST", "url": "https://api.useautumn.com/v1/balances.check", "path": "/v1/balances.check"}, "context": {"org_id": "org_123", "customer_id": "cus_123", "entity_id": null, "auth_type": "secret_key", "user_id": "user_123", "user_email": "user@example.com"}, "stripe": {"event_id": null, "event_type": null, "object_id": null}, "request_body": {"customer_id": "cus_123"}, "response_body": {"allowed": true}}]}
-  getStripeConnection:
-    speakeasy-default-get-stripe-connection:
-      parameters:
-        header:
-          x-api-version: "2.4.0"
-      requestBody:
-        application/json: {"organization_slug": "my-app", "env": "test"}
-      responses:
-        "200":
-          application/json: {"connected": true, "account_id": "acct_example", "connected_at": 1781113864000}
-  disconnectStripe:
-    speakeasy-default-disconnect-stripe:
-      parameters:
-        header:
-          x-api-version: "2.4.0"
-      requestBody:
-        application/json: {"organization_slug": "my-app", "env": "test"}
-      responses:
-        "200":
-          application/json: {"success": true}
+          application/json: {"list": [{"timestamp": "2026-09-21T12:00:00Z", "source": "api_request", "status_code": 200, "request": {"method": "POST", "url": "https://api.useautumn.com/v1/balances.check", "path": "/v1/balances.check"}, "context": {"org_id": "org_123", "customer_id": "cus_123", "entity_id": null, "auth_type": "secret_key", "user_id": "user_123", "user_email": "user@example.com"}, "processor_webhook": {"event_id": null, "event_type": null, "object_id": null}, "request_body": {"customer_id": "cus_123"}, "response_body": {"allowed": true}}]}
 examplesVersion: 1.0.2

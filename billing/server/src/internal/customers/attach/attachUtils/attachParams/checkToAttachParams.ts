@@ -1,10 +1,14 @@
 import type { FullCustomer, FullProduct } from "@autumn/shared";
-import { createStripeCli } from "@/external/connect/createStripeCli.js";
 import type { AttachParams } from "@/internal/customers/cusProducts/AttachParams.js";
 import { getFreeTrialAfterFingerprint } from "@/internal/products/free-trials/freeTrialUtils.js";
 import type { AutumnContext } from "../../../../../honoUtils/HonoEnv.js";
-import { getStripeCusData } from "./attachParamsUtils/getStripeCusData.js";
 
+/**
+ * Builds the attach params a check preview needs.
+ *
+ * The billing engine is DB-only, so there is no processor customer or payment
+ * method to resolve here — only the customer's free-trial eligibility.
+ */
 export const checkToAttachParams = async ({
 	ctx,
 	customer,
@@ -14,14 +18,7 @@ export const checkToAttachParams = async ({
 	customer: FullCustomer;
 	product: FullProduct;
 }) => {
-	const { org, env, db } = ctx;
-
-	const stripeCli = createStripeCli({ org, env });
-	const stripeCusData = await getStripeCusData({
-		ctx,
-		customer,
-		allowNoStripe: true,
-	});
+	const { org, db } = ctx;
 
 	const freeTrial = await getFreeTrialAfterFingerprint({
 		db,
@@ -33,13 +30,8 @@ export const checkToAttachParams = async ({
 		productId: product.id,
 	});
 
-	const { stripeCus, paymentMethod, now } = stripeCusData;
-
 	const attachParams: AttachParams = {
-		stripeCli,
-		stripeCus,
-		now,
-		paymentMethod,
+		now: Date.now(),
 
 		customer,
 		products: [product],
@@ -56,9 +48,6 @@ export const checkToAttachParams = async ({
 		features: ctx.features,
 		internalEntityId: customer.entity?.internal_id,
 		cusProducts: customer.customer_products,
-
-		// Others
-		// apiVersion,
 	};
 
 	return attachParams;

@@ -16,7 +16,7 @@ import {
 	type AutumnClient,
 	createClient,
 } from "../../../../packages/atmn/src/generated/client";
-import { seedVersionableCustomer } from "../../integration/catalog-v2/plans/migrations/utils/seedVersionableCustomer.js";
+import { seedVersionableCustomer } from "../../integration/catalog-v2/plans/utils/seedVersionableCustomer.js";
 
 /**
  * atmn e2e lives here rather than in the CLI package for one reason: this is
@@ -199,7 +199,7 @@ export type AtmnScenario = {
 		planId: string;
 		customerId?: string;
 	}) => Promise<void>;
-	/** A customer on one plan version, DB only, no Stripe — cheap, counts migrations.
+	/** A customer on one plan version, DB only, no processor — cheap, counts migrations.
 	 *  Returns the seeded ids: `cleanup()` does not know about them. */
 	seedCustomer: (params: { planId: string; version?: number }) => Promise<{
 		customerId: string;

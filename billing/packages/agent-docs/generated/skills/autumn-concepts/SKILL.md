@@ -7,7 +7,7 @@ description: Understanding Autumn's billing objects before acting on them — wh
 
 Autumn is a database for your application billing state: features, plans, customers, subscriptions, purchases, balances, flags, and billing controls. It helps you iterate on pricing, manage credit access and usage, control overage, and keep billing behavior connected to product access.
 
-Autumn is a layer above Stripe; Stripe still handles subscription management, invoicing, and payment processing. Autumn provisions and updates Stripe subscriptions, schedules, invoices, and related billing objects for you.
+Autumn is a layer above the payment processor; the processor still handles subscription management, invoicing, and payment processing. Autumn provisions and updates processor subscriptions, schedules, invoices, and related billing objects for you.
 
 ## Object graph
 
@@ -94,6 +94,6 @@ For distinguishing a customer from an entity (seats, sub-accounts) and their run
 
 For reasoning about billing controls — runtime caps, alerts, overage, and top-ups, read `references/billing-controls.md`.
 
-For setting or reading a customer's billing address, tax IDs, tax exemption, or invoice custom fields, read `references/billing-details.md`.
+Billing details (address, tax IDs, tax exemption, invoice custom fields) are not supported. They live on the billing processor's customer record, and the processor has no equivalent store — the server rejects `billing_details` on `customers.create` and `customers.update` with a 400.
 
 For reasoning about licenses — seat plans a parent plan hands out, seat pools, assigning and releasing seats, read `references/licenses.md`.

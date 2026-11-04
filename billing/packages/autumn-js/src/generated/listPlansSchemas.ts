@@ -26,8 +26,6 @@ const variantPlanPriceSchema = z.any();
 
 const variantItemSchema = z.any();
 
-const variantProcessorsSchema = z.any();
-
 const variantFreeTrialSchema = z.any();
 
 const variantEnvSchema = z.any();
@@ -39,8 +37,6 @@ const listPlansVariantCustomizeSchema = z.any();
 const listPlansPriceSchema = z.any();
 
 const listPlansItemSchema = z.any();
-
-const listPlansProcessorsSchema = z.any();
 
 const listPlansFreeTrialSchema = z.any();
 
@@ -127,7 +123,6 @@ export const listPlansPlanSchema = z.object({
 	autoEnable: z.boolean(),
 	price: variantPlanPriceSchema.nullable(),
 	items: z.array(variantItemSchema),
-	processors: z.union([variantProcessorsSchema, z.undefined()]).optional(),
 	freeTrial: z.union([variantFreeTrialSchema, z.undefined()]).optional(),
 	createdAt: z.number(),
 	env: variantEnvSchema,
@@ -164,7 +159,6 @@ export const listPlansListSchema = z.object({
 	autoEnable: z.boolean(),
 	price: listPlansPriceSchema.nullable(),
 	items: z.array(listPlansItemSchema),
-	processors: z.union([listPlansProcessorsSchema, z.undefined()]).optional(),
 	freeTrial: z.union([listPlansFreeTrialSchema, z.undefined()]).optional(),
 	createdAt: z.number(),
 	env: listPlansEnvSchema,

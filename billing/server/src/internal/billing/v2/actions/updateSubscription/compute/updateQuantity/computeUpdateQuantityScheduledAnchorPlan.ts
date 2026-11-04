@@ -13,14 +13,16 @@ export const computeUpdateQuantityScheduledAnchorPlan = ({
 	plan: AutumnBillingPlan;
 	billingContext: UpdateSubscriptionBillingContext;
 }): AutumnBillingPlan => {
+	const processorSubscriptionId =
+		billingContext.customerProduct.subscription_ids?.[0];
 	const pools = (
 		billingContext.fullCustomer.pooled_customer_entitlements ?? []
 	).filter(
 		(customerEntitlement) =>
 			customerEntitlement.pooled_balance?.reset_mode ===
 				PooledBalanceResetMode.Subscription &&
-			customerEntitlement.pooled_balance.stripe_subscription_id ===
-				billingContext.stripeSubscription?.id,
+			customerEntitlement.pooled_balance.processor_subscription_id ===
+				processorSubscriptionId,
 	);
 	const updates = new Map(
 		(plan.updateCustomerEntitlements ?? []).map((update) => [

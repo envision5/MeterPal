@@ -59,10 +59,10 @@ export const thresholdRequiresFiniteRows = ({
 	op: BalanceFilterOp;
 }): boolean => basis !== "usage" && op === "<";
 
-/** The unlimited stripe orders remaining/granted sorts (no number to rank
+/** The unlimited band orders remaining/granted sorts (no number to rank
  * unlimited customers by); usage ranks everyone by their real number, and a
- * `<` filter passes rows on finite merit so the stripe stands down there too. */
-export const stripeSuppressed = ({
+ * `<` filter passes rows on finite merit so the band stands down there too. */
+export const bandSuppressed = ({
 	basis,
 	remainingFilter,
 }: {
@@ -279,7 +279,7 @@ const verifyExactBalances = async ({
 		}
 		mapped.push({
 			internalId: row.internal_customer_id,
-			isUnlimited: stripeSuppressed({ basis, remainingFilter })
+			isUnlimited: bandSuppressed({ basis, remainingFilter })
 				? false
 				: Boolean(row.is_unlimited),
 			total: basisValueOf({ basis, remaining, granted, unlimitedUsage }),
@@ -543,12 +543,12 @@ export const nominationQuery = ({
 				}
 		`
 		: sql``;
-	// When the stripe is suppressed (verify emits u=false), the cursor/order
+	// When the band is suppressed (verify emits u=false), the cursor/order
 	// tuple must drop is_unlimited — a (false, ...) tuple would otherwise
 	// exclude every mixed customer from later batches.
-	const suppressStripe = stripeSuppressed({ basis, remainingFilter });
+	const suppressBand = bandSuppressed({ basis, remainingFilter });
 	const cursorPredicate = after
-		? suppressStripe
+		? suppressBand
 			? sortOrder === "asc"
 				? sql`AND (${basisExpr}, internal_customer_id) > (${after.b}, ${after.id})`
 				: sql`AND (${basisExpr}, internal_customer_id) < (${after.b}, ${after.id})`
@@ -576,7 +576,7 @@ export const nominationQuery = ({
 						: sql``
 				}`
 		: sql``;
-	const orderBy = suppressStripe
+	const orderBy = suppressBand
 		? sql`${basisExpr} ${direction}, internal_customer_id ${direction}`
 		: sql`is_unlimited ${direction}, ${basisExpr} ${direction}, internal_customer_id ${direction}`;
 

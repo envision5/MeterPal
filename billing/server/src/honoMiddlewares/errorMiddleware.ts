@@ -2,7 +2,6 @@ import { ErrCode, RecaseError } from "@autumn/shared";
 import * as Sentry from "@sentry/bun";
 import type { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
-import Stripe from "stripe";
 import { ZodError } from "zod/v4";
 import { formatZodError } from "@/errors/formatZodError.js";
 import type { HonoEnv } from "@/honoUtils/HonoEnv.js";
@@ -63,30 +62,7 @@ export const errorMiddleware = (err: Error, c: Context<HonoEnv>) => {
 		}),
 	});
 
-	// 2. Handle Stripe errors
-	if (err instanceof Stripe.errors.StripeError) {
-		logger.error(
-			`STRIPE ERROR (${ctx.org?.slug || "unknown"}): ${err.message}`,
-			{
-				error: {
-					type: err.type,
-					code: err.code,
-					statusCode: err.statusCode,
-				},
-			},
-		);
-
-		return c.json(
-			{
-				message: `(Stripe Error) ${err.message}`,
-				code: ErrCode.StripeError,
-				env: ctx.env,
-			},
-			400,
-		);
-	}
-
-	// 3. Handle Zod validation errors
+	// 2. Handle Zod validation errors
 	// Note: User input validation errors are already handled by errorSkipMiddleware
 	// If we get here, it's an internal Zod error (bug in our code)
 	if (err instanceof ZodError) {
@@ -107,7 +83,7 @@ export const errorMiddleware = (err: Error, c: Context<HonoEnv>) => {
 		);
 	}
 
-	// 4. Handle unknown errors
+	// 3. Handle unknown errors
 	logger.error(
 		`UNKNOWN ERROR (${ctx.org?.slug || "unknown"}): ${err.message}`,
 		{

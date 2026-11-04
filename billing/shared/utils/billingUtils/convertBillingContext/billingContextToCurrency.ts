@@ -10,12 +10,10 @@ export const billingContextToCurrency = ({
 	billingContext: {
 		currency?: string;
 		fullCustomer: Pick<Customer, "currency">;
-		stripeCustomer?: { currency?: string | null } | null;
 	};
 }): string =>
 	billingContext.currency?.toLowerCase() ||
 	resolveCustomerCurrency({
 		customer: billingContext.fullCustomer,
 		org,
-		stripeCurrency: billingContext.stripeCustomer?.currency,
 	});

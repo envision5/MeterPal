@@ -1,7 +1,7 @@
 ---
 slug: autumn-vs-metronome
 title: MeterPal vs Metronome
-description: Metronome is built for sophisticated usage metering and rating. MeterPal is built for AI and SaaS companies that need credits, entitlements, enterprise contracts, committed spend, and Stripe billing state in one application-facing system.
+description: Metronome is built for sophisticated usage metering and rating. MeterPal is built for AI and SaaS companies that need credits, entitlements, enterprise contracts, committed spend, and PayPal billing state in one application-facing system.
 date: "2026-06-22"
 updated: "2026-06-22"
 author: MeterPal
@@ -13,7 +13,7 @@ relatedDocs:
   - { label: "Credit systems", href: "https://docs.useautumn.com/documentation/modelling-pricing/credit-systems" }
 relatedAlog:
   - autumn-vs-orb
-  - autumn-vs-stripe-billing
+
   - usage-based-billing-for-ai-startups
 ---
 
@@ -25,7 +25,7 @@ relatedAlog:
 
 Metronome is a strong fit for companies with complex usage streams, billable metrics, and finance-led invoicing workflows. If you are doing pure usage-based billing, such as charging per hour of compute, storage consumed, or multi-dimensional usage metrics, Metronome is built for that world.
 
-MeterPal is a better fit when billing state needs to be enforced inside the product in real time: credits, committed spend, rollovers, reset intervals, usage limits, alerts, plan changes, add-ons, entitlements, enterprise contracts, and custom sales-led deals. In that model, Stripe remains the payment and invoice layer while MeterPal owns the product-facing billing state.
+MeterPal is a better fit when billing state needs to be enforced inside the product in real time: credits, committed spend, rollovers, reset intervals, usage limits, alerts, plan changes, add-ons, entitlements, enterprise contracts, and custom sales-led deals. In that model, PayPal remains the payment and invoice layer while MeterPal owns the product-facing billing state.
 
 ## When MeterPal Fits
 
@@ -35,7 +35,7 @@ MeterPal is a better fit when billing state needs to be enforced inside the prod
 - You are PLG, sales-led, or hybrid, and deal with custom enterprise packages.
 - You need custom enterprise contracts, committed spend, or negotiated credit grants to map directly to product access.
 - You iterate on pricing often and do not want each change to become a billing rewrite.
-- You want Stripe to remain the payment and invoice system, while MeterPal owns the product-facing billing logic.
+- You want PayPal to remain the payment and invoice system, while MeterPal owns the product-facing billing logic.
 
 ## When Metronome Fits
 
@@ -49,7 +49,7 @@ MeterPal is a better fit when billing state needs to be enforced inside the prod
 
 Metronome starts from usage events. You define billable metrics, products, rate cards, contracts, credits, commits, and invoice behavior. It can also send webhook notifications when spend, usage, or credit thresholds are reached. That is powerful when billing depends on complex event aggregation, alerting, and contract terms.
 
-MeterPal starts from the customer's billing state. A customer has plans, balances, entitlements, credit systems, limits, and Stripe subscriptions. Your app can call `check()` before allowing access and `track()` after usage. That makes MeterPal a better fit when billing needs to sit directly in the product path.
+MeterPal starts from the customer's billing state. A customer has plans, balances, entitlements, credit systems, limits, and PayPal subscriptions. Your app can call `check()` before allowing access and `track()` after usage. That makes MeterPal a better fit when billing needs to sit directly in the product path.
 
 ## Credits and Usage Limits
 
@@ -81,7 +81,7 @@ With MeterPal, the typical model is:
 ```text
 Application -> MeterPal check() -> allow or block access
 Application -> MeterPal track() -> update usage and balances
-MeterPal -> Stripe -> subscriptions, invoices, and payments
+MeterPal -> PayPal -> subscriptions, invoices, and payments
 ```
 
 The difference is not whether either system is real time. The difference is where the access decision lives. Metronome gives your application billing signals through alerts, webhooks, and APIs. MeterPal combines the billing state and product policy behind a synchronous `check()` API.

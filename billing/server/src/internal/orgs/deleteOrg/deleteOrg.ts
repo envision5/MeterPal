@@ -10,8 +10,6 @@ import type { DrizzleCli } from "../../../db/initDrizzle";
 import type { Logger } from "../../../external/logtail/logtailUtils";
 import { CusService } from "../../customers/CusService";
 import { OrgService } from "../OrgService";
-import { deleteOrgStripeAccounts } from "./deleteOrgStripeAccounts";
-import { deleteOrgStripeWebhooks } from "./deleteOrgStripeWebhooks";
 import { deleteOrgSvixApps } from "./deleteOrgSvixApps";
 
 export const deleteOrg = async ({
@@ -35,11 +33,7 @@ export const deleteOrg = async ({
 			message: "Cannot delete org with production mode customers",
 		});
 
-	await Promise.all([
-		deleteOrgSvixApps({ org, logger }),
-		deleteOrgStripeWebhooks({ org, logger }),
-		deleteOrgStripeAccounts({ org, logger }),
-	]);
+	await deleteOrgSvixApps({ org, logger });
 
 	await CusService.deleteByOrgId({
 		db,

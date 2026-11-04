@@ -9,7 +9,7 @@ import { EntitlementService } from "@/internal/products/entitlements/Entitlement
  * product as lifetime cusEnts before the product is expired.
  *
  * Billing-action flows handle this at compute time via the same helper; this
- * action is the webhook-driven equivalent (e.g. Stripe schedule phase advance)
+ * action is the webhook-driven equivalent (e.g. a processor schedule phase advance)
  * where there is no AutumnBillingPlan to attach the rows to. The caller is
  * responsible for surfacing the returned counts in its own structured logs.
  */

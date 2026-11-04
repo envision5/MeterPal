@@ -1,24 +1,14 @@
 import {
 	type AppEnv,
 	type EntInterval,
-	EntInterval as EntIntervalEnum,
 	type FullCusProduct,
-	getCycleEnd,
 	type Organization,
 } from "@autumn/shared";
 import { UTCDate } from "@date-fns/utc";
-import { getDate, getMonth } from "date-fns";
-import { createStripeCli } from "@/external/connect/createStripeCli.js";
 import { clampNextResetAtToPendingBillingCycleAnchor } from "@/internal/billing/v2/utils/billingContext/getRequestedBillingCycleAnchorResetAt";
 import { getNextResetAt } from "@/utils/timeUtils.js";
 
-const shortDurations: string[] = [
-	EntIntervalEnum.Minute,
-	EntIntervalEnum.Hour,
-	EntIntervalEnum.Day,
-];
-
-/** Computes next reset timestamp, adjusting for Stripe billing anchor on edge dates. */
+/** Computes next reset timestamp, adjusting for the billing cycle anchor. */
 export const getResetAtUpdate = async ({
 	curResetAt,
 	interval,
@@ -45,47 +35,6 @@ export const getResetAtUpdate = async ({
 			currentEpochMs: curResetAt,
 			nextResetAt: value,
 		});
-
-	if (!cusProduct) return nextResetAt;
-	if (shortDurations.includes(interval)) {
-		return clampToPendingBillingCycleAnchor(nextResetAt);
-	}
-
-	// Only check Stripe anchor on edge dates (28th Feb, 30th of month)
-	const nextResetAtDate = new UTCDate(nextResetAt);
-	const nextResetAtDay = getDate(nextResetAtDate);
-	const nextResetAtMonth = getMonth(nextResetAtDate);
-
-	const shouldCheck =
-		nextResetAtDay === 30 || (nextResetAtDay === 28 && nextResetAtMonth === 1);
-
-	if (!shouldCheck) return clampToPendingBillingCycleAnchor(nextResetAt);
-
-	if (
-		!cusProduct.subscription_ids ||
-		cusProduct.subscription_ids.length === 0
-	) {
-		return clampToPendingBillingCycleAnchor(nextResetAt);
-	}
-
-	try {
-		const stripeCli = createStripeCli({ org, env });
-		const subId = cusProduct.subscription_ids[0];
-		const sub = await stripeCli.subscriptions.retrieve(subId);
-
-		const billingCycleAnchor = sub.billing_cycle_anchor * 1000;
-		const stripeAlignedResetAt = getCycleEnd({
-			anchor: billingCycleAnchor,
-			interval,
-			intervalCount,
-			now: curResetAt,
-		});
-		return clampToPendingBillingCycleAnchor(
-			Math.max(nextResetAt, stripeAlignedResetAt),
-		);
-	} catch (error) {
-		console.log(`[Lazy Reset] WARNING: Failed to check sub anchor: ${error}`);
-	}
 
 	return clampToPendingBillingCycleAnchor(nextResetAt);
 };

@@ -544,7 +544,6 @@ export const seedEmailPlatformCustomers = async ({
 					group: productPrefix,
 				}),
 				prefix: "",
-				createInStripe: false,
 			}),
 		],
 		actions: [],
@@ -604,10 +603,9 @@ export const runEmailPlatformSeed = async () => {
 		await clearOrg({
 			orgSlug: process.env.TESTS_ORG,
 			env: AppEnv.Sandbox,
-			// Reset the Stripe account by default so stale usage meters don't
-			// collide on re-seed; pass --skip-stripe-reset to keep them (faster).
-			// skipStripeReset: process.argv.includes("--skip-stripe-reset"),
-			skipStripeReset: true,
+			// Reset the processor account by default so stale usage meters don't
+			// collide on re-seed; pass --skip-processor-reset to keep them (faster).
+			// skipProcessorReset: process.argv.includes("--skip-processor-reset"),
 		});
 	}
 

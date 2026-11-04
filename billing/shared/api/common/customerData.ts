@@ -1,7 +1,6 @@
 import { z } from "zod/v4";
 import { CustomerBillingControlsParamsSchema } from "../../models/cusModels/billingControls/customerBillingControls";
-import { ExternalProcessorsSchema } from "../../models/genModels/processorSchemas";
-import { isValidCurrencyCode } from "../../utils/currencyUtils/stripeCurrencies";
+import { isValidCurrencyCode } from "../../utils/currencyUtils/currencies";
 
 // for internal use only
 export const CreateCustomerInternalOptionsSchema = z.object({
@@ -37,29 +36,17 @@ export const CustomerDataSchema = z
 		metadata: z.record(z.string(), z.any()).nullish().meta({
 			description: "Additional metadata for the customer",
 		}),
-		stripe_id: z.string().nullish().meta({
-			description: "Stripe customer ID if you already have one",
-		}),
-
-		create_in_stripe: z.boolean().optional().meta({
-			description: "Whether to create the customer in Stripe",
-		}),
-
 		auto_enable_plan_id: z.string().optional().meta({
 			description: "The ID of the free plan to auto-enable for the customer",
 		}),
 
-		processors: ExternalProcessorsSchema.nullish().meta({
-			internal: true,
-			description: "External processors for the customer",
-		}),
 		send_email_receipts: z.boolean().optional().meta({
 			description: "Whether to send email receipts to this customer",
 		}),
 
 		currency: z
 			.string()
-			.refine(isValidCurrencyCode, "must be a Stripe-supported currency code")
+			.refine(isValidCurrencyCode, "must be a supported currency code")
 			.nullish()
 			.meta({
 				description:
@@ -78,7 +65,7 @@ export const CustomerDataSchema = z
 				}),
 				disable_overage_billing: z.boolean().optional().meta({
 					description:
-						"Stops Autumn from posting usage-overage line items to Stripe for this customer. Check/track and balance resets still behave normally. When set, this overrides the organization-level disable_overage_billing setting.",
+						"Stops Autumn from posting usage-overage line items to the billing processor for this customer. Check/track and balance resets still behave normally. When set, this overrides the organization-level disable_overage_billing setting.",
 				}),
 			})
 			.optional()

@@ -33,8 +33,6 @@ import {
   GetPlanPlanItemFilter$inboundSchema,
   GetPlanPrice,
   GetPlanPrice$inboundSchema,
-  GetPlanProcessors,
-  GetPlanProcessors$inboundSchema,
   GetPlanVariantDetailsAutoTopup,
   GetPlanVariantDetailsAutoTopup$inboundSchema,
   GetPlanVariantDetailsSpendLimit,
@@ -103,7 +101,7 @@ export type GetPlanPriceUpsertLicenseInterval = OpenEnum<
 
 export type GetPlanUpsertLicenseAdditionalCurrency = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -177,7 +175,7 @@ export type GetPlanUpsertLicenseReset = {
 
 export type GetPlanUpsertLicenseAddItemAdditionalCurrency = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -190,7 +188,7 @@ export type GetPlanUpsertLicensePriceTo = number | string;
 
 export type GetPlanUpsertLicenseTierAdditionalCurrency = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -913,11 +911,7 @@ export type GetPlanResponse = {
    * Feature configurations included in this plan. Each item defines included units, pricing, and reset behavior for a feature.
    */
   items: Array<GetPlanItem>;
-  /**
-   * Payment processors this plan is connected to. Omitted when unset.
-   */
-  processors?: GetPlanProcessors | undefined;
-  /**
+    /**
    * Free trial configuration. If set, new customers can try this plan before being charged.
    */
   freeTrial?: GetPlanFreeTrial | undefined;
@@ -2276,7 +2270,6 @@ export const GetPlanResponse$inboundSchema: z.ZodMiniType<
     auto_enable: types.boolean(),
     price: types.nullable(GetPlanPrice$inboundSchema),
     items: z.array(GetPlanItem$inboundSchema),
-    processors: types.optional(GetPlanProcessors$inboundSchema),
     free_trial: types.optional(GetPlanFreeTrial$inboundSchema),
     created_at: types.number(),
     env: GetPlanEnv$inboundSchema,

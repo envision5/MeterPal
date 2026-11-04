@@ -31,7 +31,7 @@ We've built an internal framework for scripting that looks something like Drizzl
 
 - Common operations we repeatedly performed in scripts — moving customers between plans, updating credit balances, adding new features, etc.
 - Utilities for testing, dry runs, checkpointing, retries, and recovery
-- The services these scripts interacted with, like Trigger.dev, Postgres, Stripe, and storage systems
+- The services these scripts interacted with, like Trigger.dev, Postgres, PayPal, and storage systems
 
 To give you an idea of how this works, here is a basic script that would add a flag to a "Pro" plan, that gives access to "Premium Models"
 
@@ -77,14 +77,14 @@ Here's our full /write-script skill to give you an idea of the primitives we cre
 ````mdx
 ---
 name: write-script
-description: "Write a new scripts-v2 script. Use when asked to create, write, or scaffold a script that interacts with MeterPal DB, Stripe, or customer data."
+description: "Write a new scripts-v2 script. Use when asked to create, write, or scaffold a script that interacts with MeterPal DB, customer billing, or customer data."
 ---
 
 # Write a scripts-v2 script
 
 > **Background on MeterPal's data model.** For general MeterPal domain concepts — FullCusProduct shape, the three item categories, prepaid pricing, entity-level vs entity-scoped — see the skills under `ai/config/skills/autumn/`. Read the relevant one (e.g. `customer-products`) BEFORE writing any script that mutates customer products, prices, or entitlements.
 >
-> **Stripe resource creation.** For helpers that create Stripe prices/products/meters tied to MeterPal prices (idempotent, V1+V2 prepaid pairing, volume-tier shape), see `ai/config/skills/autumn/stripe-resources`. Read it BEFORE writing any catalog migration that touches Stripe.
+> **Processor resource creation.** For helpers that create processor prices/products tied to MeterPal prices (idempotent, prepaid pairing, volume-tier shape), see `ai/config/skills/autumn/processor-resources`. Read it BEFORE writing any catalog migration that touches the processor.
 >
 > **Shared utility functions.** For the naming conventions (`is*`, `<src>To<dst>`, `enrich*`, `find*`, `filter*By*`) and folder layout of `autumn/shared/utils/`, see `ai/config/skills/autumn/shared-utils`. Check it BEFORE writing inline `array.filter(...).some(...)` or `array.find(... === id)` over MeterPal objects — there is almost certainly an existing helper.
 
@@ -158,7 +158,7 @@ fn: async ({ item: customerId, ctx, s }) => {
   ctx.logger.set({ customerId, email: customer.email });
 
   const result = await s.run(processCustomer, { customerId });
-  ctx.logger.set({ status: result.status, updates: result.stripeUpdates });
+  ctx.logger.set({ status: result.status, updates: result.processorUpdates });
 
   return result;
 },
@@ -187,7 +187,7 @@ fn: async ({ item: customerId, ctx, s }) => {
 
 Another lifesaving usecase is for our logging infrastructure. Internally, we have a skill called `/axiom-investigate`, which we use to debug customer issues by asking an agent to query and search our logs in Axiom, our logging provider. For instance, when we get a slack message, like this:
 
-> This user subscribed to a plan with the Stripe Link method, but now auto top-ups aren't working for him. Do you know why this is happening?
+> This user subscribed to a plan with PayPal vaulted billing, but now auto top-ups aren't working for him. Do you know why this is happening?
 
 We can just do this:
 
@@ -227,7 +227,7 @@ Always restrict `startTime`/`endTime` to the smallest range that covers the inci
 
 Never use `search` unless absolutely necessary. Broad search scans every field across many rows, which is slow, expensive, and usually less precise.
 
-Prefer structured filters on fields like `context.customer_id`, `context.org_slug`, `req.url`, `stripe_event.*`, and `workflow.*`. When listing requests, add `isnotnull(statusCode)` so you fetch the one result log per request instead of every internal log line for that request.
+Prefer structured filters on fields like `context.customer_id`, `context.org_slug`, `req.url`, `processor_event.*`, and `workflow.*`. When listing requests, add `isnotnull(statusCode)` so you fetch the one result log per request instead of every internal log line for that request.
 
 ## Dataset
 
@@ -241,7 +241,7 @@ Every log line has standard Pino fields plus structured bindings:
 |------|--------|-------------|
 | `context.*` | `org_id`, `org_slug`, `env`, `customer_id`, `auth_type`, `user_id`, `user_email`, `api_version` | App context -- org, customer, auth |
 | `req.*` | `id`, `name`, `url`, `method`, `body`, `query`, `user_agent`, `ip_address`, `timestamp` | Request metadata. `req.id` is the trace ID for correlating logs within one request. |
-| `stripe_event.*` | `id`, `type`, `object_id` | Stripe webhook event context |
+| `processor_event.*` | `id`, `type`, `object_id` | Processor webhook event context |
 | `workflow.*` | `id`, `name`, `payload` | Background worker/job context |
 | (top-level) | `msg`, `level`, `statusCode`, `durationMs`, `res`, `extras`, `error`, `done` | Per-log-line fields |
 
@@ -249,7 +249,7 @@ Every log line has standard Pino fields plus structured bindings:
 
 **`extras`** is a JSON object with domain-specific data (billing plans, webhook changes, etc.). Parse with `parse_json(tostring(extras))`.
 
-**`auth_type`** values: `PublicKey`, `SecretKey`, `Stripe`, `Worker`, `Vercel`, `Revenuecat`.
+**`auth_type`** values: `PublicKey`, `SecretKey`, `Worker`, `Vercel`.
 
 ## Investigation workflow
 
@@ -280,7 +280,7 @@ Inside the narrowed window, look at errors and warnings first (`level == "ERROR"
 
 ### 4. Trace
 
-Use `req.id` to follow a single request across all its log lines. Use `stripe_event.id` to trace a webhook through its handlers.
+Use `req.id` to follow a single request across all its log lines. Use `processor_event.id` to trace a webhook through its handlers.
 
 ## Query templates
 
@@ -299,11 +299,11 @@ Use `req.id` to follow a single request across all its log lines. Use `stripe_ev
 | sort by _time desc
 ```
 
-**Stripe webhook events for a customer/org:**
+**Processor webhook events for a customer/org:**
 ```
 ['express']
 | where ['context.org_slug'] == 'ORG_SLUG'
-| where isnotempty(['stripe_event.type'])
+| where isnotempty(['processor_event.type'])
 | sort by _time desc
 ```
 
@@ -348,7 +348,7 @@ Read these when the investigation falls into a specific domain:
 
 - **Billing** (attach, upgrade, downgrade, cancel, payment, checkout, auto top-up): read [billing-investigation.md](billing-investigation.md)
 - **Entitlements** (check, track, balances, rollovers, `allowed`): read [entitlement-investigation.md](entitlement-investigation.md)
-- **Stripe Webhooks** (subscription lifecycle, invoice payment/failure, checkout, schedule changes, customer timeline): read [stripe-webhook-investigation.md](stripe-webhook-investigation.md)
+- **Processor Webhooks** (subscription lifecycle, invoice payment/failure, checkout, schedule changes, customer timeline): read [processor-webhook-investigation.md](processor-webhook-investigation.md)
 - **Redis slow commands** (latency, cache perf, SLO breaches, V2 FullSubject cache): read [redis-slow-command-investigation.md](redis-slow-command-investigation.md)
 - **Infrastructure** (worker queues, rate limiting): _coming soon_
 

@@ -24,30 +24,9 @@ export const SANDBOX_NAME_PREFIX = "tw";
 /** Pool size `N` default (`--max`). Auto-capped to file count, so small runs stay small. */
 export const DEFAULT_WORKERS = 400;
 
-// Files share the worker's org, database, cache, and Stripe account.
+// Files share the worker's org, database, and cache.
 // Run them sequentially so unrelated files cannot invalidate each other's state.
 export const DEFAULT_PER_WORKER = 1;
-
-/**
- * Max concurrent Stripe Connect sub-account creations. `accounts.create` is a
- * PLATFORM-account write; bursting all N at once eventually gets 429'd, so cap
- * concurrency (+ retry/backoff in stripe.ts). Plan §6a "provisioning burst".
- *
- * Benchmarked (50 accounts, ramping concurrency): 5 → 37s, 10 → 20s, 15 → 14s,
- * 20 → 11s (0 429s), 25 → 8.7s (0 429s), 30 → 8.7s but 429s start and there's no
- * further speedup. So the wall is ~25–30 concurrent. Default 20 sits comfortably
- * below it (≈11s, zero throttling, headroom); push higher with --stripe-concurrency
- * if you want ~8s and don't mind brushing the limiter. Overridable per-run via
- * `--stripe-concurrency=N` (CLI) or the `STRIPE_SUBACCOUNT_CONCURRENCY` env var.
- */
-export const STRIPE_SUBACCOUNT_CONCURRENCY = 20;
-
-/**
- * Minimum spacing between consecutive Stripe sub-account creations (ms). A small
- * sleep smooths the burst so the platform account's rate-limit bucket refills
- * between writes, on top of the concurrency cap above.
- */
-export const STRIPE_SUBACCOUNT_CREATE_SPACING_MS = 10;
 
 /**
  * Deterministic name prefix for the CACHED warm parent (`tw-warm-<refSha>`).
@@ -63,15 +42,6 @@ export const WARM_SANDBOX_PREFIX = "tw-warm";
 export const SERVER_PORT = 8080;
 
 /**
- * The port the Stripe Connect webhook INGRESS sandbox listens on. The ingress is
- * its OWN lightweight sandbox (it only runs a node http server, no µVM services),
- * so it can reuse the same base port as the worker server (8080). The orchestrator
- * exposes this port on the ingress sandbox and registers the ONE shared platform
- * Connect webhook at `<ingressPublicUrl>/ingress/connect/<env>` (plan §6a / §9a).
- */
-export const INGRESS_PORT = SERVER_PORT;
-
-/**
  * Vercel sandbox runtime. `node24` is the SDK default and what the swarm pins.
  * See plan §10 (`@vercel/sandbox` supports `node24`/`node22`/`node26`).
  */
@@ -85,7 +55,7 @@ export const VERCEL_REGION = "iad1";
  * 50 workers: 4 vCPU = 200 total = exactly Vercel's 200 vCPU/min cap → forks
  * queue → all-READY 51s (tail to 51s). 2 vCPU = 100 total, well under the cap →
  * everything admits in the burst → all-READY ~30s (no tail), 0 boot failures on
- * 4 GB. The suite is I/O-bound (Stripe/DB), so 2 cores per worker is plenty.
+ * 4 GB. The suite is I/O-bound (processor/DB), so 2 cores per worker is plenty.
  */
 export const WORKER_VCPUS = 2;
 
@@ -115,25 +85,11 @@ export const VERCEL_SANDBOX_PRICING = {
 } as const;
 
 /**
- * The env workers register Stripe webhooks + run tests under. The legacy webhook
- * route is `/webhooks/stripe/:orgId/:env`; `sandbox` is the env path segment
- * (plan §6a). `NODE_ENV` must NOT be `production` so skip-verify stays on.
+ * The processor environment the workers run under. PayPal is the only processor,
+ * so this resolves to the PayPal sandbox/live switch that the server reads back
+ * from `PAYPAL_ENV`.
  */
 export const TW_ENV: TwEnv = "sandbox";
-
-/**
- * Build the inbound Stripe webhook URL registered on a worker's sub-account.
- * The `orgId` in the path is load-bearing — the legacy seeder resolves the org
- * from the path, not from `event.account` (plan §6a gotcha c).
- */
-export const buildWebhookPath = (orgId: string, env: TwEnv = TW_ENV): string =>
-	`/webhooks/stripe/${orgId}/${env}`;
-
-export const buildWebhookUrl = (
-	publicUrl: string,
-	orgId: string,
-	env: TwEnv = TW_ENV,
-): string => `${publicUrl}${buildWebhookPath(orgId, env)}`;
 
 /**
  * Localhost service ports inside the µVM (plan §5a). dw's
@@ -157,9 +113,6 @@ export const DYNAMODB_PORT = 8000;
  * v2-cache rollout to 100% — mirrors ADMIN_ROLLOUT_CONFIG_KEY on the server. */
 export const EDGE_CONFIG_OVERRIDE_B64 = Buffer.from(
 	JSON.stringify({
-		"admin/job-queue-config.json": {
-			queues: { stripeWebhookReplay: { enabled: true } },
-		},
 		"admin/rollout-config.json": {
 			rollouts: {
 				"v2-cache": {
@@ -179,7 +132,6 @@ export const REDIS_URL = `redis://localhost:${DRAGONFLY_PORT}`;
 export const MISC_CACHE_DRAGONFLY_PUBLIC_URL = REDIS_URL;
 export const CACHE_V2_DRAGONFLY_URL = REDIS_URL;
 export const ELASTICMQ_BASE_URL = `http://localhost:${ELASTICMQ_PORT}/000000000000`;
-export const STRIPE_WEBHOOK_SQS_QUEUE_URL = `${ELASTICMQ_BASE_URL}/autumn-stripe-webhook.fifo`;
 export const SQS_QUEUE_URL_V2 = `${ELASTICMQ_BASE_URL}/autumn.fifo`;
 export const TRACK_SQS_QUEUE_URL = `${ELASTICMQ_BASE_URL}/autumn-track.fifo`;
 /** Legacy FIFO async-track URL — kept so workers dual-consume during rollout. */

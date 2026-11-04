@@ -64,7 +64,6 @@ console.log(\`acme-notes-api listening on :\${port}\`);
 			name: "Ada Lovelace",
 			email: fixtureUser.email,
 		},
-		paymentMethod: true,
 		// Second attach is a downgrade within the marketing group → the server
 		// schedules it, leaving an active pro + a scheduled free sub.
 		attach: [{ plan_id: "marketing_pro" }, { plan_id: "marketing_free" }],

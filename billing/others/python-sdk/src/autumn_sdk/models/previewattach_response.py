@@ -1121,10 +1121,10 @@ class PreviewAttachCustomize(BaseModel):
 
 
 class PreviewAttachInvoiceModeTypedDict(TypedDict):
-    r"""Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses Stripe's send_invoice collection method."""
+    r"""Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately."""
 
     enabled: bool
-    r"""When true, creates an invoice and sends it to the customer instead of charging their card immediately. Uses Stripe's send_invoice collection method."""
+    r"""When true, creates an invoice and sends it to the customer instead of charging their card immediately."""
     enable_plan_immediately: NotRequired[bool]
     r"""If true, enables the plan immediately even though the invoice is not paid yet."""
     finalize: NotRequired[bool]
@@ -1132,14 +1132,14 @@ class PreviewAttachInvoiceModeTypedDict(TypedDict):
     invoice_template_id: NotRequired[str]
     r"""ID of an invoice template (configured in billing settings) whose footer (e.g. bank details) is applied to the invoice."""
     net_terms_days: NotRequired[int]
-    r"""Number of days the customer has to pay the invoice before it is due (Stripe days_until_due)."""
+    r"""Number of days the customer has to pay the invoice before it is due."""
 
 
 class PreviewAttachInvoiceMode(BaseModel):
-    r"""Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses Stripe's send_invoice collection method."""
+    r"""Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately."""
 
     enabled: bool
-    r"""When true, creates an invoice and sends it to the customer instead of charging their card immediately. Uses Stripe's send_invoice collection method."""
+    r"""When true, creates an invoice and sends it to the customer instead of charging their card immediately."""
 
     enable_plan_immediately: Optional[bool] = False
     r"""If true, enables the plan immediately even though the invoice is not paid yet."""
@@ -1151,7 +1151,7 @@ class PreviewAttachInvoiceMode(BaseModel):
     r"""ID of an invoice template (configured in billing settings) whose footer (e.g. bank details) is applied to the invoice."""
 
     net_terms_days: Optional[int] = None
-    r"""Number of days the customer has to pay the invoice before it is due (Stripe days_until_due)."""
+    r"""Number of days the customer has to pay the invoice before it is due."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -1350,14 +1350,14 @@ class PreviewAttachRemoveDiscountTypedDict(TypedDict):
     r"""A discount to remove from the subscription. Discounts that are no longer applied are ignored."""
 
     reward_id: str
-    r"""The ID of the reward (or Stripe coupon) to remove."""
+    r"""The ID of the reward to remove."""
 
 
 class PreviewAttachRemoveDiscount(BaseModel):
     r"""A discount to remove from the subscription. Discounts that are no longer applied are ignored."""
 
     reward_id: str
-    r"""The ID of the reward (or Stripe coupon) to remove."""
+    r"""The ID of the reward to remove."""
 
 
 class PreviewAttachParamsTypedDict(TypedDict):
@@ -1378,7 +1378,7 @@ class PreviewAttachParamsTypedDict(TypedDict):
     customize: NotRequired[PreviewAttachCustomizeTypedDict]
     r"""Customize the plan to attach. Can override the price, items, licenses, free trial, or a combination."""
     invoice_mode: NotRequired[PreviewAttachInvoiceModeTypedDict]
-    r"""Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses Stripe's send_invoice collection method."""
+    r"""Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately."""
     proration_behavior: NotRequired[PreviewAttachProrationBehavior]
     r"""How to handle proration when updating an existing subscription. 'prorate_immediately' charges/credits prorated amounts now, 'none' skips creating any charges."""
     redirect_mode: NotRequired[PreviewAttachRedirectMode]
@@ -1386,11 +1386,11 @@ class PreviewAttachParamsTypedDict(TypedDict):
     subscription_id: NotRequired[str]
     r"""A unique ID to identify this subscription. Can be used to target specific subscriptions in update operations when a customer has multiple products with the same plan."""
     discounts: NotRequired[List[PreviewAttachAttachDiscountTypedDict]]
-    r"""List of discounts to apply. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code."""
+    r"""List of discounts to apply. Each discount can be an Autumn reward ID, coupon ID, or promotion code."""
     success_url: NotRequired[str]
     r"""URL to redirect to after successful checkout."""
     new_billing_subscription: NotRequired[bool]
-    r"""Only applicable when the customer has an existing Stripe subscription. If true, creates a new separate subscription instead of merging into the existing one."""
+    r"""Only applicable when the customer has an existing subscription. If true, creates a new separate subscription instead of merging into the existing one."""
     billing_cycle_anchor: NotRequired[PreviewAttachBillingCycleAnchorTypedDict]
     r"""Reset the billing cycle immediately with 'now', or schedule a reset at a future Unix timestamp in milliseconds."""
     plan_schedule: NotRequired[PreviewAttachPlanSchedule]
@@ -1400,13 +1400,13 @@ class PreviewAttachParamsTypedDict(TypedDict):
     ends_at: NotRequired[int]
     r"""Unix timestamp in milliseconds for when the attached plan should end."""
     checkout_session_params: NotRequired[Dict[str, Any]]
-    r"""Additional parameters to pass into the creation of the Stripe checkout session."""
+    r"""Additional parameters to pass into the creation of the checkout session."""
     long_lived_checkout: NotRequired[bool]
-    r"""If true, returns an Autumn-hosted checkout link that can create a fresh Stripe checkout session when opened."""
+    r"""If true, returns an Autumn-hosted checkout link that can create a fresh checkout session when opened."""
     custom_line_items: NotRequired[List[PreviewAttachCustomLineItemTypedDict]]
     r"""Custom line items that override the auto-generated proration invoice. Only valid for immediate plan changes (eg. upgrades or one off plans)."""
     processor_subscription_id: NotRequired[str]
-    r"""The processor subscription ID to link. Use this to attach an existing Stripe subscription instead of creating a new one."""
+    r"""The processor subscription ID to link. Use this to attach an existing subscription instead of creating a new one."""
     carry_over_balances: NotRequired[PreviewAttachCarryOverBalancesTypedDict]
     r"""Whether to carry over balances from the previous plan."""
     carry_over_usages: NotRequired[PreviewAttachCarryOverUsagesTypedDict]
@@ -1414,13 +1414,13 @@ class PreviewAttachParamsTypedDict(TypedDict):
     license_quantities: NotRequired[List[PreviewAttachLicenseQuantityTypedDict]]
     r"""Seat quantities for the plan's licenses, keyed by license plan."""
     metadata: NotRequired[Dict[str, str]]
-    r"""Key-value metadata to attach to the Stripe subscription, invoice, and checkout session created during this attach flow. Keys prefixed with 'autumn_' are reserved and will be stripped."""
+    r"""Key-value metadata to attach to the subscription, invoice, and checkout session created during this attach flow. Keys prefixed with 'autumn_' are reserved and will be stripped."""
     no_billing_changes: NotRequired[bool]
     r"""If true, skips any billing changes for the attach operation."""
     enable_plan_immediately: NotRequired[bool]
-    r"""If true, the customer's plan is activated immediately even when payment is deferred (invoice mode) or pending (Stripe checkout). For Stripe checkout, the customer_product is inserted before the customer completes the hosted form. Set it here rather than on `invoice_mode`, which only covers the invoice-unpaid case."""
+    r"""If true, the customer's plan is activated immediately even when payment is deferred (invoice mode) or pending (hosted checkout). For hosted checkout, the customer_product is inserted before the customer completes the hosted form. Set it here rather than on `invoice_mode`, which only covers the invoice-unpaid case."""
     tax_rate_id: NotRequired[str]
-    r"""Stripe tax rate ID (txr_...) to apply as the default tax rate on the created subscription, invoice, or checkout session line items."""
+    r"""Tax rate ID to apply as the default tax rate on the created subscription, invoice, or checkout session line items."""
     currency: NotRequired[str]
     r"""Currency to bill this attach in (e.g. usd, eur). Must match the customer's currency if they are already locked to one, and the plan must offer a paid price in it. Defaults to the customer's currency, then the org default."""
     remove_plan_ids: NotRequired[List[str]]
@@ -1452,7 +1452,7 @@ class PreviewAttachParams(BaseModel):
     r"""Customize the plan to attach. Can override the price, items, licenses, free trial, or a combination."""
 
     invoice_mode: Optional[PreviewAttachInvoiceMode] = None
-    r"""Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses Stripe's send_invoice collection method."""
+    r"""Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately."""
 
     proration_behavior: Optional[PreviewAttachProrationBehavior] = None
     r"""How to handle proration when updating an existing subscription. 'prorate_immediately' charges/credits prorated amounts now, 'none' skips creating any charges."""
@@ -1464,13 +1464,13 @@ class PreviewAttachParams(BaseModel):
     r"""A unique ID to identify this subscription. Can be used to target specific subscriptions in update operations when a customer has multiple products with the same plan."""
 
     discounts: Optional[List[PreviewAttachAttachDiscount]] = None
-    r"""List of discounts to apply. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code."""
+    r"""List of discounts to apply. Each discount can be an Autumn reward ID, coupon ID, or promotion code."""
 
     success_url: Optional[str] = None
     r"""URL to redirect to after successful checkout."""
 
     new_billing_subscription: Optional[bool] = None
-    r"""Only applicable when the customer has an existing Stripe subscription. If true, creates a new separate subscription instead of merging into the existing one."""
+    r"""Only applicable when the customer has an existing subscription. If true, creates a new separate subscription instead of merging into the existing one."""
 
     billing_cycle_anchor: Optional[PreviewAttachBillingCycleAnchor] = None
     r"""Reset the billing cycle immediately with 'now', or schedule a reset at a future Unix timestamp in milliseconds."""
@@ -1485,16 +1485,16 @@ class PreviewAttachParams(BaseModel):
     r"""Unix timestamp in milliseconds for when the attached plan should end."""
 
     checkout_session_params: Optional[Dict[str, Any]] = None
-    r"""Additional parameters to pass into the creation of the Stripe checkout session."""
+    r"""Additional parameters to pass into the creation of the checkout session."""
 
     long_lived_checkout: Optional[bool] = None
-    r"""If true, returns an Autumn-hosted checkout link that can create a fresh Stripe checkout session when opened."""
+    r"""If true, returns an Autumn-hosted checkout link that can create a fresh checkout session when opened."""
 
     custom_line_items: Optional[List[PreviewAttachCustomLineItem]] = None
     r"""Custom line items that override the auto-generated proration invoice. Only valid for immediate plan changes (eg. upgrades or one off plans)."""
 
     processor_subscription_id: Optional[str] = None
-    r"""The processor subscription ID to link. Use this to attach an existing Stripe subscription instead of creating a new one."""
+    r"""The processor subscription ID to link. Use this to attach an existing subscription instead of creating a new one."""
 
     carry_over_balances: Optional[PreviewAttachCarryOverBalances] = None
     r"""Whether to carry over balances from the previous plan."""
@@ -1506,16 +1506,16 @@ class PreviewAttachParams(BaseModel):
     r"""Seat quantities for the plan's licenses, keyed by license plan."""
 
     metadata: Optional[Dict[str, str]] = None
-    r"""Key-value metadata to attach to the Stripe subscription, invoice, and checkout session created during this attach flow. Keys prefixed with 'autumn_' are reserved and will be stripped."""
+    r"""Key-value metadata to attach to the subscription, invoice, and checkout session created during this attach flow. Keys prefixed with 'autumn_' are reserved and will be stripped."""
 
     no_billing_changes: Optional[bool] = None
     r"""If true, skips any billing changes for the attach operation."""
 
     enable_plan_immediately: Optional[bool] = None
-    r"""If true, the customer's plan is activated immediately even when payment is deferred (invoice mode) or pending (Stripe checkout). For Stripe checkout, the customer_product is inserted before the customer completes the hosted form. Set it here rather than on `invoice_mode`, which only covers the invoice-unpaid case."""
+    r"""If true, the customer's plan is activated immediately even when payment is deferred (invoice mode) or pending (hosted checkout). For hosted checkout, the customer_product is inserted before the customer completes the hosted form. Set it here rather than on `invoice_mode`, which only covers the invoice-unpaid case."""
 
     tax_rate_id: Optional[str] = None
-    r"""Stripe tax rate ID (txr_...) to apply as the default tax rate on the created subscription, invoice, or checkout session line items."""
+    r"""Tax rate ID to apply as the default tax rate on the created subscription, invoice, or checkout session line items."""
 
     currency: Optional[str] = None
     r"""Currency to bill this attach in (e.g. usd, eur). Must match the customer's currency if they are already locked to one, and the plan must offer a paid price in it. Defaults to the customer's currency, then the org default."""
@@ -2090,7 +2090,7 @@ class PreviewAttachOutgoing(BaseModel):
 
 PreviewAttachCheckoutType = Union[
     Literal[
-        "stripe_checkout",
+        "processor_checkout",
         "autumn_checkout",
     ],
     UnrecognizedStr,
@@ -2104,11 +2104,11 @@ PreviewAttachStatus = Union[
     ],
     UnrecognizedStr,
 ]
-r"""Calculation status ('complete' when Stripe Tax succeeds or 'incomplete' when Stripe Tax returned 0 or errored)."""
+r"""Calculation status ('complete' when tax calculation succeeds or 'incomplete' when it errored)."""
 
 
 class PreviewAttachTaxTypedDict(TypedDict):
-    r"""Tax preview for the immediate charge. Contact us to enable the tax flag on your organisation. Shows only with flag enabled, a Stripe customer exists and has a location."""
+    r"""Tax preview for the immediate charge. Contact us to enable the tax flag on your organisation."""
 
     total: float
     r"""Total tax amount in major currency units."""
@@ -2119,11 +2119,11 @@ class PreviewAttachTaxTypedDict(TypedDict):
     currency: str
     r"""Three-letter currency code."""
     status: PreviewAttachStatus
-    r"""Calculation status ('complete' when Stripe Tax succeeds or 'incomplete' when Stripe Tax returned 0 or errored)."""
+    r"""Calculation status ('complete' when tax calculation succeeds or 'incomplete' when it errored)."""
 
 
 class PreviewAttachTax(BaseModel):
-    r"""Tax preview for the immediate charge. Contact us to enable the tax flag on your organisation. Shows only with flag enabled, a Stripe customer exists and has a location."""
+    r"""Tax preview for the immediate charge. Contact us to enable the tax flag on your organisation."""
 
     total: float
     r"""Total tax amount in major currency units."""
@@ -2138,14 +2138,14 @@ class PreviewAttachTax(BaseModel):
     r"""Three-letter currency code."""
 
     status: PreviewAttachStatus
-    r"""Calculation status ('complete' when Stripe Tax succeeds or 'incomplete' when Stripe Tax returned 0 or errored)."""
+    r"""Calculation status ('complete' when tax calculation succeeds or 'incomplete' when it errored)."""
 
 
 class PreviewAttachInvoiceCreditsTypedDict(TypedDict):
-    r"""Stripe customer invoice credits preview."""
+    r"""Customer invoice credits preview."""
 
     balance: float
-    r"""Stripe customer credit balance available, expressed as a positive number in major currency units."""
+    r"""Customer credit balance available, expressed as a positive number in major currency units."""
     currency: str
     r"""Three-letter currency code."""
     applied: NotRequired[float]
@@ -2153,10 +2153,10 @@ class PreviewAttachInvoiceCreditsTypedDict(TypedDict):
 
 
 class PreviewAttachInvoiceCredits(BaseModel):
-    r"""Stripe customer invoice credits preview."""
+    r"""Customer invoice credits preview."""
 
     balance: float
-    r"""Stripe customer credit balance available, expressed as a positive number in major currency units."""
+    r"""Customer credit balance available, expressed as a positive number in major currency units."""
 
     currency: str
     r"""Three-letter currency code."""
@@ -2208,9 +2208,9 @@ class PreviewAttachResponseTypedDict(TypedDict):
     expand: NotRequired[List[str]]
     r"""Expand the response with additional data."""
     tax: NotRequired[PreviewAttachTaxTypedDict]
-    r"""Tax preview for the immediate charge. Contact us to enable the tax flag on your organisation. Shows only with flag enabled, a Stripe customer exists and has a location."""
+    r"""Tax preview for the immediate charge. Contact us to enable the tax flag on your organisation."""
     invoice_credits: NotRequired[PreviewAttachInvoiceCreditsTypedDict]
-    r"""Stripe customer invoice credits preview."""
+    r"""Customer invoice credits preview."""
 
 
 class PreviewAttachResponse(BaseModel):
@@ -2252,10 +2252,10 @@ class PreviewAttachResponse(BaseModel):
     r"""Expand the response with additional data."""
 
     tax: Optional[PreviewAttachTax] = None
-    r"""Tax preview for the immediate charge. Contact us to enable the tax flag on your organisation. Shows only with flag enabled, a Stripe customer exists and has a location."""
+    r"""Tax preview for the immediate charge. Contact us to enable the tax flag on your organisation."""
 
     invoice_credits: Optional[PreviewAttachInvoiceCredits] = None
-    r"""Stripe customer invoice credits preview."""
+    r"""Customer invoice credits preview."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):

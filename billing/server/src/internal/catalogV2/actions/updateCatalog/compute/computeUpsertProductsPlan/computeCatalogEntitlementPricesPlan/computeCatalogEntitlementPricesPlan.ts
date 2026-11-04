@@ -6,7 +6,6 @@ import type {
 } from "@autumn/shared";
 import type { AutumnContext } from "@/honoUtils/HonoEnv";
 import {
-	type ComputeEntitlementPricesPlanParams,
 	computeEntitlementPricesPlan,
 	type EntitlementPricesPlan,
 	type EntitlementPricesPlanMode,
@@ -24,7 +23,6 @@ export const computeCatalogEntitlementPricesPlan = ({
 	planParams,
 	versioning,
 	protectReferencedRows,
-	stripeCandidates,
 }: {
 	ctx: AutumnContext;
 	product: Product;
@@ -32,7 +30,6 @@ export const computeCatalogEntitlementPricesPlan = ({
 	planParams: UpdateCatalogPlanParams;
 	versioning: CatalogPlanVersioningStrategy;
 	protectReferencedRows: boolean;
-	stripeCandidates?: ComputeEntitlementPricesPlanParams["stripeCandidates"];
 }): EntitlementPricesPlan | undefined => {
 	const currentRows = baseFullProduct
 		? {
@@ -64,7 +61,6 @@ export const computeCatalogEntitlementPricesPlan = ({
 				...(planParams.items !== undefined ? { items: planParams.items } : {}),
 			},
 			currentRows,
-			...(stripeCandidates !== undefined ? { stripeCandidates } : {}),
 		},
 	});
 

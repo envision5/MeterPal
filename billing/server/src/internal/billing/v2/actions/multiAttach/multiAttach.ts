@@ -1,21 +1,13 @@
 import type {
 	BillingPlan,
 	BillingResult,
-	FullCusProduct,
 	MultiAttachBillingContext,
 	MultiAttachParamsV0,
 } from "@autumn/shared";
 import { checkoutSessionLock } from "@/external/redis/actions/checkoutSessionLock/checkoutSessionLock.js";
 import type { AutumnContext } from "@/honoUtils/HonoEnv";
 import { checkCheckoutSessionLock } from "@/internal/billing/v2/actions/locks/checkoutSessionLock/checkCheckoutSessionLock";
-import {
-	findPendingInvoiceConflict,
-	listPendingCustomerProducts,
-} from "@/internal/billing/v2/common/pendingInvoiceConflict/findPendingInvoiceConflict";
 import { executeBillingPlan } from "@/internal/billing/v2/execute/executeBillingPlan";
-import { evaluateStripeBillingPlan } from "@/internal/billing/v2/providers/stripe/actionBuilders/evaluateStripeBillingPlan";
-import { logStripeBillingPlan } from "@/internal/billing/v2/providers/stripe/logs/logStripeBillingPlan";
-import { logStripeBillingResult } from "@/internal/billing/v2/providers/stripe/logs/logStripeBillingResult";
 import { computeAttachPreviewBillingPlan } from "@/internal/billing/v2/utils/billingPlan/preview/computeAttachPreviewBillingPlan";
 import { logAutumnBillingPlan } from "@/internal/billing/v2/utils/logs/logAutumnBillingPlan";
 import { hashJson } from "@/utils/hash/hashJson";
@@ -76,20 +68,7 @@ export async function multiAttach({
 
 	logAutumnBillingPlan({ ctx, plan: autumnBillingPlan, billingContext });
 
-	// 4. Evaluate Stripe billing plan
-	const stripeBillingPlan = await evaluateStripeBillingPlan({
-		ctx,
-		billingContext,
-		autumnBillingPlan,
-		checkoutMode: billingContext.checkoutMode,
-	});
-
-	logStripeBillingPlan({ ctx, stripeBillingPlan, billingContext });
-
-	const billingPlan = {
-		autumn: autumnBillingPlan,
-		stripe: stripeBillingPlan,
-	};
+	const billingPlan: BillingPlan = { autumn: autumnBillingPlan };
 
 	handleMultiAttachBillingPlanErrors({ ctx, billingContext, billingPlan });
 	handleMultiAttachBackdateCheckoutError({ billingContext, params });
@@ -115,39 +94,13 @@ export async function multiAttach({
 	});
 	if (cachedResult) return cachedResult;
 
-	let pendingCustomerProducts: Promise<FullCusProduct[]> | undefined;
-	const loadPendingCustomerProducts = () => {
-		pendingCustomerProducts ??= listPendingCustomerProducts({
-			ctx,
-			fullCustomer: billingContext.fullCustomer,
-		});
-		return pendingCustomerProducts;
-	};
-	for (const productContext of billingContext.productContexts) {
-		const pendingInvoiceResult = await findPendingInvoiceConflict({
-			ctx,
-			fullCustomer: productContext.fullCustomer,
-			attachProduct: productContext.fullProduct,
-			loadPendingCustomerProducts,
-		});
-		if (pendingInvoiceResult) {
-			return {
-				billingContext,
-				billingPlan,
-				billingResult: pendingInvoiceResult,
-			};
-		}
-	}
-
-	// 5. Execute billing plan
+	// 4. Execute billing plan
 	const billingResult = await executeBillingPlan({
 		ctx,
 		billingContext,
 		billingPlan,
 		checkoutLockParamsHash: hashJson({ value: params }),
 	});
-
-	logStripeBillingResult({ ctx, result: billingResult.stripe });
 
 	return {
 		billingContext,

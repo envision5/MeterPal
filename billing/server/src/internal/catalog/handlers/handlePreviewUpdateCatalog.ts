@@ -5,7 +5,7 @@ import {
 } from "@autumn/shared";
 import { createRoute } from "@/honoMiddlewares/routeHandler.js";
 import { catalogActions } from "@/internal/catalog/actions/index.js";
-import { assertCatalogConfigResourceScope } from "../actions/catalogConfigResources.js";
+import { assertCatalogConfigResourceScope } from "../actions/assertCatalogConfigResourceScope.js";
 
 /**
  * Resolve a proposed catalog change (features + plans) WITHOUT persisting. Per

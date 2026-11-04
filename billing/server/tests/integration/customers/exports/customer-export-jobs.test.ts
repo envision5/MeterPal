@@ -167,39 +167,28 @@ describeDb("customer export jobs", () => {
 			fields: ALL_FIELDS,
 			snapshot: emptySnapshot,
 		});
-		const verifyExport = await CustomerExportService.createIfNoneActive({
+		const secondCustomersExport = await CustomerExportService.createIfNoneActive({
 			...scope,
-			kind: CustomerExportKind.BillingVerify,
-			fields: [],
-			snapshot: emptySnapshot,
-		});
-		const secondVerifyExport = await CustomerExportService.createIfNoneActive({
-			...scope,
-			kind: CustomerExportKind.BillingVerify,
-			fields: [],
+			fields: ALL_FIELDS,
 			snapshot: emptySnapshot,
 		});
 
 		expect(customersExport.created).toBe(true);
-		expect(verifyExport.created).toBe(true);
-		expect(secondVerifyExport.created).toBe(false);
-		if (!(customersExport.created && verifyExport.created)) return;
-		seededExportIds.push(
-			customersExport.customerExport.id,
-			verifyExport.customerExport.id,
-		);
+		// A second export of the same kind must not take the active slot.
+		expect(secondCustomersExport.created).toBe(false);
+		if (!customersExport.created) return;
+		seededExportIds.push(customersExport.customerExport.id);
 
-		const listedVerifyIds = (
+		const listedIds = (
 			await CustomerExportService.list({
 				...scope,
-				kind: CustomerExportKind.BillingVerify,
+				kind: CustomerExportKind.Customers,
 				limit: 20,
 			})
 		).map((customerExport) => customerExport.id);
-		expect(listedVerifyIds).toContain(verifyExport.customerExport.id);
-		expect(listedVerifyIds).not.toContain(customersExport.customerExport.id);
+		expect(listedIds).toContain(customersExport.customerExport.id);
 
-		for (const id of seededExportIds.slice(-2)) {
+		for (const id of seededExportIds.slice(-1)) {
 			await CustomerExportService.markFailed({
 				db: ctx.db,
 				id,

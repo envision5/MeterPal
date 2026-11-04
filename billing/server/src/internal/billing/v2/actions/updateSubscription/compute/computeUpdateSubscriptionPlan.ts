@@ -15,7 +15,7 @@ import { computeManualTopUpPlan } from "@/internal/billing/v2/actions/updateSubs
 import { computeUpdateQuantityPlan } from "@/internal/billing/v2/actions/updateSubscription/compute/updateQuantity/computeUpdateQuantityPlan";
 import { buildAutumnLineItems } from "@/internal/billing/v2/compute/computeAutumnUtils/buildAutumnLineItems";
 import { computeRetainedCustomerEntitlementUpdates } from "@/internal/billing/v2/compute/computeAutumnUtils/computeRetainedCustomerEntitlementUpdates";
-import { addStripeSubscriptionIdToBillingPlan } from "@/internal/billing/v2/execute/addStripeSubscriptionIdToBillingPlan";
+import { addProcessorSubscriptionIdToBillingPlan } from "@/internal/billing/v2/execute/addProcessorSubscriptionIdToBillingPlan";
 import { computeFieldUpdates } from "./computeFieldUpdates";
 
 /**
@@ -91,15 +91,15 @@ export const computeUpdateSubscriptionPlan = async ({
 		params,
 	});
 
-	// When skipBillingChanges is true, Stripe is never called, so the post-Stripe
-	// sub-id linkage in executeStripeSubscriptionAction never runs.
+	// When skipBillingChanges is true the processor is never called, so the
+	// subscription-id linkage never runs.
 	const existingSubscriptionId =
 		billingContext.customerProduct.subscription_ids?.[0];
 
 	if (billingContext.skipBillingChanges && existingSubscriptionId) {
-		addStripeSubscriptionIdToBillingPlan({
+		addProcessorSubscriptionIdToBillingPlan({
 			autumnBillingPlan: plan,
-			stripeSubscriptionId: existingSubscriptionId,
+			processorSubscriptionId: existingSubscriptionId,
 		});
 	}
 

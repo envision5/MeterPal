@@ -40,20 +40,15 @@ class DeleteCustomerGlobals(BaseModel):
 class DeleteCustomerParamsTypedDict(TypedDict):
     customer_id: str
     r"""ID of the customer to delete"""
-    delete_in_stripe: NotRequired[bool]
-    r"""Whether to also delete the customer in Stripe"""
 
 
 class DeleteCustomerParams(BaseModel):
     customer_id: str
     r"""ID of the customer to delete"""
 
-    delete_in_stripe: Optional[bool] = False
-    r"""Whether to also delete the customer in Stripe"""
-
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
-        optional_fields = set(["delete_in_stripe"])
+        optional_fields = set([])
         serialized = handler(self)
         m = {}
 

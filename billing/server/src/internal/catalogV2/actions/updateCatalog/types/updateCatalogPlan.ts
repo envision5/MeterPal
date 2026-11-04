@@ -2,12 +2,6 @@ import type { CatalogMigration, Feature, FullProduct } from "@autumn/shared";
 import type { ProjectedCatalog } from "@/internal/catalogV2/actions/updateCatalog/types/catalogComputeState";
 import type { RenameProductPlan } from "@/internal/catalogV2/actions/updateCatalog/types/renameProductPlan";
 import type { UpdateFeaturePlan } from "@/internal/catalogV2/actions/updateCatalog/types/updateFeaturePlan";
-import type {
-	RemoveReferralProgramPlan,
-	RemoveRewardPlan,
-	UpsertReferralProgramPlan,
-	UpsertRewardPlan,
-} from "@/internal/catalogV2/actions/updateCatalog/types/updateRewardPlan";
 import type { UpsertProductPlan } from "@/internal/catalogV2/actions/updateCatalog/types/upsertProductPlan";
 
 export type RemoveFeaturePlan = {
@@ -54,10 +48,6 @@ export type UpdateCatalogPlan = {
 	removePlans: RemovePlanPlan[];
 	/** At most one draft covering every requesting plan; empty when none qualify. */
 	migrationDrafts: CatalogMigration[];
-	upsertRewards: UpsertRewardPlan[];
-	removeRewards: RemoveRewardPlan[];
-	upsertReferralPrograms: UpsertReferralProgramPlan[];
-	removeReferralPrograms: RemoveReferralProgramPlan[];
 
 	/** Catalog after the fold's last advance — original + cumulative plan. */
 	projected: ProjectedCatalog;

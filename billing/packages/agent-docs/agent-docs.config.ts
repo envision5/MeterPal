@@ -120,7 +120,7 @@ export default defineConfig({
 	investigate: {
 		title: "Logs",
 		description:
-			"How agents should investigate Autumn API request logs and Stripe webhook deliveries.",
+			"How agents should investigate Autumn API request logs and payment processor webhook deliveries.",
 		formats: {
 			mcp: {
 				uri: "logs",

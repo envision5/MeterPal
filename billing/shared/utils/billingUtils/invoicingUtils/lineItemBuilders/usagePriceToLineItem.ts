@@ -6,7 +6,6 @@ import type { LineItemContext } from "../../../../models/billingModels/lineItem/
 import type { FullCusEntWithFullCusProduct } from "../../../../models/cusProductModels/cusEntModels/cusEntWithProduct";
 import { cusEntsToPrepaidQuantity } from "../../../cusEntUtils/balanceUtils/cusEntsToPrepaidQuantity";
 import { cusEntToCusPrice } from "../../../cusEntUtils/convertCusEntUtils/cusEntToCusPrice";
-import { cusEntToStripeIds } from "../../../cusEntUtils/convertCusEntUtils/cusEntToStripeIds";
 import { cusEntToInvoiceOverage } from "../../../cusEntUtils/overageUtils/cusEntToInvoiceOverage";
 import { cusEntToInvoiceUsage } from "../../../cusEntUtils/overageUtils/cusEntToInvoiceUsage";
 import {
@@ -99,13 +98,7 @@ export const usagePriceToLineItem = ({
 		currency: context.currency,
 	});
 
-	// 5. Get stripe price / product IDs
-	const { stripePriceId, stripeProductId } = cusEntToStripeIds({
-		cusEnt,
-		currency: context.currency,
-	});
-
-	// 6. Should prorate: don't if consumable price (unless override provided)
+	// 5. Should prorate: don't if consumable price (unless override provided)
 	const shouldProrate =
 		options.shouldProrateOverride ?? !isConsumablePrice(price);
 
@@ -113,9 +106,6 @@ export const usagePriceToLineItem = ({
 		context: lineItemContext,
 		amount,
 		description,
-
-		stripePriceId,
-		stripeProductId,
 
 		shouldProrate,
 		chargeImmediately: options.chargeImmediatelyOverride,

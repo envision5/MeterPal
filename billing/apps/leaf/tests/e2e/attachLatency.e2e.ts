@@ -23,7 +23,7 @@ const customerId = process.env.E2E_CUSTOMER ?? `bench-${runTag}`;
 const created = (await executeAutumnMcpTool({
 	args: {
 		request: {
-			create_in_stripe: true,
+			create_in_processor: true,
 			customer_id: customerId,
 			email: `${customerId}@example.com`,
 			name: customerId,

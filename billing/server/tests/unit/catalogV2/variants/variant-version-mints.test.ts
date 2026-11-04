@@ -14,7 +14,6 @@ const emptyStates = ({
 }): ProductStatesContext => ({
 	statesByPlanVersion: {},
 	versionsByPlanId: Object.fromEntries(planIds.map((planId) => [planId, []])),
-	rewardProgramsByPlanId: {},
 });
 
 const bareProduct = {

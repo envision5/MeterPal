@@ -711,9 +711,9 @@ function classifySocket({
 		};
 	}
 
-	if (host?.includes("stripe")) {
+	if (host?.includes("paypal")) {
 		return {
-			classification: "outbound-stripe",
+			classification: "outbound-paypal",
 			detail: host,
 			sampleChain: `_host=${host}`,
 		};

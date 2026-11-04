@@ -11,7 +11,6 @@ import {
 	CancelBodySchema,
 	QueryParamsSchema,
 } from "../core/coreOpModels";
-import { SetupPaymentParamsV1Schema } from "../billing/setupPayment/setupPaymentParamsV1";
 import { ExtAttachBodyV0Schema, ExtCheckoutParamsV0Schema } from "../models";
 /**
  * Centralized JSDoc declarations for all core API methods.
@@ -126,33 +125,6 @@ export const cancelJsDoc = createJSDocDescription({
 		docLink({
 			url: "https://docs.useautumn.com/api-reference/core/cancel",
 			title: "Cancel Subscriptions",
-		}),
-	],
-});
-
-export const setupPaymentJsDoc = createJSDocDescription({
-	description:
-		"Creates a session for a customer to add or update their payment method.",
-	whenToUse:
-		"Use this to collect payment information without immediately charging the customer.",
-	body: SetupPaymentParamsV1Schema.meta({
-		id: "SetupPaymentParams",
-		description: "Parameters for setting up a payment method",
-	}),
-	examples: [
-		example({
-			values: {
-				customer_id: "cus_123",
-				success_url: "https://example.com/success",
-			},
-			description: "Setup payment method",
-		}),
-	],
-	methodName: "setupPayment",
-	docs: [
-		docLink({
-			url: "https://docs.useautumn.com/api-reference/core/setup-payment",
-			title: "Payment Setup",
 		}),
 	],
 });

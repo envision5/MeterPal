@@ -4,7 +4,7 @@
 // Place this file under server/src/internal/keys/ and import from the
 // existing trigger/ dispatcher in server/src/trigger/.
 //
-// Idempotency: every handler tolerates re-entry (same Stripe event may
+// Idempotency: every handler tolerates re-entry (same webhook event may
 // be replayed by the SQS queue). provisionLitellmKey is itself idempotent.
 
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
@@ -34,7 +34,7 @@ export async function onSubscriptionActive(
       planKey: evt.plan_key,
       err: String(e),
     });
-    // Surface to Sentry via the trigger framework; do not throw — Stripe
+    // Surface to Sentry via the trigger framework; do not throw — webhook
     // event handlers must not fail the whole flow on bridge errors.
   }
 }

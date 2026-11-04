@@ -119,7 +119,7 @@ export const planAliasMiddleware = async (c: Context<HonoEnv>, next: Next) => {
 	});
 	for (const { entry, field, planId } of statedIds) entry[field] = planId;
 	// Skip replaceJsonBody on a no-op rewrite so bodyCache.text stays the
-	// original bytes (Vercel HMAC runs captureRawBody after this middleware).
+	// original bytes (the webhook HMAC check runs captureRawBody after this middleware).
 	if (before !== JSON.stringify(body)) {
 		ctx.requestBody = body;
 		await replaceJsonBody(c, body);

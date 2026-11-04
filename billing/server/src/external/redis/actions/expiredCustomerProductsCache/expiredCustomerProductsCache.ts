@@ -8,22 +8,22 @@ import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
 const EXPIRED_CUSTOMER_PRODUCTS_TTL_SECONDS = 300;
 
 export const buildExpiredCustomerProductsCacheKey = (
-	stripeSubscriptionId: string,
-) => `expired-cus-products:${stripeSubscriptionId}`;
+	processorSubscriptionId: string,
+) => `expired-cus-products:${processorSubscriptionId}`;
 
 export const getCachedExpiredCustomerProducts = async ({
 	ctx,
-	stripeSubscriptionId,
+	processorSubscriptionId,
 }: {
 	ctx: AutumnContext;
-	stripeSubscriptionId: string;
+	processorSubscriptionId: string;
 }): Promise<FullCusProduct[] | null> => {
 	const cached = await getFromMiscRedisTargets({
-		key: buildExpiredCustomerProductsCacheKey(stripeSubscriptionId),
+		key: buildExpiredCustomerProductsCacheKey(processorSubscriptionId),
 		source: "expired-cus-products-cache:get",
 		onError: (error) =>
 			ctx.logger.warn("[expiredCusProductsCache] get failed", {
-				data: { stripeSubscriptionId },
+				data: { processorSubscriptionId },
 				error,
 			}),
 	});
@@ -34,21 +34,21 @@ export const getCachedExpiredCustomerProducts = async ({
 
 export const setCachedExpiredCustomerProducts = async ({
 	ctx,
-	stripeSubscriptionId,
+	processorSubscriptionId,
 	customerProducts,
 }: {
 	ctx: AutumnContext;
-	stripeSubscriptionId: string;
+	processorSubscriptionId: string;
 	customerProducts: FullCusProduct[];
 }): Promise<void> => {
 	await setOnMiscRedisTargets({
-		key: buildExpiredCustomerProductsCacheKey(stripeSubscriptionId),
+		key: buildExpiredCustomerProductsCacheKey(processorSubscriptionId),
 		value: JSON.stringify(customerProducts),
 		ttlMs: EXPIRED_CUSTOMER_PRODUCTS_TTL_SECONDS * 1000,
 		source: "expired-cus-products-cache:set",
 		onError: (error) =>
 			ctx.logger.warn("[expiredCusProductsCache] set failed", {
-				data: { stripeSubscriptionId },
+				data: { processorSubscriptionId },
 				error,
 			}),
 	});

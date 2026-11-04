@@ -8,8 +8,8 @@ import { Decimal } from "decimal.js";
 import { AutumnInt } from "@/external/autumn/autumnCli.js";
 import { constructFeatureItem } from "@/utils/scriptUtils/constructItem.js";
 import { constructProduct } from "@/utils/scriptUtils/createTestProducts.js";
-import { initCustomerV3 } from "@/utils/scriptUtils/testUtils/initCustomerV3.js";
-import { initProductsV0 } from "@/utils/scriptUtils/testUtils/initProductsV0.js";
+import { initTestCustomer } from "@tests/utils/testInitUtils/initTestCustomer.js";
+import { initTestProducts } from "@tests/utils/testInitUtils/initTestProducts.js";
 
 const testCase = "track-entity-balances5";
 
@@ -88,14 +88,13 @@ describe(`${chalk.yellowBright(`${testCase}: Concurrent per entity tracking`)}`,
 
 	beforeAll(async () => {
 		for (const customer of customers) {
-			await initCustomerV3({
+			await initTestCustomer({
 				ctx,
 				customerId: customer.id,
-				withTestClock: false,
 			});
 		}
 		// Initialize products once
-		await initProductsV0({
+		await initTestProducts({
 			ctx,
 			products: [freeProd],
 			prefix: testCase,

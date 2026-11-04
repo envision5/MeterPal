@@ -131,7 +131,7 @@ export const applyAutumnBillingPlanToFullCustomer = ({
 	}
 
 	// 5. Converge pool counters for absolute paid-quantity moves so downstream
-	// projections (Stripe item quantities, line items) see the after state.
+	// projections (processor item quantities, line items) see the after state.
 	customerProducts = applyCustomerLicensePlanOps({
 		customerProducts,
 		autumnBillingPlan,

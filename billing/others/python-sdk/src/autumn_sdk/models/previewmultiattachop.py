@@ -60,14 +60,14 @@ r"""Billing interval (e.g. 'month', 'year')."""
 
 class PreviewMultiAttachAdditionalCurrencyTypedDict(TypedDict):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
 
 
 class PreviewMultiAttachAdditionalCurrency(BaseModel):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
 
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
@@ -179,14 +179,14 @@ class PreviewMultiAttachReset(BaseModel):
 
 class PreviewMultiAttachItemAdditionalCurrencyTypedDict(TypedDict):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
 
 
 class PreviewMultiAttachItemAdditionalCurrency(BaseModel):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
 
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
@@ -204,7 +204,7 @@ PreviewMultiAttachPriceTo = TypeAliasType(
 
 class PreviewMultiAttachTierAdditionalCurrencyTypedDict(TypedDict):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
     amount: NotRequired[float]
     r"""Per-unit amount for this tier in this currency."""
     flat_amount: NotRequired[float]
@@ -213,7 +213,7 @@ class PreviewMultiAttachTierAdditionalCurrencyTypedDict(TypedDict):
 
 class PreviewMultiAttachTierAdditionalCurrency(BaseModel):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
 
     amount: Optional[float] = None
     r"""Per-unit amount for this tier in this currency."""
@@ -1473,7 +1473,7 @@ class PreviewMultiAttachInvoiceModeTypedDict(TypedDict):
     r"""Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately."""
 
     enabled: bool
-    r"""When true, creates an invoice and sends it to the customer instead of charging their card immediately. Uses Stripe's send_invoice collection method."""
+    r"""When true, creates an invoice and sends it to the customer instead of charging their card immediately."""
     enable_plan_immediately: NotRequired[bool]
     r"""If true, enables the plan immediately even though the invoice is not paid yet."""
     finalize: NotRequired[bool]
@@ -1481,14 +1481,14 @@ class PreviewMultiAttachInvoiceModeTypedDict(TypedDict):
     invoice_template_id: NotRequired[str]
     r"""ID of an invoice template (configured in billing settings) whose footer (e.g. bank details) is applied to the invoice."""
     net_terms_days: NotRequired[int]
-    r"""Number of days the customer has to pay the invoice before it is due (Stripe days_until_due)."""
+    r"""Number of days the customer has to pay the invoice before it is due."""
 
 
 class PreviewMultiAttachInvoiceMode(BaseModel):
     r"""Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately."""
 
     enabled: bool
-    r"""When true, creates an invoice and sends it to the customer instead of charging their card immediately. Uses Stripe's send_invoice collection method."""
+    r"""When true, creates an invoice and sends it to the customer instead of charging their card immediately."""
 
     enable_plan_immediately: Optional[bool] = False
     r"""If true, enables the plan immediately even though the invoice is not paid yet."""
@@ -1500,7 +1500,7 @@ class PreviewMultiAttachInvoiceMode(BaseModel):
     r"""ID of an invoice template (configured in billing settings) whose footer (e.g. bank details) is applied to the invoice."""
 
     net_terms_days: Optional[int] = None
-    r"""Number of days the customer has to pay the invoice before it is due (Stripe days_until_due)."""
+    r"""Number of days the customer has to pay the invoice before it is due."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -1593,7 +1593,7 @@ class PreviewMultiAttachSpendLimitTypedDict(TypedDict):
     overage_limit: NotRequired[float]
     r"""Overage cap for the feature: absolute units, or a percent (e.g. 120) when limit_type is usage_percentage."""
     skip_overage_billing: NotRequired[bool]
-    r"""When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally."""
+    r"""When true, overage for this feature is not billed to the processor. Usage tracking and balance resets still behave normally."""
 
 
 class PreviewMultiAttachSpendLimit(BaseModel):
@@ -1610,7 +1610,7 @@ class PreviewMultiAttachSpendLimit(BaseModel):
     r"""Overage cap for the feature: absolute units, or a percent (e.g. 120) when limit_type is usage_percentage."""
 
     skip_overage_billing: Optional[bool] = None
-    r"""When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally."""
+    r"""When true, overage for this feature is not billed to the processor. Usage tracking and balance resets still behave normally."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -1956,7 +1956,7 @@ class PreviewMultiAttachParamsTypedDict(TypedDict):
     invoice_mode: NotRequired[PreviewMultiAttachInvoiceModeTypedDict]
     r"""Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately."""
     discounts: NotRequired[List[PreviewMultiAttachAttachDiscountTypedDict]]
-    r"""List of discounts to apply. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code."""
+    r"""List of discounts to apply. Each discount can be an Autumn reward ID, coupon ID, or promotion code."""
     billing_behavior: NotRequired[PreviewMultiAttachBillingBehavior]
     r"""How to handle billing. 'prorate_immediately' charges/credits prorated amounts now, 'none' does not charge/credit anything."""
     billing_cycle_anchor: Literal["now"]
@@ -1964,13 +1964,13 @@ class PreviewMultiAttachParamsTypedDict(TypedDict):
     success_url: NotRequired[str]
     r"""URL to redirect to after successful checkout."""
     checkout_session_params: NotRequired[Dict[str, Any]]
-    r"""Additional parameters to pass into the creation of the Stripe checkout session."""
+    r"""Additional parameters to pass into the creation of the checkout session."""
     redirect_mode: NotRequired[PreviewMultiAttachRedirectMode]
     r"""Controls when to return a checkout URL. 'always' returns a URL even if payment succeeds, 'if_required' only when payment action is needed, 'never' disables redirects."""
     new_billing_subscription: NotRequired[bool]
-    r"""Only applicable when the customer has an existing Stripe subscription. If true, creates a new separate subscription instead of merging into the existing one."""
+    r"""Only applicable when the customer has an existing subscription. If true, creates a new separate subscription instead of merging into the existing one."""
     enable_plan_immediately: NotRequired[bool]
-    r"""If true, the cusProducts are activated immediately even when payment is pending via Stripe checkout."""
+    r"""If true, the cusProducts are activated immediately even when payment is pending via hosted checkout."""
     customer_data: NotRequired[CustomerDataTypedDict]
     r"""Customer details to set when creating a customer"""
     entity_data: NotRequired[PreviewMultiAttachEntityDataTypedDict]
@@ -1999,7 +1999,7 @@ class PreviewMultiAttachParams(BaseModel):
     r"""Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately."""
 
     discounts: Optional[List[PreviewMultiAttachAttachDiscount]] = None
-    r"""List of discounts to apply. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code."""
+    r"""List of discounts to apply. Each discount can be an Autumn reward ID, coupon ID, or promotion code."""
 
     billing_behavior: Optional[PreviewMultiAttachBillingBehavior] = None
     r"""How to handle billing. 'prorate_immediately' charges/credits prorated amounts now, 'none' does not charge/credit anything."""
@@ -2014,16 +2014,16 @@ class PreviewMultiAttachParams(BaseModel):
     r"""URL to redirect to after successful checkout."""
 
     checkout_session_params: Optional[Dict[str, Any]] = None
-    r"""Additional parameters to pass into the creation of the Stripe checkout session."""
+    r"""Additional parameters to pass into the creation of the checkout session."""
 
     redirect_mode: Optional[PreviewMultiAttachRedirectMode] = "if_required"
     r"""Controls when to return a checkout URL. 'always' returns a URL even if payment succeeds, 'if_required' only when payment action is needed, 'never' disables redirects."""
 
     new_billing_subscription: Optional[bool] = None
-    r"""Only applicable when the customer has an existing Stripe subscription. If true, creates a new separate subscription instead of merging into the existing one."""
+    r"""Only applicable when the customer has an existing subscription. If true, creates a new separate subscription instead of merging into the existing one."""
 
     enable_plan_immediately: Optional[bool] = None
-    r"""If true, the cusProducts are activated immediately even when payment is pending via Stripe checkout."""
+    r"""If true, the cusProducts are activated immediately even when payment is pending via hosted checkout."""
 
     customer_data: Optional[CustomerData] = None
     r"""Customer details to set when creating a customer"""
@@ -2579,7 +2579,7 @@ class PreviewMultiAttachOutgoing(BaseModel):
 
 PreviewMultiAttachCheckoutType = Union[
     Literal[
-        "stripe_checkout",
+        "processor_checkout",
         "autumn_checkout",
     ],
     UnrecognizedStr,
@@ -2593,11 +2593,11 @@ PreviewMultiAttachStatus = Union[
     ],
     UnrecognizedStr,
 ]
-r"""Calculation status ('complete' when Stripe Tax succeeds or 'incomplete' when Stripe Tax returned 0 or errored)."""
+r"""Calculation status ('complete' when tax calculation succeeds or 'incomplete' when it errored)."""
 
 
 class PreviewMultiAttachTaxTypedDict(TypedDict):
-    r"""Tax preview for the immediate charge. Contact us to enable the tax flag on your organisation. Shows only with flag enabled, a Stripe customer exists and has a location."""
+    r"""Tax preview for the immediate charge. Contact us to enable the tax flag on your organisation."""
 
     total: float
     r"""Total tax amount in major currency units."""
@@ -2608,11 +2608,11 @@ class PreviewMultiAttachTaxTypedDict(TypedDict):
     currency: str
     r"""Three-letter currency code."""
     status: PreviewMultiAttachStatus
-    r"""Calculation status ('complete' when Stripe Tax succeeds or 'incomplete' when Stripe Tax returned 0 or errored)."""
+    r"""Calculation status ('complete' when tax calculation succeeds or 'incomplete' when it errored)."""
 
 
 class PreviewMultiAttachTax(BaseModel):
-    r"""Tax preview for the immediate charge. Contact us to enable the tax flag on your organisation. Shows only with flag enabled, a Stripe customer exists and has a location."""
+    r"""Tax preview for the immediate charge. Contact us to enable the tax flag on your organisation."""
 
     total: float
     r"""Total tax amount in major currency units."""
@@ -2627,14 +2627,14 @@ class PreviewMultiAttachTax(BaseModel):
     r"""Three-letter currency code."""
 
     status: PreviewMultiAttachStatus
-    r"""Calculation status ('complete' when Stripe Tax succeeds or 'incomplete' when Stripe Tax returned 0 or errored)."""
+    r"""Calculation status ('complete' when tax calculation succeeds or 'incomplete' when it errored)."""
 
 
 class PreviewMultiAttachInvoiceCreditsTypedDict(TypedDict):
-    r"""Stripe customer invoice credits preview."""
+    r"""Customer invoice credits preview."""
 
     balance: float
-    r"""Stripe customer credit balance available, expressed as a positive number in major currency units."""
+    r"""Customer credit balance available, expressed as a positive number in major currency units."""
     currency: str
     r"""Three-letter currency code."""
     applied: NotRequired[float]
@@ -2642,10 +2642,10 @@ class PreviewMultiAttachInvoiceCreditsTypedDict(TypedDict):
 
 
 class PreviewMultiAttachInvoiceCredits(BaseModel):
-    r"""Stripe customer invoice credits preview."""
+    r"""Customer invoice credits preview."""
 
     balance: float
-    r"""Stripe customer credit balance available, expressed as a positive number in major currency units."""
+    r"""Customer credit balance available, expressed as a positive number in major currency units."""
 
     currency: str
     r"""Three-letter currency code."""
@@ -2697,9 +2697,9 @@ class PreviewMultiAttachResponseTypedDict(TypedDict):
     expand: NotRequired[List[str]]
     r"""Expand the response with additional data."""
     tax: NotRequired[PreviewMultiAttachTaxTypedDict]
-    r"""Tax preview for the immediate charge. Contact us to enable the tax flag on your organisation. Shows only with flag enabled, a Stripe customer exists and has a location."""
+    r"""Tax preview for the immediate charge. Contact us to enable the tax flag on your organisation."""
     invoice_credits: NotRequired[PreviewMultiAttachInvoiceCreditsTypedDict]
-    r"""Stripe customer invoice credits preview."""
+    r"""Customer invoice credits preview."""
 
 
 class PreviewMultiAttachResponse(BaseModel):
@@ -2741,10 +2741,10 @@ class PreviewMultiAttachResponse(BaseModel):
     r"""Expand the response with additional data."""
 
     tax: Optional[PreviewMultiAttachTax] = None
-    r"""Tax preview for the immediate charge. Contact us to enable the tax flag on your organisation. Shows only with flag enabled, a Stripe customer exists and has a location."""
+    r"""Tax preview for the immediate charge. Contact us to enable the tax flag on your organisation."""
 
     invoice_credits: Optional[PreviewMultiAttachInvoiceCredits] = None
-    r"""Stripe customer invoice credits preview."""
+    r"""Customer invoice credits preview."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):

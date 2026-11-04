@@ -368,23 +368,7 @@ export type ListFeaturesDisplay = {
   plural?: string | null | undefined;
 };
 
-export type ListFeaturesStripe = {
-  /**
-   * Stripe product ID this feature's usage prices bill under.
-   */
-  productId?: string | undefined;
-  /**
-   * Stripe meter ID used to create this feature's metered price.
-   */
-  meterId?: string | undefined;
-};
 
-/**
- * Processor mappings for this feature. Present when a Stripe product or meter is set.
- */
-export type ListFeaturesProcessors = {
-  stripe?: ListFeaturesStripe | undefined;
-};
 
 export type ListFeaturesList = {
   /**
@@ -440,11 +424,7 @@ export type ListFeaturesList = {
    * Whether the feature is archived and hidden from the dashboard.
    */
   archived: boolean;
-  /**
-   * Processor mappings for this feature. Present when a Stripe product or meter is set.
-   */
-  processors?: ListFeaturesProcessors | undefined;
-};
+  };
 
 /**
  * OK
@@ -1161,50 +1141,9 @@ export function listFeaturesDisplayFromJSON(
   );
 }
 
-/** @internal */
-export const ListFeaturesStripe$inboundSchema: z.ZodMiniType<
-  ListFeaturesStripe,
-  unknown
-> = z.pipe(
-  z.object({
-    product_id: types.optional(types.string()),
-    meter_id: types.optional(types.string()),
-  }),
-  z.transform((v) => {
-    return remap$(v, {
-      "product_id": "productId",
-      "meter_id": "meterId",
-    });
-  }),
-);
 
-export function listFeaturesStripeFromJSON(
-  jsonString: string,
-): SafeParseResult<ListFeaturesStripe, SDKValidationError> {
-  return safeParse(
-    jsonString,
-    (x) => ListFeaturesStripe$inboundSchema.parse(JSON.parse(x)),
-    `Failed to parse 'ListFeaturesStripe' from JSON`,
-  );
-}
 
-/** @internal */
-export const ListFeaturesProcessors$inboundSchema: z.ZodMiniType<
-  ListFeaturesProcessors,
-  unknown
-> = z.object({
-  stripe: types.optional(z.lazy(() => ListFeaturesStripe$inboundSchema)),
-});
 
-export function listFeaturesProcessorsFromJSON(
-  jsonString: string,
-): SafeParseResult<ListFeaturesProcessors, SDKValidationError> {
-  return safeParse(
-    jsonString,
-    (x) => ListFeaturesProcessors$inboundSchema.parse(JSON.parse(x)),
-    `Failed to parse 'ListFeaturesProcessors' from JSON`,
-  );
-}
 
 /** @internal */
 export const ListFeaturesList$inboundSchema: z.ZodMiniType<
@@ -1237,9 +1176,6 @@ export const ListFeaturesList$inboundSchema: z.ZodMiniType<
       ListFeaturesDisplay$inboundSchema
     )),
     archived: types.boolean(),
-    processors: types.optional(z.lazy(() =>
-      ListFeaturesProcessors$inboundSchema
-    )),
   }),
   z.transform((v) => {
     return remap$(v, {

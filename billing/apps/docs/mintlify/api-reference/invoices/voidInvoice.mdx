@@ -22,11 +22,11 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
       Array of plan IDs included in this invoice
     </DynamicResponseField>
 
-    <DynamicResponseField name="stripe_id" type="string">
-      The Stripe invoice ID
+    <DynamicResponseField name="processor_invoice_id" type="string">
+      The processor invoice ID
     </DynamicResponseField>
 
-    <DynamicResponseField name="processor_type" type="'stripe' | 'revenuecat'">
+    <DynamicResponseField name="processor_type" type="'paypal'">
       The billing processor that owns this invoice.
     </DynamicResponseField>
 
@@ -47,7 +47,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
     </DynamicResponseField>
 
     <DynamicResponseField name="hosted_invoice_url" type="string | null">
-      URL to the Stripe-hosted invoice page
+      URL to the processor-hosted invoice page
     </DynamicResponseField>
 
     <DynamicResponseField name="id" type="string">
@@ -71,7 +71,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
     </DynamicResponseField>
 
     <DynamicResponseField name="items" type="object[]">
-      Line items on the invoice, one per line as shown in Stripe. Capped at 100. Empty for invoices recorded before line item storage.
+      Line items on the invoice, one per line as shown in the processor. Capped at 100. Empty for invoices recorded before line item storage.
       <Expandable title="properties">
         <DynamicResponseField name="id" type="string">
           The MeterPal invoice line item ID. Stable across reads, and can be used to reference this line in later calls.
@@ -144,15 +144,15 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
     "plan_ids": [
       "pro_plan"
     ],
-    "stripe_id": "in_1A2B3C4D5E6F7G8H",
-    "processor_type": "stripe",
+    "processor_invoice_id": "in_1A2B3C4D5E6F7G8H",
+    "processor_type": "paypal",
     "status": "void",
     "total": 29.99,
     "amount_paid": 29.99,
     "refunded_amount": 0,
     "currency": "usd",
     "created_at": 1759247877000,
-    "hosted_invoice_url": "https://invoice.stripe.com/i/acct_123/test_456",
+    "hosted_invoice_url": "https://example.com/invoice/123",
     "items": [
       {
         "id": "invoice_li_2b3c4d5e6f7g8h",

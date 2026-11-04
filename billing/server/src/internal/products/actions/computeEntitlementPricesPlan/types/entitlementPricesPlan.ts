@@ -13,7 +13,7 @@ export type RowBuckets<Row> = {
 	retired: Row[];
 };
 
-/** Diff outcome before protect / stripe-carry attach retired. */
+/** Diff outcome before protect / attach retired. */
 export type EntitlementPricesDiff = {
 	prices: Omit<RowBuckets<Price>, "retired">;
 	entitlements: Omit<RowBuckets<Entitlement>, "retired">;

@@ -7,6 +7,9 @@ Pay-per-use (usage-based) pricing charges customers based on how much of a featu
 
 ## Setting up
 
+
+
+
 Create a consumable feature with a `usage_based` price:
 
 ```ts autumn.config.ts
@@ -45,18 +48,24 @@ export default atmn({ features: [notifications], plans: [payAsYouGo] });
 
 Preview with `atmn push`, then apply with `atmn push --yes`.
 
+
+
+
+
 ## How it works
 
 1. A customer's usage is tracked via the [track](/documentation/customers/tracking-usage) endpoint throughout the billing period
 2. Usage first draws down from the **included** amount (if any) at no charge
 3. Usage beyond the included amount is **overage** — billed at the configured rate
-4. At the end of the billing period, Autumn generates a Stripe invoice for the total overage
+4. At the end of the billing period, MeterPal generates a processor invoice for the total overage
+
 
 Usage-based features allow overage by default. The `check` endpoint will return `allowed: true` even if the customer has exceeded their included balance, as long as a usage-based price is configured.
 
+
 ## Tracking usage
 
-Track usage as it occurs — Autumn accumulates it over the billing period:
+Track usage as it occurs — MeterPal accumulates it over the billing period:
 
 <CodeGroup>
 
@@ -135,6 +144,7 @@ curl -X POST "https://api.useautumn.com/v1/check" \
 
 </CodeGroup>
 
+
 ```json
 {
   "allowed": true,
@@ -150,6 +160,7 @@ curl -X POST "https://api.useautumn.com/v1/check" \
   }
 }
 ```
+
 
 ## Combining with free tiers
 

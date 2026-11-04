@@ -16,7 +16,6 @@ export type SeedCustomerInput = {
 	email: string;
 	metadata?: Record<string, unknown>;
 	entities: SeedEntityInput[];
-	createInStripe?: boolean;
 	internalOptions?: CreateCustomerInternalOptions;
 	skipWebhooks?: boolean;
 	attachPlanId?: string | null;

@@ -41,7 +41,7 @@ export type MultiAttachPriceInterval = ClosedEnum<
 
 export type MultiAttachAdditionalCurrency = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -113,7 +113,7 @@ export type MultiAttachReset = {
 
 export type MultiAttachItemAdditionalCurrency = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -126,7 +126,7 @@ export type MultiAttachPriceTo = number | string;
 
 export type MultiAttachTierAdditionalCurrency = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -762,7 +762,7 @@ export type MultiAttachFreeTrialParams = {
  */
 export type MultiAttachInvoiceMode = {
   /**
-   * When true, creates an invoice and sends it to the customer instead of charging their card immediately. Uses Stripe's send_invoice collection method.
+   * When true, creates an invoice and sends it to the customer instead of charging their card immediately. Uses the processor's send_invoice collection method.
    */
   enabled: boolean;
   /**
@@ -778,7 +778,7 @@ export type MultiAttachInvoiceMode = {
    */
   invoiceTemplateId?: string | undefined;
   /**
-   * Number of days the customer has to pay the invoice before it is due (Stripe days_until_due).
+   * Number of days the customer has to pay the invoice before it is due (days_until_due).
    */
   netTermsDays?: number | undefined;
 };
@@ -856,7 +856,7 @@ export type MultiAttachSpendLimit = {
    */
   overageLimit?: number | undefined;
   /**
-   * When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally.
+   * When true, overage for this feature is not posted to the billing processor. Usage tracking and balance resets still behave normally.
    */
   skipOverageBilling?: boolean | undefined;
 };
@@ -1073,7 +1073,7 @@ export type MultiAttachParams = {
    */
   invoiceMode?: MultiAttachInvoiceMode | undefined;
   /**
-   * List of discounts to apply. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code.
+   * List of discounts to apply. Each discount can be an Autumn reward ID or a promotion code.
    */
   discounts?: Array<MultiAttachAttachDiscount> | undefined;
   /**
@@ -1089,7 +1089,7 @@ export type MultiAttachParams = {
    */
   successUrl?: string | undefined;
   /**
-   * Additional parameters to pass into the creation of the Stripe checkout session.
+   * Additional parameters to pass into the creation of the processor checkout session.
    */
   checkoutSessionParams?: { [k: string]: any } | undefined;
   /**
@@ -1097,11 +1097,11 @@ export type MultiAttachParams = {
    */
   redirectMode?: MultiAttachRedirectMode | undefined;
   /**
-   * Only applicable when the customer has an existing Stripe subscription. If true, creates a new separate subscription instead of merging into the existing one.
+   * Only applicable when the customer has an existing processor subscription. If true, creates a new separate subscription instead of merging into the existing one.
    */
   newBillingSubscription?: boolean | undefined;
   /**
-   * If true, the cusProducts are activated immediately even when payment is pending via Stripe checkout.
+   * If true, the cusProducts are activated immediately even when payment is pending via processor checkout.
    */
   enablePlanImmediately?: boolean | undefined;
   /**
@@ -1120,9 +1120,9 @@ export type MultiAttachInvoice = {
    */
   status: string | null;
   /**
-   * The Stripe invoice ID.
+   * The processor invoice ID
    */
-  stripeId: string;
+  processorInvoiceId: string;
   /**
    * The total amount of the invoice in cents.
    */
@@ -3128,14 +3128,14 @@ export const MultiAttachInvoice$inboundSchema: z.ZodMiniType<
 > = z.pipe(
   z.object({
     status: types.nullable(types.string()),
-    stripe_id: types.string(),
+    processor_invoice_id: types.string(),
     total: types.number(),
     currency: types.string(),
     hosted_invoice_url: types.nullable(types.string()),
   }),
   z.transform((v) => {
     return remap$(v, {
-      "stripe_id": "stripeId",
+      "processor_invoice_id": "processorInvoiceId",
       "hosted_invoice_url": "hostedInvoiceUrl",
     });
   }),

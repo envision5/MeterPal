@@ -155,7 +155,7 @@ export function createRoute<
 	versionedQuery?: Query extends ZodType ? VersionedSchemas<Query> : never;
 	params?: Params;
 	resource?: AffectedResource;
-	/** Be VERY careful — wraps the ENTIRE handler in a txn; bad for handlers that call Stripe (writes aren't visible until response returns). */
+	/** Be VERY careful — wraps the ENTIRE handler in a txn; bad for handlers that call the payment processor (writes aren't visible until response returns). */
 	withTx?: boolean;
 	handler?: (
 		c: ValidatedContext<HonoEnv, Body, Query, Params>,
@@ -209,7 +209,7 @@ export function createRoute<
 	 */
 	const scopeCheckMiddleware = async (c: Context<HonoEnv>, next: Next) => {
 		// Webhooks authenticate via signed payloads from external services
-		// (Stripe, Vercel, RevenueCat, etc.). They have no bearer token and
+		// (PayPal, etc.). They have no bearer token and
 		// no session, so ctx.scopes is never populated. Bypass the scope
 		// check unconditionally for any request under /webhooks/*.
 		if (c.req.path.startsWith("/webhooks/")) {

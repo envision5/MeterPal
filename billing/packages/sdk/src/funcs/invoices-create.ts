@@ -27,7 +27,7 @@ import { APICall, APIPromise } from "../types/async.js";
 import { Result } from "../types/fp.js";
 
 /**
- * Creates a standalone send-invoice Stripe invoice from catalog pricing and custom charges. Quantities are billable units, exclusive of any included usage; Autumn applies billing units and tiers. Nothing about the customer's plans, balances or subscriptions changes. Pass preview: true to get the calculated lines and totals without creating an invoice.
+ * Creates a standalone send-invoice processor invoice from catalog pricing and custom charges. Quantities are billable units, exclusive of any included usage; Autumn applies billing units and tiers. Nothing about the customer's plans, balances or subscriptions changes. Pass preview: true to get the calculated lines and totals without creating an invoice.
  */
 export function invoicesCreate(
   client: AutumnCore,

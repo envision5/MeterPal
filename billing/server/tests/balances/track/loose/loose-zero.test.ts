@@ -4,7 +4,7 @@ import { TestFeature } from "@tests/setup/v2Features.js";
 import ctx from "@tests/utils/testInitUtils/createTestContext.js";
 import chalk from "chalk";
 import { AutumnInt } from "@/external/autumn/autumnCli.js";
-import { initCustomerV3 } from "@/utils/scriptUtils/testUtils/initCustomerV3.js";
+import { initTestCustomer } from "@tests/utils/testInitUtils/initTestCustomer.js";
 
 describe(`${chalk.yellowBright("loose-zero: track when balance is zero")}`, () => {
 	const customerId = "loose-zero";
@@ -12,10 +12,9 @@ describe(`${chalk.yellowBright("loose-zero: track when balance is zero")}`, () =
 	const autumnV1 = new AutumnInt({ version: ApiVersion.V1_2 });
 
 	beforeAll(async () => {
-		await initCustomerV3({
+		await initTestCustomer({
 			ctx,
 			customerId,
-			withTestClock: false,
 		});
 
 		// Create loose entitlement with 10 balance, then use it all

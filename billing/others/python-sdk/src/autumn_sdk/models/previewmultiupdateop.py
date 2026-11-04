@@ -118,7 +118,7 @@ class PreviewMultiUpdateParamsTypedDict(TypedDict):
     refund_last_payment: NotRequired[PreviewMultiUpdateRefundLastPayment]
     r"""Controls how the last payment is refunded on immediate cancellation. 'prorated' refunds the unused portion, 'full' refunds the entire last payment."""
     subscription_params: NotRequired[Dict[str, Any]]
-    r"""Additional parameters to pass into the Stripe subscription update or cancel call."""
+    r"""Additional parameters to pass into the subscription update or cancel call."""
 
 
 class PreviewMultiUpdateParams(BaseModel):
@@ -135,7 +135,7 @@ class PreviewMultiUpdateParams(BaseModel):
     r"""Controls how the last payment is refunded on immediate cancellation. 'prorated' refunds the unused portion, 'full' refunds the entire last payment."""
 
     subscription_params: Optional[Dict[str, Any]] = None
-    r"""Additional parameters to pass into the Stripe subscription update or cancel call."""
+    r"""Additional parameters to pass into the subscription update or cancel call."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -745,7 +745,7 @@ class MultiUpdatePreviewResponseTypedDict(TypedDict):
     total: float
     r"""The combined amount due today across all subscriptions (sum of subscriptions[].total)."""
     subscriptions: List[PreviewMultiUpdateSubscriptionTypedDict]
-    r"""One preview per affected Stripe subscription. Updates to plans without a subscription (free plans) produce no entry."""
+    r"""One preview per affected subscription. Updates to plans without a subscription (free plans) produce no entry."""
 
 
 class MultiUpdatePreviewResponse(BaseModel):
@@ -761,4 +761,4 @@ class MultiUpdatePreviewResponse(BaseModel):
     r"""The combined amount due today across all subscriptions (sum of subscriptions[].total)."""
 
     subscriptions: List[PreviewMultiUpdateSubscription]
-    r"""One preview per affected Stripe subscription. Updates to plans without a subscription (free plans) produce no entry."""
+    r"""One preview per affected subscription. Updates to plans without a subscription (free plans) produce no entry."""

@@ -13,7 +13,7 @@ import { AttachDiscountSchema } from "./attachDiscount";
 export const AttachParamsV1Schema = BillingParamsBaseV1Schema.extend({
 	discounts: z.array(AttachDiscountSchema).optional().meta({
 		description:
-			"List of discounts to apply. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code.",
+			"List of discounts to apply. Each discount can be an Autumn reward ID or a promotion code.",
 	}),
 
 	success_url: z.string().optional().meta({
@@ -22,7 +22,7 @@ export const AttachParamsV1Schema = BillingParamsBaseV1Schema.extend({
 
 	new_billing_subscription: z.boolean().optional().meta({
 		description:
-			"Only applicable when the customer has an existing Stripe subscription. If true, creates a new separate subscription instead of merging into the existing one.",
+			"Only applicable when the customer has an existing processor subscription. If true, creates a new separate subscription instead of merging into the existing one.",
 	}),
 	billing_cycle_anchor: BillingCycleAnchorSchema.optional().meta({
 		description:
@@ -43,12 +43,12 @@ export const AttachParamsV1Schema = BillingParamsBaseV1Schema.extend({
 
 	checkout_session_params: z.record(z.string(), z.unknown()).optional().meta({
 		description:
-			"Additional parameters to pass into the creation of the Stripe checkout session.",
+			"Additional parameters to pass into the creation of the processor checkout session.",
 	}),
 
 	long_lived_checkout: z.boolean().optional().meta({
 		description:
-			"If true, returns an Autumn-hosted checkout link that can create a fresh Stripe checkout session when opened.",
+			"If true, returns an Autumn-hosted checkout link that can create a fresh processor checkout session when opened.",
 	}),
 
 	custom_line_items: z.array(CustomLineItemSchema).optional().meta({
@@ -59,7 +59,7 @@ export const AttachParamsV1Schema = BillingParamsBaseV1Schema.extend({
 	processor_subscription_id: z.string().optional().meta({
 		// internal: true,
 		description:
-			"The processor subscription ID to link. Use this to attach an existing Stripe subscription instead of creating a new one.",
+			"The processor subscription ID to link. Use this to attach an existing processor subscription instead of creating a new one.",
 	}),
 
 	carry_over_balances: z
@@ -86,7 +86,7 @@ export const AttachParamsV1Schema = BillingParamsBaseV1Schema.extend({
 
 	metadata: z.record(z.string(), z.string()).optional().meta({
 		description:
-			"Key-value metadata to attach to the Stripe subscription, invoice, and checkout session created during this attach flow. Keys prefixed with 'autumn_' are reserved and will be stripped.",
+			"Key-value metadata to attach to the processor subscription, invoice, and checkout session created during this attach flow. Keys prefixed with 'autumn_' are reserved and will be stripped.",
 	}),
 
 	no_billing_changes: z.boolean().optional().meta({
@@ -95,12 +95,12 @@ export const AttachParamsV1Schema = BillingParamsBaseV1Schema.extend({
 
 	enable_plan_immediately: z.boolean().optional().meta({
 		description:
-			"If true, the customer's plan is activated immediately even when payment is deferred (invoice mode) or pending (Stripe checkout). For Stripe checkout, the customer_product is inserted before the customer completes the hosted form. Set it here rather than on `invoice_mode`, which only covers the invoice-unpaid case.",
+			"If true, the customer's plan is activated immediately even when payment is deferred (invoice mode) or pending (processor checkout). For processor checkout, the customer_product is inserted before the customer completes the hosted form. Set it here rather than on `invoice_mode`, which only covers the invoice-unpaid case.",
 	}),
 
 	tax_rate_id: z.string().optional().meta({
 		description:
-			"Stripe tax rate ID (txr_...) to apply as the default tax rate on the created subscription, invoice, or checkout session line items.",
+			"Tax rate ID to apply as the default tax rate on the created subscription, invoice, or checkout session line items.",
 	}),
 
 	currency: CurrencyCodeSchema.optional().meta({

@@ -38,9 +38,7 @@ export type ListEntitiesSubscriptionStatus = ClosedEnum<
 >;
 
 export const ListEntitiesProcessor = {
-  Stripe: "stripe",
-  Revenuecat: "revenuecat",
-  Vercel: "vercel",
+  Paypal: "paypal",
 } as const;
 export type ListEntitiesProcessor = ClosedEnum<typeof ListEntitiesProcessor>;
 
@@ -65,11 +63,7 @@ export type ListEntitiesParams = {
    * Search entities by id or name.
    */
   search?: string | undefined;
-  /**
-   * Filter by parent customer processor type (stripe, revenuecat, vercel).
-   */
-  processors?: Array<ListEntitiesProcessor> | undefined;
-  /**
+    /**
    * Restrict the response to entities owned by this customer id. Use to bulk-fetch all entities for one customer in a single paginated call instead of iterating entities.get.
    */
   customerId?: string | undefined;
@@ -561,23 +555,7 @@ export type ListEntitiesDisplay = {
   plural?: string | null | undefined;
 };
 
-export type ListEntitiesStripe = {
-  /**
-   * Stripe product ID this feature's usage prices bill under.
-   */
-  productId?: string | undefined;
-  /**
-   * Stripe meter ID used to create this feature's metered price.
-   */
-  meterId?: string | undefined;
-};
 
-/**
- * Processor mappings for this feature. Present when a Stripe product or meter is set.
- */
-export type ListEntitiesProcessors = {
-  stripe?: ListEntitiesStripe | undefined;
-};
 
 /**
  * The full feature object if expanded.
@@ -636,11 +614,7 @@ export type ListEntitiesFeature = {
    * Whether the feature is archived and hidden from the dashboard.
    */
   archived: boolean;
-  /**
-   * Processor mappings for this feature. Present when a Stripe product or meter is set.
-   */
-  processors?: ListEntitiesProcessors | undefined;
-};
+  };
 
 export type ListEntitiesFlags = {
   /**
@@ -709,7 +683,7 @@ export type ListEntitiesSpendLimit = {
    */
   overageLimit?: number | undefined;
   /**
-   * When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally.
+   * When true, overage for this feature is not posted to the billing processor. Usage tracking and balance resets still behave normally.
    */
   skipOverageBilling?: boolean | undefined;
   /**
@@ -941,8 +915,7 @@ export type ListEntitiesBillingControls = {
  * The billing processor that owns this invoice.
  */
 export const ListEntitiesProcessorType = {
-  Stripe: "stripe",
-  Revenuecat: "revenuecat",
+  Paypal: "paypal",
 } as const;
 /**
  * The billing processor that owns this invoice.
@@ -957,9 +930,9 @@ export type ListEntitiesInvoice = {
    */
   planIds: Array<string>;
   /**
-   * The Stripe invoice ID
+   * The processor invoice ID
    */
-  stripeId: string;
+  processorInvoiceId: string;
   /**
    * The billing processor that owns this invoice.
    */
@@ -981,7 +954,7 @@ export type ListEntitiesInvoice = {
    */
   createdAt: number;
   /**
-   * URL to the Stripe-hosted invoice page
+   * URL to the processor-hosted invoice page
    */
   hostedInvoiceUrl?: string | null | undefined;
 };
@@ -1079,7 +1052,6 @@ export type ListEntitiesParams$Outbound = {
   plans?: Array<ListEntitiesPlan$Outbound> | undefined;
   subscription_status?: string | undefined;
   search?: string | undefined;
-  processors?: Array<string> | undefined;
   customer_id?: string | undefined;
 };
 
@@ -1096,7 +1068,6 @@ export const ListEntitiesParams$outboundSchema: z.ZodMiniType<
       ListEntitiesSubscriptionStatus$outboundSchema,
     ),
     search: z.optional(z.string()),
-    processors: z.optional(z.array(ListEntitiesProcessor$outboundSchema)),
     customerId: z.optional(z.string()),
   }),
   z.transform((v) => {
@@ -1911,50 +1882,9 @@ export function listEntitiesDisplayFromJSON(
   );
 }
 
-/** @internal */
-export const ListEntitiesStripe$inboundSchema: z.ZodMiniType<
-  ListEntitiesStripe,
-  unknown
-> = z.pipe(
-  z.object({
-    product_id: types.optional(types.string()),
-    meter_id: types.optional(types.string()),
-  }),
-  z.transform((v) => {
-    return remap$(v, {
-      "product_id": "productId",
-      "meter_id": "meterId",
-    });
-  }),
-);
 
-export function listEntitiesStripeFromJSON(
-  jsonString: string,
-): SafeParseResult<ListEntitiesStripe, SDKValidationError> {
-  return safeParse(
-    jsonString,
-    (x) => ListEntitiesStripe$inboundSchema.parse(JSON.parse(x)),
-    `Failed to parse 'ListEntitiesStripe' from JSON`,
-  );
-}
 
-/** @internal */
-export const ListEntitiesProcessors$inboundSchema: z.ZodMiniType<
-  ListEntitiesProcessors,
-  unknown
-> = z.object({
-  stripe: types.optional(z.lazy(() => ListEntitiesStripe$inboundSchema)),
-});
 
-export function listEntitiesProcessorsFromJSON(
-  jsonString: string,
-): SafeParseResult<ListEntitiesProcessors, SDKValidationError> {
-  return safeParse(
-    jsonString,
-    (x) => ListEntitiesProcessors$inboundSchema.parse(JSON.parse(x)),
-    `Failed to parse 'ListEntitiesProcessors' from JSON`,
-  );
-}
 
 /** @internal */
 export const ListEntitiesFeature$inboundSchema: z.ZodMiniType<
@@ -1987,9 +1917,6 @@ export const ListEntitiesFeature$inboundSchema: z.ZodMiniType<
       ListEntitiesDisplay$inboundSchema
     )),
     archived: types.boolean(),
-    processors: types.optional(z.lazy(() =>
-      ListEntitiesProcessors$inboundSchema
-    )),
   }),
   z.transform((v) => {
     return remap$(v, {
@@ -2314,10 +2241,10 @@ export const ListEntitiesInvoice$inboundSchema: z.ZodMiniType<
 > = z.pipe(
   z.object({
     plan_ids: z.array(types.string()),
-    stripe_id: types.string(),
+    processor_invoice_id: types.string(),
     processor_type: z._default(
       ListEntitiesProcessorType$inboundSchema,
-      "stripe",
+      "paypal",
     ),
     status: types.string(),
     total: types.number(),
@@ -2328,7 +2255,7 @@ export const ListEntitiesInvoice$inboundSchema: z.ZodMiniType<
   z.transform((v) => {
     return remap$(v, {
       "plan_ids": "planIds",
-      "stripe_id": "stripeId",
+      "processor_invoice_id": "processorInvoiceId",
       "processor_type": "processorType",
       "created_at": "createdAt",
       "hosted_invoice_url": "hostedInvoiceUrl",

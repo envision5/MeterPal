@@ -1,7 +1,7 @@
 import type { Page } from "playwright-core";
 
 /**
- * Self-contained Playwright function for completing a Stripe 3DS Invoice Confirmation.
+ * Self-contained Playwright function for completing a processor 3DS Invoice Confirmation.
  * NO external imports — this function must be serializable via fn.toString()
  * for Kernel Playwright Execution. (type imports are fine — Bun strips them)
  */

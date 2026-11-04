@@ -28,8 +28,6 @@ async function main() {
 	};
 
 	const databaseUrl = process.env.DATABASE_URL;
-	const stripeWebhookVars = [];
-	// stripeWebhookVars = await handleLocalRunSetup();
 
 	// Step 11: Write to server/.env
 	console.log(
@@ -47,9 +45,9 @@ async function main() {
 		"",
 	);
 
-	// Stripe required section
+	// Encryption required section
 	envSections.push(
-		"# Stripe",
+		"# Encryption",
 		`LOCALTUNNEL_RESERVED_KEY=${secrets.LOCALTUNNEL_RESERVED_KEY}`,
 		`ENCRYPTION_IV=${secrets.ENCRYPTION_IV}`,
 		`ENCRYPTION_PASSWORD=${secrets.ENCRYPTION_PASSWORD}`,
@@ -59,13 +57,6 @@ async function main() {
 	// Database section
 	if (databaseUrl) {
 		envSections.push("# Database", `DATABASE_URL=${databaseUrl}`, "");
-	}
-
-	// Stripe Webhooks section
-	if (stripeWebhookVars.length > 0) {
-		envSections.push("# Stripe Webhooks");
-		envSections.push(...stripeWebhookVars);
-		envSections.push("");
 	}
 
 	const envVars = envSections.join("\n");

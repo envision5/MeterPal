@@ -14,7 +14,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
 </DynamicParamField>
 
 <DynamicParamField body="configuration_id" type="string">
-  Stripe billing portal configuration ID. Create configurations in your Stripe dashboard.
+  Billing portal configuration ID. Create configurations in your billing processor's dashboard.
 </DynamicParamField>
 
 <DynamicParamField body="return_url" type="string">
@@ -37,7 +37,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
 ```json 200
 {
   "customer_id": "cus_123",
-  "url": "https://billing.stripe.com/session/..."
+  "url": "https://example.com/billing-portal/session/..."
 }
 ```
 </ResponseExample>

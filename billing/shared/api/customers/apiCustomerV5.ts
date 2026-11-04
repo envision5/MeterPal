@@ -7,7 +7,6 @@ import {
 	ApiPurchaseV0Schema,
 	ApiSubscriptionV1Schema,
 } from "./cusPlans/apiSubscriptionV1";
-import { ApiCusProcessorsSchema } from "./cusProcessors/apiCusProcessors";
 import { ApiFlagV0Schema } from "./flags/apiFlagV0";
 
 export const API_CUSTOMER_V5_EXAMPLE = {
@@ -16,10 +15,6 @@ export const API_CUSTOMER_V5_EXAMPLE = {
 	email: "patrick@useautumn.com",
 	createdAt: 1771409161016,
 	fingerprint: null,
-	stripeId: "cus_U0BKxpq1mFhuJO",
-	processors: {
-		stripe: { id: "cus_U0BKxpq1mFhuJO" },
-	},
 	env: "sandbox",
 	metadata: {},
 	sendEmailReceipts: false,
@@ -116,17 +111,13 @@ export const BaseApiCustomerV5Schema = BaseApiCustomerSchema.extend({
 			}),
 			disable_overage_billing: z.boolean().optional().meta({
 				description:
-					"Stops Autumn from posting usage-overage line items to Stripe for this customer. Check/track and balance resets still behave normally. When set, this overrides the organization-level disable_overage_billing setting.",
+					"Stops Autumn from posting usage-overage line items for this customer. Check/track and balance resets still behave normally. When set, this overrides the organization-level disable_overage_billing setting.",
 			}),
 		})
 		.optional()
 		.meta({
 			description: "Configuration for the customer.",
 		}),
-	processors: ApiCusProcessorsSchema.optional().meta({
-		description:
-			"Payment processors this customer is connected to (Stripe, Vercel, RevenueCat). Omitted entirely when the customer has not been created in any processor.",
-	}),
 }).meta({
 	examples: [API_CUSTOMER_V5_EXAMPLE],
 });

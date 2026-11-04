@@ -1,5 +1,5 @@
 import type { ProductItem } from "@autumn/shared";
-import { stripEditorFields } from "@/utils/product/productItemUtils";
+import { removeEditorFields } from "@/utils/product/productItemUtils";
 
 type DraftProductItem = Omit<ProductItem, "price"> & {
 	price?: ProductItem["price"] | "";
@@ -29,6 +29,6 @@ export function normalizeBillingRequestItems({
 	});
 
 	return normalizedItems.length > 0
-		? stripEditorFields({ items: normalizedItems })
+		? removeEditorFields({ items: normalizedItems })
 		: undefined;
 }

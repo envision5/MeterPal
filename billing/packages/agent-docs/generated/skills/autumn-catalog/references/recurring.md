@@ -7,6 +7,9 @@ Recurring plans let you grant customers a fixed allowance of consumable features
 
 ## Setting up
 
+
+
+
 Define a recurring plan in your `autumn.config.ts`:
 
 ```ts autumn.config.ts expandable
@@ -38,6 +41,10 @@ export default atmn({ features: [messages], plans: [pro] });
 ```
 
 Preview with `atmn push`, then apply with `atmn push --yes`.
+
+
+
+
 
 ## Attaching a subscription
 
@@ -91,6 +98,7 @@ curl -X POST "https://api.useautumn.com/v1/attach" \
 
 </CodeGroup>
 
+
 ```json
 {
   "id": "user_123",
@@ -98,7 +106,6 @@ curl -X POST "https://api.useautumn.com/v1/attach" \
   "email": "jane@example.com",
   "createdAt": 1771409161016,
   "fingerprint": null,
-  "stripeId": "cus_U0BKxpq1mFhuJO",
   "env": "sandbox",
   "metadata": {},
   "sendEmailReceipts": false,
@@ -154,9 +161,10 @@ curl -X POST "https://api.useautumn.com/v1/attach" \
 }
 ```
 
-When a subscription is created, Autumn:
 
-1. Creates a Stripe subscription with the plan's prices
+When a subscription is created, MeterPal:
+
+1. Creates a processor subscription with the plan's prices
 2. Grants the customer their included [balances](/documentation/concepts/balances) for each consumable feature
 3. Starts the billing cycle -- balances reset automatically at the start of each period
 

@@ -1,37 +1,37 @@
 import {
-	STRIPE_THREE_DECIMAL_CURRENCIES,
-	stripeMinorUnitFactor,
-} from "@utils/currencyUtils/stripeCurrencies.js";
+	THREE_DECIMAL_CURRENCIES,
+	minorUnitFactor,
+} from "@utils/currencyUtils/currencies.js";
 import { Decimal } from "decimal.js";
 
 /**
- * Converts an Autumn amount to a Stripe integer amount (`amount` / `unit_amount`).
+ * Converts an Autumn amount to a processor integer amount in minor units.
  * Multiplies by the currency's minor-unit factor: 1 (JPY), 100 (USD), 1000 (BHD).
  * Three-decimal currencies must be evenly divisible by ten, so they are rounded
  * to two decimals of precision before scaling.
  */
-export const atmnToStripeAmount = ({
+export const atmnToMinorUnitAmount = ({
 	amount,
 	currency = "USD",
 }: {
 	amount: number;
 	currency?: string;
 }): number => {
-	if (STRIPE_THREE_DECIMAL_CURRENCIES.has(currency.toLowerCase())) {
+	if (THREE_DECIMAL_CURRENCIES.has(currency.toLowerCase())) {
 		return new Decimal(amount).mul(100).round().mul(10).toNumber();
 	}
 	return new Decimal(amount)
-		.mul(stripeMinorUnitFactor(currency))
+		.mul(minorUnitFactor(currency))
 		.round()
 		.toNumber();
 };
 
 /**
- * Converts an Autumn amount to a Stripe decimal string (`unit_amount_decimal`).
+ * Converts an Autumn amount to a processor decimal string in minor units.
  * Scales by the currency's minor-unit factor; keeps sub-unit precision, so the
  * divisible-by-ten rule (which only applies to integer amounts) is not enforced.
  */
-export const atmnToStripeAmountDecimal = ({
+export const atmnToMinorUnitAmountDecimal = ({
 	amount,
 	currency = "USD",
 	decimalPlaces = 10,
@@ -42,16 +42,16 @@ export const atmnToStripeAmountDecimal = ({
 }): string => {
 	const decimal = amount instanceof Decimal ? amount : new Decimal(amount);
 	return decimal
-		.mul(stripeMinorUnitFactor(currency))
+		.mul(minorUnitFactor(currency))
 		.toDecimalPlaces(decimalPlaces)
 		.toString();
 };
 
 /**
- * Converts a Stripe amount back to an Autumn amount by dividing out the
- * currency's minor-unit factor (100 cents -> 1.00, 1000 fils -> 1.000).
+ * Converts a processor minor-unit amount back to an Autumn amount by dividing out
+ * the currency's minor-unit factor (100 cents -> 1.00, 1000 fils -> 1.000).
  */
-export const stripeToAtmnAmount = ({
+export const minorUnitToAtmnAmount = ({
 	amount,
 	currency = "usd",
 	decimalPlaces = 10,
@@ -63,7 +63,7 @@ export const stripeToAtmnAmount = ({
 	round?: boolean;
 }): number => {
 	const finalAmount = new Decimal(amount)
-		.div(stripeMinorUnitFactor(currency))
+		.div(minorUnitFactor(currency))
 		.toNumber();
 
 	if (round) {

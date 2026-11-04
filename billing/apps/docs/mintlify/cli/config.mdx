@@ -111,7 +111,7 @@ Features define what can be gated, metered or billed in your app.
 </ParamField>
 
 <ParamField body="processors" type="object">
-  Stripe mapping: `{ stripe: { productId, meterId } }`. Only pulled with `atmn pull --include-mappings`.
+  Processor mapping: `{ <processor>: { productId, meterId } }`. Only pulled with `atmn pull --include-mappings`.
 </ParamField>
 
 ### Feature types
@@ -278,7 +278,7 @@ Plans combine features with pricing to create your subscription tiers, add-ons a
 </ParamField>
 
 <ParamField body="processors" type="object">
-  Stripe and RevenueCat mappings: `{ stripe: { productId, additionalProductIds }, revenuecat: { products } }`. Only pulled with `atmn pull --include-mappings`.
+  Processor mappings: `{ <processor>: { productId, additionalProductIds } }`. Only pulled with `atmn pull --include-mappings`.
 </ParamField>
 
 ### Versions
@@ -701,10 +701,10 @@ export default atmn({
 | `cancelOnPastDue` | Automatically cancel subscriptions when payment is past due |
 | `blockOverdueEntitlements` | Block access to features while a plan is past due |
 | `reverseDeductionOrder` | Deduct from the newest balance first instead of the oldest |
-| `invoiceMemos` | Include line-item memos on Stripe invoices |
-| `disableOverageBilling` | Stop posting usage overage line items to Stripe |
+| `invoiceMemos` | Include line-item memos on processor invoices |
+| `disableOverageBilling` | Stop posting usage overage line items to the payment processor |
 | `paydownOverages` | Let resets and top-ups pay down unbilled overages |
-| `automaticTax` | Turn on Stripe Tax for automatic tax calculation |
+| `automaticTax` | Turn on automatic tax calculation |
 | `multiCurrency` | Allow prices and billing in more than one currency |
 
 All default to `false`.

@@ -2,11 +2,11 @@
 
 Customers represent the entities — usually users or organizations — of your application that can use and pay for your products.
 
-For each customer, Autumn will:
+For each customer, MeterPal will:
 
 - Keep record of the products they've purchased
 - Track the features they've used and have access to
-- Bill them through Stripe for the prices you've set
+- Bill them through the payment processor for the prices you've set
 
 ## Creating a customer via API
 
@@ -53,22 +53,29 @@ curl -X POST "https://api.useautumn.com/v1/customers" \
 
 Only the `customerId` field is required — this should be your unique identifier for the customer that you'll use in all future API calls.
 
-A common pattern is to call `customers.getOrCreate` on every login or signup in your application, so Autumn always has the latest customer information.
+
+A common pattern is to call `customers.getOrCreate` on every login or signup in your application, so MeterPal always has the latest customer information.
+
+
 
 Customers must be created before calling the [`check`](/documentation/customers/check) or [`track`](/documentation/customers/tracking-usage) endpoints. If you call these endpoints with a `customer_id` that doesn't exist, the API will return a `customer_not_found` error. Make sure to call `customers.getOrCreate` during signup or login before checking access or tracking usage.
 
+
 ## Pre-creating customers via the dashboard
 
-You can create a customer in the Autumn dashboard before they've ever interacted with your application. This is useful for enterprise or sales-led deals where you want to provision access before the customer signs up.
+You can create a customer in the MeterPal dashboard before they've ever interacted with your application. This is useful for enterprise or sales-led deals where you want to provision access before the customer signs up.
 
 1. Navigate to the [Customers page](https://app.useautumn.com/customers)
 2. Click "Create Customer"
 3. Fill in the customer's details (name, email). **Leave the `id` field blank** — it will be assigned when the customer first logs in.
 4. Click "Create Customer"
 
-Once the customer is created, you can enable products and configure their features from the customer details page. When the customer eventually signs up in your application, Autumn will match them by email and link the pre-created customer record.
+Once the customer is created, you can enable products and configure their features from the customer details page. When the customer eventually signs up in your application, MeterPal will match them by email and link the pre-created customer record.
+
 
 The email you provide must match the email the customer will use to sign up or log in. You can update the email from the customer details page if needed.
+
+
 
 **Example: Enterprise onboarding**
 
@@ -76,7 +83,8 @@ You've closed an enterprise deal with Acme Corp. Before their team starts using 
 
 1. Create a customer in the dashboard with the billing contact's email
 2. Enable a custom Enterprise plan with negotiated pricing
-3. When the Acme team signs up, Autumn matches the email and they immediately have their plan active — no checkout needed
+3. When the Acme team signs up, MeterPal matches the email and they immediately have their plan active — no checkout needed
+
 
 ## Customer properties
 
@@ -90,90 +98,19 @@ Your unique identifier for the customer. This is the only required field. It cou
 
 #### Name and Email
 
-Optional fields that help identify the customer in the Autumn dashboard and on Stripe invoices.
+Optional fields that help identify the customer in the MeterPal dashboard and on processor invoices.
 
-## Stripe integration
+## Processor integration
 
-By default, Autumn does **not** create a Stripe customer when you create an Autumn customer. A Stripe customer is created lazily — only when the first billing operation needs one (like `billing.attach`, `billing.openCustomerPortal`, or `billing.setupPayment`).
+MeterPal creates the underlying payment processor customer lazily — only when the first billing operation needs one (like `billing.attach` or `billing.openCustomerPortal`).
 
 ```mermaid
 flowchart LR
-    A["Your app<br/><code>user_123</code>"] -->|customers.getOrCreate| B["Autumn Customer<br/><code>user_123</code>"]
-    B -->|on first billing call| C["Stripe Customer<br/><code>cus_abc123</code>"]
+    A["Your app<br/><code>user_123</code>"] -->|customers.getOrCreate| B["MeterPal Customer<br/><code>user_123</code>"]
+    B -->|on first billing call| C["Processor Customer<br/><code>cus_abc123</code>"]
 ```
 
-You can change this behavior:
+You don't need to create or link a processor customer yourself. MeterPal owns the mapping between your customer ID and the processor's customer record, and keeps it in sync.
 
-#### Create in Stripe immediately
 
-Pass `createInStripe: true` to create the Stripe customer at the same time as the Autumn customer. This is useful if you need the Stripe customer ID upfront (e.g., for your own Stripe integration).
-
-<CodeGroup>
-
-```typescript TypeScript
-await autumn.customers.getOrCreate({
-  customerId: "user_123",
-  name: "John Doe",
-  email: "john@example.com",
-  createInStripe: true,
-});
-```
-
-```python Python
-await autumn.customers.get_or_create(
-    customer_id="user_123",
-    name="John Doe",
-    email="john@example.com",
-    create_in_stripe=True,
-)
-```
-
-```bash cURL
-curl -X POST "https://api.useautumn.com/v1/customers" \
-  -H "Authorization: Bearer am_sk_test_1234" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "customer_id": "user_123",
-    "name": "John Doe",
-    "email": "john@example.com",
-    "create_in_stripe": true
-  }'
-```
-
-</CodeGroup>
-
-#### Link to an existing Stripe customer
-
-If you already have a Stripe customer (e.g., you're migrating to Autumn), pass `stripeId` to link it instead of creating a new one:
-
-<CodeGroup>
-
-```typescript TypeScript
-await autumn.customers.getOrCreate({
-  customerId: "user_123",
-  stripeId: "cus_abc123",
-});
-```
-
-```python Python
-await autumn.customers.get_or_create(
-    customer_id="user_123",
-    stripe_id="cus_abc123",
-)
-```
-
-```bash cURL
-curl -X POST "https://api.useautumn.com/v1/customers" \
-  -H "Authorization: Bearer am_sk_test_1234" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "customer_id": "user_123",
-    "stripe_id": "cus_abc123"
-  }'
-```
-
-</CodeGroup>
-
-Once linked, the mapping is bidirectional — the Stripe customer ID is stored on the Autumn customer, and the Autumn customer ID is stored in the Stripe customer's metadata.
-
-For more details on how Autumn and Stripe work together, see [Stripe Sync](/documentation/concepts/stripe).
+For more details on how MeterPal and the payment processor work together, see [Payment Processor](/documentation/concepts/payment-processor).

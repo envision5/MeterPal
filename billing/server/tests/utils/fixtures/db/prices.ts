@@ -18,14 +18,12 @@ const createPrepaid = ({
 	featureId,
 	internalFeatureId,
 	billingUnits = 1,
-	stripePriceId,
 	entitlementId,
 }: {
 	id: string;
 	featureId: string;
 	internalFeatureId?: string;
 	billingUnits?: number;
-	stripePriceId?: string;
 	entitlementId?: string;
 }): Price =>
 	({
@@ -45,8 +43,6 @@ const createPrepaid = ({
 			feature_id: featureId,
 			usage_tiers: [{ to: Infinite, amount: 10 }],
 			interval: BillingInterval.Month,
-			stripe_price_id: stripePriceId ?? `stripe_price_${id}`,
-			stripe_prepaid_price_v2_id: stripePriceId ?? `stripe_price_${id}`,
 		},
 	}) as Price;
 
@@ -55,10 +51,8 @@ const createPrepaid = ({
  */
 const createFixed = ({
 	id,
-	stripePriceId,
 }: {
 	id: string;
-	stripePriceId?: string;
 }): Price =>
 	({
 		id,
@@ -73,7 +67,6 @@ const createFixed = ({
 			type: PriceType.Fixed,
 			amount: 100,
 			interval: BillingInterval.Month,
-			stripe_price_id: stripePriceId ?? `stripe_price_${id}`,
 		},
 	}) as Price;
 
@@ -84,15 +77,11 @@ const createConsumable = ({
 	id,
 	featureId,
 	internalFeatureId,
-	stripePriceId,
-	stripeEmptyPriceId,
 	entitlementId,
 }: {
 	id: string;
 	featureId: string;
 	internalFeatureId?: string;
-	stripePriceId?: string;
-	stripeEmptyPriceId?: string;
 	entitlementId?: string;
 }): Price =>
 	({
@@ -112,8 +101,6 @@ const createConsumable = ({
 			feature_id: featureId,
 			usage_tiers: [{ to: Infinite, amount: 1 }],
 			interval: BillingInterval.Month,
-			stripe_price_id: stripePriceId ?? `stripe_price_${id}`,
-			stripe_empty_price_id: stripeEmptyPriceId ?? `stripe_empty_price_${id}`,
 		},
 	}) as Price;
 
@@ -124,15 +111,11 @@ const createAllocated = ({
 	id,
 	featureId,
 	internalFeatureId,
-	stripePriceId,
-	stripeEmptyPriceId,
 	entitlementId,
 }: {
 	id: string;
 	featureId: string;
 	internalFeatureId?: string;
-	stripePriceId?: string;
-	stripeEmptyPriceId?: string;
 	entitlementId?: string;
 }): Price =>
 	({
@@ -153,8 +136,6 @@ const createAllocated = ({
 			feature_id: featureId,
 			usage_tiers: [{ to: Infinite, amount: 10 }],
 			interval: BillingInterval.Month,
-			stripe_price_id: stripePriceId ?? `stripe_price_${id}`,
-			stripe_empty_price_id: stripeEmptyPriceId ?? `stripe_empty_price_${id}`,
 		},
 	}) as Price;
 
@@ -163,11 +144,9 @@ const createAllocated = ({
  */
 const createOneOff = ({
 	id,
-	stripePriceId,
 	amount = 100,
 }: {
 	id: string;
-	stripePriceId?: string;
 	amount?: number;
 }): Price =>
 	({
@@ -183,7 +162,6 @@ const createOneOff = ({
 			type: PriceType.Fixed,
 			amount,
 			interval: BillingInterval.OneOff,
-			stripe_price_id: stripePriceId ?? `stripe_price_${id}`,
 		},
 	}) as Price;
 

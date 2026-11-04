@@ -6,7 +6,10 @@ import {
 	type UpdateSubscriptionBillingContext,
 	type UpdateSubscriptionV1Params,
 } from "@autumn/shared";
-import { handleCustomLineItemsErrors } from "@/internal/billing/v2/common/errors/handleCustomLineItemsErrors.js";
+import {
+	handleCustomLineItemsErrors,
+	isSubscriptionUpdatePlan,
+} from "@/internal/billing/v2/common/errors/handleCustomLineItemsErrors.js";
 
 export const handleUpdateSubscriptionCustomLineItemsErrors = ({
 	params,
@@ -44,11 +47,11 @@ export const handleUpdateSubscriptionCustomLineItemsErrors = ({
 		});
 	}
 
-	// Suppressed custom invoices need no Stripe action when the subscription is otherwise unchanged.
+	// Suppressed custom invoices need no processor action when the subscription is otherwise unchanged.
 	if (
-		billingContext.stripeSubscription &&
+		billingContext.customerProduct.subscription_ids?.length &&
 		billingContext.requestedProrationBehavior === "none" &&
-		!billingPlan.stripe?.subscriptionAction
+		!isSubscriptionUpdatePlan(billingPlan)
 	) {
 		return;
 	}

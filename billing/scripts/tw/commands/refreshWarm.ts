@@ -124,7 +124,6 @@ const buildWarmEnv = (): Record<string, string> => ({
 	TRACK_SQS_QUEUE_URL,
 	AUTUMN_DB_DIRECT: "1",
 	TW_WORKER_MODE: "1",
-	TW_SKIP_STRIPE_ACCOUNT: "1",
 	ENCRYPTION_IV: requireSecret("ENCRYPTION_IV"),
 	ENCRYPTION_PASSWORD: requireSecret("ENCRYPTION_PASSWORD"),
 	BETTER_AUTH_SECRET: requireSecret("BETTER_AUTH_SECRET"),

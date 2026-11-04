@@ -1,5 +1,4 @@
 import type { AutumnBillingPlan, Invoice } from "@autumn/shared";
-import type Stripe from "stripe";
 import type { AutumnContext } from "@/honoUtils/HonoEnv";
 import { EntityService } from "@/internal/api/entities/EntityService";
 import { computeSchedulePhaseReplacements } from "@/internal/billing/v2/compute/computeSchedulePhaseReplacements";
@@ -30,14 +29,10 @@ import { workflows } from "@/queue/workflows";
 export const executeAutumnBillingPlan = async ({
 	ctx,
 	autumnBillingPlan,
-	stripeInvoice,
-	stripeInvoiceItems,
 	autumnInvoice,
 }: {
 	ctx: AutumnContext;
 	autumnBillingPlan: AutumnBillingPlan;
-	stripeInvoice?: Stripe.Invoice;
-	stripeInvoiceItems?: Stripe.InvoiceItem[];
 	autumnInvoice?: Invoice;
 }) => {
 	const { db } = ctx;
@@ -111,12 +106,7 @@ export const executeAutumnBillingPlan = async ({
 	// product funnels through this plan, and phases hold raw ids.
 	await replaceScheduledPhaseCustomerProductIds({
 		ctx,
-		replacements: [
-			...(autumnBillingPlan.schedulePhaseCustomerProductReplacements ?? []),
-			...(autumnBillingPlan.ownsSchedulePersistence
-				? []
-				: computeSchedulePhaseReplacements({ autumnBillingPlan })),
-		],
+		replacements: computeSchedulePhaseReplacements({ autumnBillingPlan }),
 	});
 
 	// Lock / relock customer currency. No-op when already the target currency.
@@ -183,7 +173,7 @@ export const executeAutumnBillingPlan = async ({
 
 	// 6. Upsert subscriptions (if provided)
 	for (const subscription of autumnBillingPlan.upsertSubscriptions ?? []) {
-		await SubService.upsertByStripeId({ db, subscription });
+		await SubService.upsertByProcessorId({ db, subscription });
 	}
 
 	// 7. Upsert invoice (if provided)
@@ -192,32 +182,6 @@ export const executeAutumnBillingPlan = async ({
 			ctx,
 			customerId: autumnBillingPlan.customerId,
 			invoice: autumnBillingPlan.upsertInvoice,
-		});
-	}
-
-	// 9. Trigger workflow to store invoice line items (async via SQS)
-	if (autumnInvoice && stripeInvoice) {
-		await workflows.triggerStoreInvoiceLineItems({
-			orgId: ctx.org.id,
-			env: ctx.env,
-			stripeInvoiceId: stripeInvoice.id,
-			autumnInvoiceId: autumnInvoice.id,
-			billingLineItems: autumnBillingPlan.lineItems,
-		});
-	}
-
-	// 10. Trigger workflow to store deferred line items (ProrateNextCycle pending items)
-	// These are invoice items created without an invoice — stored with invoice_id = null
-	if (
-		stripeInvoiceItems &&
-		stripeInvoiceItems.length > 0 &&
-		autumnBillingPlan.lineItems
-	) {
-		await workflows.triggerStoreDeferredInvoiceLineItems({
-			orgId: ctx.org.id,
-			env: ctx.env,
-			deferredStripeInvoiceItems: stripeInvoiceItems,
-			billingLineItems: autumnBillingPlan.lineItems,
 		});
 	}
 

@@ -77,8 +77,8 @@ const RequestLogEntrySchema = z.object({
 		.string()
 		.describe("When the log was recorded, in ISO 8601 format."),
 	source: z
-		.enum(["api_request", "stripe_webhook"])
-		.describe("Whether this was an API request or an incoming Stripe webhook."),
+		.enum(["api_request", "processor_webhook"])
+		.describe("Whether this was an API request or an incoming processor webhook."),
 	status_code: z.number().describe("HTTP response status code."),
 	request: z
 		.object({
@@ -96,22 +96,24 @@ const RequestLogEntrySchema = z.object({
 	context: RequestLogContextSchema.describe(
 		"Organization, customer, and user associated with the request.",
 	),
-	stripe: z
+	processor: z
 		.object({
 			event_id: z
 				.string()
 				.nullable()
-				.describe("Stripe event ID, if this was a Stripe webhook."),
+				.describe("Processor event ID, if this was a processor webhook."),
 			event_type: z
 				.string()
 				.nullable()
-				.describe("Stripe event type, such as customer.subscription.updated."),
+				.describe(
+					"Processor event type, such as customer.subscription.updated.",
+				),
 			object_id: z
 				.string()
 				.nullable()
-				.describe("ID of the Stripe object the event refers to."),
+				.describe("ID of the processor object the event refers to."),
 		})
-		.describe("Stripe webhook details. Fields are null for API requests."),
+		.describe("Processor webhook details. Fields are null for API requests."),
 	request_body: z
 		.unknown()
 		.nullable()
@@ -135,7 +137,7 @@ export const logsSearchContract = oc
 		operationId: "searchRequestLogs",
 		tags: ["logs"],
 		description:
-			"Search API requests and incoming Stripe webhooks for your organization and environment.",
+			"Search API requests and incoming processor webhooks for your organization and environment.",
 		spec: (spec) => ({
 			...spec,
 			"x-speakeasy-name-override": "search",
@@ -174,7 +176,7 @@ export const logsSearchContract = oc
 								user_id: "user_123",
 								user_email: "user@example.com",
 							},
-							stripe: {
+							processor: {
 								event_id: null,
 								event_type: null,
 								object_id: null,

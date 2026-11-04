@@ -32,19 +32,7 @@ export const CreateInvoiceInterval = {
  */
 export type CreateInvoiceInterval = ClosedEnum<typeof CreateInvoiceInterval>;
 
-export type CreateInvoiceStripe = {
-  /**
-   * Stripe price ID. For prepaid with included > 0 this is the V2 price.
-   */
-  priceId: string;
-};
 
-/**
- * Bill this line under an existing Stripe price instead of an inline one.
- */
-export type CreateInvoiceProcessors = {
-  stripe?: CreateInvoiceStripe | null | undefined;
-};
 
 export type CreateInvoicePrice = {
   /**
@@ -59,17 +47,13 @@ export type CreateInvoicePrice = {
    * Number of intervals per billing cycle. Defaults to 1.
    */
   intervalCount?: number | undefined;
-  /**
-   * Bill this line under an existing Stripe price instead of an inline one.
-   */
-  processors?: CreateInvoiceProcessors | undefined;
-};
+  };
 
 export type CreateInvoicePriceTo = number | string;
 
 export type CreateInvoiceAdditionalCurrency = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -132,19 +116,7 @@ export type CreateInvoiceBillingMethod = ClosedEnum<
   typeof CreateInvoiceBillingMethod
 >;
 
-export type CreateInvoiceItemStripe = {
-  /**
-   * Stripe price ID. For prepaid with included > 0 this is the V2 price.
-   */
-  priceId: string;
-};
 
-/**
- * Bill this line under an existing Stripe price instead of an inline one.
- */
-export type CreateInvoiceItemProcessors = {
-  stripe?: CreateInvoiceItemStripe | null | undefined;
-};
 
 /**
  * Pricing to use for this feature on this invoice.
@@ -175,11 +147,7 @@ export type CreateInvoiceItemPrice = {
    * 'prepaid' for upfront payment (seats), 'usage_based' for pay-as-you-go.
    */
   billingMethod: CreateInvoiceBillingMethod;
-  /**
-   * Bill this line under an existing Stripe price instead of an inline one.
-   */
-  processors?: CreateInvoiceItemProcessors | undefined;
-};
+  };
 
 export type CreateInvoiceDimensionsMatch4 = string | number | boolean;
 
@@ -521,19 +489,7 @@ export type CreateInvoiceLicenseQuantityInterval = ClosedEnum<
   typeof CreateInvoiceLicenseQuantityInterval
 >;
 
-export type CreateInvoiceLicenseQuantityStripe = {
-  /**
-   * Stripe price ID. For prepaid with included > 0 this is the V2 price.
-   */
-  priceId: string;
-};
 
-/**
- * Bill this line under an existing Stripe price instead of an inline one.
- */
-export type CreateInvoiceLicenseQuantityProcessors = {
-  stripe?: CreateInvoiceLicenseQuantityStripe | null | undefined;
-};
 
 export type CreateInvoiceLicenseQuantityPrice = {
   /**
@@ -548,11 +504,7 @@ export type CreateInvoiceLicenseQuantityPrice = {
    * Number of intervals per billing cycle. Defaults to 1.
    */
   intervalCount?: number | undefined;
-  /**
-   * Bill this line under an existing Stripe price instead of an inline one.
-   */
-  processors?: CreateInvoiceLicenseQuantityProcessors | undefined;
-};
+  };
 
 /**
  * Override the license's per-seat price on this invoice.
@@ -733,7 +685,7 @@ export type CreateInvoiceParams = {
    */
   dueDate?: number | undefined;
   /**
-   * Stripe tax rate ID (txr_...) applied to every line.
+   * Tax rate ID applied to every line.
    */
   taxRateId?: string | undefined;
   /**
@@ -754,8 +706,7 @@ export type CreateInvoiceParams = {
  * The billing processor that owns this invoice.
  */
 export const CreateInvoiceProcessorType = {
-  Stripe: "stripe",
-  Revenuecat: "revenuecat",
+  Paypal: "paypal",
 } as const;
 /**
  * The billing processor that owns this invoice.
@@ -828,9 +779,9 @@ export type CreateInvoiceInvoice = {
    */
   planIds: Array<string>;
   /**
-   * The Stripe invoice ID
+   * The processor invoice ID
    */
-  stripeId: string;
+  processorInvoiceId: string;
   /**
    * The billing processor that owns this invoice.
    */
@@ -852,7 +803,7 @@ export type CreateInvoiceInvoice = {
    */
   createdAt: number;
   /**
-   * URL to the Stripe-hosted invoice page
+   * URL to the processor-hosted invoice page
    */
   hostedInvoiceUrl?: string | null | undefined;
   /**
@@ -876,7 +827,7 @@ export type CreateInvoiceInvoice = {
    */
   refundedAmount: number;
   /**
-   * Line items on the invoice, one per line as shown in Stripe. Capped at 100. Empty for invoices recorded before line item storage.
+   * Line items on the invoice, one per line as shown on the hosted invoice page. Capped at 100. Empty for invoices recorded before line item storage.
    */
   items?: Array<CreateInvoiceInvoiceItem> | undefined;
 };
@@ -907,11 +858,11 @@ export type CreateInvoiceTax = {
 };
 
 /**
- * The customer's Stripe credit balance and how much of it this invoice consumes.
+ * The customer's credit balance and how much of it this invoice consumes.
  */
 export type CreateInvoiceInvoiceCredits = {
   /**
-   * Stripe customer credit balance available, expressed as a positive number in major currency units.
+   * Customer credit balance available, expressed as a positive number in major currency units.
    */
   balance: number;
   /**
@@ -932,7 +883,7 @@ export type CreateInvoicePreview = {
   tax: CreateInvoiceTax | null;
   total: number;
   /**
-   * The customer's Stripe credit balance and how much of it this invoice consumes.
+   * The customer's credit balance and how much of it this invoice consumes.
    */
   invoiceCredits?: CreateInvoiceInvoiceCredits | undefined;
   /**
@@ -959,63 +910,17 @@ export const CreateInvoiceInterval$outboundSchema: z.ZodMiniEnum<
   typeof CreateInvoiceInterval
 > = z.enum(CreateInvoiceInterval);
 
-/** @internal */
-export type CreateInvoiceStripe$Outbound = {
-  price_id: string;
-};
 
-/** @internal */
-export const CreateInvoiceStripe$outboundSchema: z.ZodMiniType<
-  CreateInvoiceStripe$Outbound,
-  CreateInvoiceStripe
-> = z.pipe(
-  z.object({
-    priceId: z.string(),
-  }),
-  z.transform((v) => {
-    return remap$(v, {
-      priceId: "price_id",
-    });
-  }),
-);
 
-export function createInvoiceStripeToJSON(
-  createInvoiceStripe: CreateInvoiceStripe,
-): string {
-  return JSON.stringify(
-    CreateInvoiceStripe$outboundSchema.parse(createInvoiceStripe),
-  );
-}
 
-/** @internal */
-export type CreateInvoiceProcessors$Outbound = {
-  stripe?: CreateInvoiceStripe$Outbound | null | undefined;
-};
 
-/** @internal */
-export const CreateInvoiceProcessors$outboundSchema: z.ZodMiniType<
-  CreateInvoiceProcessors$Outbound,
-  CreateInvoiceProcessors
-> = z.object({
-  stripe: z.optional(
-    z.nullable(z.lazy(() => CreateInvoiceStripe$outboundSchema)),
-  ),
-});
 
-export function createInvoiceProcessorsToJSON(
-  createInvoiceProcessors: CreateInvoiceProcessors,
-): string {
-  return JSON.stringify(
-    CreateInvoiceProcessors$outboundSchema.parse(createInvoiceProcessors),
-  );
-}
 
 /** @internal */
 export type CreateInvoicePrice$Outbound = {
   amount: number;
   interval: string;
   interval_count: number;
-  processors?: CreateInvoiceProcessors$Outbound | undefined;
 };
 
 /** @internal */
@@ -1027,9 +932,6 @@ export const CreateInvoicePrice$outboundSchema: z.ZodMiniType<
     amount: z.number(),
     interval: CreateInvoiceInterval$outboundSchema,
     intervalCount: z._default(z.number(), 1),
-    processors: z.optional(
-      z.lazy(() => CreateInvoiceProcessors$outboundSchema),
-    ),
   }),
   z.transform((v) => {
     return remap$(v, {
@@ -1151,58 +1053,11 @@ export const CreateInvoiceBillingMethod$outboundSchema: z.ZodMiniEnum<
   typeof CreateInvoiceBillingMethod
 > = z.enum(CreateInvoiceBillingMethod);
 
-/** @internal */
-export type CreateInvoiceItemStripe$Outbound = {
-  price_id: string;
-};
 
-/** @internal */
-export const CreateInvoiceItemStripe$outboundSchema: z.ZodMiniType<
-  CreateInvoiceItemStripe$Outbound,
-  CreateInvoiceItemStripe
-> = z.pipe(
-  z.object({
-    priceId: z.string(),
-  }),
-  z.transform((v) => {
-    return remap$(v, {
-      priceId: "price_id",
-    });
-  }),
-);
 
-export function createInvoiceItemStripeToJSON(
-  createInvoiceItemStripe: CreateInvoiceItemStripe,
-): string {
-  return JSON.stringify(
-    CreateInvoiceItemStripe$outboundSchema.parse(createInvoiceItemStripe),
-  );
-}
 
-/** @internal */
-export type CreateInvoiceItemProcessors$Outbound = {
-  stripe?: CreateInvoiceItemStripe$Outbound | null | undefined;
-};
 
-/** @internal */
-export const CreateInvoiceItemProcessors$outboundSchema: z.ZodMiniType<
-  CreateInvoiceItemProcessors$Outbound,
-  CreateInvoiceItemProcessors
-> = z.object({
-  stripe: z.optional(
-    z.nullable(z.lazy(() => CreateInvoiceItemStripe$outboundSchema)),
-  ),
-});
 
-export function createInvoiceItemProcessorsToJSON(
-  createInvoiceItemProcessors: CreateInvoiceItemProcessors,
-): string {
-  return JSON.stringify(
-    CreateInvoiceItemProcessors$outboundSchema.parse(
-      createInvoiceItemProcessors,
-    ),
-  );
-}
 
 /** @internal */
 export type CreateInvoiceItemPrice$Outbound = {
@@ -1213,7 +1068,6 @@ export type CreateInvoiceItemPrice$Outbound = {
   interval_count: number;
   billing_units: number;
   billing_method: string;
-  processors?: CreateInvoiceItemProcessors$Outbound | undefined;
 };
 
 /** @internal */
@@ -1231,9 +1085,6 @@ export const CreateInvoiceItemPrice$outboundSchema: z.ZodMiniType<
     intervalCount: z._default(z.number(), 1),
     billingUnits: z._default(z.number(), 1),
     billingMethod: CreateInvoiceBillingMethod$outboundSchema,
-    processors: z.optional(
-      z.lazy(() => CreateInvoiceItemProcessors$outboundSchema),
-    ),
   }),
   z.transform((v) => {
     return remap$(v, {
@@ -2097,71 +1948,17 @@ export const CreateInvoiceLicenseQuantityInterval$outboundSchema: z.ZodMiniEnum<
   typeof CreateInvoiceLicenseQuantityInterval
 > = z.enum(CreateInvoiceLicenseQuantityInterval);
 
-/** @internal */
-export type CreateInvoiceLicenseQuantityStripe$Outbound = {
-  price_id: string;
-};
 
-/** @internal */
-export const CreateInvoiceLicenseQuantityStripe$outboundSchema: z.ZodMiniType<
-  CreateInvoiceLicenseQuantityStripe$Outbound,
-  CreateInvoiceLicenseQuantityStripe
-> = z.pipe(
-  z.object({
-    priceId: z.string(),
-  }),
-  z.transform((v) => {
-    return remap$(v, {
-      priceId: "price_id",
-    });
-  }),
-);
 
-export function createInvoiceLicenseQuantityStripeToJSON(
-  createInvoiceLicenseQuantityStripe: CreateInvoiceLicenseQuantityStripe,
-): string {
-  return JSON.stringify(
-    CreateInvoiceLicenseQuantityStripe$outboundSchema.parse(
-      createInvoiceLicenseQuantityStripe,
-    ),
-  );
-}
 
-/** @internal */
-export type CreateInvoiceLicenseQuantityProcessors$Outbound = {
-  stripe?: CreateInvoiceLicenseQuantityStripe$Outbound | null | undefined;
-};
 
-/** @internal */
-export const CreateInvoiceLicenseQuantityProcessors$outboundSchema:
-  z.ZodMiniType<
-    CreateInvoiceLicenseQuantityProcessors$Outbound,
-    CreateInvoiceLicenseQuantityProcessors
-  > = z.object({
-    stripe: z.optional(
-      z.nullable(
-        z.lazy(() => CreateInvoiceLicenseQuantityStripe$outboundSchema),
-      ),
-    ),
-  });
 
-export function createInvoiceLicenseQuantityProcessorsToJSON(
-  createInvoiceLicenseQuantityProcessors:
-    CreateInvoiceLicenseQuantityProcessors,
-): string {
-  return JSON.stringify(
-    CreateInvoiceLicenseQuantityProcessors$outboundSchema.parse(
-      createInvoiceLicenseQuantityProcessors,
-    ),
-  );
-}
 
 /** @internal */
 export type CreateInvoiceLicenseQuantityPrice$Outbound = {
   amount: number;
   interval: string;
   interval_count: number;
-  processors?: CreateInvoiceLicenseQuantityProcessors$Outbound | undefined;
 };
 
 /** @internal */
@@ -2173,9 +1970,6 @@ export const CreateInvoiceLicenseQuantityPrice$outboundSchema: z.ZodMiniType<
     amount: z.number(),
     interval: CreateInvoiceLicenseQuantityInterval$outboundSchema,
     intervalCount: z._default(z.number(), 1),
-    processors: z.optional(
-      z.lazy(() => CreateInvoiceLicenseQuantityProcessors$outboundSchema),
-    ),
   }),
   z.transform((v) => {
     return remap$(v, {
@@ -2623,10 +2417,10 @@ export const CreateInvoiceInvoice$inboundSchema: z.ZodMiniType<
 > = z.pipe(
   z.object({
     plan_ids: z.array(types.string()),
-    stripe_id: types.string(),
+    processor_invoice_id: types.string(),
     processor_type: z._default(
       CreateInvoiceProcessorType$inboundSchema,
-      "stripe",
+      "paypal",
     ),
     status: types.string(),
     total: types.number(),
@@ -2645,7 +2439,7 @@ export const CreateInvoiceInvoice$inboundSchema: z.ZodMiniType<
   z.transform((v) => {
     return remap$(v, {
       "plan_ids": "planIds",
-      "stripe_id": "stripeId",
+      "processor_invoice_id": "processorInvoiceId",
       "processor_type": "processorType",
       "created_at": "createdAt",
       "hosted_invoice_url": "hostedInvoiceUrl",

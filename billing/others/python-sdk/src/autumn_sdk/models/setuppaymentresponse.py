@@ -1276,14 +1276,14 @@ class SetupPaymentRemoveDiscountTypedDict(TypedDict):
     r"""A discount to remove from the subscription. Discounts that are no longer applied are ignored."""
 
     reward_id: str
-    r"""The ID of the reward (or Stripe coupon) to remove."""
+    r"""The ID of the reward to remove."""
 
 
 class SetupPaymentRemoveDiscount(BaseModel):
     r"""A discount to remove from the subscription. Discounts that are no longer applied are ignored."""
 
     reward_id: str
-    r"""The ID of the reward (or Stripe coupon) to remove."""
+    r"""The ID of the reward to remove."""
 
 
 class SetupPaymentParamsTypedDict(TypedDict):
@@ -1306,7 +1306,7 @@ class SetupPaymentParamsTypedDict(TypedDict):
     subscription_id: NotRequired[str]
     r"""A unique ID to identify this subscription. Can be used to target specific subscriptions in update operations when a customer has multiple products with the same plan."""
     discounts: NotRequired[List[SetupPaymentAttachDiscountTypedDict]]
-    r"""List of discounts to apply. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code."""
+    r"""List of discounts to apply. Each discount can be an Autumn reward ID, coupon ID, or promotion code."""
     success_url: NotRequired[str]
     r"""URL to redirect to after successful checkout."""
     billing_cycle_anchor: NotRequired[SetupPaymentBillingCycleAnchorTypedDict]
@@ -1316,11 +1316,11 @@ class SetupPaymentParamsTypedDict(TypedDict):
     ends_at: NotRequired[int]
     r"""Unix timestamp in milliseconds for when the attached plan should end."""
     checkout_session_params: NotRequired[Dict[str, Any]]
-    r"""Additional parameters to pass into the creation of the Stripe checkout session."""
+    r"""Additional parameters to pass into the creation of the checkout session."""
     custom_line_items: NotRequired[List[SetupPaymentCustomLineItemTypedDict]]
     r"""Custom line items that override the auto-generated proration invoice. Only valid for immediate plan changes (eg. upgrades or one off plans)."""
     processor_subscription_id: NotRequired[str]
-    r"""The processor subscription ID to link. Use this to attach an existing Stripe subscription instead of creating a new one."""
+    r"""The processor subscription ID to link. Use this to attach an existing subscription instead of creating a new one."""
     carry_over_balances: NotRequired[SetupPaymentCarryOverBalancesTypedDict]
     r"""Whether to carry over balances from the previous plan."""
     carry_over_usages: NotRequired[SetupPaymentCarryOverUsagesTypedDict]
@@ -1328,13 +1328,13 @@ class SetupPaymentParamsTypedDict(TypedDict):
     license_quantities: NotRequired[List[SetupPaymentLicenseQuantityTypedDict]]
     r"""Seat quantities for the plan's licenses, keyed by license plan."""
     metadata: NotRequired[Dict[str, str]]
-    r"""Key-value metadata to attach to the Stripe subscription, invoice, and checkout session created during this attach flow. Keys prefixed with 'autumn_' are reserved and will be stripped."""
+    r"""Key-value metadata to attach to the subscription, invoice, and checkout session created during this attach flow. Keys prefixed with 'autumn_' are reserved and will be stripped."""
     no_billing_changes: NotRequired[bool]
     r"""If true, skips any billing changes for the attach operation."""
     enable_plan_immediately: NotRequired[bool]
-    r"""If true, the customer's plan is activated immediately even when payment is deferred (invoice mode) or pending (Stripe checkout). For Stripe checkout, the customer_product is inserted before the customer completes the hosted form. Set it here rather than on `invoice_mode`, which only covers the invoice-unpaid case."""
+    r"""If true, the customer's plan is activated immediately even when payment is deferred (invoice mode) or pending (hosted checkout). For hosted checkout, the customer_product is inserted before the customer completes the hosted form. Set it here rather than on `invoice_mode`, which only covers the invoice-unpaid case."""
     tax_rate_id: NotRequired[str]
-    r"""Stripe tax rate ID (txr_...) to apply as the default tax rate on the created subscription, invoice, or checkout session line items."""
+    r"""Tax rate ID to apply as the default tax rate on the created subscription, invoice, or checkout session line items."""
     currency: NotRequired[str]
     r"""Currency to bill this attach in (e.g. usd, eur). Must match the customer's currency if they are already locked to one, and the plan must offer a paid price in it. Defaults to the customer's currency, then the org default."""
     remove_plan_ids: NotRequired[List[str]]
@@ -1372,7 +1372,7 @@ class SetupPaymentParams(BaseModel):
     r"""A unique ID to identify this subscription. Can be used to target specific subscriptions in update operations when a customer has multiple products with the same plan."""
 
     discounts: Optional[List[SetupPaymentAttachDiscount]] = None
-    r"""List of discounts to apply. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code."""
+    r"""List of discounts to apply. Each discount can be an Autumn reward ID, coupon ID, or promotion code."""
 
     success_url: Optional[str] = None
     r"""URL to redirect to after successful checkout."""
@@ -1387,13 +1387,13 @@ class SetupPaymentParams(BaseModel):
     r"""Unix timestamp in milliseconds for when the attached plan should end."""
 
     checkout_session_params: Optional[Dict[str, Any]] = None
-    r"""Additional parameters to pass into the creation of the Stripe checkout session."""
+    r"""Additional parameters to pass into the creation of the checkout session."""
 
     custom_line_items: Optional[List[SetupPaymentCustomLineItem]] = None
     r"""Custom line items that override the auto-generated proration invoice. Only valid for immediate plan changes (eg. upgrades or one off plans)."""
 
     processor_subscription_id: Optional[str] = None
-    r"""The processor subscription ID to link. Use this to attach an existing Stripe subscription instead of creating a new one."""
+    r"""The processor subscription ID to link. Use this to attach an existing subscription instead of creating a new one."""
 
     carry_over_balances: Optional[SetupPaymentCarryOverBalances] = None
     r"""Whether to carry over balances from the previous plan."""
@@ -1405,16 +1405,16 @@ class SetupPaymentParams(BaseModel):
     r"""Seat quantities for the plan's licenses, keyed by license plan."""
 
     metadata: Optional[Dict[str, str]] = None
-    r"""Key-value metadata to attach to the Stripe subscription, invoice, and checkout session created during this attach flow. Keys prefixed with 'autumn_' are reserved and will be stripped."""
+    r"""Key-value metadata to attach to the subscription, invoice, and checkout session created during this attach flow. Keys prefixed with 'autumn_' are reserved and will be stripped."""
 
     no_billing_changes: Optional[bool] = None
     r"""If true, skips any billing changes for the attach operation."""
 
     enable_plan_immediately: Optional[bool] = None
-    r"""If true, the customer's plan is activated immediately even when payment is deferred (invoice mode) or pending (Stripe checkout). For Stripe checkout, the customer_product is inserted before the customer completes the hosted form. Set it here rather than on `invoice_mode`, which only covers the invoice-unpaid case."""
+    r"""If true, the customer's plan is activated immediately even when payment is deferred (invoice mode) or pending (hosted checkout). For hosted checkout, the customer_product is inserted before the customer completes the hosted form. Set it here rather than on `invoice_mode`, which only covers the invoice-unpaid case."""
 
     tax_rate_id: Optional[str] = None
-    r"""Stripe tax rate ID (txr_...) to apply as the default tax rate on the created subscription, invoice, or checkout session line items."""
+    r"""Tax rate ID to apply as the default tax rate on the created subscription, invoice, or checkout session line items."""
 
     currency: Optional[str] = None
     r"""Currency to bill this attach in (e.g. usd, eur). Must match the customer's currency if they are already locked to one, and the plan must offer a paid price in it. Defaults to the customer's currency, then the org default."""

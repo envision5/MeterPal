@@ -26,7 +26,7 @@ export const BillingDetailsTaxIdSchema = z
 	.object({
 		type: z.string().meta({
 			description:
-				"Stripe tax ID type, e.g. eu_vat, gb_vat, us_ein. See https://docs.stripe.com/billing/customer/tax-ids#supported-tax-id",
+				"Tax ID type, e.g. eu_vat, gb_vat, us_ein.",
 		}),
 		value: z.string().meta({ description: "The tax ID, e.g. DE123456789." }),
 	})
@@ -65,11 +65,11 @@ export const BillingDetailsParamsSchema = z
 	.object({
 		address: BillingDetailsAddressSchema.nullish().meta({
 			description:
-				"Billing address, used for tax and shown on invoices. Replaces the whole address, as in Stripe; null clears it.",
+				"Billing address, used for tax and shown on invoices. Replaces the whole address; null clears it.",
 		}),
 		tax_ids: BillingDetailsTaxIdChangesSchema.optional().meta({
 			description:
-				"Tax IDs to add or remove (e.g. VAT). Stripe tax IDs cannot be edited, so change one by removing the old ID and adding the new one. IDs not listed are kept.",
+				"Tax IDs to add or remove (e.g. VAT). Tax IDs cannot be edited, so change one by removing the old ID and adding the new one. IDs not listed are kept.",
 		}),
 		tax_exempt: TaxExemptSchema.optional().meta({
 			description:
@@ -90,7 +90,7 @@ export const BillingDetailsParamsSchema = z
 	.meta({
 		title: "BillingDetailsParams",
 		description:
-			"Billing details stored on the linked Stripe customer. Requires a Stripe customer.",
+			"Billing details stored on the linked processor customer. Requires a processor customer.",
 	});
 
 export const ApiBillingDetailsSchema = z
@@ -105,14 +105,14 @@ export const ApiBillingDetailsSchema = z
 	.meta({
 		title: "BillingDetails",
 		description:
-			"Billing details read live from the linked Stripe customer. Null when no Stripe customer is linked.",
+			"Billing details read live from the linked processor customer. Null when no processor customer is linked.",
 	});
 
 /** The expand field, shared by every customer response version. */
 export const ApiBillingDetailsExpandSchema =
 	ApiBillingDetailsSchema.nullish().meta({
 		description:
-			"Billing details from the linked Stripe customer. Returned only if billing_details is provided in the expand parameter.",
+			"Billing details from the linked processor customer. Returned only if billing_details is provided in the expand parameter.",
 	});
 
 export type BillingDetailsParams = z.infer<typeof BillingDetailsParamsSchema>;

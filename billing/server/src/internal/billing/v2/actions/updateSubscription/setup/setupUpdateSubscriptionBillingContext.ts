@@ -1,7 +1,6 @@
 import {
 	BillingVersion,
 	hasCustomItems,
-	orgDisableStripeWrites,
 	type UpdateSubscriptionBillingContext,
 	type UpdateSubscriptionBillingContextOverride,
 	type UpdateSubscriptionV1Params,
@@ -11,8 +10,6 @@ import { setupDefaultProductContext } from "@/internal/billing/v2/actions/update
 import { setupUpdateLicenseQuantities } from "@/internal/billing/v2/actions/updateSubscription/setup/setupUpdateLicenseQuantities";
 import { setupUpdateSubscriptionProductContext } from "@/internal/billing/v2/actions/updateSubscription/setup/setupUpdateSubscriptionProductContext";
 import { handleEntityLicenseAssignmentErrors } from "@/internal/billing/v2/common/errors/handleEntityLicenseAssignmentErrors";
-import { fetchStripeTaxRateForBilling } from "@/internal/billing/v2/providers/stripe/setup/fetchStripeTaxRateForBilling";
-import { setupStripeBillingContext } from "@/internal/billing/v2/providers/stripe/setup/setupStripeBillingContext";
 import { setupCustomerLicenseBillingContext } from "@/internal/billing/v2/setup/customerLicenseBillingContext/setupCustomerLicenseBillingContext";
 import { fetchStoredLineItemsForSubscriptionBilling } from "@/internal/billing/v2/setup/fetchStoredLineItemsForSubscriptionBilling";
 import { setupAdjustableQuantities } from "@/internal/billing/v2/setup/setupAdjustableQuantities";
@@ -110,10 +107,7 @@ export const setupUpdateSubscriptionBillingContext = async ({
 		),
 	);
 
-	// no_billing_changes suppresses writes but still reads an existing Stripe sub
-	// so anchors and subscription linkage survive replacement updates.
 	const skipBillingFetching =
-		orgDisableStripeWrites({ ctx }) ||
 		contextOverride.skipBillingFetching === true ||
 		billingRelatedFields.length === 0 ||
 		isUpdatingFreeCustomerProduct;
@@ -123,65 +117,21 @@ export const setupUpdateSubscriptionBillingContext = async ({
 		params.no_billing_changes === true ||
 		params.processor_subscription_id !== undefined;
 
-	const {
-		stripeSubscription,
-		stripeSubscriptionSchedule,
-		stripeCustomer,
-		stripeDiscounts,
-		stripeTaxRate,
-		paymentMethod,
-		testClockFrozenTime,
-		canceledStripeSubscriptionId,
-		mismatchedStripeSubscriptionId,
-	} = await setupStripeBillingContext({
-		ctx,
-		fullCustomer,
-		targetCustomerProduct: customerProduct,
-		contextOverride,
-		params,
-		skipBillingFetching,
-		product: fullProduct,
-		skipSubscriptionFetching: isUpdatingFreeCustomerProduct,
-		createStripeCustomerIfMissing:
-			!preview && params.no_billing_changes !== true,
-	});
-
-	const subscriptionTaxRate = stripeSubscription?.default_tax_rates?.[0];
-	const inheritedTaxRateId =
-		typeof subscriptionTaxRate === "string"
-			? subscriptionTaxRate
-			: subscriptionTaxRate?.id;
-	const inheritedStripeTaxRate =
-		typeof subscriptionTaxRate === "string"
-			? await fetchStripeTaxRateForBilling({
-					ctx,
-					taxRateId: subscriptionTaxRate,
-				})
-			: subscriptionTaxRate;
-
-	const currentEpochMs = testClockFrozenTime ?? Date.now();
+	const currentEpochMs = Date.now();
 
 	// 1. Setup trial context first
 	const trialContext = setupUpdateSubscriptionTrialContext({
-		stripeSubscription,
 		customerProduct,
 		currentEpochMs,
 		params,
 		fullProduct,
 	});
 
-	const isUnbillableSubscription =
-		canceledStripeSubscriptionId !== undefined ||
-		mismatchedStripeSubscriptionId !== undefined;
-
 	const skipBillingChanges =
-		skipBillingChangesBase ||
-		isUnbillableSubscription ||
-		isRevertTrialContext({ trialContext });
+		skipBillingChangesBase || isRevertTrialContext({ trialContext });
 
 	// 3. Determine final anchor based on product transitions
 	let billingCycleAnchorMs = setupBillingCycleAnchor({
-		stripeSubscription,
 		customerProduct,
 		newFullProduct: fullProduct,
 		trialContext,
@@ -204,7 +154,6 @@ export const setupUpdateSubscriptionBillingContext = async ({
 		ctx,
 		fullCustomer,
 		params,
-		stripeCustomer,
 	});
 	const isCustom =
 		contextOverride.forceIsCustom !== undefined
@@ -232,10 +181,8 @@ export const setupUpdateSubscriptionBillingContext = async ({
 	});
 
 	let checkoutMode = setupAttachCheckoutMode({
-		paymentMethod,
 		redirectMode: params.redirect_mode ?? "if_required",
 		attachProduct: fullProduct,
-		stripeSubscription,
 		trialContext,
 		invoiceMode,
 	});
@@ -253,7 +200,7 @@ export const setupUpdateSubscriptionBillingContext = async ({
 		await fetchStoredLineItemsForSubscriptionBilling({
 			db: ctx.db,
 			fullCustomer,
-			stripeSubscription,
+			processorSubscriptionId: customerProduct.subscription_ids?.[0],
 			outgoingCusProductIds: [customerProduct.id],
 		});
 
@@ -268,15 +215,6 @@ export const setupUpdateSubscriptionBillingContext = async ({
 		recalculateBalances: params.recalculate_balances?.enabled === true,
 		refundLastPayment: params.refund_last_payment,
 		subscriptionParams: params.subscription_params,
-		stripeSubscription,
-		stripeSubscriptionSchedule,
-		stripeDiscounts,
-		stripeCustomer,
-		stripeTaxRate: stripeTaxRate ?? inheritedStripeTaxRate,
-		paymentMethod,
-		taxRateId: inheritedTaxRateId,
-		canceledStripeSubscriptionId,
-		mismatchedStripeSubscriptionId,
 
 		currentEpochMs,
 		billingCycleAnchorMs,
@@ -305,7 +243,6 @@ export const setupUpdateSubscriptionBillingContext = async ({
 		actionSource: "updateSubscription",
 
 		skipBillingChanges,
-		dryRunStripe: preview,
 
 		storedChargeLineItems,
 		storedRefundLineItems,

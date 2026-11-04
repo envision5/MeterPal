@@ -1,16 +1,12 @@
 import {
-	type BillingResult,
 	type AttachBillingContext,
 	type AttachParamsV1,
 	type BillingContextOverride,
+	type BillingResult,
 	CheckoutAction,
 } from "@autumn/shared";
 import { ms } from "@shared/utils/common/unixUtils";
 import { checkoutSessionLock } from "@/external/redis/actions/checkoutSessionLock/checkoutSessionLock.js";
-import {
-	runPaypalCheckout,
-} from "@/internal/billing/paypal/runPaypalCheckout.js";
-import { isPaypalNativeOrg } from "@/internal/orgs/orgUtils.js";
 import type { AutumnContext } from "@/honoUtils/HonoEnv";
 import { computeAttachPlan } from "@/internal/billing/v2/actions/attach/compute/computeAttachPlan";
 import { handleAttachComputeErrors } from "@/internal/billing/v2/actions/attach/errors/handleAttachComputeErrors";
@@ -18,16 +14,15 @@ import { handleAttachV2Errors } from "@/internal/billing/v2/actions/attach/error
 import { logAttachContext } from "@/internal/billing/v2/actions/attach/logs/logAttachContext";
 import { setupAttachBillingContext } from "@/internal/billing/v2/actions/attach/setup/setupAttachBillingContext";
 import { checkCheckoutSessionLock } from "@/internal/billing/v2/actions/locks/checkoutSessionLock/checkCheckoutSessionLock";
-import {
-	findPendingInvoiceConflict,
-	listPendingCustomerProducts,
-} from "@/internal/billing/v2/common/pendingInvoiceConflict/findPendingInvoiceConflict";
 import { executeBillingPlan } from "@/internal/billing/v2/execute/executeBillingPlan";
 import { executeAutumnBillingPlan } from "@/internal/billing/v2/execute/executeAutumnBillingPlan";
-import { evaluateStripeBillingPlan } from "@/internal/billing/v2/providers/stripe/actionBuilders/evaluateStripeBillingPlan";
-import { logStripeBillingPlan } from "@/internal/billing/v2/providers/stripe/logs/logStripeBillingPlan";
-import { logStripeBillingResult } from "@/internal/billing/v2/providers/stripe/logs/logStripeBillingResult";
 import { publishBillingTransition } from "@/internal/billing/v2/publish/publishBillingTransition.js";
+import {
+	type CreateAutumnCheckoutResult,
+	createAutumnCheckout,
+} from "../../common/createAutumnCheckout";
+import { isPaypalConnected } from "@/internal/orgs/orgUtils.js";
+import { runPaypalCheckout } from "@/internal/billing/paypal/runPaypalCheckout.js";
 import { invalidateCachedFullSubject } from "@/internal/customers/cache/fullSubject/index.js";
 import { hasActiveCustomerProductForProduct } from "@/internal/customers/cusProducts/hasActiveCustomerProductForProduct";
 import { sendBillingUpdatedWebhook } from "@/internal/billing/v2/workflows/sendBillingUpdatedWebhook/sendBillingUpdatedWebhook";
@@ -36,11 +31,8 @@ import { computeAttachPreviewBillingPlan } from "@/internal/billing/v2/utils/bil
 import { resolveCarryOverUsagesParam } from "@/internal/billing/v2/utils/handleCarryOvers/resolveCarryOverUsagesParam";
 import { logAutumnBillingPlan } from "@/internal/billing/v2/utils/logs/logAutumnBillingPlan";
 import { preserveSubjectCache } from "@/internal/customers/cache/fullSubject/actions/preserveSubjectCache.js";
+import { RecaseError, ErrCode } from "@autumn/shared";
 import { hashJson } from "@/utils/hash/hashJson";
-import {
-	type CreateAutumnCheckoutResult,
-	createAutumnCheckout,
-} from "../../common/createAutumnCheckout";
 
 const LONG_LIVED_CHECKOUT_EXPIRY_MS = ms.days(90);
 
@@ -101,12 +93,34 @@ export async function attach({
 		params,
 	});
 
-	// 3. Evaluate Stripe billing plan (handles checkout mode internally)
-	// 5b. PayPal-native orgs: the buyer approves on PayPal, money lands via
-	// /webhooks/paypal, and the wallet is credited — no Stripe client involved.
-	// The approval URL rides the same response field the Stripe checkout
-	// session would (payment_url via stripeCheckoutSession.url).
-	if (isPaypalNativeOrg(ctx)) {
+	const billingPlan = { autumn: autumnBillingPlan };
+
+	// 3. Errors (requires full billing plan)
+	await handleAttachV2Errors({
+		ctx,
+		billingContext,
+		billingPlan,
+		params,
+		preview,
+	});
+
+	// 3b. PayPal-native orgs buying a paid product: the buyer approves on
+	// PayPal, money lands via /webhooks/paypal, and the wallet is credited.
+	// The approval URL rides the response's payment_url field.
+	if (
+		!preview &&
+		billingContext.checkoutMode === "processor_checkout" &&
+		!skipAutumnCheckout
+	) {
+		if (!isPaypalConnected({ org: ctx.org, env: ctx.env })) {
+			throw new RecaseError({
+				code: ErrCode.ProcessorConfigNotFound,
+				message:
+					"No PayPal connection for this org — connect PayPal in settings to sell paid plans",
+				statusCode: 400,
+			});
+		}
+
 		preserveSubjectCache({ ctx });
 		const products = billingContext.attachProduct
 			? [billingContext.attachProduct]
@@ -132,7 +146,7 @@ export async function attach({
 		// Returning "no checkout URL" without applying it leaves the customer
 		// billed for a plan they never receive, and makes the UI's plan switch
 		// a silent no-op that looks like it succeeded.
-		if (!checkoutUrl && !preview) {
+		if (!checkoutUrl) {
 			// The plan may already be applied: the PayPal checkout can activate
 			// an approved-but-pending subscription on the way through, and the
 			// activation attaches the plan with it.  The billing context is a
@@ -148,8 +162,8 @@ export async function attach({
 				// nothing to pay for (the PayPal subscription is already paid).
 				return {
 					billingContext,
-					billingPlan: { autumn: autumnBillingPlan, stripe: {} },
-					billingResult: { stripe: { deferred: false } },
+					billingPlan,
+					billingResult: { processor: { deferred: false } },
 				};
 			}
 
@@ -175,7 +189,7 @@ export async function attach({
 			await publishBillingTransition({
 				ctx,
 				billingContext,
-				billingPlan: { autumn: autumnBillingPlan, stripe: {} },
+				billingPlan,
 				executionDeferred: false,
 			});
 
@@ -193,25 +207,21 @@ export async function attach({
 
 			return {
 				billingContext,
-				billingPlan: { autumn: autumnBillingPlan, stripe: {} },
-				billingResult: { stripe: { deferred: false } },
+				billingPlan,
+				billingResult: { processor: { deferred: false } },
 			};
 		}
 
-		// Early exit: billingPlan/Stripe evaluation intentionally skipped —
-		// the billingResultToResponse mapper only needs the checkout URL.
+		// Early exit: execution intentionally skipped — the
+		// billingResultToResponse mapper only needs the checkout URL.
 		return {
 			billingContext,
 			billingPlan: undefined,
 			billingResult: {
-				stripe: {
+				processor: {
 					deferred: true,
-					stripeCheckoutSession: checkoutUrl
-						? {
-								id: `paypal-${crypto.randomUUID()}`,
-								url: checkoutUrl,
-							}
-						: undefined,
+					checkoutId: `paypal-${crypto.randomUUID()}`,
+					checkoutUrl,
 				},
 			},
 		} as unknown as {
@@ -220,29 +230,6 @@ export async function attach({
 			billingResult: BillingResult;
 		};
 	}
-
-	const stripeBillingPlan = await evaluateStripeBillingPlan({
-		ctx,
-		billingContext,
-		autumnBillingPlan,
-		checkoutMode: billingContext.checkoutMode,
-	});
-
-	logStripeBillingPlan({ ctx, stripeBillingPlan, billingContext });
-
-	const billingPlan = {
-		autumn: autumnBillingPlan,
-		stripe: stripeBillingPlan,
-	};
-
-	// 4. Errors (requires full billing plan)
-	await handleAttachV2Errors({
-		ctx,
-		billingContext,
-		billingPlan,
-		params,
-		preview,
-	});
 
 	if (preview) {
 		const previewBillingPlan = await computeAttachPreviewBillingPlan({
@@ -258,9 +245,7 @@ export async function attach({
 	}
 
 	const shouldCreateLongLivedCheckout =
-		params.long_lived_checkout &&
-		billingContext.checkoutMode === "stripe_checkout" &&
-		!skipAutumnCheckout;
+		params.long_lived_checkout && !skipAutumnCheckout;
 
 	const autumnCheckoutParams = params.long_lived_checkout
 		? { ...params, long_lived_checkout: false }
@@ -275,38 +260,13 @@ export async function attach({
 			existingLock: checkoutReservation,
 		});
 
-	// 5. Checkout session lock (skip for confirm flows)
+	// 4. Checkout session lock (skip for confirm flows)
 	if (!skipAutumnCheckout && !shouldCreateLongLivedCheckout) {
 		const cachedResult = await arbitrateCheckoutLock();
 		if (cachedResult) {
 			preserveSubjectCache({ ctx });
 			return cachedResult;
 		}
-	}
-
-	const pendingInvoiceResult = await findPendingInvoiceConflict({
-		ctx,
-		fullCustomer: billingContext.fullCustomer,
-		attachProduct: billingContext.attachProduct,
-		loadPendingCustomerProducts: () =>
-			listPendingCustomerProducts({
-				ctx,
-				fullCustomer: billingContext.fullCustomer,
-			}),
-	});
-	if (pendingInvoiceResult) {
-		preserveSubjectCache({ ctx });
-		// Long-lived skipped the lock above; a completed session must still win.
-		const cachedResult = shouldCreateLongLivedCheckout
-			? await arbitrateCheckoutLock()
-			: null;
-		return (
-			cachedResult ?? {
-				billingContext,
-				billingPlan,
-				billingResult: pendingInvoiceResult,
-			}
-		);
 	}
 
 	if (shouldCreateLongLivedCheckout) {
@@ -337,7 +297,7 @@ export async function attach({
 		});
 	}
 
-	// 6. Execute billing plan
+	// 5. Execute billing plan (DB-only — PayPal checkouts returned above)
 	const billingResult = await executeBillingPlan({
 		ctx,
 		billingContext,
@@ -346,19 +306,17 @@ export async function attach({
 			? hashJson({ value: autumnCheckoutParams })
 			: undefined,
 	});
-	if (billingResult.stripe.deferred) {
+	if (billingResult.processor?.deferred) {
 		preserveSubjectCache({ ctx });
 	}
 
-	// 7. Publish the compute-time balance transition
+	// 6. Publish the compute-time balance transition
 	await publishBillingTransition({
 		ctx,
 		billingContext,
 		billingPlan,
-		executionDeferred: billingResult.stripe.deferred === true,
+		executionDeferred: billingResult.processor?.deferred === true,
 	});
-
-	logStripeBillingResult({ ctx, result: billingResult.stripe });
 
 	return {
 		billingContext,

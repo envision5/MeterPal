@@ -14,12 +14,12 @@ import {
 	ResetInterval,
 	type UpdateSubscriptionV1ParamsInput,
 } from "@autumn/shared";
-import { readScopedFeatureRow } from "@tests/integration/billing/migrations-v2/batch-migrations/paidRowTestUtils";
-import { expectIncludedFilterOutcomeCorrect } from "@tests/integration/billing/migrations-v2/utils/expectIncludedFilterOutcomeCorrect";
+import { readScopedFeatureRow } from "@tests/integration/billing/utils/paidRowTestUtils";
+import { expectIncludedFilterOutcomeCorrect } from "@tests/integration/billing/utils/expectIncludedFilterOutcomeCorrect";
 import {
 	expectUnmatchedReplaceLeftoversCorrect,
 	unmatchedReplaceLeftoverCustomize,
-} from "@tests/integration/billing/migrations-v2/utils/expectUnmatchedReplaceLeftoversCorrect";
+} from "@tests/integration/billing/utils/expectUnmatchedReplaceLeftoversCorrect";
 import { expectCustomerProducts } from "@tests/integration/billing/utils/expectCustomerProductCorrect";
 import { TestFeature } from "@tests/setup/v2Features";
 import { items } from "@tests/utils/fixtures/items";

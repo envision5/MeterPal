@@ -1,4 +1,4 @@
-import { AppEnv, customers, entities, type ExternalProcessors } from "@autumn/shared";
+import { AppEnv, customers, entities } from "@autumn/shared";
 import { initDrizzle } from "@server/db/initDrizzle.js";
 import { loadLocalEnv } from "@server/utils/envUtils.js";
 import { generateId } from "@server/utils/genUtils.js";
@@ -15,7 +15,6 @@ const CONFIG = {
 	batchSize: 5_000,
 	burstClusterSize: 100,
 	burstEveryNCustomers: 1_000,
-	revenuecatRatio: 0.1,
 	defaultEnv: AppEnv.Sandbox,
 	seedMarkerName: "Pagination Benchmark Org",
 } as const;
@@ -123,16 +122,6 @@ const generateCustomerRow = ({
 }): CustomerRow => {
 	const internalId = generateId("cus_int");
 	const externalId = `cus_bench_${index.toString().padStart(8, "0")}`;
-	const hasRevenuecat = Math.random() < CONFIG.revenuecatRatio;
-
-	const processors = hasRevenuecat
-		? ({
-				revenuecat: {
-					id: `rc_${index}`,
-					app_user_id: `app_${index}`,
-				},
-			} as unknown as ExternalProcessors)
-		: ({} as ExternalProcessors);
 
 	return {
 		internal_id: internalId,
@@ -142,7 +131,6 @@ const generateCustomerRow = ({
 		id: externalId,
 		email: `bench+${index}@autumn-test.dev`,
 		env,
-		processors,
 	};
 };
 

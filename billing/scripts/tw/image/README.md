@@ -21,7 +21,7 @@ sandboxes and invokes these.
 | `build-base.sh` | BASE (ref-agnostic) | §4a, §5, §5a "BASE snapshot" | Installs native PG18 + contrib (`pg_trgm`), Dragonfly, elasticmq-native (GraalVM binary, **not** the JVM jar), optional ClickHouse, and bun. `initdb` a PG18 cluster, role `postgres/postgres` SUPERUSER, `createdb autumn`, `CREATE EXTENSION pg_trgm` into an **empty** DB (no tables). Places `elasticmq.conf` declaring `autumn.fifo` + `autumn-track.fifo`. `bun install` at repo root. |
 | `start-services.sh` | base build + worker boot | §5, §5a, §4c | Starts PG (`pg_ctl`), Dragonfly (`--dir` snapshot path, `:6379`), elasticmq-native (`:9324`, `-Dconfig.file`), optional ClickHouse (`:8123`), in background. Idempotent (PING/probe gate per service). |
 | `stop-services.sh` | warm build, pre-snapshot | §5a step 6, §4b step 5 | CLEAN-STOP for snapshot consistency: `pg_ctl -m fast stop -w`; Dragonfly `SAVE` then `SHUTDOWN NOSAVE`; SIGTERM elasticmq. Filesystem-only snapshots mean process memory is lost, so state must be flushed to disk. |
-| `warmup.sh` | WARM (per-run, on the ref) | §4b, §5a "WARM snapshot", §9 step 3 | `git checkout <ref>` → `bun install --frozen-lockfile` → `bun db migrate --bootstrap` (fail-fast) → `bun migrate-functions` → seed via `setup-test` (Stripe disabled) → `stop-services.sh`. |
+| `warmup.sh` | WARM (per-run, on the ref) | §4b, §5a "WARM snapshot", §9 step 3 | `git checkout <ref>` → `bun install --frozen-lockfile` → `bun db migrate --bootstrap` (fail-fast) → `bun migrate-functions` → seed via `setup-test` → `stop-services.sh`. |
 
 ## Order (per the plan)
 
@@ -30,8 +30,8 @@ sandboxes and invokes these.
 2. **Warm build (every `bun tw`, on the ref under test):** fork base →
    `warmup.sh <ref>` → orchestrator snapshots → warm snapshot.
 3. **Worker boot (×N forks):** `start-services.sh` (services cold-start against
-   the baked, migrated data dir — **no re-migration**) → orchestrator attaches
-   the Stripe sub-account + webhook (`attachSandboxStripeAccount`, §6a) → ready.
+   the baked, migrated data dir — **no re-migration**) → the worker binds its Svix
+   app (if it is the Svix shard) → ready.
 
 ## Fixed paths & ports (override via env for local iteration)
 
@@ -69,15 +69,8 @@ sandboxes and invokes these.
   future image bakes a `server/.env` with a `DATABASE_URL`, it would override —
   keep that file absent (the 6 hard-gate secrets are injected as fork `env`,
   plan §11a, not via `.env`).
-- **`createStripeAccount: false` gate.** `warmup.sh` exports `TW_WORKER_MODE=1`.
-  The `createTestOrg` refactor (plan §6a "Warm-parent change", a **separate
-  module**) reads this flag to flip `createStripeAccount` off so the warm
-  snapshot bakes org/features/products/keys but **no** Stripe sub-account; the
-  per-worker `attachSandboxStripeAccount` mints it at boot. If that refactor
-  lands under a different flag name, update the export in `warmup.sh`.
 - **`NODE_ENV` must not be `production`** (plan §6a gotcha a) — `warmup.sh` sets
-  `development` so skip-verify stays on and feature-guarded services degrade
-  instead of blocking boot.
+  `development` so feature-guarded services degrade instead of blocking boot.
 - **PG durability is off** (`fsync`/`synchronous_commit`/`full_page_writes`
   off) — the DB is ephemeral test state, so this is a safe speedup; the
   clean-stop still checkpoints to disk for the snapshot.

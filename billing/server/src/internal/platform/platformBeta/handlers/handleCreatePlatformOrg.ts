@@ -26,7 +26,7 @@ const CreateOrganizationSchema = z.object({
 /**
  * Creates an organization for platform users
  * - Reuses existing users and organizations
- * - Creates test account via Stripe Connect
+ * - Provisions org resources (svix apps, pkeys)
  * - Returns Autumn secret keys
  */
 export const handleCreatePlatformOrg = createRoute({

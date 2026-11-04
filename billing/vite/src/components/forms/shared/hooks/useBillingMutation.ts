@@ -7,7 +7,7 @@ import { invalidateCustomerBillingQueries } from "../utils/invalidateCustomerBil
 
 type BillingMutationResponse = {
 	invoice?: {
-		stripe_id?: string;
+		processor_invoice_id?: string;
 		hosted_invoice_url?: string | null;
 	} | null;
 	payment_url?: string | null;

@@ -1,8 +1,7 @@
 /**
  * `bun tw doctor` — fast, read-only health check of everything a run depends
- * on: git state, the Modal warm-image cache, the Stripe sub-account pool
- * (including an in-flight teardown from a prior run), global locks, env, and
- * the provider defaults. Prints ✓/⚠/✗ lines; exits 1 if anything is ✗.
+ * on: git state, the Modal warm-image cache, global locks, env, and the
+ * provider defaults. Prints ✓/⚠/✗ lines; exits 1 if anything is ✗.
  */
 
 import chalk from "chalk";
@@ -13,8 +12,6 @@ import {
 	WARM_SANDBOX_PREFIX,
 } from "../constants.ts";
 import { listHeldLocks } from "../helpers/lock.ts";
-import { allPoolKeys } from "../helpers/stripeKeyPool.ts";
-import { type PoolCensus, poolCensus } from "../helpers/stripePool.ts";
 
 const ok = (line: string): void => console.log(`  ${chalk.green("✓")} ${line}`);
 const warnLine = (line: string): void =>
@@ -143,48 +140,6 @@ const printWarmSection = (
 	}
 };
 
-const printPoolSection = (
-	censuses: PoolCensus[] | "timeout" | { error: string },
-): boolean => {
-	section("stripe pool");
-	if (censuses === "timeout") {
-		warnLine("Stripe pool census timed out");
-		return false;
-	}
-	if ("error" in (censuses as { error?: string })) {
-		warnLine(
-			`census failed (${(censuses as { error: string }).error.slice(0, 120)})`,
-		);
-		return false;
-	}
-	let nukingNow = 0;
-	let nukingStale = 0;
-	let oldest: number | undefined;
-	for (const census of censuses as PoolCensus[]) {
-		info(
-			`key ${census.keyIndex}: ${census.clean} clean · ${census.dirty} dirty · ${census.nukingInProgress + census.nukingStale} nuking`,
-		);
-		nukingNow += census.nukingInProgress;
-		nukingStale += census.nukingStale;
-		if (census.oldestNukingAt && (!oldest || census.oldestNukingAt < oldest)) {
-			oldest = census.oldestNukingAt;
-		}
-	}
-	if (nukingNow > 0) {
-		warnLine(
-			`teardown from a prior run IN PROGRESS: ${nukingNow} account(s) nuking (started ${oldest ? fmtAge(Date.now() - oldest) : "?"} ago) — new claims wait for it`,
-		);
-	} else {
-		ok("no teardown in progress");
-	}
-	if (nukingStale > 0) {
-		warnLine(
-			`${nukingStale} account(s) stuck in \`nuking\` (crashed nuke) — the next teardown's stale sweep reclaims them`,
-		);
-	}
-	return true;
-};
-
 const ENV_REQUIRED = [
 	"ENCRYPTION_IV",
 	"ENCRYPTION_PASSWORD",
@@ -211,17 +166,16 @@ const printEnvSection = (): boolean => {
 			);
 		}
 	}
-	const poolKeys = process.env.STRIPE_TEST_KEY_POOL?.split(",").filter(Boolean);
-	if (poolKeys?.length) {
-		ok(`STRIPE_TEST_KEY_POOL (${poolKeys.length} key(s))`);
-	} else if (process.env.STRIPE_SANDBOX_SECRET_KEY) {
+	// PayPal is the only processor — the workers need credentials or every
+	// billing call 500s (the test org carries no `paypal_config`).
+	if (process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET) {
 		ok(
-			"STRIPE_SANDBOX_SECRET_KEY (pool of one — set STRIPE_TEST_KEY_POOL to shard)",
+			`PAYPAL_CLIENT_ID + PAYPAL_CLIENT_SECRET (${process.env.PAYPAL_ENV === "live" ? "live" : "sandbox"})`,
 		);
 	} else {
 		failed = true;
 		console.log(
-			`  ${chalk.red("✗")} no Stripe key — set STRIPE_TEST_KEY_POOL or STRIPE_SANDBOX_SECRET_KEY`,
+			`  ${chalk.red("✗")} no PayPal credentials — set PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET`,
 		);
 	}
 	for (const name of ENV_WARN) {
@@ -247,25 +201,12 @@ export const doctor = async (): Promise<number> => {
 	const { sha12 } = printGitSection();
 
 	// Remote checks run concurrently, each time-boxed, then print in order.
-	const [warmStatus, censusResult, locks] = await Promise.all([
+	const [warmStatus, locks] = await Promise.all([
 		timeBoxed(8000, () => checkWarmCache(sha12)),
-		timeBoxed(20_000, () =>
-			(async () => {
-				try {
-					allPoolKeys();
-				} catch (error) {
-					return { error: (error as Error).message };
-				}
-				// Pool accounts are recent — 3 newest-first pages per key is plenty
-				// for a health check and keeps doctor fast on huge platform accounts.
-				return await poolCensus(3);
-			})(),
-		),
 		timeBoxed(8000, () => listHeldLocks()),
 	]);
 
 	printWarmSection(warmStatus, sha12);
-	printPoolSection(censusResult);
 
 	section("locks (refs/tw/locks/*)");
 	if (locks === "timeout") {

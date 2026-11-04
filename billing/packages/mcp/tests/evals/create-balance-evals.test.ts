@@ -62,7 +62,6 @@ test("previews and creates an entity-scoped expiring credit grant", async () => 
 	expectExactApiCall(api, "createBalance", expectedGrant);
 	expectNoToolCall(toolCalls, "attach");
 	expectNoToolCall(toolCalls, "updateSubscription");
-	expectNoToolCall(toolCalls, "createSchedule");
 	expect(api.call("createBalance")?.rawBody).not.toHaveProperty("reset");
 	expect(api.call("createBalance")?.rawBody).not.toHaveProperty(
 		"granted_balance",

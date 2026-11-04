@@ -15,7 +15,7 @@ type PoolExpectation = {
 	nextResetAt: "present" | null;
 	resetCycleAnchor: "present" | null;
 	resetMode: PooledBalanceResetMode;
-	stripeSubscriptionId: "stripe_subscription" | null;
+	processorSubscriptionId: "processor_subscription" | null;
 	customerLicenseLinkId?: string | null;
 	rollovers?: Array<{ balance: number; usage?: number }>;
 };
@@ -153,10 +153,10 @@ export const expectPooledBalanceCorrect = async ({
 		} else {
 			expect(pooledBalance.reset_cycle_anchor).toBeNull();
 		}
-		if (pool.stripeSubscriptionId === "stripe_subscription") {
-			expect(pooledBalance.stripe_subscription_id).toMatch(/^sub_/);
+		if (pool.processorSubscriptionId === "processor_subscription") {
+			expect(pooledBalance.processor_subscription_id).toMatch(/^sub_/);
 		} else {
-			expect(pooledBalance.stripe_subscription_id).toBeNull();
+			expect(pooledBalance.processor_subscription_id).toBeNull();
 		}
 	}
 

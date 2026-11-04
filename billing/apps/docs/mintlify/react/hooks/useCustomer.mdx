@@ -56,7 +56,6 @@ export default function CustomerProfile() {
   "email": "john@example.com",
   "createdAt": 1771409161016,
   "fingerprint": null,
-  "stripeId": "cus_stripe123",
   "env": "sandbox",
   "metadata": {},
   "sendEmailReceipts": false,
@@ -173,7 +172,7 @@ export default function SendMessageButton() {
 
 ### `openCustomerPortal()`
 
-Opens the Stripe customer billing portal for managing subscriptions and payment methods.
+Opens the customer's billing portal for managing subscriptions and payment methods.
 
 ```tsx
 import { useCustomer } from "autumn-js/react";

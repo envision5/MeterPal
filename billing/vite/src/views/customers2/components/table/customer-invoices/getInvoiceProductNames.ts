@@ -52,7 +52,7 @@ const resolveProductName = ({
 };
 
 /**
- * Build a Stripe-style "Product - Feature" label for an invoice from its line
+ * Build a "Product - Feature" label for an invoice from its line
  * items, so base-plan and usage invoices for the same product are
  * distinguishable (e.g. "Basic Monthly" vs "Basic Monthly - References").
  */

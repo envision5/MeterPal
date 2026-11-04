@@ -4,7 +4,7 @@
 
 - Default operator-led billing actions to invoice mode: `invoice_mode.enabled: true` and `invoice_mode.finalize: false`, and grant access now (see Enable plan immediately for which field).
 - Use invoice mode even when the immediate charge is $0, unless the user asks for checkout, self-serve, or direct charging.
-- This grants access now while creating a draft Stripe invoice that the operator can review, edit, and send.
+- This grants access now while creating a draft processor invoice that the operator can review, edit, and send.
 - Use explicit net terms from the user or contract in `invoice_mode.net_terms_days`; otherwise do not ask just to set net terms.
 - If the customer has no email, ask for it and update the customer before previewing invoice or checkout flows.
 

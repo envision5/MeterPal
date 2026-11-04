@@ -15,6 +15,9 @@ export const withSpecDefault = <T extends z.ZodType>({
 	defaultValue: z.input<T>;
 	description: string;
 }): T => {
-	JSON_SCHEMA_REGISTRY.add(schema, { description, default: defaultValue });
+	JSON_SCHEMA_REGISTRY.add(
+		schema as unknown as Parameters<typeof JSON_SCHEMA_REGISTRY.add>[0],
+		{ description, default: defaultValue },
+	);
 	return schema;
 };

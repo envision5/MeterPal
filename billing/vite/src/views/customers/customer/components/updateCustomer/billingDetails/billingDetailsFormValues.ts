@@ -43,7 +43,7 @@ const addressChange = (address: BillingDetailsFormValues["address"]) => {
 	return Object.values(trimmed).some(notNullish) ? trimmed : null;
 };
 
-/** Compared trimmed so stray whitespace in Stripe never reads as an edit. */
+/** Compared trimmed so stray whitespace never reads as an edit. */
 const trimmedTaxIdKey = (taxId: BillingDetailsTaxId) =>
 	taxIdKey(mapValues(taxId, (value) => value.trim()));
 
@@ -55,7 +55,7 @@ const taxIdsMissingFrom = (
 	return taxIds.filter((taxId) => !otherKeys.has(trimmedTaxIdKey(taxId)));
 };
 
-/** Stripe tax IDs can't be edited, so an edited row becomes a remove plus an add. */
+/** Tax IDs can't be edited in place, so an edited row becomes a remove plus an add. */
 const taxIdChanges = ({
 	initial,
 	current,
@@ -73,7 +73,7 @@ const taxIdChanges = ({
 	};
 };
 
-/** Only the fields the user edited, so untouched Stripe data is never rewritten. */
+/** Only the fields the user edited, so untouched data is never rewritten. */
 export const billingDetailsChanges = ({
 	initial,
 	current,

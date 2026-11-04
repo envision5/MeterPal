@@ -69,7 +69,7 @@ export function PreviewCheckoutButton({
 	const getButtonText = () => {
 		switch (checkoutState) {
 			case "waiting_for_sync":
-				return "Creating Stripe products...";
+				return "Creating products...";
 			case "creating_checkout":
 				return "Redirecting to checkout...";
 			default:

@@ -2,7 +2,6 @@ import type { AppEnv, Feature, Organization } from "@autumn/shared";
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
 import { FeatureService } from "@/internal/features/FeatureService.js";
 import { ProductService } from "../../ProductService.js";
-import { initVariantsInStripe } from "../../stripeResourceUtils/initVariantsInStripe.js";
 import { copyEnvLicenseLinks } from "./copyEnvLicenseLinks.js";
 import { copyEnvVariantPlans } from "./copyEnvVariantPlans.js";
 import { resolveSourceBasePlanIds } from "./resolveVariantBaseLinks.js";
@@ -105,7 +104,7 @@ export const handleCopyProducts = async ({
 		targetIds,
 	});
 
-	// 5. Init created variants in Stripe after their base's family exists.
+	// 5. Read the copy set back in the target env.
 	// inIds bypasses the products cache — the copy ops' invalidations land
 	// async, so a plain listFull can still see the pre-copy (empty) snapshot.
 	const copiedToProducts = await ProductService.listFull({
@@ -114,11 +113,6 @@ export const handleCopyProducts = async ({
 		env: toEnv,
 		inIds: fromProducts.map((product) => product.id),
 	});
-	const createdVariants = copiedToProducts.filter(
-		(product) =>
-			product.base_internal_product_id !== null && !targetIds.has(product.id),
-	);
-	await initVariantsInStripe({ ctx: toContext, products: createdVariants });
 
 	// 6. Recreate the copy set's license links in the target env
 	await copyEnvLicenseLinks({

@@ -15,7 +15,7 @@ This covers the majority of cases. Load skills upfront when needed:
 ## 1. Read the customer's current state
 
 - Call `getAgentRules`, `getCustomer`, `listEntities`, and `verify` in ONE batch — never one after another. The org's agent rules can override any default below.
-- `verify` diffs what Autumn expects against live Stripe. If it returns mismatches, flag them to the user.
+- `verify` diffs what Autumn expects against the live processor. If it returns mismatches, flag them to the user.
 - Then decide which operation the request needs based on the current state and the target plan ID:
   - Is the target plan ID already active on that customer or entity? → updateSubscription
   - Moving the customer onto a different plan ID? → `attach` or `multiAttach`
@@ -60,7 +60,7 @@ Then decide how it is paid. Follow the user's instructions or the org rules. If 
 
 The write runs outside your turn. You are handed its result in an `<approval_applied>` block.
 
-- Say it applied, then list the links as markdown bullets. Every link is a hyperlink with a short label — `[View invoice](url)`, `[Stripe customer](url)` — never a bare url pasted into the text.
+- Say it applied, then list the links as markdown bullets. Every link is a hyperlink with a short label — `[View invoice](url)`, `[Processor customer](url)` — never a bare url pasted into the text.
 - if `invoice.status` is `draft` → say it must be finalized there before the customer is charged.
 - If it failed, say so and quote the error. No links for a change that did not apply.
 - If the customer made a mistake and asks for something that needs to be undone, direct them to the dashboard.

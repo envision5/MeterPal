@@ -12,7 +12,7 @@
 
 import type { ProviderName } from "./helpers/provider.ts";
 
-/** The Stripe/Svix env the swarm runs against. Workers run in `sandbox` env. */
+/** The processor env the swarm runs against. Workers run in `sandbox` env. */
 export type TwEnv = "sandbox";
 
 /**
@@ -43,9 +43,8 @@ export type TwRunArgs = {
 
 /**
  * Run identity. `owner` is the OS username (`os.userInfo().username`), stamped
- * on every created resource so teammates sharing the Vercel project + the
- * single Stripe platform account never step on each other (plan §9a). `runId`
- * is a unique id per `bun tw` invocation.
+ * on every created resource so teammates sharing the Vercel project never step on
+ * each other (plan §9a). `runId` is a unique id per `bun tw` invocation.
  */
 export type OwnerTag = {
 	owner: string;
@@ -54,17 +53,6 @@ export type OwnerTag = {
 
 /** Lifecycle status of a run in the registry (plan §9a). */
 export type RunStatus = "running" | "completed" | "cancelled";
-
-/**
- * One Stripe webhook endpoint registered on a worker's sub-account, recorded so
- * teardown can drop it explicitly if deleting the account doesn't cascade
- * (plan §9a teardown step 2).
- */
-export type RegistryWebhook = {
-	sandboxName: string;
-	accountId: string;
-	webhookId: string;
-};
 
 /** A sandbox tracked in the run registry (name is the cleanup key; id once known). */
 export type RegistrySandbox = {
@@ -90,13 +78,10 @@ export type RegistryEntry = {
 	 * back-compat with entries written before this field existed (→ "vercel"). */
 	provider?: ProviderName;
 	sandboxes: RegistrySandbox[];
-	/** Stripe Connect sub-account ids (`acct_*`) created for this run. */
-	subAccounts: string[];
 	/** Legacy single-application runs remain cleanable. */
 	svixAppId?: string;
 	/** Each Svix worker owns a separate application. */
 	svixAppIds?: string[];
-	webhooks: RegistryWebhook[];
 };
 
 /** The on-disk registry: one entry per `runId`. */
@@ -104,16 +89,14 @@ export type Registry = Record<string, RegistryEntry>;
 
 /**
  * Live, in-memory handle to one provisioned worker the dispatcher schedules
- * against. `publicUrl` is `sandbox.domain(SERVER_PORT)` (the inbound Stripe
- * webhook target, plan §6a). `isSvixShard` marks the single dedicated Svix
- * worker (plan §7). `lastFile`/`busy` drive the sliding-window scheduling and
- * the "retry on a different worker" rule (plan §8.7).
+ * against. `publicUrl` is `sandbox.domain(SERVER_PORT)`. `isSvixShard` marks the
+ * single dedicated Svix worker (plan §7). `lastFile`/`busy` drive the
+ * sliding-window scheduling and the "retry on a different worker" rule (plan §8.7).
  */
 export type WorkerHandle = {
 	name: string;
 	sandboxId?: string;
 	publicUrl: string;
-	accountId?: string;
 	isSvixShard: boolean;
 	lastFile?: string;
 	/**

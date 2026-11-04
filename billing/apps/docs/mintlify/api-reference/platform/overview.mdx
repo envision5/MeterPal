@@ -18,22 +18,14 @@ The Platform API is for users who want to manage MeterPal on behalf of their use
 Create an MeterPal organization linked to a user email. This generates API keys that your user can use to interact with MeterPal's billing features.
 
 ### 2. Integrate
-Each organization created through Step 1 already has a Stripe account connected to their sandbox environment. As such, you can freely integrate and test MeterPal without additional Stripe credentials. When you're ready to go to prod, you can then connect your user's Stripe account through the Step 3.
+Each organization created through Step 1 can use the deployment's shared PayPal account (the server's `PAYPAL_*` environment variables) for sandbox testing, so you can freely integrate and test MeterPal without your own PayPal credentials. When you're ready to go to prod, connect your user's PayPal account through Step 3.
 
-### 3. Link Stripe Account
+### 3. Link PayPal Account
 
-Connect your user's Stripe account using one of two methods:
+Connect the organization's own PayPal REST app with `POST /v1/organization/paypal`, passing `client_id` and `client_secret` (plus an optional `webhook_id`). MeterPal verifies the credentials against PayPal before storing them, and the PayPal environment follows the billing environment — a sandbox key connects a sandbox app, a live key connects a live one. See [PayPal](/documentation/concepts/paypal) for the full flow.
 
-**Option A: OAuth Flow**
-Call our [Generate Stripe OAuth URL](/api-reference/platform/oauth-url) endpoint, which generates a link that lets the user connect their Stripe account directly.
+### 4. Manage the PayPal Connection
 
-**Option B: Direct Account ID**
-If you have your own Stripe Connect platform, simply pass us the Stripe account ID using the [Update Connected Stripe Account](/api-reference/platform/update-stripe) endpoint and we'll handle the rest.
+Use `GET /v1/organization/paypal` to check whether the org has its own PayPal connection for the active environment, so you can decide whether to show **Connect PayPal** or **Disconnect PayPal**. The response identifies the PayPal account (account email) and whether a webhook is registered.
 
-### 4. Manage the OAuth Connection
-
-Use [Get Stripe Connection](/api-reference/platform/getStripeConnection) to decide whether to show **Connect Stripe** or **Disconnect Stripe**. Call it after the OAuth redirect and when reopening your connection settings. Pass the tenant's public `organization_slug` and `env: "test"` or `env: "live"`; authenticate with your master organization's key, not the tenant's key. The `env` field selects the connection independently of whether that key is a test or live key.
-
-The response identifies the OAuth account and its connection time. Historical connections may have `connected_at: null`. Default sandbox accounts, separate secret-key connections, and direct account-ID connections through your own Stripe platform do not count as MeterPal OAuth connections.
-
-Use [Disconnect Stripe](/api-reference/platform/disconnectStripe) to revoke the tenant's OAuth authorization and clear that environment's connection. Disconnecting does not delete the Stripe account or cancel its subscriptions. The other environment and the default sandbox account are preserved. To reconnect, generate a fresh OAuth URL and ask the tenant to authorize again.
+Use `DELETE /v1/organization/paypal` to disconnect that environment's connection. Disconnecting does not delete the PayPal app or cancel its subscriptions, and the other environment's connection is preserved. To reconnect, call the connect endpoint again with fresh credentials.

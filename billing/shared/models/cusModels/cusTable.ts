@@ -11,18 +11,12 @@ import {
 	uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { collatePgColumn } from "../../db/utils.js";
-import type { ExternalProcessors } from "../genModels/processorSchemas.js";
 import { organizations } from "../orgModels/orgTable.js";
 import { billingControlColumns } from "./billingControls/billingControlTableColumns.js";
 
 export type CustomerConfig = {
 	disable_pooled_balance?: boolean;
 	disable_overage_billing?: boolean;
-};
-
-export type CustomerProcessor = {
-	type: "stripe";
-	id: string;
 };
 
 export const customers = pgTable(
@@ -37,10 +31,6 @@ export const customers = pgTable(
 		fingerprint: text().default(sql`null`),
 		metadata: jsonb().$type<Record<string, unknown>>(),
 		env: text().notNull(),
-		processor: jsonb().$type<CustomerProcessor>(),
-		processors: jsonb()
-			.$type<ExternalProcessors>()
-			.default({} as ExternalProcessors),
 		send_email_receipts: boolean("send_email_receipts").default(false),
 		// null = not yet locked; resolves to org.default_currency at use-time
 		currency: text(),
@@ -72,7 +62,6 @@ export const customers = pgTable(
 		index("idx_customers_org_env_fingerprint")
 			.on(table.org_id, table.env, table.fingerprint)
 			.where(sql`${table.fingerprint} IS NOT NULL`),
-		index("idx_customers_processor_id").on(sql`(${table.processor} ->> 'id')`),
 		index("idx_customers_composite").on(table.org_id, table.env, table.id),
 		index("idx_customers_org_env_internal_id").on(
 			table.org_id,
@@ -98,19 +87,6 @@ export const customers = pgTable(
 			table.env,
 			sql`${table.created_at} DESC`,
 			sql`${table.id} DESC`,
-		),
-		index("idx_customers_processors_revenuecat").on(
-			sql`(${table.processors} ->> 'revenuecat')`,
-		),
-		index("idx_customers_processors_revenuecat_id").on(
-			sql`(${table.processors} -> 'revenuecat' ->> 'id')`,
-		),
-		index("idx_customers_processors_revenuecat_aliases").using(
-			"gin",
-			sql`(${table.processors} -> 'revenuecat' -> 'aliases')`,
-		),
-		index("idx_customers_processors_vercel").on(
-			sql`(${table.processors} ->> 'vercel')`,
 		),
 		index("idx_customers_litellm_vkey")
 			.on(table.litellm_virtual_key)

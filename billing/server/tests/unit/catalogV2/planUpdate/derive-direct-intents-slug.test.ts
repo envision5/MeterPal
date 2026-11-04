@@ -21,7 +21,6 @@ const v2 = {
 const productStatesContext: ProductStatesContext = {
 	statesByPlanVersion: {},
 	versionsByPlanId: { pro: [v2, v1] },
-	rewardProgramsByPlanId: {},
 };
 
 describe("deriveDirectIntents version_slug targeting", () => {
@@ -123,7 +122,6 @@ describe("deriveDirectIntents version_slug targeting", () => {
 				statesByPlanVersion: {},
 				versionsByPlanId: { pro: [] },
 				maxVersionByPlanId: { pro: 2 },
-				rewardProgramsByPlanId: {},
 			},
 			internalIdRefs: new Map(),
 		});

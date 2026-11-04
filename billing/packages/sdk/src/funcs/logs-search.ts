@@ -27,7 +27,7 @@ import { APICall, APIPromise } from "../types/async.js";
 import { Result } from "../types/fp.js";
 
 /**
- * Search API requests and incoming Stripe webhooks for your organization and environment.
+ * Search API requests and incoming processor webhooks for your organization and environment.
  */
 export function logsSearch(
   client: AutumnCore,

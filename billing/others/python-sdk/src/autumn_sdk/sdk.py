@@ -38,7 +38,6 @@ if TYPE_CHECKING:
     from autumn_sdk.licenses import Licenses
     from autumn_sdk.logs import Logs
     from autumn_sdk.plans import Plans
-    from autumn_sdk.platform import Platform
     from autumn_sdk.referrals import Referrals
     from autumn_sdk.rewards_sdk import RewardsSDK
     from autumn_sdk.sandboxes import Sandboxes
@@ -57,7 +56,6 @@ class Autumn(BaseSDK):
     entities: "Entities"
     referrals: "Referrals"
     rewards: "RewardsSDK"
-    platform: "Platform"
     keys: "Keys"
     sandboxes: "Sandboxes"
     _sub_sdk_map = {
@@ -73,7 +71,6 @@ class Autumn(BaseSDK):
         "entities": ("autumn_sdk.entities", "Entities"),
         "referrals": ("autumn_sdk.referrals", "Referrals"),
         "rewards": ("autumn_sdk.rewards_sdk", "RewardsSDK"),
-        "platform": ("autumn_sdk.platform", "Platform"),
         "keys": ("autumn_sdk.keys", "Keys"),
         "sandboxes": ("autumn_sdk.sandboxes", "Sandboxes"),
     }

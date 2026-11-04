@@ -13,7 +13,6 @@ import {
 	type UpdateVariantParams,
 } from "@autumn/shared";
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
-import { initStripeResourcesForProducts } from "@/internal/billing/v2/providers/stripe/utils/common/initStripeResourcesForProducts.js";
 import { syncPaypalPlanIfConnected } from "@/internal/billing/paypal/paypalCatalogSync.js";
 import {
 	applyPreparedPlanLicenseSync,
@@ -492,14 +491,8 @@ export const updateProduct = async ({
 	await applyVariantUpdates({ latestBase: newFullProduct });
 	await applyLicenseParentUpdates({ latestChild: newFullProduct });
 
-	await initStripeResourcesForProducts({
-		ctx,
-		products: [newFullProduct],
-		candidateProducts: [fullProduct],
-	});
-
-	// PayPal is the Stripe analog here: keep the mapped billing plan in step
-	// with the edited price (in-place edits change the price on the same id).
+	// Keep the mapped billing plan in step with the edited price (in-place
+	// edits change the price on the same id).
 	await syncPaypalPlanIfConnected({ ctx, product: newFullProduct });
 
 	// logger.info("Adding task to queue to detect base variant");

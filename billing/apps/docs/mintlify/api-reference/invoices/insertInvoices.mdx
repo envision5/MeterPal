@@ -20,11 +20,11 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
       Plan IDs represented by this invoice.
     </DynamicParamField>
 
-    <DynamicParamField body="stripe_id" type="string" required>
+    <DynamicParamField body="processor_invoice_id" type="string" required>
       The processor's stable invoice ID.
     </DynamicParamField>
 
-    <DynamicParamField body="processor_type" type="'stripe' | 'revenuecat'">
+    <DynamicParamField body="processor_type" type="'paypal'">
       The billing processor that owns this invoice.
     </DynamicParamField>
 
@@ -69,11 +69,11 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
       Array of plan IDs included in this invoice
     </DynamicResponseField>
 
-    <DynamicResponseField name="stripe_id" type="string">
-      The Stripe invoice ID
+    <DynamicResponseField name="processor_invoice_id" type="string">
+      The processor invoice ID
     </DynamicResponseField>
 
-    <DynamicResponseField name="processor_type" type="'stripe' | 'revenuecat'">
+    <DynamicResponseField name="processor_type" type="'paypal'">
       The billing processor that owns this invoice.
     </DynamicResponseField>
 
@@ -94,7 +94,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
     </DynamicResponseField>
 
     <DynamicResponseField name="hosted_invoice_url" type="string | null">
-      URL to the Stripe-hosted invoice page
+      URL to the processor-hosted invoice page
     </DynamicResponseField>
 
     <DynamicResponseField name="id" type="string">
@@ -127,8 +127,8 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
       "plan_ids": [
         "pro"
       ],
-      "stripe_id": "in_legacy_123",
-      "processor_type": "stripe",
+      "processor_invoice_id": "in_legacy_123",
+      "processor_type": "paypal",
       "status": "paid",
       "total": 29.99,
       "amount_paid": 29.99,

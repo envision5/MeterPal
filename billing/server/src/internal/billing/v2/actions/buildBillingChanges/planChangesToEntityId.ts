@@ -2,7 +2,7 @@ import type { CustomerPlanChange } from "@autumn/shared";
 
 /**
  * Entity the whole event is scoped to, or undefined when the changes span
- * several entities — one Stripe subscription can carry products for many.
+ * several entities — one processor subscription can carry products for many.
  */
 export const planChangesToEntityId = ({
 	planChanges,

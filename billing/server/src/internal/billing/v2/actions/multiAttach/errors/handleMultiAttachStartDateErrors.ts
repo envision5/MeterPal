@@ -9,7 +9,6 @@ import {
 	RecaseError,
 } from "@autumn/shared";
 import { assertNoBackdateWithExistingSubscription } from "@/internal/billing/v2/utils/backdate/assertNoBackdateWithExistingSubscription";
-import { assertStripeBackdateInvoiceLineItemLimit } from "@/internal/billing/v2/utils/backdate/stripeBackdateInvoiceLimit";
 
 export const handleMultiAttachStartDateErrors = ({
 	billingContext,
@@ -40,7 +39,16 @@ export const handleMultiAttachStartDateErrors = ({
 		});
 	}
 
-	assertNoBackdateWithExistingSubscription({ billingContext });
+	assertNoBackdateWithExistingSubscription({
+		billingContext: {
+			currentCustomerProduct: billingContext.productContexts.find(
+				(productContext) => productContext.currentCustomerProduct,
+			)?.currentCustomerProduct,
+			scheduledCustomerProduct: billingContext.productContexts.find(
+				(productContext) => productContext.scheduledCustomerProduct,
+			)?.scheduledCustomerProduct,
+		},
+	});
 
 	if (billingContext.trialContext?.trialEndsAt) {
 		throw new RecaseError({
@@ -49,12 +57,6 @@ export const handleMultiAttachStartDateErrors = ({
 			statusCode: 400,
 		});
 	}
-
-	assertStripeBackdateInvoiceLineItemLimit({
-		products: billingContext.fullProducts,
-		startsAt: params.starts_at,
-		currentEpochMs: billingContext.currentEpochMs,
-	});
 };
 
 export const handleMultiAttachBackdateCheckoutError = ({
@@ -66,7 +68,7 @@ export const handleMultiAttachBackdateCheckoutError = ({
 }) => {
 	if (
 		params.starts_at === undefined ||
-		billingContext.checkoutMode !== "stripe_checkout"
+		billingContext.checkoutMode !== "processor_checkout"
 	)
 		return;
 

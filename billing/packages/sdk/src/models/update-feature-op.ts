@@ -710,23 +710,7 @@ export type UpdateFeatureDisplayResponse = {
   plural?: string | null | undefined;
 };
 
-export type UpdateFeatureStripe = {
-  /**
-   * Stripe product ID this feature's usage prices bill under.
-   */
-  productId?: string | undefined;
-  /**
-   * Stripe meter ID used to create this feature's metered price.
-   */
-  meterId?: string | undefined;
-};
 
-/**
- * Processor mappings for this feature. Present when a Stripe product or meter is set.
- */
-export type UpdateFeatureProcessors = {
-  stripe?: UpdateFeatureStripe | undefined;
-};
 
 /**
  * OK
@@ -788,11 +772,7 @@ export type UpdateFeatureResponse = {
    * Whether the feature is archived and hidden from the dashboard.
    */
   archived: boolean;
-  /**
-   * Processor mappings for this feature. Present when a Stripe product or meter is set.
-   */
-  processors?: UpdateFeatureProcessors | undefined;
-};
+  };
 
 /** @internal */
 export const UpdateFeatureTypeRequestBody$outboundSchema: z.ZodMiniEnum<
@@ -2414,50 +2394,9 @@ export function updateFeatureDisplayResponseFromJSON(
   );
 }
 
-/** @internal */
-export const UpdateFeatureStripe$inboundSchema: z.ZodMiniType<
-  UpdateFeatureStripe,
-  unknown
-> = z.pipe(
-  z.object({
-    product_id: types.optional(types.string()),
-    meter_id: types.optional(types.string()),
-  }),
-  z.transform((v) => {
-    return remap$(v, {
-      "product_id": "productId",
-      "meter_id": "meterId",
-    });
-  }),
-);
 
-export function updateFeatureStripeFromJSON(
-  jsonString: string,
-): SafeParseResult<UpdateFeatureStripe, SDKValidationError> {
-  return safeParse(
-    jsonString,
-    (x) => UpdateFeatureStripe$inboundSchema.parse(JSON.parse(x)),
-    `Failed to parse 'UpdateFeatureStripe' from JSON`,
-  );
-}
 
-/** @internal */
-export const UpdateFeatureProcessors$inboundSchema: z.ZodMiniType<
-  UpdateFeatureProcessors,
-  unknown
-> = z.object({
-  stripe: types.optional(z.lazy(() => UpdateFeatureStripe$inboundSchema)),
-});
 
-export function updateFeatureProcessorsFromJSON(
-  jsonString: string,
-): SafeParseResult<UpdateFeatureProcessors, SDKValidationError> {
-  return safeParse(
-    jsonString,
-    (x) => UpdateFeatureProcessors$inboundSchema.parse(JSON.parse(x)),
-    `Failed to parse 'UpdateFeatureProcessors' from JSON`,
-  );
-}
 
 /** @internal */
 export const UpdateFeatureResponse$inboundSchema: z.ZodMiniType<
@@ -2490,9 +2429,6 @@ export const UpdateFeatureResponse$inboundSchema: z.ZodMiniType<
       UpdateFeatureDisplayResponse$inboundSchema
     )),
     archived: types.boolean(),
-    processors: types.optional(z.lazy(() =>
-      UpdateFeatureProcessors$inboundSchema
-    )),
   }),
   z.transform((v) => {
     return remap$(v, {

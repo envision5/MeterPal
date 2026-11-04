@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { FullProduct, RewardProgram } from "@autumn/shared";
+import type { FullProduct } from "@autumn/shared";
 import { products } from "@tests/utils/fixtures/db/products";
 import type { ProductStatesContext } from "@/internal/catalogV2/actions/updateCatalog/types/updateCatalogContext";
 import type { UpsertProductPlan } from "@/internal/catalogV2/actions/updateCatalog/types/upsertProductPlan";
@@ -21,11 +21,9 @@ const usage = (
 const contextFor = ({
 	rows,
 	usageByInternalId = new Map(),
-	rewardProgramsByPlanId = new Map(),
 }: {
 	rows: FullProduct[];
 	usageByInternalId?: Map<string, CustomerProductVersioningUsage>;
-	rewardProgramsByPlanId?: Map<string, RewardProgram[]>;
 }): ProductStatesContext => {
 	const versionsByPlanId = new Map<string, FullProduct[]>();
 	for (const row of rows) {
@@ -38,7 +36,6 @@ const contextFor = ({
 		planIds: [...versionsByPlanId.keys()],
 		versionsByPlanId,
 		usageByInternalId,
-		rewardProgramsByPlanId,
 	});
 };
 
@@ -113,10 +110,8 @@ describe("projectProductStatesContext", () => {
 
 	test("id patch re-keys the plan; old key stays present but empty", () => {
 		const pro = products.createFull({ id: "pro" });
-		const program = { id: "rp_1" } as unknown as RewardProgram;
 		const original = contextFor({
 			rows: [pro],
-			rewardProgramsByPlanId: new Map([["pro", [program]]]),
 		});
 
 		const projected = projectProductStatesContext({
@@ -130,7 +125,6 @@ describe("projectProductStatesContext", () => {
 		expect(projected.versionsByPlanId.pro).toHaveLength(0);
 		expect(projected.statesByPlanVersion["pro_v2@1"]).toBeDefined();
 		expect(projected.statesByPlanVersion["pro@1"]).toBeUndefined();
-		expect(projected.rewardProgramsByPlanId.pro_v2).toEqual([program]);
 	});
 
 	test("customerUsage carries by internal_id through an update", () => {

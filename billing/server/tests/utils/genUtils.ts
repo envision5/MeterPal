@@ -36,7 +36,7 @@ export const pollUntil = async <T>({
 /**
  * Polls `fetch` until `assert` stops throwing, then returns that value. The
  * final attempt runs unguarded so the real assertion error surfaces instead of
- * a timeout. For state that settles asynchronously (Stripe webhooks, queue
+ * a timeout. For state that settles asynchronously (processor webhooks, queue
  * workers), which is far slower on contended CI than locally.
  */
 export const pollUntilAsserted = async <T>({

@@ -21,7 +21,7 @@ const getBillingType = (
 	item: ProductItem,
 ): "included" | "prepaid" | "paid" | "none" => {
 	// Check if it's included/free (no price, no usage model, and no tiers)
-	// Note: price_config is excluded — it's an internal backend field (Stripe IDs)
+	// Note: price_config is excluded — it's an internal backend field
 	// that can linger on edited items and shouldn't affect UI classification.
 	if (
 		!item.price &&

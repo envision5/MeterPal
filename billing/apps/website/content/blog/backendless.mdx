@@ -18,7 +18,7 @@ This is a short write up of our exploration around the problem and why we ultima
 
 **Part 1: The Publishable Key**
 
-When we launched, we had a secret key that could be used securely from the backend just as [Stripe](/blog/what-if-stripe-builds-this) does. Many of our first users had actually never set up Stripe before, and immediately told us they wish they could just do it from the frontend.
+When we launched, we had a secret key that could be used securely from the backend, just as payment processors do. Many of our first users had actually never set up payments before, and immediately told us they wish they could just do it from the frontend.
 
 Our first solution was to create a "publishable key" which would let developers get payment links and check feature access (eg, does my user have any remaining credits) directly from the frontend, in an unprotected way. These functions alone can't really be abused.
 

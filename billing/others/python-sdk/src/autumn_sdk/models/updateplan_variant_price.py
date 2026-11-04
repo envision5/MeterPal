@@ -57,14 +57,14 @@ r"""Billing interval (e.g. 'month', 'year')."""
 
 class UpdatePlanAdditionalCurrencyRequestBodyTypedDict(TypedDict):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
 
 
 class UpdatePlanAdditionalCurrencyRequestBody(BaseModel):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
 
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
@@ -178,14 +178,14 @@ class UpdatePlanItemResetRequestBody(BaseModel):
 
 class UpdatePlanItemAdditionalCurrencyRequestBodyTypedDict(TypedDict):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
 
 
 class UpdatePlanItemAdditionalCurrencyRequestBody(BaseModel):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
 
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
@@ -203,7 +203,7 @@ UpdatePlanItemPriceToRequestBody = TypeAliasType(
 
 class UpdatePlanItemTierAdditionalCurrencyRequestBodyTypedDict(TypedDict):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
     amount: NotRequired[float]
     r"""Per-unit amount for this tier in this currency."""
     flat_amount: NotRequired[float]
@@ -212,7 +212,7 @@ class UpdatePlanItemTierAdditionalCurrencyRequestBodyTypedDict(TypedDict):
 
 class UpdatePlanItemTierAdditionalCurrencyRequestBody(BaseModel):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
 
     amount: Optional[float] = None
     r"""Per-unit amount for this tier in this currency."""
@@ -1282,14 +1282,14 @@ r"""Billing interval (e.g. 'month', 'year')."""
 
 class UpdatePlanLicenseAdditionalCurrencyTypedDict(TypedDict):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
 
 
 class UpdatePlanLicenseAdditionalCurrency(BaseModel):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
 
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
@@ -1401,14 +1401,14 @@ class UpdatePlanLicenseReset(BaseModel):
 
 class UpdatePlanLicenseAddItemAdditionalCurrencyTypedDict(TypedDict):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
 
 
 class UpdatePlanLicenseAddItemAdditionalCurrency(BaseModel):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
 
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
@@ -1424,7 +1424,7 @@ UpdatePlanLicensePriceTo = TypeAliasType("UpdatePlanLicensePriceTo", Union[float
 
 class UpdatePlanLicenseTierAdditionalCurrencyTypedDict(TypedDict):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
     amount: NotRequired[float]
     r"""Per-unit amount for this tier in this currency."""
     flat_amount: NotRequired[float]
@@ -1433,7 +1433,7 @@ class UpdatePlanLicenseTierAdditionalCurrencyTypedDict(TypedDict):
 
 class UpdatePlanLicenseTierAdditionalCurrency(BaseModel):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
 
     amount: Optional[float] = None
     r"""Per-unit amount for this tier in this currency."""
@@ -2871,7 +2871,7 @@ class UpdatePlanSpendLimitRequestBodyTypedDict(TypedDict):
     overage_limit: NotRequired[float]
     r"""Overage cap for the feature: absolute units, or a percent (e.g. 120) when limit_type is usage_percentage."""
     skip_overage_billing: NotRequired[bool]
-    r"""When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally."""
+    r"""When true, overage for this feature is not billed to the processor. Usage tracking and balance resets still behave normally."""
 
 
 class UpdatePlanSpendLimitRequestBody(BaseModel):
@@ -2888,7 +2888,7 @@ class UpdatePlanSpendLimitRequestBody(BaseModel):
     r"""Overage cap for the feature: absolute units, or a percent (e.g. 120) when limit_type is usage_percentage."""
 
     skip_overage_billing: Optional[bool] = None
-    r"""When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally."""
+    r"""When true, overage for this feature is not billed to the processor. Usage tracking and balance resets still behave normally."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -3252,14 +3252,14 @@ r"""Billing interval (e.g. 'month', 'year')."""
 
 class UpdatePlanVariantAdditionalCurrencyTypedDict(TypedDict):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
 
 
 class UpdatePlanVariantAdditionalCurrency(BaseModel):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
 
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
@@ -3371,14 +3371,14 @@ class UpdatePlanVariantReset(BaseModel):
 
 class UpdatePlanVariantAddItemAdditionalCurrencyTypedDict(TypedDict):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
 
 
 class UpdatePlanVariantAddItemAdditionalCurrency(BaseModel):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
 
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
@@ -3394,7 +3394,7 @@ UpdatePlanVariantPriceTo = TypeAliasType("UpdatePlanVariantPriceTo", Union[float
 
 class UpdatePlanVariantTierAdditionalCurrencyTypedDict(TypedDict):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
     amount: NotRequired[float]
     r"""Per-unit amount for this tier in this currency."""
     flat_amount: NotRequired[float]
@@ -3403,7 +3403,7 @@ class UpdatePlanVariantTierAdditionalCurrencyTypedDict(TypedDict):
 
 class UpdatePlanVariantTierAdditionalCurrency(BaseModel):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
 
     amount: Optional[float] = None
     r"""Per-unit amount for this tier in this currency."""

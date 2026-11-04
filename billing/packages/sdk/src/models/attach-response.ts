@@ -546,11 +546,11 @@ export type AttachCustomize = {
 };
 
 /**
- * Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses Stripe's send_invoice collection method.
+ * Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses the processor's send_invoice collection method.
  */
 export type AttachInvoiceMode = {
   /**
-   * When true, creates an invoice and sends it to the customer instead of charging their card immediately. Uses Stripe's send_invoice collection method.
+   * When true, creates an invoice and sends it to the customer instead of charging their card immediately. Uses the processor's send_invoice collection method.
    */
   enabled: boolean;
   /**
@@ -566,7 +566,7 @@ export type AttachInvoiceMode = {
    */
   invoiceTemplateId?: string | undefined;
   /**
-   * Number of days the customer has to pay the invoice before it is due (Stripe days_until_due).
+   * Number of days the customer has to pay the invoice before it is due (days_until_due).
    */
   netTermsDays?: number | undefined;
 };
@@ -684,7 +684,7 @@ export type AttachLicenseQuantity = {
  */
 export type AttachRemoveDiscount = {
   /**
-   * The ID of the reward (or Stripe coupon) to remove.
+   * The ID of the reward to remove.
    */
   rewardId: string;
 };
@@ -719,7 +719,7 @@ export type AttachParams = {
    */
   customize?: AttachCustomize | undefined;
   /**
-   * Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses Stripe's send_invoice collection method.
+   * Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses the processor's send_invoice collection method.
    */
   invoiceMode?: AttachInvoiceMode | undefined;
   /**
@@ -735,7 +735,7 @@ export type AttachParams = {
    */
   subscriptionId?: string | undefined;
   /**
-   * List of discounts to apply. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code.
+   * List of discounts to apply. Each discount can be an Autumn reward ID or a promotion code.
    */
   discounts?: Array<AttachAttachDiscount> | undefined;
   /**
@@ -743,7 +743,7 @@ export type AttachParams = {
    */
   successUrl?: string | undefined;
   /**
-   * Only applicable when the customer has an existing Stripe subscription. If true, creates a new separate subscription instead of merging into the existing one.
+   * Only applicable when the customer has an existing processor subscription. If true, creates a new separate subscription instead of merging into the existing one.
    */
   newBillingSubscription?: boolean | undefined;
   /**
@@ -763,11 +763,11 @@ export type AttachParams = {
    */
   endsAt?: number | undefined;
   /**
-   * Additional parameters to pass into the creation of the Stripe checkout session.
+   * Additional parameters to pass into the creation of the processor checkout session.
    */
   checkoutSessionParams?: { [k: string]: any } | undefined;
   /**
-   * If true, returns an Autumn-hosted checkout link that can create a fresh Stripe checkout session when opened.
+   * If true, returns an Autumn-hosted checkout link that can create a fresh processor checkout session when opened.
    */
   longLivedCheckout?: boolean | undefined;
   /**
@@ -775,7 +775,7 @@ export type AttachParams = {
    */
   customLineItems?: Array<AttachCustomLineItem> | undefined;
   /**
-   * The processor subscription ID to link. Use this to attach an existing Stripe subscription instead of creating a new one.
+   * The processor subscription ID to link. Use this to attach an existing processor subscription instead of creating a new one.
    */
   processorSubscriptionId?: string | undefined;
   /**
@@ -791,7 +791,7 @@ export type AttachParams = {
    */
   licenseQuantities?: Array<AttachLicenseQuantity> | undefined;
   /**
-   * Key-value metadata to attach to the Stripe subscription, invoice, and checkout session created during this attach flow. Keys prefixed with 'autumn_' are reserved and will be stripped.
+   * Key-value metadata to attach to the processor subscription, invoice, and checkout session created during this attach flow. Keys prefixed with 'autumn_' are reserved and will be stripped.
    */
   metadata?: { [k: string]: string } | undefined;
   /**
@@ -799,11 +799,11 @@ export type AttachParams = {
    */
   noBillingChanges?: boolean | undefined;
   /**
-   * If true, the customer's plan is activated immediately even when payment is deferred (invoice mode) or pending (Stripe checkout). For Stripe checkout, the customer_product is inserted before the customer completes the hosted form. Set it here rather than on `invoice_mode`, which only covers the invoice-unpaid case.
+   * If true, the customer's plan is activated immediately even when payment is deferred (invoice mode) or pending (processor checkout). For processor checkout, the customer_product is inserted before the customer completes the hosted form. Set it here rather than on `invoice_mode`, which only covers the invoice-unpaid case.
    */
   enablePlanImmediately?: boolean | undefined;
   /**
-   * Stripe tax rate ID (txr_...) to apply as the default tax rate on the created subscription, invoice, or checkout session line items.
+   * Tax rate ID to apply as the default tax rate on the created subscription, invoice, or checkout session line items.
    */
   taxRateId?: string | undefined;
   /**
@@ -829,9 +829,9 @@ export type AttachInvoice = {
    */
   status: string | null;
   /**
-   * The Stripe invoice ID.
+   * The processor invoice ID
    */
-  stripeId: string;
+  processorInvoiceId: string;
   /**
    * The total amount of the invoice in cents.
    */
@@ -2479,14 +2479,14 @@ export const AttachInvoice$inboundSchema: z.ZodMiniType<
 > = z.pipe(
   z.object({
     status: types.nullable(types.string()),
-    stripe_id: types.string(),
+    processor_invoice_id: types.string(),
     total: types.number(),
     currency: types.string(),
     hosted_invoice_url: types.nullable(types.string()),
   }),
   z.transform((v) => {
     return remap$(v, {
-      "stripe_id": "stripeId",
+      "processor_invoice_id": "processorInvoiceId",
       "hosted_invoice_url": "hostedInvoiceUrl",
     });
   }),

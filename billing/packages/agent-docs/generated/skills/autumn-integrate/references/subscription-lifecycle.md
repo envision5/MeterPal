@@ -2,9 +2,11 @@
 
 ## Upgrades
 
-Upgrades happen when you attach a plan with a higher price than the customer's current plan. Use `billing.attach` — Autumn handles the rest.
+Upgrades happen when you attach a plan with a higher price than the customer's current plan. Use `billing.attach` — MeterPal handles the rest.
+
 
 If a payment method exists, attaching the plan will immediately charge the customer. If upgrading from a free to a paid plan, a checkout URL is generated instead.
+
 
 **Pricing behavior:**
 
@@ -17,7 +19,9 @@ Downgrades happen when you attach a plan with a lower price. Unlike upgrades, do
 
 The new plan will have status `scheduled` until it activates. Customers can cancel a scheduled downgrade by re-attaching their current plan.
 
+
 If you've set a [`group`](/documentation/concepts/plans#plan-properties) when creating plans, upgrades and downgrades only apply between plans in the same group. Attaching a plan from a different group adds it alongside the existing plan.
+
 
 ## Cancellations
 
@@ -132,7 +136,9 @@ curl -X POST 'https://api.useautumn.com/v1/billing.update' \
 
 This clears the pending cancellation and the subscription continues as normal. Any default plan that was scheduled to activate after cancellation is also removed.
 
+
 You cannot uncancel a subscription that was already canceled immediately — only pending cancellations (scheduled for end of cycle) can be reversed.
+
 
 ## Canceling a scheduled plan change
 
@@ -192,16 +198,20 @@ When a new plan is enabled, you can control what happens to existing feature usa
 - `true`: Usage resets to 0 (typical for consumable features like credits)
 - `false`: Usage carries over to the new plan (typical for continuous features like seats)
 
+
 **Example:** A customer on Free has used 20 of their 100 credits. They upgrade to Pro which includes 500 credits.
 
 - If `reset_usage_when_enabled = true`: They get 500 credits
 - If `reset_usage_when_enabled = false`: They get 480 credits (500 - 20 used)
 
+
 ## Carry-over on plan upgrades
 
 When a customer upgrades plans, you can preserve their unused balances or account for their existing usage. Two parameters on [`billing.attach`](/api-reference/billing/attach) give you fine-grained control over what happens to consumable features during an immediate upgrade.
 
+
 Carry-over only works with **immediate** upgrades (`planSchedule: "immediate"` or default upgrade behavior). Scheduled plan changes and downgrades do not support carry-over.
+
 
 ### Carrying over unused balances
 
@@ -244,7 +254,9 @@ curl -X POST 'https://api.useautumn.com/v1/billing.attach' \
 
 </CodeGroup>
 
+
 **Example:** A customer on Pro has 300 of 1,000 credits remaining. They upgrade to Enterprise (2,000 credits/month). With `carryOverBalances` enabled, the 300 unused credits carry forward — giving them 2,300 credits on the new plan. The carried-over balance expires at the next reset or end of cycle.
+
 
 ### Carrying over prior usage
 
@@ -287,7 +299,9 @@ curl -X POST 'https://api.useautumn.com/v1/billing.attach' \
 
 </CodeGroup>
 
+
 **Example:** A customer on Pro has used 700 of 1,000 credits this month. They upgrade to Enterprise (2,000 credits/month). With `carryOverUsages` enabled, 700 usage is deducted from the new allowance — giving them 1,300 remaining instead of a full 2,000.
+
 
 ### Scoping to specific features
 
@@ -307,5 +321,6 @@ const response = await autumn.billing.attach({
   },
 });
 ```
+
 
 Only consumable metered features support carry-over. Boolean features, unlimited features, and allocated (non-consumable) features are not eligible.

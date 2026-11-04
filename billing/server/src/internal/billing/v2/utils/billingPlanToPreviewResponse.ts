@@ -10,55 +10,22 @@ import {
 } from "@autumn/shared";
 import { Decimal } from "decimal.js";
 import type { AutumnContext } from "@/honoUtils/HonoEnv";
-import { computeNextCycleTaxPreview } from "./billingPlan/preview/tax/computeNextCycleTaxPreview";
 import { billingPlanToImmediatePreview } from "./billingPlan/toImmediatePreview/billingPlanToImmediatePreview";
 import { billingPlanToNextCyclePreview } from "./billingPlan/toNextCyclePreview/billingPlanToNextCyclePreview";
 import { billingPlanToChanges } from "./billingPlan/toPreviewChanges/billingPlanToChanges";
 import { logBillingPreview } from "./logs/logBillingPreview";
 
 /**
- * Apply preview-layer adjustments (Stripe Tax, Stripe customer credit
- * balance) to the immediate-period total. Mirrors what Stripe will actually
- * invoice:
+ * Apply preview-layer adjustments (processor tax, processor customer credit
+ * balance) to the immediate-period total. Mirrors what the processor will
+ * actually invoice:
  *  - Tax is added on top of the discounted subtotal.
  *  - Customer credit is subtracted, capped at (subtotal + tax) so the total
- *    never goes negative. Leftover credit rolls to the next invoice in
- *    Stripe; we don't surface that here beyond the row tooltip on the FE.
- *
- * `next_cycle.total` is adjusted separately via `applyNextCycleTaxPreview`
- * (tax only — credits are consumed by the immediate invoice first).
+ *    never goes negative.
  *
  * If `billingPlan.preview` is undefined (non-attach flows that skip the
  * enrichment step) the math is a no-op and `total` is unchanged.
  */
-// Tax-only next-cycle adjustment; skipped for non-preview flows (no
-// billingPlan.preview bag) so checkout recomputes stay unchanged.
-const applyNextCycleTaxPreview = async ({
-	ctx,
-	billingContext,
-	billingPlan,
-	nextCycle,
-}: {
-	ctx: AutumnContext;
-	billingContext: BillingContext;
-	billingPlan: BillingPlan;
-	nextCycle: BillingPreviewResponse["next_cycle"];
-}): Promise<BillingPreviewResponse["next_cycle"]> => {
-	if (!nextCycle || !billingPlan.preview) return nextCycle;
-
-	const tax = await computeNextCycleTaxPreview({
-		ctx,
-		billingContext,
-		netSubtotal: nextCycle.total,
-	});
-	if (!tax) return nextCycle;
-
-	return {
-		...nextCycle,
-		total: new Decimal(nextCycle.total).add(tax.total).toDP(2).toNumber(),
-	};
-};
-
 const applyPreviewAdjustmentsToTotal = ({
 	subtotal,
 	total,
@@ -123,12 +90,7 @@ export const billingPlanToPreviewResponse = async ({
 			customerProductFilter: nextCycleCustomerProductFilter,
 		});
 
-	const nextCycle = await applyNextCycleTaxPreview({
-		ctx,
-		billingContext,
-		billingPlan,
-		nextCycle: rawNextCycle,
-	});
+	const nextCycle = rawNextCycle;
 
 	logBillingPreview({
 		ctx,
@@ -159,6 +121,18 @@ export const billingPlanToPreviewResponse = async ({
 		next_cycle: nextCycle,
 		incoming,
 		outgoing,
-		refund: autumnBillingPlan.refundPlan,
+		refund: autumnBillingPlan.refundPlan
+			? {
+					amount: autumnBillingPlan.refundPlan.amount,
+					invoice: {
+						processor_invoice_id:
+							autumnBillingPlan.refundPlan.invoice.processor_invoice_id,
+						total: autumnBillingPlan.refundPlan.invoice.total,
+						current_refunded_amount:
+							autumnBillingPlan.refundPlan.invoice.current_refunded_amount,
+						currency: autumnBillingPlan.refundPlan.invoice.currency,
+					},
+				}
+			: undefined,
 	};
 };

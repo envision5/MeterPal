@@ -54,7 +54,7 @@ export function RefundInvoiceDialog({
 			}
 
 			const { data } = await axiosInstance.post(
-				`/v1/customers/${customerId}/invoices/${invoice.stripe_id}/refund`,
+				`/v1/customers/${customerId}/invoices/${invoice.processor_invoice_id}/refund`,
 				body,
 			);
 			return data;

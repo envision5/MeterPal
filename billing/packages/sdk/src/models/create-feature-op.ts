@@ -702,23 +702,7 @@ export type CreateFeatureDisplayResponse = {
   plural?: string | null | undefined;
 };
 
-export type CreateFeatureStripe = {
-  /**
-   * Stripe product ID this feature's usage prices bill under.
-   */
-  productId?: string | undefined;
-  /**
-   * Stripe meter ID used to create this feature's metered price.
-   */
-  meterId?: string | undefined;
-};
 
-/**
- * Processor mappings for this feature. Present when a Stripe product or meter is set.
- */
-export type CreateFeatureProcessors = {
-  stripe?: CreateFeatureStripe | undefined;
-};
 
 /**
  * OK
@@ -780,11 +764,7 @@ export type CreateFeatureResponse = {
    * Whether the feature is archived and hidden from the dashboard.
    */
   archived: boolean;
-  /**
-   * Processor mappings for this feature. Present when a Stripe product or meter is set.
-   */
-  processors?: CreateFeatureProcessors | undefined;
-};
+  };
 
 /** @internal */
 export const CreateFeatureTypeRequestBody$outboundSchema: z.ZodMiniEnum<
@@ -2401,50 +2381,9 @@ export function createFeatureDisplayResponseFromJSON(
   );
 }
 
-/** @internal */
-export const CreateFeatureStripe$inboundSchema: z.ZodMiniType<
-  CreateFeatureStripe,
-  unknown
-> = z.pipe(
-  z.object({
-    product_id: types.optional(types.string()),
-    meter_id: types.optional(types.string()),
-  }),
-  z.transform((v) => {
-    return remap$(v, {
-      "product_id": "productId",
-      "meter_id": "meterId",
-    });
-  }),
-);
 
-export function createFeatureStripeFromJSON(
-  jsonString: string,
-): SafeParseResult<CreateFeatureStripe, SDKValidationError> {
-  return safeParse(
-    jsonString,
-    (x) => CreateFeatureStripe$inboundSchema.parse(JSON.parse(x)),
-    `Failed to parse 'CreateFeatureStripe' from JSON`,
-  );
-}
 
-/** @internal */
-export const CreateFeatureProcessors$inboundSchema: z.ZodMiniType<
-  CreateFeatureProcessors,
-  unknown
-> = z.object({
-  stripe: types.optional(z.lazy(() => CreateFeatureStripe$inboundSchema)),
-});
 
-export function createFeatureProcessorsFromJSON(
-  jsonString: string,
-): SafeParseResult<CreateFeatureProcessors, SDKValidationError> {
-  return safeParse(
-    jsonString,
-    (x) => CreateFeatureProcessors$inboundSchema.parse(JSON.parse(x)),
-    `Failed to parse 'CreateFeatureProcessors' from JSON`,
-  );
-}
 
 /** @internal */
 export const CreateFeatureResponse$inboundSchema: z.ZodMiniType<
@@ -2477,9 +2416,6 @@ export const CreateFeatureResponse$inboundSchema: z.ZodMiniType<
       CreateFeatureDisplayResponse$inboundSchema
     )),
     archived: types.boolean(),
-    processors: types.optional(z.lazy(() =>
-      CreateFeatureProcessors$inboundSchema
-    )),
   }),
   z.transform((v) => {
     return remap$(v, {

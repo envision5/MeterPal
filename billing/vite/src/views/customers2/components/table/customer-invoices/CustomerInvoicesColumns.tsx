@@ -1,26 +1,13 @@
-import {
-	type Invoice,
-	type InvoiceDiscount,
-	ProcessorType,
-} from "@autumn/shared";
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipProvider,
-	TooltipTrigger,
-} from "@autumn/ui";
+import { type Invoice, type InvoiceDiscount } from "@autumn/shared";
 import type { Row } from "@tanstack/react-table";
 import { AdminHover } from "@/components/general/AdminHover";
-import { ProcessorIcon } from "@/components/v2/icons/ProcessorIcon";
 import { getInvoiceHoverTexts } from "@/views/admin/adminUtils";
-import type { InvoiceProcessorVariant } from "@/views/customers2/hooks/useInvoiceMetadataQuery";
 import { createDateTimeColumn } from "@/views/customers2/utils/ColumnHelpers";
 import { CustomerInvoiceStatus } from "./CustomerInvoiceStatus";
 import { InvoiceTotalCell } from "./invoiceAmountUtils";
 
 type CustomerInvoice = Invoice & {
 	productNames: string;
-	processor: InvoiceProcessorVariant;
 };
 
 const getTotalDiscountAmount = (invoice: Invoice) => {
@@ -29,49 +16,7 @@ const getTotalDiscountAmount = (invoice: Invoice) => {
 	}, 0);
 };
 
-const PROCESSOR_LABELS: Record<InvoiceProcessorVariant, string> = {
-	[ProcessorType.Stripe]: "Stripe",
-	[ProcessorType.RevenueCat]: "RevenueCat",
-	[ProcessorType.PayPal]: "PayPal",
-	vercel: "Vercel",
-};
-
-const processorColumn = {
-	header: "Processor",
-	accessorKey: "processor",
-	size: 140,
-	cell: ({ row }: { row: Row<CustomerInvoice> }) => {
-		const processor = row.original.processor;
-		return (
-			<TooltipProvider>
-				<Tooltip delayDuration={0}>
-					<TooltipTrigger asChild>
-						<span
-							className="flex w-full min-w-0 items-center gap-1.5 text-muted-foreground"
-							title={PROCESSOR_LABELS[processor]}
-						>
-							<ProcessorIcon processor={processor} />
-							<span className="min-w-0 truncate text-sm">
-								{PROCESSOR_LABELS[processor]}
-							</span>
-						</span>
-					</TooltipTrigger>
-					<TooltipContent>{PROCESSOR_LABELS[processor]}</TooltipContent>
-				</Tooltip>
-			</TooltipProvider>
-		);
-	},
-};
-
-export const hasNonStripeInvoice = (invoices: CustomerInvoice[]) =>
-	invoices.some((inv) => inv.processor !== ProcessorType.Stripe);
-
-export const getCustomerInvoicesColumns = ({
-	showProcessor,
-}: {
-	showProcessor: boolean;
-}) => [
-	...(showProcessor ? [processorColumn] : []),
+export const getCustomerInvoicesColumns = () => [
 	{
 		header: "Products",
 		accessorKey: "productNames",

@@ -12,7 +12,6 @@ import {
 	type ProductItem,
 	UsageModel,
 } from "@models/productV2Models/productItemModels/productItemModels.js";
-import { priceConfigToPriceProcessors } from "@utils/productUtils/priceUtils/convertPrice/priceConfigToPriceProcessors.js";
 import { InternalError } from "../../../../api/models.js";
 import type { Feature } from "../../../../models/featureModels/featureModels.js";
 import { expandIncludes } from "../../../expandUtils.js";
@@ -111,9 +110,6 @@ const itemToPlanFeaturePrice = ({
 		});
 	}
 
-	const processors = priceConfigToPriceProcessors({
-		config: item.price_config,
-	});
 	const allocatedBilling = behaviorToAllocatedBilling(
 		item.config?.allocated_billing_behavior,
 	);
@@ -135,7 +131,6 @@ const itemToPlanFeaturePrice = ({
 		billing_method: billingMethod,
 		...(allocatedBilling ? { allocated_billing: allocatedBilling } : {}),
 		max_purchase: maxPurchase,
-		...(processors ? { processors } : {}),
 	};
 };
 

@@ -19,8 +19,7 @@ export type InsertInvoicesGlobals = {
  * The billing processor that owns this invoice.
  */
 export const InsertInvoicesProcessorTypeRequestBody = {
-  Stripe: "stripe",
-  Revenuecat: "revenuecat",
+  Paypal: "paypal",
 } as const;
 /**
  * The billing processor that owns this invoice.
@@ -56,7 +55,7 @@ export type InsertInvoicesInvoiceRequestBody = {
   /**
    * The processor's stable invoice ID.
    */
-  stripeId: string;
+  processorInvoiceId: string;
   /**
    * The billing processor that owns this invoice.
    */
@@ -102,8 +101,7 @@ export type InsertInvoicesParams = {
  * The billing processor that owns this invoice.
  */
 export const InsertInvoicesProcessorTypeResponse = {
-  Stripe: "stripe",
-  Revenuecat: "revenuecat",
+  Paypal: "paypal",
 } as const;
 /**
  * The billing processor that owns this invoice.
@@ -118,9 +116,9 @@ export type InsertInvoicesInvoiceResponse = {
    */
   planIds: Array<string>;
   /**
-   * The Stripe invoice ID
+   * The processor invoice ID
    */
-  stripeId: string;
+  processorInvoiceId: string;
   /**
    * The billing processor that owns this invoice.
    */
@@ -142,7 +140,7 @@ export type InsertInvoicesInvoiceResponse = {
    */
   createdAt: number;
   /**
-   * URL to the Stripe-hosted invoice page
+   * URL to the processor-hosted invoice page
    */
   hostedInvoiceUrl?: string | null | undefined;
   /**
@@ -188,7 +186,7 @@ export const InsertInvoicesStatus$outboundSchema: z.ZodMiniEnum<
 export type InsertInvoicesInvoiceRequestBody$Outbound = {
   customer_id: string;
   plan_ids?: Array<string> | undefined;
-  stripe_id: string;
+  processor_invoice_id: string;
   processor_type: string;
   status: string;
   total: number;
@@ -207,10 +205,10 @@ export const InsertInvoicesInvoiceRequestBody$outboundSchema: z.ZodMiniType<
   z.object({
     customerId: z.string(),
     planIds: z.optional(z.array(z.string())),
-    stripeId: z.string(),
+    processorInvoiceId: z.string(),
     processorType: z._default(
       InsertInvoicesProcessorTypeRequestBody$outboundSchema,
-      "stripe",
+      "paypal",
     ),
     status: InsertInvoicesStatus$outboundSchema,
     total: z.number(),
@@ -224,7 +222,7 @@ export const InsertInvoicesInvoiceRequestBody$outboundSchema: z.ZodMiniType<
     return remap$(v, {
       customerId: "customer_id",
       planIds: "plan_ids",
-      stripeId: "stripe_id",
+      processorInvoiceId: "processor_invoice_id",
       processorType: "processor_type",
       amountPaid: "amount_paid",
       refundedAmount: "refunded_amount",
@@ -280,10 +278,10 @@ export const InsertInvoicesInvoiceResponse$inboundSchema: z.ZodMiniType<
 > = z.pipe(
   z.object({
     plan_ids: z.array(types.string()),
-    stripe_id: types.string(),
+    processor_invoice_id: types.string(),
     processor_type: z._default(
       InsertInvoicesProcessorTypeResponse$inboundSchema,
-      "stripe",
+      "paypal",
     ),
     status: types.string(),
     total: types.number(),
@@ -298,7 +296,7 @@ export const InsertInvoicesInvoiceResponse$inboundSchema: z.ZodMiniType<
   z.transform((v) => {
     return remap$(v, {
       "plan_ids": "planIds",
-      "stripe_id": "stripeId",
+      "processor_invoice_id": "processorInvoiceId",
       "processor_type": "processorType",
       "created_at": "createdAt",
       "hosted_invoice_url": "hostedInvoiceUrl",

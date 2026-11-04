@@ -1,21 +1,14 @@
 import { generateKsuid } from "@autumn/ksuid";
-import type {
-	CustomLineItem,
-	LineItem,
-	StripeDiscountWithCoupon,
-} from "@autumn/shared";
-import { applyStripeDiscountsToLineItems } from "@/internal/billing/v2/providers/stripe/utils/discounts/applyStripeDiscountsToLineItems";
+import type { CustomLineItem, LineItem } from "@autumn/shared";
 
 export const customLineItemsToLineItems = ({
 	customLineItems,
 	currency,
-	stripeDiscounts = [],
 }: {
 	customLineItems: CustomLineItem[];
 	currency: string;
-	stripeDiscounts?: StripeDiscountWithCoupon[];
 }): LineItem[] => {
-	const lineItems = customLineItems.map((item) => ({
+	return customLineItems.map((item) => ({
 		id: generateKsuid({ prefix: "invoice_li_" }),
 		amount: item.amount,
 		amountAfterDiscounts: item.amount,
@@ -33,12 +26,4 @@ export const customLineItemsToLineItems = ({
 			discountable: false,
 		},
 	})) satisfies LineItem[];
-
-	if (!stripeDiscounts.length) return lineItems;
-
-	return applyStripeDiscountsToLineItems({
-		lineItems,
-		discounts: stripeDiscounts,
-		options: { disableDiscountableForFreshDiscounts: true },
-	});
 };

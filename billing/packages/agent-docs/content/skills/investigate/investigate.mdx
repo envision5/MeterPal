@@ -1,6 +1,6 @@
 ---
 name: autumn-investigate
-description: Investigating Autumn request logs and Stripe webhook deliveries — debugging unexpected charges, plan-change history, denied feature checks, balance and usage discrepancies, failed API calls, and out-of-sync subscriptions. Use when the user asks why something happened to a customer — a charge, a state change, a denied check, missing or unreset usage — or wants to see a customer's request timeline or log analytics.
+description: Investigating Autumn request logs and processor webhook deliveries — debugging unexpected charges, plan-change history, denied feature checks, balance and usage discrepancies, failed API calls, and out-of-sync subscriptions. Use when the user asks why something happened to a customer — a charge, a state change, a denied check, missing or unreset usage — or wants to see a customer's request timeline or log analytics.
 ---
 
 # Investigate
@@ -11,7 +11,7 @@ description: Investigating Autumn request logs and Stripe webhook deliveries —
 
 - Answer "what happened and why" using three sources: current account state (customer, plan, balance lookup tools), the usage-event store (`aggregateEvents` — usage totals, last usage, usage over time), and the request-log interface (`searchRequestLogs`, `queryRequestLogs`).
 - End with a conclusion the user can act on: a timeline of what happened, the cause when the logs show it, and a clear statement of what the logs cannot show when they don't.
-- Logs record API requests and Stripe webhook deliveries — each entry is one request with its payload and response. They do not expose Autumn's internal processing, so conclusions must come from observable requests, responses, and state.
+- Logs record API requests and processor webhook deliveries — each entry is one request with its payload and response. They do not expose Autumn's internal processing, so conclusions must come from observable requests, responses, and state.
 
 ## Workflow
 
@@ -67,9 +67,9 @@ Queryable fields:
 - `timestamp`, `source`, `status_code`
 - `request_method`, `request_url`, `request_path`, `request_body`, `response_body`
 - `org_id`, `customer_id`, `entity_id`
-- `stripe_event_id`, `stripe_event_type`, `stripe_object_id`
+- `processor_event_id`, `processor_event_type`, `processor_object_id`
 
-`source` is `api_request` (paths under `/v1`) or `stripe_webhook` (Stripe webhook deliveries). Filtering `request_body contains '...'` or `response_body contains '...'` matches against the JSON text of the whole payload — useful when the exact field path is unknown.
+`source` is `api_request` (paths under `/v1`) or `processor_webhook` (processor webhook deliveries). Filtering `request_body contains '...'` or `response_body contains '...'` matches against the JSON text of the whole payload — useful when the exact field path is unknown.
 
 Do not reference fields outside this list. If a fact is not in these fields, say the log interface does not expose it.
 
@@ -83,7 +83,7 @@ Frequent mistakes the endpoint rejects:
 ## Rules
 
 - Always pass an explicit `range` — the search default of 30 minutes silently misses almost everything.
-- Prefer structured filters (`customer_id`, `request_path`, `stripe_event_type`, `status_code`) over payload `contains` scans; use `contains` only to discover where a value appears, then switch to a precise filter.
+- Prefer structured filters (`customer_id`, `request_path`, `processor_event_type`, `status_code`) over payload `contains` scans; use `contains` only to discover where a value appears, then switch to a precise filter.
 - One filter change at a time. When a query returns nothing, loosen exactly one constraint (range, then path, then predicate) so you know which one hid the records.
 - Distinguish *no matching records* from *proof of absence*: say which range and filters returned nothing, and offer to widen.
 - Never present an internal-processing guess as a finding. The logs show requests, responses, and webhook deliveries — if the explanation requires Autumn's internal state (background jobs, cache, processing errors), say so and suggest the user contact Autumn support with the customer ID and time window.
@@ -91,11 +91,9 @@ Frequent mistakes the endpoint rejects:
 
 ## Domain references
 
-<part file="references/billing-timeline.md" when="investigating charges, invoices, plan changes, upgrades or downgrades, cancellations, checkout, trials, or Autumn/Stripe subscription state drift" />
+<part file="references/billing-timeline.md" when="investigating charges, invoices, plan changes, upgrades or downgrades, cancellations, checkout, trials, processor webhook deliveries, subscription lifecycle events, payment failures, or Autumn/processor subscription state drift" />
 
 <part file="references/balances-usage.md" when="investigating denied checks, balance or credit discrepancies, usage tracking, usage totals, resets, rollovers, or 402/429 responses" />
-
-<part file="references/stripe-webhooks.md" when="investigating Stripe webhook deliveries, subscription lifecycle events, payment failures, or building a customer timeline from Stripe's perspective" />
 
 ## Analytics
 

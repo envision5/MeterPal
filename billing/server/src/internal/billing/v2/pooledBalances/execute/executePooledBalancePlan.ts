@@ -86,7 +86,7 @@ export const executePooledBalancePlan = async ({
 				.set({
 					granted: sql`COALESCE(${pooledBalances.granted}, 0) + ${grantedDelta}`,
 					reset_cycle_anchor: pooledBalance.reset_cycle_anchor,
-					stripe_subscription_id: pooledBalance.stripe_subscription_id,
+					processor_subscription_id: pooledBalance.processor_subscription_id,
 					customer_license_link_id: pooledBalance.customer_license_link_id,
 					updated_at: Date.now(),
 				})

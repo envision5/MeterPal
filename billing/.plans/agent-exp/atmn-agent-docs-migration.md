@@ -165,7 +165,7 @@ re-export `@autumn/agent-docs/skills` (keeping named-export shims off the `skill
 
 ### Phase 4 — Staleness cleanup
 
-Delete `useCreateGuides.ts`, `StripeStep.tsx`, the old template system (`lib/constants/templates.ts` +
+Delete `useCreateGuides.ts`, the legacy template step component, the old template system (`lib/constants/templates.ts` +
 `views/react/template/TemplateSelector.tsx` + hidden `test-template`). Fix `AGENTS.md` OAuth client-id
 (doc `qncNu…` vs code `hAWUo…`, `commands/auth/constants.ts:7`) and stale `source/`/`autumn-pricing` refs.
 
@@ -188,7 +188,7 @@ act on high-value drift; decide if any new feature warrants a command.
 4. `atmn init --headless` writes the same skills (+ references).
 5. Dashboard onboarding "Copy prompt" (`onboardingPrompts.ts`) still copies sensible frontmatter-stripped content.
 6. Grep atmn for residual hardcoded skill/prompt strings + dead refs (`autumn-pricing`, `useCreateGuides`,
-   `StripeStep`, lorem) → none after Phase 4.
+   legacy template step, lorem) → none after Phase 4.
 
 ---
 

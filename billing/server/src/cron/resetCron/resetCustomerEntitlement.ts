@@ -23,7 +23,7 @@ import { getResetBalancesUpdate } from "@/internal/customers/cusProducts/cusEnts
 import { CusPriceService } from "@/internal/customers/cusProducts/cusPrices/CusPriceService.js";
 import { getNextResetAt } from "@/utils/timeUtils.js";
 import type { CronContext } from "../utils/CronContext";
-import { getStripeSubscriptionAnchor } from "./getStripeSubscriptionAnchor";
+import { getSubscriptionAnchor } from "./getSubscriptionAnchor";
 import { resetShortDurationCustomerEntitlement } from "./resetShortDurationCustomerEntitlement";
 
 const shortDurations = [EntInterval.Minute, EntInterval.Hour, EntInterval.Day];
@@ -178,10 +178,10 @@ const resetCustomerEntitlementInDb = async ({
 			persistFreeOverage,
 		});
 
-		// Only check sub anchor for product-based ents (loose ents have no subscription)
+		// Only check the sub anchor for product-based ents (loose ents have no subscription)
 		if (cusEnt.customer_product) {
 			try {
-				nextResetAt = await getStripeSubscriptionAnchor({
+				nextResetAt = await getSubscriptionAnchor({
 					db: ctx.db,
 					cusEnt,
 					curResetAt: cusEnt.next_reset_at,

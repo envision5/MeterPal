@@ -73,10 +73,10 @@ export const getApiSubscription = async ({
 
 	const subId = cusProduct.subscription_ids?.[0];
 	const autumnSub = fullCus.subscriptions?.find(
-		(s) => s.id === subId || (s as Subscription).stripe_id === subId,
+		(s) => s.id === subId || (s as Subscription).processor_id === subId,
 	);
 
-	let stripeSubData: {
+	let subData: {
 		current_period_start: number | null;
 		current_period_end: number | null;
 	} = {
@@ -85,7 +85,7 @@ export const getApiSubscription = async ({
 	};
 
 	if (autumnSub) {
-		stripeSubData = {
+		subData = {
 			current_period_end: autumnSub?.current_period_end
 				? autumnSub.current_period_end * 1000
 				: null,
@@ -96,7 +96,7 @@ export const getApiSubscription = async ({
 	}
 
 	if (!subId && trialing) {
-		stripeSubData = {
+		subData = {
 			current_period_start: cusProduct.starts_at,
 			current_period_end: cusProduct.trial_ends_at || null,
 		};
@@ -132,8 +132,8 @@ export const getApiSubscription = async ({
 			: null,
 		started_at: cusProduct.starts_at,
 		quantity: cusProduct.quantity,
-		current_period_start: stripeSubData?.current_period_start || null,
-		current_period_end: stripeSubData?.current_period_end || null,
+		current_period_start: subData?.current_period_start || null,
+		current_period_end: subData?.current_period_end || null,
 		scope: cusProduct.internal_entity_id ? "entity" : "customer",
 	} satisfies ApiSubscriptionV1);
 

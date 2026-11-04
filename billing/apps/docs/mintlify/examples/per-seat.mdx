@@ -326,7 +326,7 @@ const { data } = await autumn.checkout({
 });
 
 if (data.url) {
-  // Redirect to Stripe checkout
+  // Redirect to the processor checkout
 }
 ```
 
@@ -348,7 +348,7 @@ async def main():
     )
     
     if response.url:
-        # Redirect to Stripe checkout
+        # Redirect to the processor checkout
         pass
 
 asyncio.run(main())

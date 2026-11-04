@@ -52,9 +52,5 @@ export const toUpdateCatalogPlan = ({
 	...state.plan,
 	renamePlans: [],
 	migrationDrafts: [],
-	upsertRewards: [],
-	removeRewards: [],
-	upsertReferralPrograms: [],
-	removeReferralPrograms: [],
 	projected: state.projected,
 });

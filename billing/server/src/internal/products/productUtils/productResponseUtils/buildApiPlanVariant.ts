@@ -3,7 +3,6 @@ import type {
 	DiffablePlanV1,
 	Feature,
 	FullProduct,
-	RevenueCatPlanMapping,
 } from "@autumn/shared";
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
 import { getPlanResponse } from "./getPlanResponse.js";
@@ -16,7 +15,6 @@ export const buildApiPlanVariant = async ({
 	features,
 	expand,
 	currency,
-	revenuecatMappings,
 }: {
 	ctx?: AutumnContext;
 	basePlan: DiffablePlanV1;
@@ -24,8 +22,6 @@ export const buildApiPlanVariant = async ({
 	features: Feature[];
 	expand?: string[];
 	currency?: string;
-	/** Keyed by plan id — the variant owns its own `revenuecat_mappings` row. */
-	revenuecatMappings?: ReadonlyMap<string, RevenueCatPlanMapping>;
 }): Promise<ApiPlanVariantV1> => {
 	const variantPlan = await getPlanResponse({
 		ctx,
@@ -35,7 +31,6 @@ export const buildApiPlanVariant = async ({
 		currency,
 		basePlan,
 		resolveBaseFullProduct: false,
-		revenuecatMappings,
 	});
 
 	// The edge already carries customize; drop the plan's back-link to the base.

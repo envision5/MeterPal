@@ -36,7 +36,7 @@ def transform(action, record, changes, metadata) do
           internal_product_ids: r["internal_product_ids"] || [],
           internal_customer_id: r["internal_customer_id"],
           internal_entity_id: r["internal_entity_id"],
-          stripe_id: r["stripe_id"],
+          processor_invoice_id: r["processor_invoice_id"],
           status: r["status"],
           hosted_invoice_url: r["hosted_invoice_url"],
           total: df.(r["total"]),
@@ -55,7 +55,7 @@ def transform(action, record, changes, metadata) do
           created_at_ts: if(r["createdAt"] == nil, do: nil, else: to_string(r["createdAt"])),
           metadata: r["metadata"],
           default_currency: r["default_currency"] || "usd",
-          stripe_connected: bi.(r["stripe_connected"]),
+          paypal_connected: bi.(r["paypal_connected"]),
           created_at: di.(r["created_at"]),
           onboarded: bi.(r["onboarded"]),
           deployed: bi.(r["deployed"])
@@ -242,8 +242,8 @@ def transform(action, record, changes, metadata) do
         %{
           id: r["id"],
           org_id: r["org_id"],
-          stripe_id: r["stripe_id"],
-          stripe_schedule_id: r["stripe_schedule_id"],
+          processor_id: r["processor_id"],
+          processor_schedule_id: r["processor_schedule_id"],
           created_at: di.(r["created_at"]),
           metadata: (r["metadata"] || %{}) |> JSON.encode!(),
           usage_features: r["usage_features"] || [],

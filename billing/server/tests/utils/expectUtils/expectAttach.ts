@@ -25,12 +25,10 @@ type CustomerLike =
 	| { products?: any[]; invoices?: any[]; id?: string; features?: any };
 
 import { Decimal } from "decimal.js";
-import type Stripe from "stripe";
 import type { DrizzleCli } from "@/db/initDrizzle.js";
 import type { AutumnInt } from "@/external/autumn/autumnCli.js";
 import { isFreeProductV2 } from "@/internal/products/productUtils/classifyProduct.js";
 import { timeout, toSnakeCase } from "@/utils/genUtils.js";
-import { completeStripeCheckoutFormV2 as completeStripeCheckoutForm } from "../browserPool/completeStripeCheckoutFormV2";
 
 export const attachAndExpectCorrect = async ({
 	autumn,
@@ -39,7 +37,6 @@ export const attachAndExpectCorrect = async ({
 	product,
 	otherProducts,
 	options,
-	stripeCli,
 	db,
 	org,
 	env,
@@ -60,7 +57,6 @@ export const attachAndExpectCorrect = async ({
 	product: ProductV2;
 	otherProducts?: ProductV2[];
 	options?: FeatureOptions[];
-	stripeCli: Stripe;
 	db: DrizzleCli;
 	org: Organization;
 	env: AppEnv;
@@ -121,10 +117,6 @@ export const attachAndExpectCorrect = async ({
 		...attachParams,
 	});
 
-	if (checkout_url) {
-		await completeStripeCheckoutForm({ url: checkout_url });
-		await timeout(10000);
-	}
 
 	if (waitForInvoice) {
 		await timeout(waitForInvoice);
@@ -224,8 +216,7 @@ export const attachAndExpectCorrect = async ({
 	});
 
 	// await expectSubItemsCorrect({
-	//   stripeCli,
-	//   customerId,
+		//   customerId,
 	//   product,
 	//   db,
 	//   org,
@@ -235,18 +226,14 @@ export const attachAndExpectCorrect = async ({
 	// });
 
 	// let cus = await autumn.customers.get(customerId);
-	// const stripeSubs = await stripeCli.subscriptions.list({
-	//   customer: cus.stripe_id!,
-	// });
+			// });
 
 	// if (numSubs) {
-	//   expect(stripeSubs.data.length).to.equal(
-	//     numSubs,
+		//     numSubs,
 	//     `should have ${numSubs} subscriptions`
 	//   );
 	// } else {
-	//   expect(stripeSubs.data.length).to.equal(
-	//     1,
+		//     1,
 	//     "should only have 1 subscription"
 	//   );
 	// }

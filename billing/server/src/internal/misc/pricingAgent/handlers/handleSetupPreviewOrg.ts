@@ -95,7 +95,7 @@ export const handleSetupPreviewOrg = createRoute({
 			// The preview org should not be accessible to the user via the dashboard.
 			// They can only interact with it via the /preview/* routes.
 
-			// Initialize org (creates Stripe test account, svix apps, etc.)
+			// Initialize org (creates the processor test account, svix apps, etc.)
 			await afterOrgCreated({ org: previewOrg, user });
 
 			logger.info(

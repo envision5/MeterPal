@@ -144,13 +144,6 @@ function PhaseProgress({ snap }: { snap: Snapshot }) {
 					</span>
 				</div>
 				<div className="flex items-center gap-2 text-sm">
-					<span className="w-20 text-muted-foreground">stripe</span>
-					<ProgressBar
-						total={snap.fanout.stripeTotal}
-						value={snap.fanout.stripeDone}
-					/>
-				</div>
-				<div className="flex items-center gap-2 text-sm">
 					<span className="w-20 text-muted-foreground">workers</span>
 					<ProgressBar
 						color="bg-sandbox"

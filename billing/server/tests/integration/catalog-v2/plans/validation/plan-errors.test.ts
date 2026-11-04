@@ -16,7 +16,6 @@ import {
 	ResetInterval,
 	TierBehavior,
 	TierInfinite,
-	VercelMarketplaceMode,
 } from "@autumn/shared";
 import { TestFeature } from "@tests/setup/v2Features.js";
 import { expectAutumnError } from "@tests/utils/expectUtils/expectErrUtils.js";
@@ -327,73 +326,6 @@ test.concurrent(
 	},
 );
 
-test.concurrent(
-	`${chalk.yellowBright("catalogV2 plan-errors: new_plan_id blocked only for plans with Vercel installs")}`,
-	async () => {
-		// Sub-org: the gate reads org.processor_configs, which we mutate here.
-		const { autumnV2_3, ctx } = await initScenario({
-			setup: [s.platform.create({})],
-			actions: [],
-		});
-		const vercelPlanId = uniqueTestId("cv2_err_ren_vercel");
-		const vercelNewPlanId = uniqueTestId("cv2_err_ren_vercel_new");
-		const freePlanId = uniqueTestId("cv2_err_ren_novercel");
-		const freeNewPlanId = uniqueTestId("cv2_err_ren_novercel_new");
-		const allPlanIds = [
-			vercelPlanId,
-			vercelNewPlanId,
-			freePlanId,
-			freeNewPlanId,
-		];
-		try {
-			await autumnV2_3.catalogV2.update({
-				plans: [
-					{ plan_id: vercelPlanId, name: "Vercel Locked" },
-					{ plan_id: freePlanId, name: "No Installs" },
-				],
-			});
-			await OrgService.update({
-				db: ctx.db,
-				orgId: ctx.org.id,
-				updates: {
-					processor_configs: {
-						...ctx.org.processor_configs,
-						vercel: {
-							client_integration_id: "test_integration",
-							client_secret: "test_secret",
-							webhook_url: "https://example.com/webhook",
-							marketplace_mode: VercelMarketplaceMode.Installation,
-						},
-					},
-				},
-			});
-			await seedCustomerProductRef({
-				ctx,
-				planId: vercelPlanId,
-				vercelInstall: true,
-			});
-			await seedCustomerProductRef({ ctx, planId: freePlanId });
-
-			await expectAutumnError({
-				errCode: ErrCode.InvalidRequest,
-				errMessage:
-					"Cannot change product ID while Vercel customers are subscribed",
-				func: () =>
-					autumnV2_3.catalogV2.update({
-						plans: [{ plan_id: vercelPlanId, new_plan_id: vercelNewPlanId }],
-					}),
-			});
-
-			// Non-Vercel customers don't trip the gate, even on a Vercel org.
-			await autumnV2_3.catalogV2.update({
-				plans: [{ plan_id: freePlanId, new_plan_id: freeNewPlanId }],
-			});
-		} finally {
-			await cleanupRefs({ ctx, planIds: allPlanIds });
-			await deleteDbPlans({ ctx, planIds: allPlanIds });
-		}
-	},
-);
 
 test.concurrent(
 	`${chalk.yellowBright("catalogV2 plan-errors: Zod — amount + tiers both set")}`,

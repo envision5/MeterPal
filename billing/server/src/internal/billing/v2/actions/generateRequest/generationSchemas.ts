@@ -1,10 +1,6 @@
 import {
 	AttachParamsV1Schema,
-	BillingBehaviorSchema,
-	CreateSchedulePhaseSchema,
-	CreateSchedulePlanSchema,
 	CustomizePlanV1BaseSchema,
-	createScheduleTimingIssues,
 	ExtUpdateSubscriptionV1ParamsSchema,
 	refineCustomizePlanV1Schema,
 } from "@autumn/shared";
@@ -20,6 +16,26 @@ const GenerationCustomizeSchema = refineCustomizePlanV1Schema(
 	}).strict(),
 	{ includeUpdateItems: false },
 );
+
+/** An extra plan attached alongside `plan_id` on the same request. */
+const AdditionalPlanSchema = z
+	.object({
+		plan_id: z.string().meta({
+			description: "The ID of the extra plan to attach alongside.",
+		}),
+		entity_id: z.string().nullable().optional().meta({
+			description:
+				"Entity to scope this plan to. Pass null or omit for a customer-level plan.",
+		}),
+		version: z.number().optional().meta({
+			description: "Optional explicit plan version.",
+		}),
+		customize: GenerationCustomizeSchema.optional().meta({
+			description:
+				"Customize the extra plan: base price override, item replacement or patches, free trial, or license links.",
+		}),
+	})
+	.strict();
 
 export const attachGenerationSchema = AttachParamsV1Schema.pick({
 	plan_id: true,
@@ -50,7 +66,7 @@ export const attachGenerationSchema = AttachParamsV1Schema.pick({
 			description:
 				"Customize the plan being attached: base price override, item replacement or patches, free trial, or license links.",
 		}),
-		additional_plans: z.array(CreateSchedulePlanSchema).optional().meta({
+		additional_plans: z.array(AdditionalPlanSchema).optional().meta({
 			description:
 				"Extra plans to attach alongside plan_id on the same invoice. Only set this when the request names more than one plan to attach together.",
 		}),
@@ -79,45 +95,16 @@ export const updateSubscriptionGenerationSchema =
 		})
 		.strict();
 
-export const createScheduleGenerationSchema = z
-	.strictObject({
-		billing_behavior: BillingBehaviorSchema.optional().meta({
-			description:
-				"Whether to prorate the immediate phase. 'none' skips proration charges and credits.",
-		}),
-		billing_cycle_anchor: z.literal("now").optional().meta({
-			description:
-				"Pass 'now' to reset the billing cycle anchor of the immediate phase to the current time.",
-		}),
-		phases: z.array(CreateSchedulePhaseSchema).min(1).meta({
-			description: "Ordered phase definitions for the schedule.",
-		}),
-		unscheduled_plans: z.array(CreateSchedulePlanSchema).optional().meta({
-			description:
-				"Plans billed with the immediate phase that the schedule never expires or replaces.",
-		}),
-	})
-	.check((ctx) => {
-		for (const issue of createScheduleTimingIssues(ctx.value.phases)) {
-			ctx.issues.push({ code: "custom", input: ctx.value, ...issue });
-		}
-	});
-
 export type AttachGenerationParams = z.infer<typeof attachGenerationSchema>;
 export type UpdateSubscriptionGenerationParams = z.infer<
 	typeof updateSubscriptionGenerationSchema
 >;
-export type CreateScheduleGenerationParams = z.infer<
-	typeof createScheduleGenerationSchema
->;
 export type GeneratedBillingParams =
 	| AttachGenerationParams
-	| UpdateSubscriptionGenerationParams
-	| CreateScheduleGenerationParams;
+	| UpdateSubscriptionGenerationParams;
 
 export const GENERATE_BILLING_TOOLS = [
 	"attach",
-	"create_schedule",
 	"update_subscription",
 ] as const;
 
@@ -136,11 +123,6 @@ export const generationRegistry: Record<
 		promptFragment:
 			"This attaches a plan to the customer. When the request names several plans to attach together, set plan_id to the first and list the rest in additional_plans.",
 		schema: attachGenerationSchema,
-	},
-	create_schedule: {
-		promptFragment:
-			"This creates a multi-phase plan schedule for the customer.",
-		schema: createScheduleGenerationSchema,
 	},
 	update_subscription: {
 		promptFragment: [

@@ -25,7 +25,7 @@ import {
 	seedTwoParentVersions,
 	withCatalogPlans,
 } from "../licenses/utils/seedLicensePlans.js";
-import { seedVersionableCustomer } from "../migrations/utils/seedVersionableCustomer.js";
+import { seedVersionableCustomer } from "../utils/seedVersionableCustomer.js";
 import { expectVersionIdentityCorrect } from "../utils/expectVersionIdentity.js";
 import { expectVariantPlanCorrect } from "../variants/utils/expectVariantPointer.js";
 import { seedBaseWithVariant } from "../variants/utils/seedVariantPlans.js";

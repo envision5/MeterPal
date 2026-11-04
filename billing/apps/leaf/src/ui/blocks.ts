@@ -544,18 +544,6 @@ const modifierPhrases = (toolArgs?: Record<string, unknown>) => {
 	].filter((phrase): phrase is string => Boolean(phrase));
 };
 
-const stripeInvoiceLink = ({
-	env,
-	invoiceId,
-}: {
-	env?: AppEnv;
-	invoiceId: string | null;
-}) => {
-	if (!env || !invoiceId) return null;
-	const withTest = env === "live" ? "" : "/test";
-	return `https://dashboard.stripe.com${withTest}/invoices/${invoiceId}`;
-};
-
 type Outcome = {
 	lines: string[];
 	links: Array<{ label: string; url: string }>;
@@ -595,26 +583,13 @@ const outcomeFromResult = ({
 	const invoiceStatus = getString(invoice.status);
 	const invoiceTotal = getNumber(invoice.total);
 	const invoiceDraft = invoiceStatus === "draft";
-	const dashboardUrl = stripeInvoiceLink({
-		env,
-		invoiceId: getString(invoice.stripe_id),
-	});
-	// Drafts have no payable hosted page — the dashboard is the actionable link.
-	const invoiceLink = invoiceDraft
-		? (dashboardUrl ?? getString(invoice.hosted_invoice_url))
-			? {
-					label: "Open draft in Stripe",
-					url: (dashboardUrl ??
-						getString(invoice.hosted_invoice_url)) as string,
-				}
-			: null
-		: (getString(invoice.hosted_invoice_url) ?? dashboardUrl)
-			? {
-					label: "View invoice",
-					url: (getString(invoice.hosted_invoice_url) ??
-						dashboardUrl) as string,
-				}
-			: null;
+	const hostedInvoiceUrl = getString(invoice.hosted_invoice_url);
+	const invoiceLink = hostedInvoiceUrl
+		? {
+				label: invoiceDraft ? "Open draft invoice" : "View invoice",
+				url: hostedInvoiceUrl,
+			}
+		: null;
 	const requiredActionCode = getString(requiredAction.code);
 	const requiredActionReason = getString(requiredAction.reason);
 	const requiredActionLine = requiredActionCode

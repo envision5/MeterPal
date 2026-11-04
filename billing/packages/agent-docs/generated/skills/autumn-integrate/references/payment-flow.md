@@ -2,7 +2,7 @@
 
 ## Using hosted pages
 
-Pass `redirectMode: "always"` and `billing.attach` will always return a `paymentUrl` — just redirect the customer and Autumn handles payment collection, confirmation, and activation.
+Pass `redirectMode: "always"` and `billing.attach` will always return a `paymentUrl` — just redirect the customer and MeterPal handles payment collection, confirmation, and activation.
 
 <CodeGroup>
 
@@ -38,17 +38,17 @@ curl -X POST 'https://api.useautumn.com/v1/billing.attach' \
 
 </CodeGroup>
 
-New customers without a payment method are sent to **Stripe Checkout**. Existing customers are sent to **Autumn Checkout** to review and confirm. After checkout, the customer is redirected to your `successUrl` (or the default URL in your Autumn dashboard).
+New customers without a payment method are sent to the **processor's checkout**. Existing customers are sent to **MeterPal Checkout** to review and confirm. After checkout, the customer is redirected to your `successUrl` (or the default URL in your MeterPal dashboard).
 
 ## Building your own checkout
 
-For full control over the checkout experience, use `redirectMode: "if_required"`. This charges the saved payment method directly instead of redirecting — the customer is only sent to Stripe Checkout if they don't have a payment method yet.
+For full control over the checkout experience, use `redirectMode: "if_required"`. This charges the saved payment method directly instead of redirecting — the customer is only sent to the processor's checkout if they don't have a payment method yet.
 
 ```mermaid actions={false}
 graph LR
   A["previewAttach"] --> B["user confirms"] --> C["attach"] --> D{"Payment method?"}
   D -->|Yes| E["Charged"]
-  D -->|No| F["Stripe Checkout"]
+  D -->|No| F["Processor Checkout"]
   E --> G["Plan enabled"]
   F --> G
   style A fill:#f472b622,stroke:#f472b6
@@ -91,6 +91,7 @@ curl -X POST 'https://api.useautumn.com/v1/billing.preview_attach' \
 
 </CodeGroup>
 
+
 ```json
 {
   "customerId": "user_123",
@@ -114,6 +115,7 @@ curl -X POST 'https://api.useautumn.com/v1/billing.preview_attach' \
   }
 }
 ```
+
 
 ### Step 2: Confirm and charge
 

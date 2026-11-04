@@ -3,12 +3,12 @@ title: "Subscriptions"
 description: "How MeterPal manages customer subscriptions"
 ---
 
-MeterPal uses Stripe subscriptions under the hood to handle recurring billing. When you attach a plan to a customer, MeterPal creates the Stripe subscription and provisions feature balances automatically.
+MeterPal uses payment processor subscriptions under the hood to handle recurring billing. When you attach a plan to a customer, MeterPal creates the processor subscription and provisions feature balances automatically.
 
 ```mermaid
 flowchart LR
     P[Plan] -->|attach| C[Customer]
-    C -->|creates| S[Stripe Subscription]
+    C -->|creates| S[Processor Subscription]
     S -->|provisions| B[Balances]
 ```
 

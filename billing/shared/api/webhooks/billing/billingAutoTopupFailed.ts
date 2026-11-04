@@ -25,7 +25,7 @@ export const BillingAutoTopupFailureReasonSchema = z
 export const BillingAutoTopupFailedErrorSchema = z.object({
 	code: z.string().nullish().meta({
 		description:
-			"Machine-readable error code when one is available (for example, a Stripe or Autumn error code).",
+			"Machine-readable error code when one is available (for example, a processor or Autumn error code).",
 	}),
 	message: z.string().nullish().meta({
 		description:
@@ -36,7 +36,7 @@ export const BillingAutoTopupFailedErrorSchema = z.object({
 	}),
 	decline_code: z.string().nullish().meta({
 		description:
-			"Stripe decline code when the failure came from a card decline.",
+			"Processor decline code when the failure came from a declined payment.",
 	}),
 });
 

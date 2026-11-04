@@ -1,113 +1,112 @@
 import {
-	type AttachBodyV0,
-	AttachFunction,
-	type AttachPreview,
+	addToExpand,
+	type AttachParamsV1,
+	AttachScenario,
 	type CheckProductPreview,
 	type Feature,
+	type FullCusProduct,
 	type FullCustomer,
 	type FullProduct,
 	formatAmount,
 	type Organization,
 } from "@autumn/shared";
-import { Decimal } from "decimal.js";
 import type { DrizzleCli } from "@/db/initDrizzle.js";
-import { attachParamsToPreview } from "@/internal/billing/attachPreview/attachParamsToPreview.js";
-import { checkToAttachParams } from "@/internal/customers/attach/attachUtils/attachParams/checkToAttachParams.js";
-import type { AttachParams } from "@/internal/customers/cusProducts/AttachParams.js";
+import { getOptions } from "@/internal/api/check/checkUtils.js";
+import { isAttachUpgrade } from "@/internal/billing/v2/actions/attach/utils/isAttachUpgrade";
+import { billingActions } from "@/internal/billing/v2/actions";
+import { billingPlanToAttachPreview } from "@/internal/billing/v2/utils/billingPlan/billingPlanToAttachPreview";
+import { mapToProductItems } from "@/internal/products/productV2Utils.js";
 import { getProductResponse } from "@/internal/products/productUtils/productResponseUtils/getProductResponse.js";
 import { isFreeProduct, isOneOff } from "@/internal/products/productUtils.js";
 import { notNullish } from "@/utils/genUtils.js";
 import type { AutumnContext } from "../../../../honoUtils/HonoEnv.js";
-import { getAttachScenario } from "./attachToCheckPreview/getAttachScenario.js";
+
+/**
+ * The engine preview no longer carries the legacy attach branch, so the
+ * scenario is derived from the transition the attach would perform.
+ */
+const getAttachScenario = ({
+	currentCustomerProduct,
+	attachProduct,
+	product,
+}: {
+	currentCustomerProduct?: FullCusProduct;
+	attachProduct: FullProduct;
+	product: FullProduct;
+}): AttachScenario => {
+	if (!currentCustomerProduct) {
+		return AttachScenario.New;
+	}
+
+	if (isFreeProduct(product.prices)) {
+		return AttachScenario.Cancel;
+	}
+
+	return isAttachUpgrade({
+		currentCustomerProduct,
+		attachProduct,
+	})
+		? AttachScenario.Upgrade
+		: AttachScenario.Downgrade;
+};
 
 const attachToCheckPreview = async ({
 	preview,
-	params,
 	product,
 	org,
 	features,
 	db,
 	fullCus,
+	scenario,
+	currentProductName,
 }: {
-	preview: AttachPreview;
-	params: AttachParams;
+	preview: Awaited<
+		ReturnType<typeof billingPlanToAttachPreview>
+	>;
 	product: FullProduct;
 	org: Organization;
 	features: Feature[];
 	db: DrizzleCli;
 	fullCus: FullCustomer;
+	scenario: AttachScenario;
+	currentProductName?: string;
 }) => {
-	// 1. If check
-	const attachFunc = preview.func;
-
-	if (
-		attachFunc === AttachFunction.AddProduct &&
-		isFreeProduct(product.prices)
-	) {
-		return null;
-	}
-
-	const noOptions = !preview.options || preview.options.length === 0;
-	if (attachFunc === AttachFunction.CreateCheckout && noOptions) {
-		return null;
-	}
-
-	const scenario = await getAttachScenario({
-		preview,
-		product,
-	});
-
-	const items = preview.due_today?.line_items?.map((item) => {
+	const items = preview.line_items?.map((item) => {
 		return {
-			price: notNullish(item.amount)
+			price: notNullish(item.total)
 				? formatAmount({
-						amount: item.amount!,
+						amount: item.total,
 						org,
 						minFractionDigits: 2,
 						maxFractionDigits: 2,
 					})
-				: item.price,
+				: item.description,
 			description: item.description,
-			usage_model: item.usage_model,
 		};
 	});
 
-	const options = preview.options?.map((option: any) => {
-		return {
-			...option,
-			price: new Decimal(option.price).toDecimalPlaces(2).toNumber(),
-		};
-	});
+	const options = getOptions({
+		prodItems: mapToProductItems({
+			prices: product.prices,
+			entitlements: product.entitlements,
+			features,
+		}),
+		features,
+	}) as CheckProductPreview["options"];
 
-	const due_today = preview.due_today
+	const due_today = {
+		price: preview.total,
+		currency: preview.currency || org.default_currency || "usd",
+	};
+
+	const due_next_cycle = preview.next_cycle
 		? {
-				price: preview.due_today.total,
-				currency: org.default_currency || "usd",
+				price: preview.next_cycle.total,
+				currency: preview.currency || org.default_currency || "usd",
 			}
 		: undefined;
 
-	let due_next_cycle:
-		| {
-				price: number;
-				currency: string;
-		  }
-		| undefined;
-
-	if (preview.due_next_cycle) {
-		due_next_cycle = {
-			price: preview.due_next_cycle.line_items.reduce((acc, item) => {
-				if (item.amount) {
-					return acc + item.amount;
-				}
-				return acc;
-			}, 0),
-			currency: org.default_currency || "usd",
-		};
-	}
-
 	const checkPreview: CheckProductPreview = {
-		// title: "Check",
-		// message: "Check",
 		scenario,
 
 		// Meta
@@ -115,12 +114,12 @@ const attachToCheckPreview = async ({
 		product_name: product.name,
 		recurring: !isOneOff(product.prices),
 		error_on_attach: false,
-		next_cycle_at: preview.due_next_cycle?.due_at,
-		current_product_name: preview.current_product?.name,
+		next_cycle_at: preview.next_cycle?.starts_at,
+		current_product_name: currentProductName,
 
 		// Otehrs
-		options: options?.length > 0 ? options : undefined,
-		items: items?.length > 0 ? items : undefined,
+		options: options && options.length > 0 ? options : undefined,
+		items: items && items.length > 0 ? items : undefined,
 		due_today,
 		due_next_cycle,
 		product: await getProductResponse({
@@ -146,32 +145,48 @@ export const getProductCheckPreview = async ({
 	const { org, features, db } = ctx;
 
 	// Build attach params
-	const attachParams = await checkToAttachParams({
-		ctx,
-		customer,
-		product,
-	});
-
-	const attachBody: AttachBodyV0 = {
+	const attachParams: AttachParamsV1 = {
 		customer_id: customer.id!,
-		product_id: product.id,
-		entity_id: customer.entity?.id,
+		plan_id: product.id,
+		redirect_mode: "if_required",
+		...(customer.entity?.id ? { entity_id: customer.entity.id } : {}),
 	};
 
-	const preview = await attachParamsToPreview({
+	const { billingContext, billingPlan } = await billingActions.attach({
 		ctx,
-		attachParams,
-		attachBody,
+		params: attachParams,
+		preview: true,
+	});
+
+	if (!billingPlan) {
+		throw new Error("Billing plan not found for check preview");
+	}
+
+	const preview = await billingPlanToAttachPreview({
+		ctx: addToExpand({
+			ctx,
+			add: ["incoming.plan.items.feature", "outgoing.plan.items.feature"],
+		}),
+		billingContext,
+		billingPlan,
+	});
+
+	const scenario = getAttachScenario({
+		currentCustomerProduct: billingContext.currentCustomerProduct,
+		attachProduct: billingContext.attachProduct,
+		product,
 	});
 
 	const checkPreview = await attachToCheckPreview({
 		preview,
-		params: attachParams,
 		product,
 		org,
 		features,
 		db,
 		fullCus: customer,
+		scenario,
+		currentProductName:
+			billingContext.currentCustomerProduct?.product?.name ?? undefined,
 	});
 
 	return checkPreview;

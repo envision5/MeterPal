@@ -2,12 +2,12 @@
   Lua Script: Upsert Invoice in FullSubject V2 cache
 
   Atomically upserts an invoice in the cached FullSubject invoices array:
-  - If invoice with same stripe_id exists: replace it
+  - If invoice with same processor_invoice_id exists: replace it
   - Otherwise: append
 
   KEYS[1] = FullSubject cache key
 
-  ARGV[1] = JSON-encoded invoice object (must have stripe_id for match/replace)
+  ARGV[1] = JSON-encoded invoice object (must have processor_invoice_id for match/replace)
   ARGV[2] = cache TTL in seconds
   ARGV[3] = current timestamp in ms (reserved for consistency)
 
@@ -28,7 +28,7 @@ end
 
 local cached = cjson.decode(current_raw)
 local invoice = cjson.decode(invoice_json)
-local stripe_id = invoice.stripe_id
+local processor_invoice_id = invoice.processor_invoice_id
 
 local invoices = cached.invoices
 if type(invoices) ~= "table" then
@@ -62,9 +62,9 @@ end
 
 local did_update = false
 
-if stripe_id then
+if processor_invoice_id then
   for index, existing_invoice in ipairs(invoices) do
-    if type(existing_invoice) == "table" and existing_invoice.stripe_id == stripe_id then
+    if type(existing_invoice) == "table" and existing_invoice.processor_invoice_id == processor_invoice_id then
       invoices[index] = invoice
       did_update = true
       break

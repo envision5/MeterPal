@@ -10,7 +10,6 @@ import {
 } from "@autumn/shared";
 import { StatusCodes } from "http-status-codes";
 import { assertNoBackdateWithExistingSubscription } from "@/internal/billing/v2/utils/backdate/assertNoBackdateWithExistingSubscription";
-import { assertStripeBackdateInvoiceLineItemLimit } from "@/internal/billing/v2/utils/backdate/stripeBackdateInvoiceLimit";
 
 export const handleStartDateErrors = ({
 	billingContext,
@@ -48,8 +47,8 @@ export const handleStartDateErrors = ({
 		assertNoBackdateWithExistingSubscription({ billingContext });
 
 		// Previews don't know whether the caller will settle via invoice (supports
-		// backdating) or Stripe Checkout (doesn't), so only block checkout on execute.
-		if (!preview && billingContext.checkoutMode === "stripe_checkout") {
+		// backdating) or processor checkout (doesn't), so only block checkout on execute.
+		if (!preview && billingContext.checkoutMode === "processor_checkout") {
 			throw new RecaseError({
 				message: PAST_START_REQUIRES_INVOICE,
 				code: ErrCode.InvalidRequest,
@@ -64,12 +63,6 @@ export const handleStartDateErrors = ({
 				statusCode: StatusCodes.BAD_REQUEST,
 			});
 		}
-
-		assertStripeBackdateInvoiceLineItemLimit({
-			products: [billingContext.attachProduct],
-			startsAt: params.starts_at,
-			currentEpochMs: billingContext.currentEpochMs,
-		});
 
 		return;
 	}

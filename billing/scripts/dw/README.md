@@ -17,7 +17,6 @@ Most auto-install on first run:
 - **Neon CLI** — `neonctl` (logs in via OAuth on first use)
 - **psql** — for DDL against new branches
 - **Docker + Compose** — spins Dragonfly + ElasticMQ per worktree
-- **Stripe CLI** — used by the dev server for webhooks
 - **tmux** — headless dev wrapping for agent worktrees
 - **portless** — `npm install -g @portless/cli` for HTTPS aliases
 - **emulate** — `npm install -g @kelby/emulate` for Google OAuth locally

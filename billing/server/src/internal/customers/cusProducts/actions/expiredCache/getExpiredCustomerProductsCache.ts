@@ -4,25 +4,25 @@ import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
 
 export const getExpiredCustomerProductsCache = async ({
 	ctx,
-	stripeSubscriptionId,
+	processorSubscriptionId,
 }: {
 	ctx: AutumnContext;
-	stripeSubscriptionId: string;
+	processorSubscriptionId: string;
 }): Promise<FullCusProduct[] | null> =>
-	getCachedExpiredCustomerProducts({ ctx, stripeSubscriptionId });
+	getCachedExpiredCustomerProducts({ ctx, processorSubscriptionId });
 
 export const getExpiredCustomerProductsCacheAndMerge = async ({
 	ctx,
 	customerProducts,
-	stripeSubscriptionId,
+	processorSubscriptionId,
 }: {
 	ctx: AutumnContext;
 	customerProducts: FullCusProduct[];
-	stripeSubscriptionId: string;
+	processorSubscriptionId: string;
 }): Promise<FullCusProduct[]> => {
 	const cachedExpired = await getExpiredCustomerProductsCache({
 		ctx,
-		stripeSubscriptionId,
+		processorSubscriptionId,
 	});
 
 	if (cachedExpired && cachedExpired.length > 0) {

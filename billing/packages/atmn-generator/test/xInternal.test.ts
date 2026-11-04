@@ -15,24 +15,11 @@ const spec = loadSpec();
 const root = spec as unknown as JsonSchema;
 const envelope = catalogUpdateSchema({ spec });
 
-test("the real spec: server-owned ids vanish, the Stripe mapping survives", () => {
+test("the real spec: server-owned ids vanish", () => {
 	const item = fieldsAtPath({ schema: envelope, root, path: "plans.items" });
 	for (const serverOwned of ["priceId", "entitlementId", "entityFeatureId"]) {
 		expect(item?.has(serverOwned)).toBe(false);
 	}
-	expect(
-		fieldsAtPath({ schema: envelope, root, path: "plans.price" })?.has(
-			"stripePriceId",
-		),
-	).toBe(false);
-	// `processors.stripe.priceId` is a mapping the user may write, not a DB id.
-	expect(
-		fieldsAtPath({
-			schema: envelope,
-			root,
-			path: "plans.items.price.processors.stripe",
-		})?.has("priceId"),
-	).toBe(true);
 	// An x-internal subtree is not descended into at all.
 	expect(
 		fieldsAtPath({

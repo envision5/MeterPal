@@ -3,7 +3,6 @@ import {
 	type FullPlanLicense,
 	type FullProductWithoutLicenses,
 	mapToProductV2,
-	productToPlanProcessors,
 	productV2ToApiPlanV1,
 } from "@autumn/shared";
 import { toApiPlanLicenseSnapshot } from "@/internal/catalogV2/actions/buildPlanChange/buildPlanLicenseChanges/toApiPlanLicenseSnapshot";
@@ -18,7 +17,7 @@ export const fullProductToApiPlanV1Sync = ({
 	const resolvedFeatures =
 		features ?? product.entitlements.map((entitlement) => entitlement.feature);
 	const licenses = product.licenses ?? [];
-	const plan = productV2ToApiPlanV1({
+	return productV2ToApiPlanV1({
 		product: mapToProductV2({ product, features: resolvedFeatures }),
 		features: resolvedFeatures,
 		...(licenses.length > 0
@@ -29,10 +28,4 @@ export const fullProductToApiPlanV1Sync = ({
 				}
 			: {}),
 	});
-	// Carried so the plan-change diff can report mapping edits.
-	const processors = productToPlanProcessors({ product });
-	return {
-		...plan,
-		...(processors !== undefined ? { processors } : {}),
-	};
 };

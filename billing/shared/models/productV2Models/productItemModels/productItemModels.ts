@@ -216,15 +216,6 @@ export const ProductItemSchema = z.object({
 	price_id: z.string().nullish().meta({
 		internal: true,
 	}),
-	/** Set only by producers that know the item corresponds to an existing
-	 * Stripe price of the same shape. Flows into Price.config when rebuilt. */
-	stripe_price_id: z.string().nullish().meta({
-		internal: true,
-	}),
-	/** Caller-adopted Stripe price. Validated to exist before it is honoured. */
-	stripe_prepaid_price_v2_id: z.string().nullish().meta({
-		internal: true,
-	}),
 	price_interval: z.enum(ProductItemInterval).nullish().meta({
 		internal: true,
 	}),
@@ -232,7 +223,7 @@ export const ProductItemSchema = z.object({
 		internal: true,
 	}),
 	/** One-way Price → ProductItem display context. Never read this back when
-	 * rebuilding a price because an edited item may carry stale Stripe IDs. */
+	 * rebuilding a price because an edited item may carry stale price ids. */
 	price_config: z.any().nullish().meta({
 		internal: true,
 	}),

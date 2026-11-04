@@ -16,7 +16,7 @@ import { provisionOrgResources } from "@/utils/authUtils/afterOrgCreated.js";
 
 /**
  * Insert a sub-org row (created_by = master), optionally a membership, and run
- * provisioning (`provisionOrgResources`: Stripe connect account, svix apps,
+ * provisioning (`provisionOrgResources`: svix apps,
  * pkeys). Shared by the platform-org create and the dashboard sandbox create;
  * slug resolution and key generation stay with the callers.
  *
@@ -88,7 +88,7 @@ export const provisionSubOrg = async ({
 	}
 
 	// Re-read so callers (and teardown-on-failure paths) get the provisioned
-	// external ids (test_stripe_connect, svix_config), not the bare inserted row.
+	// external ids (svix_config), not the bare inserted row.
 	const provisioned = await OrgService.get({ db, orgId });
 	return { ...provisioned, master: masterOrg };
 };

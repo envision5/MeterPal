@@ -1,6 +1,6 @@
 ## Spend Limits & Usage Alerts
 
-Spend limits let you cap how much overage a customer (or entity) can accumulate on a usage-based feature. Without a spend limit, usage-based features allow unlimited overage — the customer is billed for whatever they use. With a spend limit, Autumn blocks usage once the overage reaches the configured cap.
+Spend limits let you cap how much overage a customer (or entity) can accumulate on a usage-based feature. Without a spend limit, usage-based features allow unlimited overage — the customer is billed for whatever they use. With a spend limit, MeterPal blocks usage once the overage reaches the configured cap.
 
 > **Example** <br />
 > A customer is on a plan with 1,000 API calls included per month and $1 per 1,000 additional calls. You set a spend limit of 5,000 on the `api_calls` feature. The customer can use up to 6,000 total API calls (1,000 included + 5,000 overage), and is blocked after that.
@@ -10,6 +10,9 @@ Spend limits let you cap how much overage a customer (or entity) can accumulate 
 Spend limits apply to **usage-based** features — features with overage pricing that allow usage beyond the included amount. If a feature doesn't allow overage, spend limits have no effect.
 
 You'll need a plan with a usage-based price on the feature you want to cap:
+
+
+
 
 ```ts autumn.config.ts
 import { atmn, feature, plan } from "atmn";
@@ -45,6 +48,10 @@ export default atmn({ features: [apiCalls], plans: [pro] });
 ```
 
 Preview with `atmn push`, then apply with `atmn push --yes`. Then configure spend limits per customer via the API (see below).
+
+
+
+
 
 ## Configuring spend limits
 
@@ -113,7 +120,9 @@ curl -X POST "https://api.useautumn.com/v1/customers/update" \
 | `overage_limit` | number (optional) | Maximum overage units allowed beyond the included amount |
 | `skip_overage_billing` | boolean (optional) | When `true`, overage on this feature is never billed — usage beyond the included amount is not added to the customer's invoice. Usage tracking and balance resets are unaffected. |
 
+
 The `overage_limit` is measured in the same units as the feature's balance — not in dollars. For example, if your feature is "API calls", an `overage_limit` of 5,000 means 5,000 additional API calls beyond the included amount.
+
 
 ## Skipping overage billing
 
@@ -167,15 +176,19 @@ curl -X POST "https://api.useautumn.com/v1/customers/update" \
 
 The spend limit must be `enabled` and have a `feature_id`. It can also be set on an [entity](/documentation/customers/feature-entities) — resolution is per-feature, and the nearest configuration wins: entity-level spend limit, then customer-level, then plan-level billing controls.
 
+
 Combine `skip_overage_billing` with an `overage_limit` to allow a bounded amount of free overage: the customer is blocked once they hit the cap, and the overage they did use is never billed.
+
 
 ## How it works
 
 1. The customer uses a usage-based feature and begins accumulating overage beyond their included amount
-2. On each `check` or `track` call, Autumn computes total overage across all of the customer's usage-based entitlements for that feature
-3. If the total overage would exceed the `overage_limit`, Autumn blocks the usage — `check` returns `allowed: false`, and `track` will not deduct beyond the limit
+2. On each `check` or `track` call, MeterPal computes total overage across all of the customer's usage-based entitlements for that feature
+3. If the total overage would exceed the `overage_limit`, MeterPal blocks the usage — `check` returns `allowed: false`, and `track` will not deduct beyond the limit
+
 
 Spend limits aggregate overage across **all** of the customer's entitlements for a given feature. If a customer has the same feature on multiple plans (e.g., a base plan and an add-on), the total overage across both is compared against the spend limit.
+
 
 ## Checking access with spend limits
 
@@ -216,6 +229,7 @@ curl -X POST "https://api.useautumn.com/v1/check" \
 
 </CodeGroup>
 
+
 ```json
 {
   "allowed": true,
@@ -234,6 +248,8 @@ curl -X POST "https://api.useautumn.com/v1/check" \
 ```
 The customer has used 4,000 API calls (3,000 overage) against a spend limit of 5,000. They still have 2,000 overage units remaining, so `allowed` is `true`.
 
+
+
 ```json
 {
   "allowed": false,
@@ -251,6 +267,7 @@ The customer has used 4,000 API calls (3,000 overage) against a spend limit of 5
 }
 ```
 The customer has reached their 5,000 overage limit (6,000 total usage). `allowed` is `false` even though the feature allows overage.
+
 
 ## Entity-level spend limits
 
@@ -365,7 +382,9 @@ When **both** a spend limit and a max purchase are configured for the same featu
 
 This lets you use max purchase as a sensible default for all customers, then selectively raise (or lower) the cap for specific customers using spend limits.
 
+
 If you set a spend limit **higher** than the plan's max purchase, the customer will be able to exceed the plan-level limit. If you set it **lower**, the customer will be capped before hitting the plan-level limit. In either case, the spend limit is the one that's enforced.
+
 
 ## Spend limits vs max purchase
 
@@ -503,7 +522,9 @@ curl -X POST "https://api.useautumn.com/v1/customers/update" \
 
 </CodeGroup>
 
+
 The `usage_percentage` threshold is calculated against the **included** allowance only. If the customer has overage enabled with a spend limit or max purchase, the percentage still refers to the included balance — not the total available usage.
+
 
 ### Usage alert fields
 
@@ -517,11 +538,13 @@ The `usage_percentage` threshold is calculated against the **included** allowanc
 
 ## How usage alerts work
 
-1. On each `track` call, Autumn compares the customer's old and new usage against each enabled alert
-2. If the usage crosses the threshold (old usage was below, new usage is at or above), Autumn fires a `balances.usage_alert_triggered` webhook
+1. On each `track` call, MeterPal compares the customer's old and new usage against each enabled alert
+2. If the usage crosses the threshold (old usage was below, new usage is at or above), MeterPal fires a `balances.usage_alert_triggered` webhook
 3. The alert fires **once** per threshold crossing — it won't re-fire on subsequent track calls unless usage drops below the threshold and crosses it again
 
+
 Alerts also work at the entity level. If you configure alerts on an [entity](/documentation/customers/feature-entities), they fire based on that entity's usage independently.
+
 
 See the [balances.usage_alert_triggered webhook schema](/api-reference/webhooks/balancesUsageAlertTriggered) for the full payload reference.
 

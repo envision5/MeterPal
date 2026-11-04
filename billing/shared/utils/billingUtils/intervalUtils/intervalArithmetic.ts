@@ -28,7 +28,7 @@ const MONTH_BASED_INTERVALS = [
 
 /**
  * Adds an interval to a timestamp.
- * For month-based intervals, preserves the anchor day (Stripe-compatible end-of-month behavior).
+ * For month-based intervals, preserves the anchor day (end-of-month behavior).
  *
  * @param from - Unix timestamp in milliseconds
  * @param interval - BillingInterval or EntInterval

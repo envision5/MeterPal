@@ -16,13 +16,13 @@ import { AutumnInt } from "@/external/autumn/autumnCli.js";
 import { CusEntService } from "@/internal/customers/cusProducts/cusEnts/CusEntitlementService.js";
 import { constructFeatureItem } from "@/utils/scriptUtils/constructItem.js";
 import { constructProduct } from "@/utils/scriptUtils/createTestProducts.js";
-import { initCustomerV3 } from "@/utils/scriptUtils/testUtils/initCustomerV3.js";
-import { initProductsV0 } from "@/utils/scriptUtils/testUtils/initProductsV0.js";
+import { initTestCustomer } from "@tests/utils/testInitUtils/initTestCustomer.js";
+import { initTestProducts } from "@tests/utils/testInitUtils/initTestProducts.js";
 import { findCustomerEntitlement } from "../utils/findCustomerEntitlement";
 
 /**
  * Builds a fresh free product with a monthly-reset feature item. We construct
- * a new product object per describe block because `initProductsV0` mutates the
+ * a new product object per describe block because `initTestProducts` mutates the
  * product id (prefixing it), and we want to isolate each test customer.
  *
  * `ignorePastDue` controls the product-level `config.ignore_past_due` flag —
@@ -55,7 +55,7 @@ const buildFreeProduct = ({
 };
 
 /**
- * Shared setup: creates a customer via initCustomerV3, registers a fresh free
+ * Shared setup: creates a customer via initTestCustomer, registers a fresh free
  * product scoped to that customer with the requested product-level
  * `config.ignore_past_due`, attaches the product, then moves the resulting
  * customer_entitlement's next_reset_at into the past and patches the
@@ -76,21 +76,20 @@ const setupPastDueScenario = async ({
 	const product = buildFreeProduct({ ignorePastDue });
 	const autumn = new AutumnInt({ version: ApiVersion.V1_2 });
 
-	// initProductsV0 → createProducts → autumn.products.create, which accepts
+	// initTestProducts → createProducts → autumn.products.create, which accepts
 	// `config` on CreateProductV2Params. This persists the flag into
 	// products.config without any direct SQL.
-	await initProductsV0({
+	await initTestProducts({
 		ctx,
 		products: [product],
 		prefix: customerId,
 		customerId,
 	});
 
-	await initCustomerV3({
+	await initTestCustomer({
 		ctx,
 		customerId,
 		customerData: {},
-		withTestClock: false,
 	});
 
 	await autumn.attach({

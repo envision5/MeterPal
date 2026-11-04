@@ -8,15 +8,13 @@ import {
 	sumValues,
 	timestampsMatch,
 } from "@autumn/shared";
-import { partitionSkippedOverageLineItems } from "@/external/stripe/webhookHandlers/common/filterSkippedOverageLineItems";
-import { shouldDisableOverageBilling } from "@/external/stripe/webhookHandlers/common/shouldDisableOverageBilling.js";
 import type { AutumnContext } from "@/honoUtils/HonoEnv";
-import { applyStripeDiscountsToLineItems } from "@/internal/billing/v2/providers/stripe/utils/discounts/applyStripeDiscountsToLineItems";
-import { filterStripeDiscountsForNextCycle } from "@/internal/billing/v2/providers/stripe/utils/discounts/filterStripeDiscountsForNextCycle";
 import { customerProductToArrearLineItems } from "../../lineItems/customerProductToArrearLineItems";
 import { getLineItemsForDirection } from "../../lineItems/getLineItemsForDirection";
 import { lineItemToPreviewLineItem } from "../../lineItems/lineItemToPreviewLineItem";
 import { lineItemToPreviewUsageLineItem } from "../../lineItems/lineItemToPreviewUsageLineItem";
+import { partitionSkippedOverageLineItems } from "../../lineItems/partitionSkippedOverageLineItems";
+import { shouldDisableOverageBilling } from "../../lineItems/shouldDisableOverageBilling";
 
 export type NextCycleLineItemOptions = {
 	/**
@@ -158,8 +156,8 @@ export const billingPlanToNextCycleLineItems = ({
 		lineItems: nextCycleAutumnLineItems,
 	});
 
-	// Folded in before the discount pass so an amount-off coupon spreads across
-	// usage and recurring charges together, as it will on the real invoice.
+	// Folded in before the preview so usage and recurring charges are listed
+	// together, as they will be on the real invoice.
 	if (options.chargeUsageLineItems) {
 		const { billableLineItems } = partitionSkippedOverageLineItems({
 			fullCustomer: billingContext.fullCustomer,
@@ -175,26 +173,6 @@ export const billingPlanToNextCycleLineItems = ({
 	const deferredLineItems = (autumnBillingPlan.lineItems ?? []).filter(
 		(lineItem) => lineItem.chargeImmediately === false,
 	);
-
-	if (billingContext.stripeDiscounts?.length) {
-		// Mirrors buildStripeInvoiceAction's condition for creating an invoice now.
-		const hasImmediateInvoice = (autumnBillingPlan.lineItems ?? []).some(
-			(lineItem) => lineItem.chargeImmediately && lineItem.amount !== 0,
-		);
-
-		const nextCycleDiscounts = filterStripeDiscountsForNextCycle({
-			stripeDiscounts: billingContext.stripeDiscounts,
-			currentEpochMs: billingContext.currentEpochMs,
-			nextCycleStart,
-			discountStartMs: billingContext.subscriptionBackdateStartMs,
-			hasImmediateInvoice,
-		});
-
-		nextCycleAutumnLineItems = applyStripeDiscountsToLineItems({
-			lineItems: nextCycleAutumnLineItems,
-			discounts: nextCycleDiscounts,
-		});
-	}
 
 	const previewLineItems = [
 		...nextCycleAutumnLineItems,

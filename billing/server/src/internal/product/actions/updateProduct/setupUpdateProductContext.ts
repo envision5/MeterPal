@@ -9,7 +9,6 @@ import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
 import type { CustomerProductVersioningUsage } from "@/internal/customers/cusProducts/repos/getVersioningUsage.js";
 import { customerProductRepo } from "@/internal/customers/cusProducts/repos/index.js";
 import { ProductService } from "@/internal/products/ProductService.js";
-import { rewardProgramRepo } from "@/internal/rewards/repos/index.js";
 
 export type UpdateProductContext = {
 	fullProduct: FullProduct;
@@ -42,15 +41,7 @@ export const setupUpdateProductContext = async ({
 		});
 	};
 
-	const [fullProduct, rewardPrograms] = await Promise.all([
-		getFullProduct(),
-		rewardProgramRepo.getByProductId({
-			db,
-			productIds: [productId],
-			orgId: org.id,
-			env,
-		}),
-	]);
+	const fullProduct = await getFullProduct();
 
 	if (!fullProduct) throw new ProductNotFoundError({ productId });
 
@@ -68,7 +59,7 @@ export const setupUpdateProductContext = async ({
 			product: fullProduct,
 			features,
 		}),
-		rewardPrograms,
+		rewardPrograms: [],
 		customerUsage,
 	};
 };

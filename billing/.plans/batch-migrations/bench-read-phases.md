@@ -41,7 +41,7 @@ Probes: `server/tests/perf/batch-migrations/probes/` —
 All unbounded-table access is per-row index probes:
 customers→customers_pkey; customer_entitlements→idx_ce_customer_product_id_c;
 customer_prices→idx_cpr_customer_product_id_c;
-subscriptions→subscriptions_stripe_id_key; prices/entitlements→pkeys;
+subscriptions→subscriptions_processor_id_key; prices/entitlements→pkeys;
 customer_products→bitmap over the id list. The only "Seq Scan" flags are a
 never-executed alternative subplan (0 loops) on `entitlements` — a small
 catalog table. Cost model: 5,000 × O(log n) probes, independent of table size.
@@ -141,7 +141,7 @@ Candidate select @5k warm (unconstrained baseline ~380–425ms):
 | paid:false (bench-free) | ~380 | NOT EXISTS over full page |
 
 Index audit: every unbounded-table access stays a per-row index probe
-(cpr→idx_cpr_customer_product_id_c, subs→stripe_id_key, prices→pkey).
+(cpr→idx_cpr_customer_product_id_c, subs→processor_id_key, prices→pkey).
 Real SEQ flags are only 0-loop alternative subplans on catalog tables, plus
 one *executed* per-row Seq Scan on `prices` in the stacked candidate plan —
 cost-based choice while `prices` is tiny; expected to flip to index at prod

@@ -8,8 +8,8 @@ import { Decimal } from "decimal.js";
 import { AutumnInt } from "@/external/autumn/autumnCli.js";
 import { constructFeatureItem } from "@/utils/scriptUtils/constructItem.js";
 import { constructProduct } from "@/utils/scriptUtils/createTestProducts.js";
-import { initCustomerV3 } from "@/utils/scriptUtils/testUtils/initCustomerV3.js";
-import { initProductsV0 } from "@/utils/scriptUtils/testUtils/initProductsV0.js";
+import { initTestCustomer } from "@tests/utils/testInitUtils/initTestCustomer.js";
+import { initTestProducts } from "@tests/utils/testInitUtils/initTestProducts.js";
 
 const testCase = "concurrent-track8";
 
@@ -51,14 +51,13 @@ describe(`${chalk.yellowBright(`${testCase}: Stress test with 500 concurrent req
 	beforeAll(async () => {
 		// Initialize all customers
 		for (const customerId of customerIds) {
-			await initCustomerV3({
+			await initTestCustomer({
 				ctx,
 				customerId,
-				withTestClock: false,
 			});
 		}
 
-		await initProductsV0({
+		await initTestProducts({
 			ctx,
 			products: [pro],
 			prefix: testCase,

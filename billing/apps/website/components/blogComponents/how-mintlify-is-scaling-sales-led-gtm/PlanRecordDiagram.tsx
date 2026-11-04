@@ -58,7 +58,7 @@ export function PlanRecordDiagram() {
 				<div className="w-full font-mono text-[9px] text-[#FFFFFF4d] uppercase tracking-widest">
 					before
 				</div>
-				<BeforeChip>stripe</BeforeChip>
+				<BeforeChip>legacy</BeforeChip>
 				<BeforeChip dashed>salesforce</BeforeChip>
 				<BeforeChip>internal db</BeforeChip>
 			</div>

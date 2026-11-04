@@ -11,19 +11,16 @@ import { handleCarryOverUsagesErrors } from "@/internal/billing/v2/actions/attac
 import { handleCurrentCustomerProductErrors } from "@/internal/billing/v2/actions/attach/errors/handleCurrentCustomerProductErrors";
 import { handleEndDateErrors } from "@/internal/billing/v2/actions/attach/errors/handleEndDateErrors";
 import { handleNewBillingSubscriptionErrors } from "@/internal/billing/v2/actions/attach/errors/handleNewBillingSubscriptionErrors";
+import { handleProcessorCheckoutErrors } from "@/internal/billing/v2/actions/attach/errors/handleProcessorCheckoutErrors";
 import { handleScheduledSwitchOneOffErrors } from "@/internal/billing/v2/actions/attach/errors/handleScheduledSwitchOneOffErrors";
 import { handleStartDateErrors } from "@/internal/billing/v2/actions/attach/errors/handleStartDateErrors";
-import { handleStripeCheckoutErrors } from "@/internal/billing/v2/actions/attach/errors/handleStripeCheckoutErrors";
 import { handleTransitionConfigErrors } from "@/internal/billing/v2/actions/attach/errors/handleTransitionConfigErrors";
 import { handleProrationBehaviorErrors } from "@/internal/billing/v2/common/errors/handleBillingBehaviorErrors";
 import { handleCustomLineItemsErrors } from "@/internal/billing/v2/common/errors/handleCustomLineItemsErrors";
 import { handleEntityLicenseAssignmentErrors } from "@/internal/billing/v2/common/errors/handleEntityLicenseAssignmentErrors";
-import { handleExternalPSPErrors } from "@/internal/billing/v2/common/errors/handleExternalPSPErrors";
 import { handleLicenseAttachTargetErrors } from "@/internal/billing/v2/common/errors/handleLicenseAttachTargetErrors";
 import { handleRevertTrialErrors } from "@/internal/billing/v2/common/errors/handleRevertTrialErrors";
 import { handleSubscriptionIdErrors } from "@/internal/billing/v2/common/errors/handleSubscriptionIdErrors";
-import { handleStripeBillingPlanErrors } from "@/internal/billing/v2/providers/stripe/errors/handleStripeBillingPlanErrors";
-import { handleCustomPaymentMethodErrorsV2 } from "@/internal/customers/attach/attachUtils/handleAttachErrors";
 import { handleRemoveDiscountsErrors } from "./handleRemoveDiscountsErrors";
 
 /** Validates attach v2 request before executing the billing plan. */
@@ -42,26 +39,12 @@ export const handleAttachV2Errors = async ({
 }) => {
 	const { autumn: autumnBillingPlan } = billingPlan;
 
-	// 1.1. External PSP errors (RevenueCat)
-	// Skipped when the caller IS the external PSP origin (e.g. the RevenueCat
-	// webhook handler attaching onto its own RC-managed customer).
-	if (!billingContext.skipExternalPSPGuard) {
-		handleExternalPSPErrors({
-			customerProducts: billingContext.fullCustomer.customer_products,
-			attachProduct: billingContext.attachProduct,
-			action: "attach",
-		});
-	}
-
-	// 1.2. Custom Payment Method errors (Vercel)
-	handleCustomPaymentMethodErrorsV2({ billingContext });
-
-	// 1.3. Seat-holding entities are managed through their license
+	// 1.1. Seat-holding entities are managed through their license
 	handleEntityLicenseAssignmentErrors({
 		fullCustomer: billingContext.fullCustomer,
 	});
 
-	// 1.4. License linkage preconditions on the attach target
+	// 1.2. License linkage preconditions on the attach target
 	handleLicenseAttachTargetErrors({
 		fullCustomer: billingContext.fullCustomer,
 		attachProduct: billingContext.attachProduct,
@@ -73,8 +56,8 @@ export const handleAttachV2Errors = async ({
 	// 3. new_billing_subscription validation errors
 	handleNewBillingSubscriptionErrors({ billingContext, params });
 
-	// 4. Stripe checkout errors
-	handleStripeCheckoutErrors({ billingContext, autumnBillingPlan });
+	// 4. Processor checkout errors
+	handleProcessorCheckoutErrors({ billingContext, autumnBillingPlan });
 
 	// 5. Invoice mode errors (deferred + downgrade)
 	handleAttachInvoiceModeErrors({ billingContext });
@@ -119,6 +102,4 @@ export const handleAttachV2Errors = async ({
 
 	// 14. Adding and removing the same discount in one request
 	handleRemoveDiscountsErrors({ params });
-
-	handleStripeBillingPlanErrors({ ctx, billingContext, billingPlan });
 };

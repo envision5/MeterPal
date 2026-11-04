@@ -1,16 +1,9 @@
 import type { ApiInvoicePreviewV0 } from "@autumn/shared";
-import { Button, InfoRow, MiniCopyButton } from "@autumn/ui";
-import {
-	ArrowSquareOutIcon,
-	CalendarBlankIcon,
-	CreditCardIcon,
-} from "@phosphor-icons/react";
+import { InfoRow, MiniCopyButton } from "@autumn/ui";
+import { CalendarBlankIcon, CreditCardIcon } from "@phosphor-icons/react";
 import { format } from "date-fns";
 import { SheetHeader, SheetSection } from "@/components/v2/sheets/InlineSheet";
-import { useOrgStripeQuery } from "@/hooks/queries/useOrgStripeQuery";
 import { useProductsQuery } from "@/hooks/queries/useProductsQuery";
-import { useEnv } from "@/utils/envUtils";
-import { getStripeSubLink } from "@/utils/linkUtils";
 import {
 	CustomerInvoiceStatus,
 	UPCOMING_INVOICE_STATUS,
@@ -27,8 +20,6 @@ export function UpcomingInvoiceSheet({
 	preview: ApiInvoicePreviewV0;
 }) {
 	const { products } = useProductsQuery();
-	const { stripeAccount } = useOrgStripeQuery();
-	const env = useEnv();
 
 	const productLabel =
 		productIdsToNames({
@@ -37,12 +28,6 @@ export function UpcomingInvoiceSheet({
 		}) || "Upcoming charges";
 
 	const discountAmount = preview.subtotal - preview.total;
-
-	const stripeSubLink = getStripeSubLink({
-		subscriptionId: preview.subscription_id,
-		env,
-		accountId: stripeAccount?.id,
-	});
 
 	return (
 		<div className="flex h-full flex-col overflow-y-auto">
@@ -141,17 +126,6 @@ export function UpcomingInvoiceSheet({
 					/>
 				</div>
 			</SheetSection>
-
-			<div className="sticky bottom-0 flex gap-2 bg-card p-4">
-				<Button
-					variant="secondary"
-					className="flex-1"
-					onClick={() => window.open(stripeSubLink, "_blank")}
-				>
-					<ArrowSquareOutIcon size={16} className="mr-1.5" />
-					View subscription
-				</Button>
-			</div>
 		</div>
 	);
 }

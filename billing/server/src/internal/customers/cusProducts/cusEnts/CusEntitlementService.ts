@@ -363,7 +363,7 @@ export class CusEntService {
 				? sql`(${customerEntitlements.next_reset_at}, ${customerEntitlements.id} COLLATE "C") > (${cursor.nextResetAt}, ${cursor.id})`
 				: undefined;
 
-		// Exclude normal price-backed cusEnts: their reset is owned by the Stripe
+		// Exclude normal price-backed cusEnts: their reset is owned by the
 		// invoice.created handler, not this cron. Must stay in sync with
 		// `cusEntToCusPrice` and the in-memory `getResettableCustomerEntitlements`
 		// filter. Only applies to branches with `customer_product_id` set (2 + 3).
@@ -569,7 +569,7 @@ export class CusEntService {
 					feature: item.features,
 				},
 				// Seats inherit the parent's lifecycle so downstream reset logic
-				// (resetsViaInvoice, Stripe anchor) behaves like the parent's.
+				// (resetsViaInvoice, billing cycle anchor) behaves like the parent's.
 				customer_product: item.customer_products
 					? {
 							...item.customer_products,

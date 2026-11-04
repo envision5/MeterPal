@@ -1,18 +1,17 @@
 // billing/server/src/external/paypal/invoiceRecording.ts
 //
 // Records a PayPal money event as an invoices row so the merchant sees
-// PayPal payments in the dashboard with correct processor attribution —
-// the same job recordRevenueCatInvoice.ts does for RevenueCat.
+// PayPal payments in the dashboard with correct processor attribution.
 //
-// The invoice's external id (the DB column is named `stripe_id` for legacy
-// reasons) is namespaced by the PayPal instrument so refunds can resolve
+// The invoice's external id (the DB column is named `processor_invoice_id`)
+// is namespaced by the PayPal instrument so refunds can resolve
 // what they refund later:
 //   pp-cap-<captureId>   one-off order capture / merchant-initiated top-up
 //   pp-sale-<saleId>     subscription cycle payment (Payments v1 sale)
 //   pp-inv-<invoiceId>   PayPal Invoicing API payment
 //
-// Upsert on stripe_id makes every call idempotent — the capture path and the
-// PAYMENT.CAPTURE.COMPLETED webhook can both fire for the same money.
+// Upsert on processor_invoice_id makes every call idempotent — the capture path
+// and the PAYMENT.CAPTURE.COMPLETED webhook can both fire for the same money.
 
 import {
 	type AppEnv,
@@ -43,10 +42,10 @@ export function paypalInvoiceRefId(invoiceId: string): string {
 
 /** The PayPal instrument a `pp-*` invoice id names, or null when it isn't one. */
 export function paypalInvoiceInstrument(
-	stripeId: string | null | undefined,
+	processorInvoiceId: string | null | undefined,
 ): { instrument: "capture" | "sale" | "invoice"; externalId: string } | null {
-	if (!stripeId?.startsWith("pp-")) return null;
-	const rest = stripeId.slice(3);
+	if (!processorInvoiceId?.startsWith("pp-")) return null;
+	const rest = processorInvoiceId.slice(3);
 	if (rest.startsWith("cap-"))
 		return { instrument: "capture", externalId: rest.slice(4) };
 	if (rest.startsWith("sale-"))
@@ -58,9 +57,9 @@ export function paypalInvoiceInstrument(
 
 /** True when an invoice external id names a PayPal money instrument. */
 export function isPaypalInvoiceId(
-	stripeId: string | null | undefined,
+	processorInvoiceId: string | null | undefined,
 ): boolean {
-	return paypalInvoiceInstrument(stripeId) !== null;
+	return paypalInvoiceInstrument(processorInvoiceId) !== null;
 }
 
 /**
@@ -118,7 +117,7 @@ export const recordPaypalInvoice = async ({
 		internal_customer_id: customer.internal_id,
 		product_ids: productIds,
 		internal_product_ids: internalProductIds,
-		stripe_id: externalId,
+		processor_invoice_id: externalId,
 		processor_type: ProcessorType.PayPal,
 		status: InvoiceStatus.Paid,
 		hosted_invoice_url: null,
@@ -131,7 +130,7 @@ export const recordPaypalInvoice = async ({
 			? [
 					{
 						price_id: null,
-						stripe_id: externalId,
+						processor_id: externalId,
 						internal_feature_id: null,
 						description: description.slice(0, 200),
 						period_start: createdAt,

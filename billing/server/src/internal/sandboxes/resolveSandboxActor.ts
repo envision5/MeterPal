@@ -13,7 +13,7 @@ import type { DrizzleCli } from "@/db/initDrizzle.js";
 const OWNER_ROLE = "owner";
 
 /** A secret key without a user falls back to the org's owner — provisioning a
- *  sandbox needs a real user (Stripe, key owner). */
+ *  sandbox needs a real user (the key owner). */
 const findOwnerUser = async ({
 	db,
 	orgId,

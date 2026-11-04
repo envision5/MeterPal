@@ -17,7 +17,6 @@ const BOOT_STEP_MARKERS = [
 	{ prefix: "reconciling node_modules", step: "bun install" },
 	{ prefix: "applying pending DB migrations", step: "db migrate" },
 	{ prefix: "binding orchestrator-created Svix app", step: "svix bind" },
-	{ prefix: "binding Stripe sub-account", step: "stripe bind" },
 	{ prefix: "starting Autumn server", step: "server load → health" },
 	{ prefix: "server health OK", step: "end" },
 ] as const;

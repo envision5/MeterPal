@@ -4,12 +4,7 @@ import {
 	OnIncrease,
 	UsageModel,
 } from "@autumn/shared";
-import { addHours, addMonths } from "date-fns";
 import { Decimal } from "decimal.js";
-import type Stripe from "stripe";
-import { hoursToFinalizeInvoice } from "../constants.js";
-import { advanceStripeTestClock } from "../stripeUtils/testClock/advanceStripeTestClock";
-import { createTestWait } from "../testWait/createTestWait";
 
 export const getCurrentOptions = ({
 	preview,
@@ -140,52 +135,4 @@ export const getAttachTotal = ({
 	}
 
 	return dueTodayTotal.toDecimalPlaces(2).toNumber();
-};
-
-export const advanceToNextInvoice = async ({
-	stripeCli,
-	testClockId,
-	currentEpochMs,
-	withPause = false,
-	timeoutMs = 180_000,
-	signal,
-}: {
-	stripeCli: Stripe;
-	testClockId: string;
-	currentEpochMs?: number;
-	withPause?: boolean;
-	timeoutMs?: number;
-	signal?: AbortSignal;
-}): Promise<number> => {
-	const baseTime = currentEpochMs ? new Date(currentEpochMs) : new Date();
-	const invoiceTime = addMonths(baseTime, 1).getTime();
-	const finalizationTime = addHours(
-		invoiceTime,
-		hoursToFinalizeInvoice,
-	).getTime();
-	// Clock readiness does not guarantee Autumn's webhook work has finished.
-	const stages = [
-		...(withPause ? [{ targetMs: invoiceTime, minimumWaitMs: 50_000 }] : []),
-		{ targetMs: finalizationTime, minimumWaitMs: 30_000 },
-	];
-	const wait = createTestWait({
-		timeoutMs,
-		signal,
-		description: `Advance to next invoice on clock ${testClockId}`,
-	});
-	try {
-		for (const { targetMs, minimumWaitMs } of stages) {
-			await advanceStripeTestClock({
-				stripeCli,
-				testClockId,
-				targetSeconds: Math.floor(targetMs / 1000),
-				minimumWaitMs,
-				signal: wait.signal,
-				timeoutMs: wait.remainingMs(),
-			});
-		}
-		return withPause ? invoiceTime : finalizationTime;
-	} finally {
-		wait.close();
-	}
 };

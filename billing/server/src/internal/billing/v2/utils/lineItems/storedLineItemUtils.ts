@@ -15,9 +15,7 @@ export const isWithinPeriod = (
 export const hasSamePrice = (
 	a: DbInvoiceLineItem,
 	b: DbInvoiceLineItem,
-): boolean =>
-	(a.price_id != null && a.price_id === b.price_id) ||
-	(a.stripe_price_id != null && a.stripe_price_id === b.stripe_price_id);
+): boolean => a.price_id != null && a.price_id === b.price_id;
 
 const sharesInvoice = (a: DbInvoiceLineItem, b: DbInvoiceLineItem): boolean =>
 	a.invoice_id != null && b.invoice_id != null && a.invoice_id === b.invoice_id;

@@ -1,8 +1,4 @@
-import type {
-	ChatAuthMode,
-	ChatReplyMode,
-	UpsertVercelProcessorConfig,
-} from "@autumn/shared";
+import type { ChatAuthMode, ChatReplyMode } from "@autumn/shared";
 import type { AxiosInstance } from "axios";
 import type {
 	CreateSsoConnectionParams,
@@ -17,26 +13,6 @@ export class OrgService {
 
 	static async create(axiosInstance: AxiosInstance, data: any) {
 		return await axiosInstance.post(`/organization`, data);
-	}
-
-	static async connectStripe(axiosInstance: AxiosInstance, data: any) {
-		return await axiosInstance.post(`/v1/organization/stripe`, data);
-	}
-
-	static async disconnectStripe(
-		axiosInstance: AxiosInstance,
-		channel?: "secret_key" | "oauth",
-	) {
-		return await axiosInstance.delete(`/v1/organization/stripe`, {
-			data: channel ? { channel } : undefined,
-		});
-	}
-
-	static async upsertVercelConfig(
-		axiosInstance: AxiosInstance,
-		data: UpsertVercelProcessorConfig,
-	) {
-		return await axiosInstance.patch(`/v1/organization/vercel`, data);
 	}
 
 	static async getChat(axiosInstance: AxiosInstance) {

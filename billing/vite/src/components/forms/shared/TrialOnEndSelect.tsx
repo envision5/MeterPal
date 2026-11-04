@@ -20,7 +20,7 @@ const TRIAL_ON_END_OPTIONS: TrialOnEndOption[] = [
 		label: "Bill customer",
 		value: "bill",
 		tooltip:
-			"This will add a trial to the stripe subscription. When the trial ends, the billing cycle will be reset and the customer will be charged in full",
+			"This will add a trial to the subscription. When the trial ends, the billing cycle will be reset and the customer will be charged in full",
 	},
 ];
 

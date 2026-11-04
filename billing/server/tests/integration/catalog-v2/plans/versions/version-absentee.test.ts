@@ -16,7 +16,7 @@ import { initScenario, s } from "@tests/utils/testInitUtils/initScenario.js";
 import chalk from "chalk";
 import { ProductService } from "@/internal/products/ProductService.js";
 import { uniqueTestId } from "../../utils/uniqueTestId.js";
-import { seedVersionableCustomer } from "../migrations/utils/seedVersionableCustomer.js";
+import { seedVersionableCustomer } from "../utils/seedVersionableCustomer.js";
 
 const twoVersions = async ({
 	autumnV2_3,

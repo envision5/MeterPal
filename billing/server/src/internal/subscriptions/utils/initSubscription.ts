@@ -2,16 +2,14 @@ import type { AppEnv, Subscription } from "@autumn/shared";
 import { generateId } from "@/utils/genUtils.js";
 
 export const initSubscription = ({
-	stripeId,
-	stripeScheduleId,
+	processorId,
 	orgId,
 	env,
 	currentPeriodStart,
 	currentPeriodEnd,
 	billingCycleAnchorSeconds,
 }: {
-	stripeId?: string;
-	stripeScheduleId?: string;
+	processorId?: string;
 	orgId: string;
 	env: AppEnv;
 	currentPeriodStart?: number;
@@ -20,8 +18,7 @@ export const initSubscription = ({
 }) => {
 	const newSub: Subscription = {
 		id: generateId("sub"),
-		stripe_id: stripeId || null,
-		stripe_schedule_id: stripeScheduleId || null,
+		processor_id: processorId || null,
 		created_at: Date.now(),
 		usage_features: [],
 		org_id: orgId,

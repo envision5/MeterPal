@@ -12,7 +12,7 @@ export const pooledBalanceToPooledBalanceIdentity = ({
 	intervalCount: pooledBalance.interval_count,
 	resetCycleAnchor: pooledBalance.reset_cycle_anchor,
 	resetMode: pooledBalance.reset_mode,
-	stripeSubscriptionId: pooledBalance.stripe_subscription_id,
+	processorSubscriptionId: pooledBalance.processor_subscription_id,
 	customerLicenseLinkId: pooledBalance.customer_license_link_id,
 	rolloverSignature: pooledBalance.rollover_signature,
 });

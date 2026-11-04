@@ -1,20 +1,15 @@
 import {
 	cusProductToProduct,
 	EntInterval,
-	ErrCode,
 	type FullCusProduct,
 	type FullCustomer,
 	type FullProduct,
 	MONTH_RANGES,
-	RecaseError,
 	type Subscription,
 } from "@autumn/shared";
 import { UTCDate } from "@date-fns/utc";
 import { format, startOfDay, startOfHour, startOfMonth, sub } from "date-fns";
-import type Stripe from "stripe";
 import type { DrizzleCli } from "@/db/initDrizzle.js";
-import { createStripeCli } from "@/external/connect/createStripeCli.js";
-import { subToPeriodStartEnd } from "@/external/stripe/stripeSubUtils/convertSubUtils.js";
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
 import { ACTIVE_STATUSES } from "@/internal/customers/cusProducts/CusProductService.js";
 import { isFreeProduct } from "../products/productUtils.js";
@@ -186,35 +181,9 @@ export async function getBillingCycleStartDate({
 
 	const areAllProductsFree = checkIfAllProductsAreFree(fullProducts);
 
-	let { startDates, endDates, createdDates } = areAllProductsFree
+	const { startDates, endDates, createdDates } = areAllProductsFree
 		? getDateRangesFromEntitlements(customer.customer_products)
 		: getDateRangesFromSubscriptions(cusProducts, subscriptions);
-
-	// If we have subscription_ids but no matching subscriptions in DB, fallback to Stripe
-	const hasMissingSubscriptions =
-		!areAllProductsFree &&
-		startDates.length === 0 &&
-		cusProducts.some(
-			(p) => p.subscription_ids && p.subscription_ids.length > 0,
-		);
-
-	if (hasMissingSubscriptions) {
-		const stripeSubs = await fetchMissingSubscriptionsFromStripe({
-			cusProducts,
-			dbSubscriptions: subscriptions,
-			ctx,
-		});
-
-		// Re-calculate date ranges with Stripe subscriptions
-		const stripeDateRanges = getDateRangesFromStripeSubscriptions(
-			cusProducts,
-			stripeSubs,
-		);
-
-		startDates = stripeDateRanges.startDates;
-		endDates = stripeDateRanges.endDates;
-		createdDates = stripeDateRanges.createdDates;
-	}
 
 	if (startDates.length === 0 || endDates.length === 0) {
 		return {};
@@ -226,80 +195,6 @@ export async function getBillingCycleStartDate({
 		createdDates,
 		intervalType,
 	);
-}
-
-async function fetchMissingSubscriptionsFromStripe({
-	cusProducts,
-	dbSubscriptions,
-	ctx,
-}: {
-	cusProducts: FullCusProduct[];
-	dbSubscriptions: Subscription[];
-	ctx: AutumnContext;
-}): Promise<Stripe.Subscription[]> {
-	// Collect all subscription IDs from products that aren't in the DB
-	const missingSubIds: string[] = [];
-
-	for (const product of cusProducts) {
-		for (const subId of product.subscription_ids || []) {
-			const foundInDb = dbSubscriptions.some((s) => s.stripe_id === subId);
-			if (!foundInDb && subId) {
-				missingSubIds.push(subId);
-			}
-		}
-	}
-
-	if (missingSubIds.length === 0) {
-		return [];
-	}
-
-	const stripe = createStripeCli({ org: ctx.org, env: ctx.env });
-	const stripeSubs: Stripe.Subscription[] = [];
-
-	for (const subId of missingSubIds) {
-		try {
-			const stripeSub = await stripe.subscriptions.retrieve(subId);
-			stripeSubs.push(stripeSub);
-		} catch (error) {
-			throw new RecaseError({
-				message: `Failed to fetch subscription ${subId} from Stripe: ${error instanceof Error ? error.message : "Unknown error"}`,
-				code: ErrCode.StripeError,
-				statusCode: 500,
-			});
-		}
-	}
-
-	return stripeSubs;
-}
-
-function getDateRangesFromStripeSubscriptions(
-	customerProductsFiltered: FullCusProduct[],
-	stripeSubscriptions: Stripe.Subscription[],
-): { startDates: string[]; endDates: string[]; createdDates: string[] } {
-	const startDates: string[] = [];
-	const endDates: string[] = [];
-	const createdDates: string[] = [];
-
-	for (const product of customerProductsFiltered) {
-		for (const subscriptionId of product.subscription_ids || []) {
-			const subscription = stripeSubscriptions.find(
-				(s) => s.id === subscriptionId,
-			);
-
-			if (subscription) {
-				// Use utility to extract period dates from subscription items
-				const period = subToPeriodStartEnd({ sub: subscription });
-
-				startDates.push(formatDateToString(new Date(period.start * 1000)));
-				endDates.push(formatDateToString(new Date(period.end * 1000)));
-				createdDates.push(
-					formatDateToString(new Date(subscription.created * 1000)),
-				);
-			}
-		}
-	}
-
-	return { startDates, endDates, createdDates };
 }
 
 function checkIfAllProductsAreFree(fullProducts: FullProduct[]): boolean {
@@ -326,7 +221,7 @@ function getDateRangesFromSubscriptions(
 		for (const subscriptionId of product.subscription_ids || []) {
 			const subscription = subscriptions.find(
 				(subscription: Subscription) =>
-					subscription.stripe_id === subscriptionId,
+					subscription.processor_id === subscriptionId,
 			);
 
 			if (subscription) {

@@ -1,10 +1,9 @@
 // billing/server/src/utils/portalTokenUtils.ts
 //
 // Signed, short-lived tokens for the self-hosted PayPal billing portal.
-// PayPal has no hosted portal equivalent to Stripe's, so the billing portal
-// session URL points at the dashboard's /portal page with one of these tokens
-// — possession of the token is the only credential the public portal
-// endpoints accept (same trust model as Stripe's opaque portal session URLs).
+// PayPal has no hosted billing portal, so the portal session URL points at the
+// dashboard's /portal page with one of these tokens — possession of the token
+// is the only credential the public portal endpoints accept.
 
 import crypto from "crypto";
 import { AppEnv } from "@autumn/shared";

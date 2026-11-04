@@ -27,9 +27,6 @@ export const CreateCustomerExportParamsSchema = z.discriminatedUnion("kind", [
 		kind: z.literal(CustomerExportKind.Customers),
 		fields: CustomerExportFieldsSchema,
 	}),
-	ExportScopeParamsSchema.extend({
-		kind: z.literal(CustomerExportKind.BillingVerify),
-	}),
 ]);
 
 export type CreateCustomerExportParams = z.infer<
@@ -64,7 +61,7 @@ export type CustomerExportPhase =
 
 export const CustomerExportPhaseSchema = z.enum(CustomerExportPhase);
 
-/** While scanning, processed_rows counts Stripe subscriptions found so far. */
+/** While scanning, processed_rows counts the rows seen so far. */
 export const CustomerExportProgressSchema = z.object({
 	phase: CustomerExportPhaseSchema,
 	processed_rows: z.number(),

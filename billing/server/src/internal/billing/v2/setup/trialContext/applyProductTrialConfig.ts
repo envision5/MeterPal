@@ -1,7 +1,14 @@
-import type { FullCustomer, FullProduct, TrialContext } from "@autumn/shared";
-import { addDuration, isProductPaidAndRecurring } from "@autumn/shared";
-import type Stripe from "stripe";
-import { isStripeSubscriptionTrialing } from "@/external/stripe/subscriptions/utils/classifyStripeSubscriptionUtils";
+import type {
+	FullCusProduct,
+	FullCustomer,
+	FullProduct,
+	TrialContext,
+} from "@autumn/shared";
+import {
+	addDuration,
+	isCustomerProductTrialing,
+	isProductPaidAndRecurring,
+} from "@autumn/shared";
 import type { AutumnContext } from "@/honoUtils/HonoEnv";
 import { getFreeTrialAfterFingerprint } from "@/internal/products/free-trials/freeTrialUtils";
 
@@ -19,20 +26,22 @@ export const applyProductTrialConfig = async ({
 	ctx,
 	fullProduct,
 	fullCustomer,
-	stripeSubscription,
+	currentCustomerProduct,
 	currentEpochMs,
 }: {
 	ctx: AutumnContext;
 	fullProduct: FullProduct;
 	fullCustomer: FullCustomer;
-	stripeSubscription?: Stripe.Subscription;
+	currentCustomerProduct?: FullCusProduct;
 	currentEpochMs: number;
 }): Promise<TrialContext | undefined> => {
 	const newProductIsPaidRecurring = isProductPaidAndRecurring(fullProduct);
 
 	if (!fullProduct.free_trial) {
-		const isCurrentlyTrialing =
-			isStripeSubscriptionTrialing(stripeSubscription);
+		const isCurrentlyTrialing = isCustomerProductTrialing(
+			currentCustomerProduct,
+			{ nowMs: currentEpochMs },
+		);
 
 		if (isCurrentlyTrialing) {
 			return {

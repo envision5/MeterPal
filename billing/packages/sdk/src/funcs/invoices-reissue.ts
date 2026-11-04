@@ -27,7 +27,7 @@ import { APICall, APIPromise } from "../types/async.js";
 import { Result } from "../types/fp.js";
 
 /**
- * Voids an open send-invoice Stripe invoice and issues a replacement with the same line items. An invoice template can supply the replacement's footer (e.g. bank details) and memo. The replacement keeps the original due date unless net_terms_days is passed, which is required once the original is past due. Pass update_customer_email to change the customer's billing email first so the replacement is sent there. The replacement stays linked to the same subscription and fulfils the same pending plan when paid.
+ * Voids an open send-invoice processor invoice and issues a replacement with the same line items. An invoice template can supply the replacement's footer (e.g. bank details) and memo. The replacement keeps the original due date unless net_terms_days is passed, which is required once the original is past due. Pass update_customer_email to change the customer's billing email first so the replacement is sent there. The replacement stays linked to the same subscription and fulfils the same pending plan when paid.
  */
 export function invoicesReissue(
   client: AutumnCore,

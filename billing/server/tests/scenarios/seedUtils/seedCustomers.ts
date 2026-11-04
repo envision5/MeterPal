@@ -48,7 +48,6 @@ export const seedCustomersWithEntities = async <
 				name: customer.name,
 				email: customer.email,
 				metadata: customer.metadata,
-				create_in_stripe: customer.createInStripe ?? false,
 				internalOptions: customer.internalOptions ?? {
 					disable_defaults: true,
 				},

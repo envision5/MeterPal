@@ -43,7 +43,7 @@ class Invoices(BaseSDK):
         timeout_ms: Optional[int] = None,
         http_headers: Optional[Mapping[str, str]] = None,
     ) -> models.CreateInvoiceResponse:
-        r"""Creates a standalone send-invoice Stripe invoice from catalog pricing and custom charges. Quantities are billable units, exclusive of any included usage; Autumn applies billing units and tiers. Nothing about the customer's plans, balances or subscriptions changes. Pass preview: true to get the calculated lines and totals without creating an invoice.
+        r"""Creates a standalone invoice from catalog pricing and custom charges. Quantities are billable units, exclusive of any included usage; Autumn applies billing units and tiers. Nothing about the customer's plans, balances or subscriptions changes. Pass preview: true to get the calculated lines and totals without creating an invoice.
 
         :param customer_id: The customer to invoice.
         :param plans:
@@ -53,7 +53,7 @@ class Invoices(BaseSDK):
         :param net_terms_days: Days until the invoice is due. Defaults to the template's terms, then the org default.
         :param issue_date: Date of issue printed on the invoice, in milliseconds. Defaults to now; cannot be in the future.
         :param due_date: When payment is due, in milliseconds. Must be in the future; takes precedence over net_terms_days.
-        :param tax_rate_id: Stripe tax rate ID (txr_...) applied to every line.
+        :param tax_rate_id: Tax rate ID applied to every line.
         :param period_start: Start of the period being invoiced, in milliseconds. Prorated lines are charged for period_start → period_end against one price interval starting at period_start.
         :param period_end: End of the period being invoiced, in milliseconds.
         :param preview: If true, returns the calculated lines and totals without creating an invoice.
@@ -186,7 +186,7 @@ class Invoices(BaseSDK):
         timeout_ms: Optional[int] = None,
         http_headers: Optional[Mapping[str, str]] = None,
     ) -> models.CreateInvoiceResponse:
-        r"""Creates a standalone send-invoice Stripe invoice from catalog pricing and custom charges. Quantities are billable units, exclusive of any included usage; Autumn applies billing units and tiers. Nothing about the customer's plans, balances or subscriptions changes. Pass preview: true to get the calculated lines and totals without creating an invoice.
+        r"""Creates a standalone invoice from catalog pricing and custom charges. Quantities are billable units, exclusive of any included usage; Autumn applies billing units and tiers. Nothing about the customer's plans, balances or subscriptions changes. Pass preview: true to get the calculated lines and totals without creating an invoice.
 
         :param customer_id: The customer to invoice.
         :param plans:
@@ -196,7 +196,7 @@ class Invoices(BaseSDK):
         :param net_terms_days: Days until the invoice is due. Defaults to the template's terms, then the org default.
         :param issue_date: Date of issue printed on the invoice, in milliseconds. Defaults to now; cannot be in the future.
         :param due_date: When payment is due, in milliseconds. Must be in the future; takes precedence over net_terms_days.
-        :param tax_rate_id: Stripe tax rate ID (txr_...) applied to every line.
+        :param tax_rate_id: Tax rate ID applied to every line.
         :param period_start: Start of the period being invoiced, in milliseconds. Prorated lines are charged for period_start → period_end against one price interval starting at period_start.
         :param period_end: End of the period being invoiced, in milliseconds.
         :param preview: If true, returns the calculated lines and totals without creating an invoice.
@@ -508,7 +508,7 @@ class Invoices(BaseSDK):
         :param customer_id: Filter invoices to a single customer by ID.
         :param entity_id: Filter invoices to a single entity by ID. Must be provided together with customer_id, since entity IDs are only unique per customer.
         :param status: Filter by invoice status (draft, open, paid, void, uncollectible).
-        :param processor_types: Filter by billing processor (stripe, revenuecat). Invoices recorded before processor tracking count as stripe.
+        :param processor_types: Filter by billing processor (paypal). Invoices recorded before processor tracking count as paypal.
         :param retries: Override the default retry configuration for this method
         :param server_url: Override the default server URL for this method
         :param timeout_ms: Override the default request timeout configuration for this method in milliseconds
@@ -615,7 +615,7 @@ class Invoices(BaseSDK):
         :param customer_id: Filter invoices to a single customer by ID.
         :param entity_id: Filter invoices to a single entity by ID. Must be provided together with customer_id, since entity IDs are only unique per customer.
         :param status: Filter by invoice status (draft, open, paid, void, uncollectible).
-        :param processor_types: Filter by billing processor (stripe, revenuecat). Invoices recorded before processor tracking count as stripe.
+        :param processor_types: Filter by billing processor (paypal). Invoices recorded before processor tracking count as paypal.
         :param retries: Override the default retry configuration for this method
         :param server_url: Override the default server URL for this method
         :param timeout_ms: Override the default request timeout configuration for this method in milliseconds
@@ -898,7 +898,7 @@ class Invoices(BaseSDK):
         timeout_ms: Optional[int] = None,
         http_headers: Optional[Mapping[str, str]] = None,
     ) -> models.PayInvoiceResponse:
-        r"""Marks an open Stripe invoice as paid out of band. No charge is attempted; use this when payment was collected elsewhere (e.g. a marketplace). Already-paid invoices are returned unchanged.
+        r"""Marks an open invoice as paid out of band. No charge is attempted; use this when payment was collected elsewhere (e.g. a marketplace). Already-paid invoices are returned unchanged.
 
         :param invoice_id: The Autumn invoice ID to mark as paid.
         :param retries: Override the default retry configuration for this method
@@ -988,7 +988,7 @@ class Invoices(BaseSDK):
         timeout_ms: Optional[int] = None,
         http_headers: Optional[Mapping[str, str]] = None,
     ) -> models.PayInvoiceResponse:
-        r"""Marks an open Stripe invoice as paid out of band. No charge is attempted; use this when payment was collected elsewhere (e.g. a marketplace). Already-paid invoices are returned unchanged.
+        r"""Marks an open invoice as paid out of band. No charge is attempted; use this when payment was collected elsewhere (e.g. a marketplace). Already-paid invoices are returned unchanged.
 
         :param invoice_id: The Autumn invoice ID to mark as paid.
         :param retries: Override the default retry configuration for this method
@@ -1092,13 +1092,13 @@ class Invoices(BaseSDK):
         timeout_ms: Optional[int] = None,
         http_headers: Optional[Mapping[str, str]] = None,
     ) -> models.ReissueInvoiceResponse:
-        r"""Voids an open send-invoice Stripe invoice and issues a replacement with the same line items. An invoice template can supply the replacement's footer (e.g. bank details) and memo. The replacement keeps the original due date unless net_terms_days is passed, which is required once the original is past due. Pass update_customer_email to change the customer's billing email first so the replacement is sent there. The replacement stays linked to the same subscription and fulfils the same pending plan when paid.
+        r"""Voids an open invoice and issues a replacement with the same line items. An invoice template can supply the replacement's footer (e.g. bank details) and memo. The replacement keeps the original due date unless net_terms_days is passed, which is required once the original is past due. Pass update_customer_email to change the customer's billing email first so the replacement is sent there. The replacement stays linked to the same subscription and fulfils the same pending plan when paid.
 
         :param invoice_id: The Autumn invoice ID to void and replace.
         :param invoice_template_id: ID of an invoice template (configured in billing settings) whose footer and memo are applied to the replacement invoice.
         :param net_terms_days: Number of days the customer has to pay the replacement invoice. Defaults to the original invoice's due date; required when that date has already passed. A card-charged invoice has no due date and its replacement is charged immediately; setting this makes the replacement a send-invoice one instead.
         :param preview: If true, returns the replacement invoice's lines and totals without voiding anything or issuing it.
-        :param update_customer_email: Updates the customer's billing email before the replacement is issued, so Stripe sends the new invoice to this address.
+        :param update_customer_email: Updates the customer's billing email before the replacement is issued, so the new invoice is sent to this address.
         :param invoice: Changes that apply to the replacement invoice only.
         :param customer: Changes written to the customer, which the replacement snapshots and later invoices inherit.
         :param lines: Add, change or drop lines relative to the original.
@@ -1214,13 +1214,13 @@ class Invoices(BaseSDK):
         timeout_ms: Optional[int] = None,
         http_headers: Optional[Mapping[str, str]] = None,
     ) -> models.ReissueInvoiceResponse:
-        r"""Voids an open send-invoice Stripe invoice and issues a replacement with the same line items. An invoice template can supply the replacement's footer (e.g. bank details) and memo. The replacement keeps the original due date unless net_terms_days is passed, which is required once the original is past due. Pass update_customer_email to change the customer's billing email first so the replacement is sent there. The replacement stays linked to the same subscription and fulfils the same pending plan when paid.
+        r"""Voids an open invoice and issues a replacement with the same line items. An invoice template can supply the replacement's footer (e.g. bank details) and memo. The replacement keeps the original due date unless net_terms_days is passed, which is required once the original is past due. Pass update_customer_email to change the customer's billing email first so the replacement is sent there. The replacement stays linked to the same subscription and fulfils the same pending plan when paid.
 
         :param invoice_id: The Autumn invoice ID to void and replace.
         :param invoice_template_id: ID of an invoice template (configured in billing settings) whose footer and memo are applied to the replacement invoice.
         :param net_terms_days: Number of days the customer has to pay the replacement invoice. Defaults to the original invoice's due date; required when that date has already passed. A card-charged invoice has no due date and its replacement is charged immediately; setting this makes the replacement a send-invoice one instead.
         :param preview: If true, returns the replacement invoice's lines and totals without voiding anything or issuing it.
-        :param update_customer_email: Updates the customer's billing email before the replacement is issued, so Stripe sends the new invoice to this address.
+        :param update_customer_email: Updates the customer's billing email before the replacement is issued, so the new invoice is sent to this address.
         :param invoice: Changes that apply to the replacement invoice only.
         :param customer: Changes written to the customer, which the replacement snapshots and later invoices inherit.
         :param lines: Add, change or drop lines relative to the original.
@@ -1322,7 +1322,7 @@ class Invoices(BaseSDK):
         timeout_ms: Optional[int] = None,
         http_headers: Optional[Mapping[str, str]] = None,
     ) -> models.VoidInvoiceResponse:
-        r"""Voids an open or uncollectible Stripe invoice. Any plan still waiting on the invoice to be paid expires. Voiding an unpaid subscription invoice lets Stripe re-derive the subscription status from its remaining invoices, which can move a past-due subscription back to active. Already-void invoices are returned unchanged.
+        r"""Voids an open or uncollectible invoice. Any plan still waiting on the invoice to be paid expires. Voiding an unpaid subscription invoice lets the processor re-derive the subscription status from its remaining invoices, which can move a past-due subscription back to active. Already-void invoices are returned unchanged.
 
         :param invoice_id: The Autumn invoice ID to void.
         :param retries: Override the default retry configuration for this method
@@ -1412,7 +1412,7 @@ class Invoices(BaseSDK):
         timeout_ms: Optional[int] = None,
         http_headers: Optional[Mapping[str, str]] = None,
     ) -> models.VoidInvoiceResponse:
-        r"""Voids an open or uncollectible Stripe invoice. Any plan still waiting on the invoice to be paid expires. Voiding an unpaid subscription invoice lets Stripe re-derive the subscription status from its remaining invoices, which can move a past-due subscription back to active. Already-void invoices are returned unchanged.
+        r"""Voids an open or uncollectible invoice. Any plan still waiting on the invoice to be paid expires. Voiding an unpaid subscription invoice lets the processor re-derive the subscription status from its remaining invoices, which can move a past-due subscription back to active. Already-void invoices are returned unchanged.
 
         :param invoice_id: The Autumn invoice ID to void.
         :param retries: Override the default retry configuration for this method

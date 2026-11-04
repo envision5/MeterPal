@@ -3,20 +3,12 @@ import {
 	billingControlsFromColumns,
 	type Product,
 	productDetailFieldIsSame,
-	productProcessorsAreSame,
-	productToPlanProcessors,
 	type UpdateCatalogPlanParams,
 } from "@autumn/shared";
 
 type VariantSettingsPlanParams = Pick<
 	UpdateCatalogPlanParams,
-	| "description"
-	| "group"
-	| "add_on"
-	| "config"
-	| "metadata"
-	| "billing_controls"
-	| "processors"
+	"description" | "group" | "add_on" | "config" | "metadata" | "billing_controls"
 >;
 
 const settingsChanged = ({
@@ -63,17 +55,6 @@ export const variantSettingsPlanParams = ({
 		)
 	) {
 		patch.billing_controls = billingControlsFromColumns(next);
-	}
-
-	if (
-		!productProcessorsAreSame({
-			left: current.processor,
-			right: next.processor,
-		})
-	) {
-		const nextProcessors = productToPlanProcessors({ product: next });
-		// A cleared mapping has no next value — send the explicit unlink instead.
-		patch.processors = nextProcessors ?? { stripe: null };
 	}
 
 	return patch;

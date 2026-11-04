@@ -15,7 +15,7 @@ import { resetCustomerEntitlement } from "@/cron/resetCron/resetCustomerEntitlem
 import { AutumnInt } from "@/external/autumn/autumnCli.js";
 import { CusService } from "@/internal/customers/CusService";
 import { CusEntService } from "@/internal/customers/cusProducts/cusEnts/CusEntitlementService.js";
-import { initCustomerV3 } from "@/utils/scriptUtils/testUtils/initCustomerV3.js";
+import { initTestCustomer } from "@tests/utils/testInitUtils/initTestCustomer.js";
 import { findCustomerEntitlement } from "../utils/findCustomerEntitlement";
 
 describe(`${chalk.yellowBright("loose-reset: test getActiveResetPassed for loose entitlements")}`, () => {
@@ -24,10 +24,9 @@ describe(`${chalk.yellowBright("loose-reset: test getActiveResetPassed for loose
 	const autumnV2 = new AutumnInt({ version: ApiVersion.V2_0 });
 
 	beforeAll(async () => {
-		await initCustomerV3({
+		await initTestCustomer({
 			ctx,
 			customerId,
-			withTestClock: false,
 		});
 
 		// Create a monthly loose entitlement
@@ -131,10 +130,9 @@ describe(`${chalk.yellowBright("loose-reset: expired entitlements should not be 
 	const autumnV1 = new AutumnInt({ version: ApiVersion.V1_2 });
 
 	beforeAll(async () => {
-		await initCustomerV3({
+		await initTestCustomer({
 			ctx,
 			customerId,
-			withTestClock: false,
 		});
 	});
 

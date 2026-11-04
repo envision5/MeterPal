@@ -14,7 +14,7 @@
 - One-off plans are always attached because each purchase/top-up is a new purchase.
 - `attach` handles transitions: switching main plans expires the replaced plan, while add-ons are additive.
 - Autumn determines upgrade vs downgrade from normalized base and prepaid prices.
-- By default, `attach` tries to add the new plan to an existing Stripe subscription when possible; mid-cycle changes on that subscription can charge or credit prorations.
+- By default, `attach` tries to add the new plan to an existing processor subscription when possible; mid-cycle changes on that subscription can charge or credit prorations.
 - Downgrades default to end-of-cycle scheduling through `plan_schedule`; upgrades usually apply immediately.
 
 ### updateSubscription

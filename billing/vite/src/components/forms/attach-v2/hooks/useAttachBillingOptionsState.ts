@@ -68,7 +68,7 @@ export function useAttachBillingOptionsState({
 		(outgoingPlan?.price?.amount ?? 0) > 0 &&
 		outgoingPlan?.price?.interval !== BillingInterval.OneOff;
 
-	const createsNewStripeSubscription =
+	const createsNewSubscription =
 		!hasActiveSubscription || effectiveNewBillingSubscription;
 
 	// Usage-only plans have a null base price (billing lives on items), so a
@@ -85,7 +85,7 @@ export function useAttachBillingOptionsState({
 	);
 
 	const createsRecurringSubscription =
-		incomingPlanHasRecurringPrice && createsNewStripeSubscription;
+		incomingPlanHasRecurringPrice && createsNewSubscription;
 
 	const isDirectPaidTransition =
 		hasOutgoing && isPaidRecurringAttach && isOutgoingPaidRecurring;
@@ -225,7 +225,7 @@ export function useAttachBillingOptionsState({
 		hasOutgoing,
 		hasPaidRecurringSubscription,
 		canChooseBillingCycle,
-		createsNewStripeSubscription,
+		createsNewSubscription,
 		createsRecurringSubscription,
 		defaultPlanSchedule,
 		effectivePlanSchedule,

@@ -17,14 +17,13 @@ describe("approval flow", () => {
 	test("formats Autumn API errors for Slack approval cards", () => {
 		const result = approvalErrorResult(
 			new Error(
-				'Autumn API request failed (400): {"message":"(Stripe Error) Missing email. In order to create invoices that are sent to the customer, the customer must have a valid email.","code":"stripe_error","env":"sandbox"}',
+				'Autumn API request failed (400): {"message":"Either customer ID or email is required","code":"invalid_request","env":"sandbox"}',
 			),
 		);
 
 		expect(result).toEqual({
 			error: true,
-			message:
-				"(Stripe Error) Missing email. In order to create invoices that are sent to the customer, the customer must have a valid email.",
+			message: "Either customer ID or email is required",
 		});
 	});
 
@@ -33,13 +32,13 @@ describe("approval flow", () => {
 			id: "TOOL_EXECUTION_FAILED",
 			error: {
 				message:
-					'Autumn API request failed (400): {"message":"Missing email.","code":"stripe_error"}',
+					'Autumn API request failed (400): {"message":"Either customer ID or email is required","code":"invalid_request"}',
 			},
 		});
 
 		expect(result).toEqual({
 			error: true,
-			message: "Missing email.",
+			message: "Either customer ID or email is required",
 		});
 	});
 

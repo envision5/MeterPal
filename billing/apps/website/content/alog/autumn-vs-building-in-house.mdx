@@ -11,7 +11,7 @@ relatedDocs:
   - { label: "MeterPal overview", href: "https://docs.useautumn.com/welcome" }
   - { label: "Checking access", href: "https://docs.useautumn.com/documentation/customers/check" }
 relatedAlog:
-  - autumn-vs-stripe-billing
+
   - autumn-vs-orb
   - autumn-vs-metronome
 ---
@@ -22,11 +22,11 @@ relatedAlog:
 
 ## Short Answer
 
-If your billing model is simple, building in-house can work. You can create a few tables for plans, credits, usage, and entitlements, then wire them into Stripe and your application.
+If your billing model is simple, building in-house can work. You can create a few tables for plans, credits, usage, and entitlements, then wire them into PayPal and your application.
 
-The problem is that billing rarely stays simple. Pricing changes. Credits roll over. Some balances reset monthly, others never expire. Enterprise customers need custom packages. Usage limits become product behavior. Eventually, the "simple billing table" becomes a system with a counter, a ledger, reset jobs, analytics pipelines, migration logic, and Stripe sync.
+The problem is that billing rarely stays simple. Pricing changes. Credits roll over. Some balances reset monthly, others never expire. Enterprise customers need custom packages. Usage limits become product behavior. Eventually, the "simple billing table" becomes a system with a counter, a ledger, reset jobs, analytics pipelines, migration logic, and PayPal sync.
 
-MeterPal is for teams that want that application billing state managed from the beginning: real-time checks, credits, entitlements, limits, usage, rollovers, reset behavior, custom packages, ledgers, and Stripe sync.
+MeterPal is for teams that want that application billing state managed from the beginning: real-time checks, credits, entitlements, limits, usage, rollovers, reset behavior, custom packages, ledgers, and PayPal sync.
 
 ## When MeterPal Fits
 
@@ -53,7 +53,7 @@ The first version is usually manageable. The later versions are where the work c
 - Choosing deterministic deduction order across paid credits, free credits, expiring credits, and recurring grants.
 - Scaling concurrent deductions without locking your primary database on every request.
 - Building analytics over usage and credit events without making the analytics store your source of truth.
-- Supporting custom enterprise contracts, one-off grants, pricing migrations, and Stripe sync.
+- Supporting custom enterprise contracts, one-off grants, pricing migrations, and PayPal sync.
 
 Larger companies often have teams dedicated to this work. For most startups, that is not the highest-leverage place to spend engineering time.
 
@@ -68,7 +68,7 @@ With an in-house system, the typical model is:
 ```text
 Your DB -> plans / credits / usage / limits / entitlements
 Your app -> custom checks / usage writes / deduction logic
-Your jobs -> resets / rollovers / migrations / analytics / Stripe sync
+Your jobs -> resets / rollovers / migrations / analytics / PayPal sync
 ```
 
 With MeterPal, the typical model is:
@@ -76,7 +76,7 @@ With MeterPal, the typical model is:
 ```text
 MeterPal -> plans / credits / usage / limits / entitlements / ledgers
 Your app -> MeterPal check() / track()
-MeterPal -> Stripe -> subscriptions / invoices / payments
+MeterPal -> PayPal -> subscriptions / invoices / payments
 ```
 
 ## Bottom Line
@@ -88,8 +88,8 @@ If billing is not your product, MeterPal is usually the better default.
 ## Sources
 
 - MeterPal: [overview](https://docs.useautumn.com/welcome), [checking access](https://docs.useautumn.com/documentation/customers/check)
-- External: [OpenAI on real-time access, limits, and credits](https://openai.com/index/beyond-rate-limits/), [OpenMeter on credit systems](https://openmeter.io/blog/credit-systems-are-challenging), [Stripe on credit-based subscription models](https://stripe.com/resources/more/what-is-a-credits-based-subscription-model-and-how-does-it-work)
-- Related: [Stop rebuilding your billing system](/blog/stop-rebuilding-billing), [We built a billing company but didn't replace Stripe Billing](/blog/we-built-a-billing-company-but-didnt-replace-stripe-billing)
+- External: [OpenAI on real-time access, limits, and credits](https://openai.com/index/beyond-rate-limits/), [OpenMeter on credit systems](https://openmeter.io/blog/credit-systems-are-challenging)
+- Related: [Stop rebuilding your billing system](/blog/stop-rebuilding-billing)
 
 ## Last Updated
 

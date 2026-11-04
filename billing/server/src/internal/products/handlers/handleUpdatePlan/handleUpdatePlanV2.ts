@@ -9,7 +9,6 @@ import { createRoute } from "@/honoMiddlewares/routeHandler.js";
 import { buildLicenseParentTargetCustomize } from "@/internal/licenses/actions/propagation/buildLicenseParentCustomize.js";
 import { prepareLicenseParentPropagation } from "@/internal/licenses/actions/propagation/prepareLicenseParentPropagation.js";
 import {
-	createPlanMigrationDraft,
 	getVariantMigrationSnapshots,
 	validateNoDirectVariantMigrationDrafts,
 } from "../../../product/actions/updateProduct/createPlanMigrationDraft.js";
@@ -117,36 +116,8 @@ export const handleUpdatePlanV2 = createRoute({
 			});
 			if (after) {
 				if (version === undefined) responseFullProduct = after;
-				const toPlan = await getPlanResponse({
-					ctx,
-					product: after,
-					features: ctx.features,
-				});
-				const licenseParents = (parentsBefore?.selectedParents ?? [])
-					.filter(({ hasCustomers }) => hasCustomers)
-					.map(({ parent, link, currentEffectivePlan }) => ({
-						planId: parent.id,
-						version: parent.version,
-						customize: buildLicenseParentTargetCustomize({
-							currentChildPlan: fromPlan,
-							editedChildPlan: toPlan,
-							currentEffectivePlan,
-							customized: link.customized,
-						}).migrationCustomize,
-					}));
-
-				migrationIds = await createPlanMigrationDraft({
-					ctx,
-					current: initialFullProduct,
-					fromPlan,
-					includeCustom: migration?.include_custom,
-					mode: all_versions ? "all_versions" : "version",
-					planId: plan_id,
-					selectedVariantIds,
-					licenseParents,
-					toPlan,
-					variantsBefore,
-				});
+				// A migration draft would be created here — the migrations module
+				// that persists drafts is gone, so it cannot be stored.
 			}
 		}
 

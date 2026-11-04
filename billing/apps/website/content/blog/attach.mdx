@@ -1,6 +1,6 @@
 ---
-title: "100 stripe cases in 1 endpoint"
-description: "Handling stripes upgrades, downgrades, schedules, one off and subscriptions all in 1 endpoint."
+title: "100 billing cases in 1 endpoint"
+description: "Handling billing upgrades, downgrades, schedules, one off and subscriptions all in 1 endpoint."
 date: "2025-06-11"
 author: "Ayush"
 slug: "attach"
@@ -8,7 +8,7 @@ image: "/images/blog/attach.png"
 featured: true
 ---
 
-We’re building an engine to run software pricing models. Something we still struggle to conceptualize is the number of cases that need to be handled. Take some common examples and how you’d do it in Stripe:
+We’re building an engine to run software pricing models. Something we still struggle to conceptualize is the number of cases that need to be handled. Take some common examples and how you’d do it with a payment processor:
 
 **Scenario**
 
@@ -36,7 +36,7 @@ Creating a one off payment
 
 There are more complex scenarios that require updating individual items within a subscription (eg. decrease the price of a metered feature when upgrading).
 
-Stripe’s low-level design maps each action to a different function. When designing MeterPal, we were pretty strong in our belief that all these cases should just be 1 endpoint: `POST /attach`
+A payment processor’s low-level design maps each action to a different function. When designing MeterPal, we were pretty strong in our belief that all these cases should just be 1 endpoint: `POST /attach`
 
 Initially we just handled basic cases, so a set of if else statements was enough. As we’ve started handling more cases, the if else spaghetti was becoming a nightmare of bugs. We spent last week rewriting the architecture into 5 steps so we can handle it more logically.
 
@@ -88,7 +88,7 @@ For instance, updating a custom product and upgrading to a new product technical
 
 ![](https://framerusercontent.com/images/XJzahBCPpL01rgJQOvOD5k1hoc.png)
 
-Then within each attach function, we make all the relevant calls to Stripe to ensure the scenario occurs successfully.
+Then within each attach function, we make all the relevant calls to PayPal to ensure the scenario occurs successfully.
 
 And then of course for each of these cases, you need to handle the downstream logic of actually giving the customer what they’ve paid for, which usually involves listening to webhooks, updating some permissions and maybe reseting usage limits.
 

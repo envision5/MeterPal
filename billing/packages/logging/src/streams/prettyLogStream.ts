@@ -18,7 +18,6 @@ const FORMATTED_LOG_EXCLUDE_FIELDS = new Set([
 	"context",
 	"workflow",
 	"trigger",
-	"stripe_event",
 	"vercel_event",
 	"worker",
 	"extras",

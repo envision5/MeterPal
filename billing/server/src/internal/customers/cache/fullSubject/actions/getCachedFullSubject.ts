@@ -10,7 +10,6 @@ import { runRedisOp } from "@/external/redis/utils/runRedisOp.js";
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
 import { lazyResetSubjectEntitlements } from "@/internal/customers/actions/resetCustomerEntitlementsV2/lazyResetSubjectEntitlements.js";
 import { lazyResetSubjectUsageWindows } from "@/internal/customers/actions/resetUsageWindows/lazyResetSubjectUsageWindows.js";
-import { checkPendingMigrationsForCustomer } from "@/internal/migrations/v2/lazy/checkPendingMigrationsForCustomer.js";
 import { getFullSubjectRolloutSnapshot } from "@/internal/misc/rollouts/fullSubjectRolloutUtils.js";
 import { isSnapshotCacheStale } from "@/internal/misc/rollouts/rolloutUtils.js";
 import { applyLiveAggregatedBalances } from "../balances/applyLiveAggregatedBalances.js";
@@ -278,10 +277,6 @@ export const getCachedFullSubject = async ({
 		if (runLazyResets) {
 			await lazyResetSubjectEntitlements({ ctx, fullSubject });
 			await lazyResetSubjectUsageWindows({ ctx, fullSubject, normalized });
-			await checkPendingMigrationsForCustomer({
-				ctx,
-				fullCustomer: fullSubjectToFullCustomer({ fullSubject }),
-			});
 		}
 
 		return { fullSubject, subjectViewEpoch: currentSubjectViewEpoch };

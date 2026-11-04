@@ -1,62 +1,52 @@
 import { describe, expect, test } from "bun:test";
-import { AppEnv } from "@autumn/shared";
-import { getStripeInvoiceLink } from "@/utils/linkUtils";
+import {
+	isSafeCustomButtonUrl,
+	resolveCustomButtonUrl,
+} from "@/utils/linkUtils";
 
-describe("getStripeInvoiceLink", () => {
-	const baseArgs = {
-		env: AppEnv.Sandbox,
-		accountId: "acct_123",
-	};
-
-	test("works when stripeInvoice is an object with id", () => {
-		const result = getStripeInvoiceLink({
-			stripeInvoice: { id: "in_abc123" },
-			...baseArgs,
-		});
-		expect(result).toBe(
-			"https://dashboard.stripe.com/acct_123/test/invoices/in_abc123",
-		);
-		expect(result).not.toContain("undefined");
+describe("resolveCustomButtonUrl", () => {
+	test("replaces the customer id token", () => {
+		expect(
+			resolveCustomButtonUrl("https://example.com/c/{customerId}", {
+				id: "cus_123",
+			}),
+		).toBe("https://example.com/c/cus_123");
 	});
 
-	test("works when stripeInvoice is an object with stripe_id", () => {
-		const result = getStripeInvoiceLink({
-			stripeInvoice: { stripe_id: "in_abc123" },
-			...baseArgs,
-		});
-		expect(result).toBe(
-			"https://dashboard.stripe.com/acct_123/test/invoices/in_abc123",
-		);
-		expect(result).not.toContain("undefined");
+	test("replaces the customer email token and encodes it", () => {
+		expect(
+			resolveCustomButtonUrl("https://example.com/?e={customerEmail}", {
+				email: "a+b@example.com",
+			}),
+		).toBe("https://example.com/?e=a%2Bb%40example.com");
 	});
 
-	test("works when stripeInvoice is a string (attach v2 flow)", () => {
-		const result = getStripeInvoiceLink({
-			stripeInvoice: "in_abc123",
-			...baseArgs,
-		});
-		expect(result).toBe(
-			"https://dashboard.stripe.com/acct_123/test/invoices/in_abc123",
-		);
-		expect(result).not.toContain("undefined");
+	test("keeps mailto recipients unencoded", () => {
+		expect(
+			resolveCustomButtonUrl("mailto:{customerEmail}", {
+				email: "a+b@example.com",
+			}),
+		).toBe("mailto:a+b@example.com");
 	});
 
-	test("works with live env (no /test prefix)", () => {
-		const result = getStripeInvoiceLink({
-			stripeInvoice: "in_abc123",
-			env: AppEnv.Live,
-			accountId: "acct_123",
-		});
-		expect(result).toBe(
-			"https://dashboard.stripe.com/acct_123/invoices/in_abc123",
-		);
+	test("an unknown customer value resolves to an empty string", () => {
+		expect(
+			resolveCustomButtonUrl("https://example.com/{customerId}", {}),
+		).toBe("https://example.com/");
+	});
+});
+
+describe("isSafeCustomButtonUrl", () => {
+	test("accepts http and https", () => {
+		expect(isSafeCustomButtonUrl("https://example.com")).toBe(true);
+		expect(isSafeCustomButtonUrl("http://example.com")).toBe(true);
 	});
 
-	test("works without accountId", () => {
-		const result = getStripeInvoiceLink({
-			stripeInvoice: "in_abc123",
-			env: AppEnv.Sandbox,
-		});
-		expect(result).toBe("https://dashboard.stripe.com/test/invoices/in_abc123");
+	test("rejects javascript urls", () => {
+		expect(isSafeCustomButtonUrl("javascript:alert(1)")).toBe(false);
+	});
+
+	test("rejects unparseable urls", () => {
+		expect(isSafeCustomButtonUrl("not a url")).toBe(false);
 	});
 });

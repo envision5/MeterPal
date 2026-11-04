@@ -15,7 +15,7 @@ import { ProductService } from "@/internal/products/ProductService.js";
 import { generateId } from "@/utils/genUtils.js";
 import { cleanupPlanCustomerRefs } from "../../utils/cleanupPlanCustomerRefs.js";
 import { deleteDbPlans } from "../../utils/expectCatalogPlans.js";
-import { seedVersionableCustomer } from "../../migrations/utils/seedVersionableCustomer.js";
+import { seedVersionableCustomer } from "../../utils/seedVersionableCustomer.js";
 
 export type CatalogV2Client = {
 	catalogV2: {

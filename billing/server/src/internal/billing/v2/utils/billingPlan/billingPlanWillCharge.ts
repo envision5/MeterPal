@@ -1,39 +1,33 @@
 import type { BillingPlan } from "@autumn/shared";
 
-export type ChargeReason =
-	| "subscription_create"
-	| "trial_ending"
-	| "invoice_created";
+export type ChargeReason = "invoice_created" | "subscription_create";
 
 export type BillingPlanChargeResult =
 	| { willCharge: true; reason: ChargeReason }
 	| { willCharge: false; reason: null };
 
 /**
- * Determines if a billing plan will result in an immediate charge based on Stripe actions.
+ * Determines if a billing plan will result in an immediate charge based on
+ * the autumn plan's line items (PayPal captures at approval time; DB-only
+ * plans charge nothing).
  */
 export const billingPlanWillCharge = ({
 	billingPlan,
 }: {
-	billingPlan: Pick<BillingPlan, "stripe">;
+	billingPlan: Pick<BillingPlan, "autumn">;
 }): BillingPlanChargeResult => {
-	const { subscriptionAction, invoiceAction } = billingPlan.stripe;
+	const lineItems = billingPlan.autumn.lineItems ?? [];
 
-	// Creating a new subscription will charge
-	if (subscriptionAction?.type === "create") {
-		return { willCharge: true, reason: "subscription_create" };
-	}
-
-	// Invoice action with lines means a charge will occur
-	if (invoiceAction && invoiceAction.addLineParams?.lines.length > 0) {
+	if (lineItems.some((item) => item.context.direction === "charge")) {
 		return { willCharge: true, reason: "invoice_created" };
 	}
 
-	// Updating subscription with trial_end === "now" will charge
-	if (subscriptionAction?.type === "update") {
-		if (subscriptionAction.params.trial_end === "now") {
-			return { willCharge: true, reason: "trial_ending" };
-		}
+	if (
+		billingPlan.autumn.insertCustomerProducts?.some(
+			(cusProduct) => (cusProduct.subscription_ids?.length ?? 0) > 0,
+		)
+	) {
+		return { willCharge: true, reason: "subscription_create" };
 	}
 
 	return { willCharge: false, reason: null };
@@ -44,8 +38,6 @@ export const getChargeReasonMessage = (reason: ChargeReason): string => {
 	switch (reason) {
 		case "subscription_create":
 			return "creating a new subscription";
-		case "trial_ending":
-			return "ending a free trial";
 		case "invoice_created":
 			return "an invoice will be created";
 	}

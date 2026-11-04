@@ -88,7 +88,7 @@ export const assertPlanOffersCurrency = ({
 
 /**
  * Blocks an attach that would bill the customer in an unsupported currency.
- * Runs pre-Stripe (before evaluateStripeBillingPlan, which creates Stripe prices).
+ * Runs before the billing plan is computed, so no prices are created.
  */
 export const handleCurrencyMismatchErrors = ({
 	ctx,
@@ -113,10 +113,7 @@ export const handleCurrencyMismatchErrors = ({
 	// Free / auto-enabled plans neither need nor lock a currency.
 	if (isFreeProduct({ product: attachProduct })) return;
 
-	const locked =
-		(
-			fullCustomer.currency ?? billingContext.stripeCustomer?.currency
-		)?.toLowerCase() || null;
+	const locked = fullCustomer.currency?.toLowerCase() || null;
 	const requested = params.currency?.toLowerCase() || null;
 	const resolved =
 		billingContext.currency ??
@@ -124,10 +121,9 @@ export const handleCurrencyMismatchErrors = ({
 			customer: fullCustomer,
 			org: ctx.org,
 			requested: params.currency,
-			stripeCurrency: billingContext.stripeCustomer?.currency,
 		});
 
-	// A locked customer cannot switch currencies (Stripe forbids it anyway).
+	// A locked customer cannot switch currencies.
 	if (locked && requested && requested !== locked) {
 		throw new RecaseError({
 			code: ErrCode.CurrencyMismatch,

@@ -13,7 +13,6 @@ import type {
 	PreviewMultiAttachResponse,
 	PreviewUpdateResponse,
 	RedeemReferralCodeResponse,
-	SetupPaymentResponse,
 } from "@useautumn/sdk";
 import type { ListPlansParams } from "../../types";
 import type { IAutumnClient } from "./IAutumnClient";
@@ -71,11 +70,6 @@ export const createAutumnClient = (
 		previewMultiAttach: (params) =>
 			http.request<PreviewMultiAttachResponse>({
 				route: "previewMultiAttach",
-				body: params,
-			}),
-		setupPayment: (params) =>
-			http.request<SetupPaymentResponse>({
-				route: "setupPayment",
 				body: params,
 			}),
 		openCustomerPortal: (params) =>

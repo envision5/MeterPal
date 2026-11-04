@@ -66,7 +66,7 @@ export const CusProductSchema = z.object({
 	processor: z
 		.object({
 			type: z.enum(ProcessorType),
-			// Processor-native id for the cus_product (e.g. RevenueCat sub/purchase id).
+			// Processor-native id for the cus_product (e.g. PayPal subscription id).
 			id: z.string().nullish(),
 			// subscription_id: z.string().optional().nullable(),
 			// subscription_schedule_id: z.string().optional().nullable(),
@@ -98,7 +98,6 @@ export const CusProductSchema = z.object({
 
 	external_id: z.string().nullable(),
 
-	stripe_checkout_session_id: z.string().nullish(),
 	metadata_id: z.string().nullish(),
 
 	previous_customer_product_id: z.string().nullish(),

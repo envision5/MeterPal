@@ -53,7 +53,7 @@ const response = await autumn.billing.attach({
   planId: "pro",
 });
 
-// Redirect to Stripe Checkout for card collection
+// Redirect to the processor checkout for card collection
 redirect(response.paymentUrl);
 ```
 
@@ -264,4 +264,4 @@ curl -X POST "https://api.useautumn.com/v1/billing/update" \
 3. Ending the trial early
 4. Cancelling trial
 
-You can test using stripe test clock
+You can test these flows in the sandbox environment.

@@ -2,10 +2,8 @@ export enum JobName {
 	UpdateBalance = "update-balance",
 	UpdateUsage = "update-usage",
 
-	Migration = "migration",
 	RewardMigration = "reward-migration",
 
-	TriggerCheckoutReward = "trigger-checkout-reward",
 	GrantCheckoutReward = "grant-checkout-reward",
 	GenerateFeatureDisplay = "generate-feature-display",
 	DetectBaseVariant = "detect-base-variant",
@@ -32,14 +30,11 @@ export enum JobName {
 	BatchResetCustomerEntitlementsV2 = "batch-reset-customer-entitlements-v2",
 
 	AutoTopUp = "auto-top-up",
-	/** Stores invoice line items from Stripe to DB (async to allow extra API calls) */
+	/** Stores processor invoice line items to DB (async to allow extra API calls) */
 	StoreInvoiceLineItems = "store-invoice-line-items",
 
 	/** Stores deferred invoice line items (ProrateNextCycle pending items) before an invoice exists */
 	StoreDeferredInvoiceLineItems = "store-deferred-invoice-line-items",
-
-	/** Replays failed early-acked Stripe webhooks from the dedicated queue */
-	StripeWebhookReplay = "stripe-webhook-replay",
 
 	/** Queued finalize-lock replay when Redis was unavailable at finalize time */
 	FinalizeLock = "finalize-lock",

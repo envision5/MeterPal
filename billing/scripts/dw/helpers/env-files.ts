@@ -104,8 +104,7 @@ export function provisionedInfraEnv(
 		TRACK_SQS_QUEUE_URL: queueUrl("autumn-track.fifo"),
 		TRACK_ASYNC_SQS_QUEUE_URL: queueUrl("autumn-track.fifo"),
 		TRACK_ASYNC_STANDARD_SQS_QUEUE_URL: queueUrl("autumn-track-async"),
-		STRIPE_WEBHOOK_SQS_QUEUE_URL: queueUrl("autumn-stripe-webhook.fifo"),
-	};
+		};
 }
 
 export function urlsForEntry(entry: RegistryEntry): {
@@ -178,8 +177,7 @@ export function writeEnvLocalFiles(entry: RegistryEntry): void {
 		}),
 		AUTUMN_TEST_BASE_URL: `http://localhost:${serverPort}`,
 		AUTUMN_TEST_VITE_URL: viteUrl,
-		STRIPE_WEBHOOK_SKIP_VERIFY: "true",
-	};
+		};
 	if (isCloudAgent() && publicUrls) {
 		Object.assign(
 			serverEnv,

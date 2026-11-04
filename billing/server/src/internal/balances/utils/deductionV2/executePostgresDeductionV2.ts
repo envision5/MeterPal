@@ -4,7 +4,6 @@ import {
 	type FullSubject,
 	fullSubjectToFullCustomer,
 	InternalError,
-	isUsageBasedAllocatedCustomerEntitlement,
 } from "@autumn/shared";
 import { sql } from "drizzle-orm";
 import { planetScaleTag } from "@/db/dbUtils.js";
@@ -12,7 +11,6 @@ import { withLock } from "@/external/redis/utils/lockUtils/withLock.js";
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
 import { triggerAutoTopUp } from "@/internal/balances/autoTopUp/triggerAutoTopUp.js";
 import { fireTrackWebhooks } from "@/internal/balances/trackWebhooks/fireTrackWebhooks.js";
-import { createAllocatedInvoice } from "@/internal/balances/utils/allocatedInvoice/createAllocatedInvoice.js";
 import { saveLockReceiptV2 } from "@/internal/balances/utils/lockV2/saveLockReceiptV2.js";
 import type { DeductionOptions } from "../types/deductionTypes.js";
 import type { DeductionUpdate } from "../types/deductionUpdate.js";
@@ -187,10 +185,6 @@ export const executePostgresDeductionV2 = async ({
 				syncState.modifiedCusEntIdsByFeatureId,
 			);
 
-			const oldFullCustomer = fullSubjectToFullCustomer({
-				fullSubject: oldFullSubject,
-			});
-
 			try {
 				applyRolloverUpdatesToFullSubject({
 					fullSubject,
@@ -214,15 +208,6 @@ export const executePostgresDeductionV2 = async ({
 					);
 
 					if (!customerEntitlement) continue;
-
-					if (isUsageBasedAllocatedCustomerEntitlement(customerEntitlement)) {
-						await createAllocatedInvoice({
-							ctx,
-							customerEntitlement,
-							oldFullCustomer,
-							update,
-						});
-					}
 
 					applyDeductionUpdateToFullSubject({
 						fullSubject,

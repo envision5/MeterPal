@@ -184,7 +184,7 @@ curl -X POST "https://api.useautumn.com/v1/billing.attach" \
 
 </CodeGroup>
 
-Each entity's subscription is created separately in Stripe, with billing cycles synced to the parent customer.
+Each entity's subscription is created separately with the payment processor, with billing cycles synced to the parent customer.
 
 To upgrade or downgrade, attach the new plan with the same `entityId` — the usual [upgrade/downgrade](/documentation/customers/subscription-lifecycle) logic applies.
 

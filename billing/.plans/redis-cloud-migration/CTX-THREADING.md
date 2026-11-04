@@ -37,7 +37,7 @@ silent failures now warn via `ctx.logger` (`onError`, fields nested under `data`
 | trmnlDeviceStore | 3 trmnl handlers + trmnlAuthMiddleware (ctx exists mid-auth) | ctx; write/delete warns |
 | topEventNamesCache | getTopEventNames (handler-fed) | ctx.id replaces requestId |
 | migrationCancelToken | cancel handler + withMigrationRunTracking | set/clear take ctx + warns; `isMigrationCancelRequested` stays ctx-free (gates run at task boot, pre-ctx) |
-| stripeSubscriptionLock | attach/billing/webhook handlers | ctx; get+set warns (silent failure = lost webhook echo-suppression) |
+| processorSubscriptionLock | attach/billing/webhook handlers | ctx; get+set warns (silent failure = lost webhook echo-suppression) |
 
 ## Tier B — ctx-free by nature (keep `requestId?`; documented why)
 

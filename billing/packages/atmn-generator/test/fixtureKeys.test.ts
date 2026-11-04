@@ -59,7 +59,6 @@ test("overlay and spec-order rules hold for features", () => {
 		"consumable",
 		"creditSchema",
 		"modelMarkups",
-		"processors",
 		"archived",
 	]) {
 		expect(keys).toContain(expected);
@@ -70,7 +69,7 @@ test("overlay and spec-order rules hold for features", () => {
 	expect(keys).not.toContain("newFeatureId");
 	// Spec order across the allOf branches, not alphabetical.
 	expect(keys.indexOf("name")).toBeLessThan(keys.indexOf("featureId"));
-	expect(keys.indexOf("featureId")).toBeLessThan(keys.indexOf("processors"));
+	expect(keys.indexOf("featureId")).toBeLessThan(keys.indexOf("archived"));
 });
 
 test("objectMembers skips hidden and internal fields", () => {

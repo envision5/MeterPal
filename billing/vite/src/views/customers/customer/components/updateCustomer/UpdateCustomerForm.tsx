@@ -11,8 +11,6 @@ import {
 	DialogFooter,
 	ShortcutButton,
 } from "@autumn/ui";
-import { useStore } from "@tanstack/react-form";
-import { InfoBox } from "@/views/onboarding2/integrate/components/InfoBox";
 import { BillingDetailsSection } from "./billingDetails/BillingDetailsSection";
 import { CustomerDetailsFields } from "./CustomerDetailsFields";
 import { FIELD_STACK } from "./fieldLayout";
@@ -34,21 +32,10 @@ export const UpdateCustomerForm = ({
 		billingDetails,
 		onSaved,
 	});
-	const stripeId = useStore(form.store, (state) => state.values.stripeId);
-	const stripeIdChanged = stripeId !== initialValues.stripeId;
-	const isStripeLinked = !!initialValues.stripeId && !stripeIdChanged;
 
 	return (
 		<>
 			<CustomerDetailsFields form={form} />
-
-			{stripeIdChanged && (
-				<InfoBox variant="warning">
-					Changing the Stripe Customer ID will break existing subscription
-					links. You can sync from Stripe again after updating (Actions → Sync
-					from Stripe).
-				</InfoBox>
-			)}
 
 			<Accordion className="-mx-1">
 				<AccordionItem value="billing-details">
@@ -58,7 +45,6 @@ export const UpdateCustomerForm = ({
 					<AccordionContent className={`${FIELD_STACK} px-1 pt-2 pb-1`}>
 						<BillingDetailsSection
 							form={form}
-							isStripeLinked={isStripeLinked}
 							loadError={billingDetailsError}
 						/>
 					</AccordionContent>

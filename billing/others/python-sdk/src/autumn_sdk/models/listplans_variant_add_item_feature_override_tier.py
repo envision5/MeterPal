@@ -141,14 +141,14 @@ r"""Billing interval (e.g. 'month', 'year')."""
 
 class ListPlansVariantDetailsUpsertLicenseAdditionalCurrencyTypedDict(TypedDict):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
 
 
 class ListPlansVariantDetailsUpsertLicenseAdditionalCurrency(BaseModel):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
 
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
@@ -265,14 +265,14 @@ class ListPlansVariantDetailsUpsertLicenseReset(BaseModel):
 
 class ListPlansVariantDetailsUpsertLicenseAddItemAdditionalCurrencyTypedDict(TypedDict):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
 
 
 class ListPlansVariantDetailsUpsertLicenseAddItemAdditionalCurrency(BaseModel):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
 
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
@@ -290,7 +290,7 @@ ListPlansVariantDetailsUpsertLicensePriceTo = TypeAliasType(
 
 class ListPlansVariantDetailsUpsertLicenseTierAdditionalCurrencyTypedDict(TypedDict):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
     amount: NotRequired[float]
     r"""Per-unit amount for this tier in this currency."""
     flat_amount: NotRequired[float]
@@ -299,7 +299,7 @@ class ListPlansVariantDetailsUpsertLicenseTierAdditionalCurrencyTypedDict(TypedD
 
 class ListPlansVariantDetailsUpsertLicenseTierAdditionalCurrency(BaseModel):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
 
     amount: Optional[float] = None
     r"""Per-unit amount for this tier in this currency."""
@@ -1690,14 +1690,14 @@ r"""Billing interval (e.g. 'month', 'year')."""
 
 class ListPlansLicenseAdditionalCurrencyTypedDict(TypedDict):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
 
 
 class ListPlansLicenseAdditionalCurrency(BaseModel):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
 
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
@@ -1812,14 +1812,14 @@ class ListPlansLicenseReset(BaseModel):
 
 class ListPlansLicenseAddItemAdditionalCurrencyTypedDict(TypedDict):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
 
 
 class ListPlansLicenseAddItemAdditionalCurrency(BaseModel):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
 
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
@@ -1835,7 +1835,7 @@ ListPlansLicensePriceTo = TypeAliasType("ListPlansLicensePriceTo", Union[float, 
 
 class ListPlansLicenseTierAdditionalCurrencyTypedDict(TypedDict):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
     amount: NotRequired[float]
     r"""Per-unit amount for this tier in this currency."""
     flat_amount: NotRequired[float]
@@ -1844,7 +1844,7 @@ class ListPlansLicenseTierAdditionalCurrencyTypedDict(TypedDict):
 
 class ListPlansLicenseTierAdditionalCurrency(BaseModel):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
 
     amount: Optional[float] = None
     r"""Per-unit amount for this tier in this currency."""
@@ -3063,14 +3063,14 @@ r"""Billing interval (e.g. 'month', 'year')."""
 
 class ListPlansVariantCustomizeAdditionalCurrencyTypedDict(TypedDict):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
 
 
 class ListPlansVariantCustomizeAdditionalCurrency(BaseModel):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
 
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
@@ -3187,14 +3187,14 @@ class ListPlansVariantAddItemReset(BaseModel):
 
 class ListPlansVariantAddItemAdditionalCurrencyTypedDict(TypedDict):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
 
 
 class ListPlansVariantAddItemAdditionalCurrency(BaseModel):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
 
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
@@ -3212,7 +3212,7 @@ ListPlansVariantAddItemPriceTo = TypeAliasType(
 
 class ListPlansVariantAddItemTierAdditionalCurrencyTypedDict(TypedDict):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
     amount: NotRequired[float]
     r"""Per-unit amount for this tier in this currency."""
     flat_amount: NotRequired[float]
@@ -3221,7 +3221,7 @@ class ListPlansVariantAddItemTierAdditionalCurrencyTypedDict(TypedDict):
 
 class ListPlansVariantAddItemTierAdditionalCurrency(BaseModel):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
 
     amount: Optional[float] = None
     r"""Per-unit amount for this tier in this currency."""

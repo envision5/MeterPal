@@ -55,7 +55,7 @@ projected-batch semantics that are new in V2.
 | Case | Covered |
 |---|---|
 | single→continuous allowed with product refs; ents → lifetime interval | ✓ t1 |
-| single→continuous: price `should_prorate=true`, `stripe_price_id=null` | ✓ t1 |
+| single→continuous: price `should_prorate=true`, `processor_price_id=null` | ✓ t1 |
 | continuous→single (flip back): price `should_prorate=false` | ✓ t1 |
 | Preview `previous_attributes` exact both directions | ✓ t1 |
 | Blocked: in a CS schema (`used in credit system <id>`) | ✓ t2 |

@@ -12,8 +12,8 @@ import {
 	constructProduct,
 	constructRawProduct,
 } from "../../../../src/utils/scriptUtils/createTestProducts.js";
-import { initCustomerV3 } from "../../../../src/utils/scriptUtils/testUtils/initCustomerV3.js";
-import { initProductsV0 } from "../../../../src/utils/scriptUtils/testUtils/initProductsV0.js";
+import { initTestCustomer } from "@tests/utils/testInitUtils/initTestCustomer.js";
+import { initTestProducts } from "@tests/utils/testInitUtils/initTestProducts.js";
 import { AutumnCli } from "../../../cli/AutumnCli.js";
 import { TestFeature } from "../../../setup/v2Features.js";
 import { checkEntitledOnProduct } from "./trackLegacyUtils.js";
@@ -65,19 +65,17 @@ describe(`${chalk.yellowBright(
 	const autumn: AutumnInt = new AutumnInt({ version: ApiVersion.V1_2 });
 
 	beforeAll(async () => {
-		await initProductsV0({
+		await initTestProducts({
 			ctx,
 			products: [pro, oneTimeAddOnMetered1],
 			prefix: testCase,
 			customerId,
 		});
 
-		await initCustomerV3({
+		await initTestCustomer({
 			ctx,
 			customerId,
 			customerData: {},
-			attachPm: "success",
-			withTestClock: true,
 		});
 	});
 

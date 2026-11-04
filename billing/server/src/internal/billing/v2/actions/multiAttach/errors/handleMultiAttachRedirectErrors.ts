@@ -1,5 +1,4 @@
 import { RecaseError } from "@autumn/shared";
-import type Stripe from "stripe";
 
 /**
  * Validates that redirect_mode "always" is not used when merging into an existing subscription.
@@ -7,15 +6,15 @@ import type Stripe from "stripe";
  */
 export const handleMultiAttachRedirectErrors = ({
 	redirectMode,
-	stripeSubscription,
+	hasExistingSubscription,
 }: {
 	redirectMode: string;
-	stripeSubscription?: Stripe.Subscription;
+	hasExistingSubscription: boolean;
 }) => {
-	if (redirectMode === "always" && stripeSubscription) {
+	if (redirectMode === "always" && hasExistingSubscription) {
 		throw new RecaseError({
 			message:
-				'redirect_mode cannot be "always" if customer has an existing Stripe subscription. Pass new_billing_subscription: true to create a new subscription.',
+				'redirect_mode cannot be "always" if customer has an existing subscription. Pass new_billing_subscription: true to create a new subscription.',
 			code: "invalid_redirect_mode",
 			statusCode: 400,
 		});

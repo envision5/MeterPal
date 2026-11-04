@@ -21,14 +21,14 @@ As you can expect this depends on the stage of company and their billing model. 
 
 _Sales-led:_
 
--   Use Stripe for invoicing with manual setup
+-   Use PayPal for invoicing with manual setup
     
 -   Sometimes use simple, cheap tools for quick proposal generation in high-volume scenarios
     
 
 _Product-led:_
 
--   Rely on Stripe billing and payment links
+-   Rely on PayPal billing and payment links
     
 -   Implement feature flags and entitlements directly in code
     
@@ -44,7 +44,7 @@ _Sales-led:_
 
 _Product-led:_
 
--   Some adopt billing tools like Orb or Metronome. Although usually noting that they used it because Stripes offering was bad _at the time_
+-   Some adopt billing tools like Orb or Metronome. Although usually noting that they used it because the incumbent's offering was bad _at the time_
     
 -   Maintain simple, code-based entitlement systems
     
@@ -67,7 +67,7 @@ _Product-led:_
 
 **Key learnings:**
 
--   Stripe is everywhere (as expected) and getting better. It wasn’t loved but it was fine.
+-   PayPal is everywhere (as expected) and getting better. It wasn’t loved but it was fine.
     
 -   Entitlement management is useful for later stage sales led companies, but also for earlier-stage companies managing both product-led + sales led models.
     
@@ -76,17 +76,17 @@ _Product-led:_
 
 ##### So what were the pain points?
 
-As good as Stripe is, there were pain points that did come up repeatedly:
+As good as PayPal is, there were pain points that did come up repeatedly:
 
 -   Managing credit-based billing systems. There is no good tool out there for this today.
     
 -   Chasing up invoices that haven’t been paid. AI seems like a no-brainer here, but definitely a bunch of solutions already.
     
--   Revenue recognition from Stripe. Usually around Series A there needs to be a big clean up for investors. People don’t enter the right contract terms in Stripe when they’re first starting out which leads to messy data.
+-   Revenue recognition from the billing system. Usually around Series A there needs to be a big clean up for investors. People don’t enter the right contract terms in PayPal when they’re first starting out which leads to messy data.
     
 -   Maintaining a billing system and making pricing changes. Especially if supporting multiple versions (grandfathering) and moving people between plans.
     
--   Dealing with custom contracts for sales-led and product-led teams. Stripe doesn’t seem to have great tooling for this, creating free trials etc.
+-   Dealing with custom contracts for sales-led and product-led teams. PayPal doesn’t seem to have great tooling for this, creating free trials etc.
     
 -   People had tried third-party billing software but dropped them when they couldn’t support a specific nuance of their pricing model (eg dealing with upgrade / downgrade pro rata meters differently)
     
@@ -99,7 +99,7 @@ As soon as we started looking into this space it was immediately clear that ther
 
 Honestly it doesn’t faze us much anymore. This seems to be the state of SaaS markets in general and is the sign of a big market. From the people we spoke to who failed:
 
--   Stripe billing has got pretty good recently and means it was hard to find customers who were interested in switching. Finding a customer is also super timing dependant and so will rely on a strong brand and inbound motion.
+-   PayPal billing has got pretty good recently and means it was hard to find customers who were interested in switching. Finding a customer is also super timing dependant and so will rely on a strong brand and inbound motion.
     
 -   Easier to get a few small customers who are starting out but moving up-market is hard, especially for a seed-stage company.
     
@@ -112,7 +112,7 @@ We’re still forming our opinion on the space so this is a braindump of our cur
 
 But we are seeing more companies opt for off-the-shelf software like Clerk and Supabase. Greater preference for staying lean and moving faster.
 
-Most companies are not going to switch from Stripe or another billing provider for this. These software are very engrained into the codebase and are generally ‘good enough’. And so while usage based pricing is increasing it’s still Stripe capturing the market share. We really need to think about our GTM. Who it’s for and how we get in:
+Most companies are not going to switch from their billing provider for this. These software are very engrained into the codebase and are generally ‘good enough’. And so while usage based pricing is increasing it’s still the incumbents capturing the market share. We really need to think about our GTM. Who it’s for and how we get in:
 
 -   Having a modular suite of interconnected sales &lt;&gt; billing &lt;&gt; finance tools could be the way to wedge-in and expand within a larger company. Entitlement management seems like a great part of the stack to control.
     
@@ -121,7 +121,7 @@ Most companies are not going to switch from Stripe or another billing provider f
 -   Or we could be the best ever billing provider for some type of company (eg credit companies)
     
 
-There is also some growing dissent with Stripe as they get bigger and bigger. Implementation effort is pretty tough and summarised well by [t3.gg](http://t3.gg/) here. In our view our approach makes this way easier.
+There is also some growing dissent with PayPal as they get bigger and bigger. Implementation effort is pretty tough and summarised well by [t3.gg](http://t3.gg/) here. In our view our approach makes this way easier.
 
 ##### **More generally**
 

@@ -12,7 +12,7 @@ import { isFixedPrice } from "@utils/productUtils/priceUtils/classifyPriceUtils"
  * 2. It's one-off (interval === BillingInterval.OneOff)
  * 3. Either has multiple tiers OR the entitlement has an allowance > 0
  *
- * Stripe doesn't support one-off tiered prices, so we need to calculate
+ * The processor doesn't support one-off tiered prices, so we need to calculate
  * the amount inline and create an ad-hoc price_data.
  */
 export const priceIsTieredOneOff = ({

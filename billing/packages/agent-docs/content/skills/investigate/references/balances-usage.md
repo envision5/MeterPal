@@ -95,7 +95,7 @@ where customer_id == 'cus_123' and request_path contains 'track' | project times
 where customer_id == 'cus_123' and (request_path contains 'balances.check' or request_path contains 'check') | order by timestamp asc | limit 100
 ```
 
-2. If `remaining` never returned to `granted` after `next_reset_at` passed, the reset observably did not apply — correlate with the renewal webhook (`customer.subscription.updated` / `invoice.paid`) around the boundary.
+2. If `remaining` never returned to `granted` after `next_reset_at` passed, the reset observably did not apply — correlate with the renewal webhook (`BILLING.SUBSCRIPTION.UPDATED` / `PAYMENT.SALE.COMPLETED`) around the boundary.
 3. Resets are internal processing: the logs can show *that* balances didn't reset, not *why*. If state confirms it, report the evidence (timestamps, before/after balances) and escalate to Autumn support.
 
 ### Balance timeline

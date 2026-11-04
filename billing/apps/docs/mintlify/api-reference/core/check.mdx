@@ -262,24 +262,6 @@ const { allowed } = await autumn.check({
           Whether the feature is archived and hidden from the dashboard.
         </DynamicResponseField>
 
-        <DynamicResponseField name="processors" type="object">
-          Processor mappings for this feature. Present when a Stripe product or meter is set.
-          <Expandable title="properties">
-            <DynamicResponseField name="stripe" type="object">
-              <Expandable title="properties">
-                <DynamicResponseField name="product_id" type="string">
-                  Stripe product ID this feature's usage prices bill under.
-                </DynamicResponseField>
-
-                <DynamicResponseField name="meter_id" type="string">
-                  Stripe meter ID used to create this feature's metered price.
-                </DynamicResponseField>
-
-              </Expandable>
-            </DynamicResponseField>
-
-          </Expandable>
-        </DynamicResponseField>
 
       </Expandable>
     </DynamicResponseField>
@@ -579,24 +561,6 @@ const { allowed } = await autumn.check({
           Whether the feature is archived and hidden from the dashboard.
         </DynamicResponseField>
 
-        <DynamicResponseField name="processors" type="object">
-          Processor mappings for this feature. Present when a Stripe product or meter is set.
-          <Expandable title="properties">
-            <DynamicResponseField name="stripe" type="object">
-              <Expandable title="properties">
-                <DynamicResponseField name="product_id" type="string">
-                  Stripe product ID this feature's usage prices bill under.
-                </DynamicResponseField>
-
-                <DynamicResponseField name="meter_id" type="string">
-                  Stripe meter ID used to create this feature's metered price.
-                </DynamicResponseField>
-
-              </Expandable>
-            </DynamicResponseField>
-
-          </Expandable>
-        </DynamicResponseField>
 
       </Expandable>
     </DynamicResponseField>
@@ -908,24 +872,6 @@ const { allowed } = await autumn.check({
           Whether the feature is archived and hidden from the dashboard.
         </DynamicResponseField>
 
-        <DynamicResponseField name="processors" type="object">
-          Processor mappings for this feature. Present when a Stripe product or meter is set.
-          <Expandable title="properties">
-            <DynamicResponseField name="stripe" type="object">
-              <Expandable title="properties">
-                <DynamicResponseField name="product_id" type="string">
-                  Stripe product ID this feature's usage prices bill under.
-                </DynamicResponseField>
-
-                <DynamicResponseField name="meter_id" type="string">
-                  Stripe meter ID used to create this feature's metered price.
-                </DynamicResponseField>
-
-              </Expandable>
-            </DynamicResponseField>
-
-          </Expandable>
-        </DynamicResponseField>
 
       </Expandable>
     </DynamicResponseField>
@@ -1195,7 +1141,7 @@ const { allowed } = await autumn.check({
                 </DynamicResponseField>
 
                 <DynamicResponseField name="skip_overage_billing" type="boolean">
-                  When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally.
+                  When true, overage for this feature is not posted to the payment processor. Usage tracking and balance resets still behave normally.
                 </DynamicResponseField>
 
               </Expandable>

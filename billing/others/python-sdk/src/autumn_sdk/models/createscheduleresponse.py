@@ -255,7 +255,7 @@ class PhaseStartSpendLimitTypedDict(TypedDict):
     overage_limit: NotRequired[float]
     r"""Overage cap for the feature: absolute units, or a percent (e.g. 120) when limit_type is usage_percentage."""
     skip_overage_billing: NotRequired[bool]
-    r"""When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally."""
+    r"""When true, overage for this feature is not billed to the processor. Usage tracking and balance resets still behave normally."""
 
 
 class PhaseStartSpendLimit(BaseModel):
@@ -272,7 +272,7 @@ class PhaseStartSpendLimit(BaseModel):
     r"""Overage cap for the feature: absolute units, or a percent (e.g. 120) when limit_type is usage_percentage."""
 
     skip_overage_billing: Optional[bool] = None
-    r"""When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally."""
+    r"""When true, overage for this feature is not billed to the processor. Usage tracking and balance resets still behave normally."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -590,14 +590,14 @@ r"""Billing interval (e.g. 'month', 'year')."""
 
 class PhaseStartUpsertLicenseAdditionalCurrencyTypedDict(TypedDict):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
 
 
 class PhaseStartUpsertLicenseAdditionalCurrency(BaseModel):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
 
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
@@ -711,14 +711,14 @@ class PhaseStartUpsertLicenseReset(BaseModel):
 
 class PhaseStartUpsertLicenseAddItemAdditionalCurrencyTypedDict(TypedDict):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
 
 
 class PhaseStartUpsertLicenseAddItemAdditionalCurrency(BaseModel):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
 
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
@@ -736,7 +736,7 @@ PhaseStartUpsertLicensePriceTo = TypeAliasType(
 
 class PhaseStartUpsertLicenseTierAdditionalCurrencyTypedDict(TypedDict):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
     amount: NotRequired[float]
     r"""Per-unit amount for this tier in this currency."""
     flat_amount: NotRequired[float]
@@ -745,7 +745,7 @@ class PhaseStartUpsertLicenseTierAdditionalCurrencyTypedDict(TypedDict):
 
 class PhaseStartUpsertLicenseTierAdditionalCurrency(BaseModel):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
 
     amount: Optional[float] = None
     r"""Per-unit amount for this tier in this currency."""
@@ -2137,7 +2137,7 @@ class CreateSchedulePlan2(BaseModel):
 
 
 CreateScheduleBillingCycleAnchor2 = Literal["phase_start",]
-r"""Pass 'phase_start' to reset the Stripe billing cycle anchor when this phase starts."""
+r"""Pass 'phase_start' to reset the billing cycle anchor when this phase starts."""
 
 
 class PhaseStartTypedDict(TypedDict):
@@ -2148,7 +2148,7 @@ class PhaseStartTypedDict(TypedDict):
     starting_after: NotRequired[StartingAfter2TypedDict]
     r"""Relative start offset from the previous resolved schedule phase."""
     billing_cycle_anchor: NotRequired[CreateScheduleBillingCycleAnchor2]
-    r"""Pass 'phase_start' to reset the Stripe billing cycle anchor when this phase starts."""
+    r"""Pass 'phase_start' to reset the billing cycle anchor when this phase starts."""
 
 
 class PhaseStart(BaseModel):
@@ -2162,7 +2162,7 @@ class PhaseStart(BaseModel):
     r"""Relative start offset from the previous resolved schedule phase."""
 
     billing_cycle_anchor: Optional[CreateScheduleBillingCycleAnchor2] = None
-    r"""Pass 'phase_start' to reset the Stripe billing cycle anchor when this phase starts."""
+    r"""Pass 'phase_start' to reset the billing cycle anchor when this phase starts."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -2197,15 +2197,15 @@ class CreateScheduleParamsTypedDict(TypedDict):
     free_trial: NotRequired[Nullable[CreateScheduleFreeTrialParamsTypedDict]]
     r"""Free trial configuration applied to every plan in the immediate phase."""
     currency: NotRequired[str]
-    r"""Three-letter Stripe-supported currency code used to bill the immediate phase (for example, 'usd')."""
+    r"""Three-letter currency code used to bill the immediate phase (for example, 'usd')."""
     invoice_mode: NotRequired[CreateScheduleInvoiceModeTypedDict]
     r"""Invoice mode creates and sends an invoice instead of charging the customer's payment method immediately for the first phase."""
     discounts: NotRequired[List[CreateScheduleAttachDiscountTypedDict]]
-    r"""List of discounts to apply to the immediate phase. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code."""
+    r"""List of discounts to apply to the immediate phase. Each discount can be an Autumn reward ID, coupon ID, or promotion code."""
     success_url: NotRequired[str]
     r"""URL to redirect to after successful checkout."""
     checkout_session_params: NotRequired[Dict[str, Any]]
-    r"""Additional parameters to pass into the creation of the Stripe checkout session."""
+    r"""Additional parameters to pass into the creation of the checkout session."""
     redirect_mode: NotRequired[CreateScheduleRedirectMode]
     r"""Controls when to return a checkout URL for the immediate phase. 'always' forces a confirmation or checkout flow, 'if_required' only redirects when needed, and 'never' disables redirects."""
     billing_behavior: NotRequired[CreateScheduleBillingBehavior]
@@ -2215,7 +2215,7 @@ class CreateScheduleParamsTypedDict(TypedDict):
     billing_cycle_anchor: Literal["now"]
     r"""Pass 'now' to reset the billing cycle anchor of the immediate phase to the current time."""
     enable_plan_immediately: NotRequired[bool]
-    r"""If true, the immediate-phase cusProducts are activated immediately (and scheduled-phase cusProducts pre-inserted) even when payment is pending via Stripe checkout. The Autumn schedule rows are persisted on checkout.session.completed."""
+    r"""If true, the immediate-phase cusProducts are activated immediately (and scheduled-phase cusProducts pre-inserted) even when payment is pending via hosted checkout. The Autumn schedule rows are persisted when checkout completes."""
     preserve_add_ons: NotRequired[bool]
     r"""Deprecated and ignored. Active plans the schedule does not declare are always retained."""
     unscheduled_plans: NotRequired[List[UnscheduledPlanTypedDict]]
@@ -2236,19 +2236,19 @@ class CreateScheduleParams(BaseModel):
     r"""Free trial configuration applied to every plan in the immediate phase."""
 
     currency: Optional[str] = None
-    r"""Three-letter Stripe-supported currency code used to bill the immediate phase (for example, 'usd')."""
+    r"""Three-letter currency code used to bill the immediate phase (for example, 'usd')."""
 
     invoice_mode: Optional[CreateScheduleInvoiceMode] = None
     r"""Invoice mode creates and sends an invoice instead of charging the customer's payment method immediately for the first phase."""
 
     discounts: Optional[List[CreateScheduleAttachDiscount]] = None
-    r"""List of discounts to apply to the immediate phase. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code."""
+    r"""List of discounts to apply to the immediate phase. Each discount can be an Autumn reward ID, coupon ID, or promotion code."""
 
     success_url: Optional[str] = None
     r"""URL to redirect to after successful checkout."""
 
     checkout_session_params: Optional[Dict[str, Any]] = None
-    r"""Additional parameters to pass into the creation of the Stripe checkout session."""
+    r"""Additional parameters to pass into the creation of the checkout session."""
 
     redirect_mode: Optional[CreateScheduleRedirectMode] = "if_required"
     r"""Controls when to return a checkout URL for the immediate phase. 'always' forces a confirmation or checkout flow, 'if_required' only redirects when needed, and 'never' disables redirects."""
@@ -2266,7 +2266,7 @@ class CreateScheduleParams(BaseModel):
     r"""Pass 'now' to reset the billing cycle anchor of the immediate phase to the current time."""
 
     enable_plan_immediately: Optional[bool] = None
-    r"""If true, the immediate-phase cusProducts are activated immediately (and scheduled-phase cusProducts pre-inserted) even when payment is pending via Stripe checkout. The Autumn schedule rows are persisted on checkout.session.completed."""
+    r"""If true, the immediate-phase cusProducts are activated immediately (and scheduled-phase cusProducts pre-inserted) even when payment is pending via hosted checkout. The Autumn schedule rows are persisted when checkout completes."""
 
     preserve_add_ons: Optional[bool] = None
     r"""Deprecated and ignored. Active plans the schedule does not declare are always retained."""
@@ -2352,8 +2352,8 @@ class CreateScheduleInvoiceTypedDict(TypedDict):
 
     status: Nullable[str]
     r"""The status of the invoice (e.g., 'paid', 'open', 'draft')."""
-    stripe_id: str
-    r"""The Stripe invoice ID."""
+    processor_invoice_id: str
+    r"""The processor's stable invoice ID."""
     total: float
     r"""The total amount of the invoice in cents."""
     currency: str
@@ -2368,8 +2368,8 @@ class CreateScheduleInvoice(BaseModel):
     status: Nullable[str]
     r"""The status of the invoice (e.g., 'paid', 'open', 'draft')."""
 
-    stripe_id: str
-    r"""The Stripe invoice ID."""
+    processor_invoice_id: str
+    r"""The processor's stable invoice ID."""
 
     total: float
     r"""The total amount of the invoice in cents."""

@@ -7,8 +7,6 @@ DESCRIPTION >
 SCHEMA >
     `id`                       String              `json:$.id`,
     `org_id`                   String              `json:$.org_id`,
-    `stripe_id`                Nullable(String)    `json:$.stripe_id`,
-    `stripe_schedule_id`       Nullable(String)    `json:$.stripe_schedule_id`,
     `created_at`               Int64               `json:$.created_at`,
     `metadata`                 String              `json:$.metadata`,
     `usage_features`           Array(String)       `json:$.usage_features[:]`,

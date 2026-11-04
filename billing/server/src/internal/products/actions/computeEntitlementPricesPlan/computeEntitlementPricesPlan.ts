@@ -8,8 +8,6 @@ import type { AutumnContext } from "@/honoUtils/HonoEnv";
 import { validateProductItems } from "@/internal/products/product-items/validateProductItems.js";
 import { buildEntitlementPricesPlan } from "./buildEntitlementPricesPlan/buildEntitlementPricesPlan";
 import { claimCurrentRows } from "./claimCurrentRows/claimCurrentRows";
-import { carryForwardStripeResources } from "./helpers/carryForwardStripeResources";
-import { stripeMappingUnlinks } from "./helpers/stripeMappingUnlinks";
 import { resolveEntitlementPricesCustomize } from "./resolveEntitlementPricesCustomize";
 import type { ComputeEntitlementPricesPlanParams } from "./types/computeEntitlementPricesPlanParams";
 import type { EntitlementPricesPlan } from "./types/entitlementPricesPlan";
@@ -50,7 +48,6 @@ export const computeEntitlementPricesPlan = ({
 		items,
 		product: params.product,
 		features: allFeatures,
-		stripeReusePrices: (params.stripeCandidates ?? params.currentRows)?.prices,
 	});
 
 	const claims = claimCurrentRows({
@@ -58,24 +55,9 @@ export const computeEntitlementPricesPlan = ({
 		desiredBasePriceAndEntitlementPrices,
 	});
 
-	const unlinks = stripeMappingUnlinks({
-		claims,
-		unlinkedStripeSlots:
-			desiredBasePriceAndEntitlementPrices.unlinkedStripeSlots,
-	});
-
 	const plan = buildEntitlementPricesPlan({
 		mode: params.mode,
 		claims,
-		unlinks,
-	});
-
-	const stripeCandidates = params.stripeCandidates ?? params.currentRows;
-	carryForwardStripeResources({
-		plan,
-		candidatePrices: stripeCandidates?.prices ?? [],
-		candidateEntitlements: stripeCandidates?.entitlements ?? [],
-		unlinks,
 	});
 
 	plan.projected = {

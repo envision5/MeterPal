@@ -1,6 +1,5 @@
 import { z } from "zod/v4";
 import { AppEnv } from "../genModels/genEnums.js";
-import { ExternalProcessorsSchema } from "../genModels/processorSchemas.js";
 import { DbBillingControlsSchema } from "./billingControls/customerBillingControls.js";
 
 export const CustomerSchema = z.object({
@@ -14,8 +13,6 @@ export const CustomerSchema = z.object({
 	org_id: z.string(),
 	created_at: z.number(),
 	env: z.enum(AppEnv),
-	processor: z.any(),
-	processors: ExternalProcessorsSchema.nullish(),
 	metadata: z.record(z.any(), z.any()).nullish().default({}),
 	send_email_receipts: z.boolean().default(false),
 	currency: z.string().nullish(),
@@ -76,8 +73,6 @@ export const CreateCustomerSchema = z.object({
 		.nullish(),
 	fingerprint: z.string().nullish(),
 	metadata: z.record(z.any(), z.any()).default({}).nullish(),
-	stripe_id: z.string().nullish(),
-	processors: ExternalProcessorsSchema.nullish(),
 	send_email_receipts: z.boolean().default(false),
 	currency: z.string().nullish(),
 });

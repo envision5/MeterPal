@@ -94,12 +94,12 @@ export function InvoicePreviewDocument({
 	memo?: string;
 	footer?: string;
 	discountRows?: InvoiceDiscountRow[];
-	/** The picked calendar days, shown as chosen rather than as Stripe's timestamps. */
+	/** The picked calendar days, shown as chosen rather than as the processor's timestamps. */
 	issueDay?: number | null;
 	dueDay?: number | null;
 }) {
 	const { currency } = preview;
-	// Stripe lists custom charges first, highest amount first, then catalog lines.
+	// Custom charges are listed first, highest amount first, then catalog lines.
 	const lines = [
 		...preview.lines
 			.filter((line) => line.plan_id === null)
@@ -181,7 +181,7 @@ export function InvoicePreviewDocument({
 								isFirst ? "mt-[1.6em]" : "mt-[2.4em]",
 							)}
 						>
-							{/* Stripe sizes the numeric columns to their content and
+							{/* The numeric columns are sized to their content and
 							    right-aligns them; description absorbs the rest. */}
 							<colgroup>
 								<col className="w-full" />

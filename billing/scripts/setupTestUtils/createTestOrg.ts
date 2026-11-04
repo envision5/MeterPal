@@ -29,12 +29,6 @@ const TEST_ORG_CONFIG = {
 export const TEST_ORG_PUBLISHABLE_KEY =
 	"am_pk_test_3DoBu1cmlgxWqEXYiKaBKOPHqsu";
 
-function skipsStripeAccountForWorkerMode(): boolean {
-	return ["1", "true", "yes"].includes(
-		(process.env.TW_SKIP_STRIPE_ACCOUNT ?? "").trim().toLowerCase(),
-	);
-}
-
 // Synthetic inviter pinned to the test org; satisfies invitation.inviter_id
 // NOT-NULL FK without needing a real human user in a fresh worktree branch.
 const TEST_INVITER_USER = {
@@ -42,37 +36,6 @@ const TEST_INVITER_USER = {
 	name: "Setup Test Inviter",
 	email: "setup-test-inviter@autumn.test",
 };
-
-export function testOrgNeedsStripeAccount({
-	org,
-}: {
-	org: {
-		test_stripe_connect?: { default_account_id?: string | null } | null;
-	};
-}): boolean {
-	if (skipsStripeAccountForWorkerMode()) return false;
-	return !org.test_stripe_connect?.default_account_id;
-}
-
-export async function ensureTestOrgStripeAccount({
-	org,
-}: {
-	org: {
-		id: string;
-		slug: string;
-		name: string;
-		createdAt: Date;
-		test_stripe_connect?: { default_account_id?: string | null } | null;
-	};
-}): Promise<void> {
-	if (!testOrgNeedsStripeAccount({ org })) return;
-	await afterOrgCreated({
-		org: { ...org, slug: TEST_ORG_CONFIG.slug } as never,
-		user: TEST_INVITER_USER as never,
-		createStripeAccount: true,
-		pkey: TEST_ORG_PUBLISHABLE_KEY,
-	});
-}
 
 const TEAM_INVITE_EMAILS = [
 	"ayush@useautumn.com",
@@ -109,8 +72,6 @@ export async function createTestOrg({
 				`Test organization '${TEST_ORG_CONFIG.slug}' already exists.`,
 			),
 		);
-
-		await ensureTestOrgStripeAccount({ org: existingOrg });
 
 		await seedTeamInvites({ db });
 		await clearOrgDbOnly({
@@ -170,7 +131,6 @@ export async function createTestOrg({
 		name: TEST_ORG_CONFIG.name,
 		createdAt: new Date(TEST_ORG_CONFIG.created_at),
 		created_at: TEST_ORG_CONFIG.created_at,
-		stripe_connected: false,
 		default_currency: "usd",
 		config: { multi_currency: true } as OrgConfig,
 		onboarded: true,
@@ -193,7 +153,6 @@ export async function createTestOrg({
 	await afterOrgCreated({
 		org: insertedOrg as any,
 		user: TEST_INVITER_USER as any,
-		createStripeAccount: !skipsStripeAccountForWorkerMode(),
 		pkey: TEST_ORG_PUBLISHABLE_KEY,
 	});
 

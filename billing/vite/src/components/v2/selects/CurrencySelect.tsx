@@ -1,6 +1,11 @@
+import { CURRENCY_CODES, currencyDisplayName } from "@autumn/shared";
 import { cn } from "@/lib/utils";
-import { stripeCurrencyCodes } from "@/utils/constants/stripeCurrencyCodes";
 import { SearchableSelect } from "@autumn/ui";
+
+const CURRENCY_OPTIONS = CURRENCY_CODES.map((code) => ({
+	code: code.toUpperCase(),
+	currency: currencyDisplayName(code),
+}));
 
 export const CurrencySelect = ({
 	defaultCurrency,
@@ -17,7 +22,7 @@ export const CurrencySelect = ({
 		<SearchableSelect
 			value={defaultCurrency}
 			onValueChange={(value) => setDefaultCurrency(value.toUpperCase())}
-			options={stripeCurrencyCodes}
+			options={CURRENCY_OPTIONS}
 			getOptionValue={(currency) => currency.code}
 			getOptionLabel={(currency) => `${currency.currency} - ${currency.code}`}
 			searchable

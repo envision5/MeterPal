@@ -6,15 +6,11 @@ import {
 	type FullProduct,
 } from "@autumn/shared";
 import type { DrizzleCli } from "@/db/initDrizzle.js";
-import { createStripeCli } from "@/external/connect/createStripeCli.js";
+import { billingActions } from "@/internal/billing/v2/actions/index.js";
 import { ProductService } from "@/internal/products/ProductService.js";
 import { isDefaultTrialFullProduct } from "@/internal/products/productUtils/classifyProduct.js";
-import { isFreeProduct } from "@/internal/products/productUtils.js";
 import { nullish } from "@/utils/genUtils.js";
 import type { AutumnContext } from "../../../honoUtils/HonoEnv.js";
-import { handleAddProduct } from "../attach/attachFunctions/addProductFlow/handleAddProduct.js";
-import { newCusToAttachParams } from "../attach/attachUtils/attachParams/convertToParams.js";
-import { initStripeCusAndProducts } from "../handlers/handleCreateCustomer.js";
 import { CusProductService, RELEVANT_STATUSES } from "./CusProductService.js";
 
 export const getFreeDefaultProductByGroup = async ({
@@ -71,18 +67,6 @@ export const activateDefaultProduct = async ({
 		return false;
 	}
 
-	const stripeCli = createStripeCli({ org, env });
-	const defaultIsFree = isFreeProduct(defaultProd.prices);
-
-	// Initialize Stripe customer and products if needed (for paid non-trial products)
-	if (!defaultIsFree) {
-		await initStripeCusAndProducts({
-			ctx,
-			customer: fullCus,
-			products: [defaultProd],
-		});
-	}
-
 	// If default is already active, skip
 	const existingDefaultProduct = fullCus.customer_products.find(
 		(cp) =>
@@ -96,14 +80,15 @@ export const activateDefaultProduct = async ({
 		return false;
 	}
 
-	await handleAddProduct({
+	// The billing engine is DB-only, so the default product is attached without
+	// a processor checkout — `redirect_mode: "never"` keeps the attach local.
+	await billingActions.attach({
 		ctx,
-		attachParams: newCusToAttachParams({
-			ctx,
-			newCus: fullCus,
-			products: [defaultProd],
-			stripeCli,
-		}),
+		params: {
+			customer_id: fullCus.id ?? fullCus.internal_id,
+			plan_id: defaultProd.id,
+			redirect_mode: "never",
+		},
 	});
 
 	return true;
@@ -164,22 +149,6 @@ export const getMainCusProduct = async ({
 	);
 
 	return mainCusProduct as FullCusProduct;
-};
-
-const getCusProductsWithStripeSubId = ({
-	cusProducts,
-	stripeSubId,
-	curCusProductId,
-}: {
-	cusProducts: FullCusProduct[];
-	stripeSubId: string;
-	curCusProductId?: string;
-}) => {
-	return cusProducts.filter(
-		(cusProduct) =>
-			cusProduct.subscription_ids?.includes(stripeSubId) &&
-			cusProduct.id !== curCusProductId,
-	);
 };
 
 export const getFeatureQuantity = ({

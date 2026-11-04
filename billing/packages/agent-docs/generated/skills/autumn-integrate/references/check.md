@@ -1,6 +1,6 @@
 ## Checking access
 
-When you create a plan in Autumn, you define what features your customers on that plan get access to.
+When you create a plan in MeterPal, you define what features your customers on that plan get access to.
 
 The `check` method returns the `allowed` field in real-time to check if a customer should have access to a feature. You can use this to block access and prompt an upsell.
 
@@ -13,19 +13,23 @@ The `allowed` field will return `true` for a given feature if:
 - The plan feature is <Badge>usage-based</Badge>, and the user has not exceeded their max spend limit
 - The plan feature is <Badge>unlimited</Badge> or a <Badge>boolean</Badge> feature
 
-Under these conditions, you should allow your customer to use the feature. You can then [record the usage event](/documentation/customers/tracking-usage/) so Autumn can update the `allowed` field as necessary.
+Under these conditions, you should allow your customer to use the feature. You can then [record the usage event](/documentation/customers/tracking-usage/) so MeterPal can update the `allowed` field as necessary.
+
 
 The customer must already exist before calling `check`. If the `customer_id` doesn't match an existing customer, the API returns a `customer_not_found` error. Create customers using [`customers.getOrCreate`](/documentation/customers/creating-customers) during signup or login.
+
 
 ## Checking metered features
 
 Before your customer uses a feature, you can check if the customer is allowed to use it and their current usage.
+
 
 **Example**
 
 Let's imagine you have a free plan for a chatbot that allows 5 messages per month. Before your customer sends an AI message, you can check if they have any left.
 
 If they still have messages remaining, they'll be allowed to send an AI message.
+
 
 <CodeGroup>
 
@@ -66,6 +70,7 @@ curl -X POST "https://api.useautumn.com/v1/check" \
 
 </CodeGroup>
 
+
 ```json
 {
   "allowed": true,
@@ -83,7 +88,11 @@ curl -X POST "https://api.useautumn.com/v1/check" \
 }
 ```
 
+
+
 Even if your product doesn't have usage limits (ie your feature is purely usage-based), you can still use the above method to prevent usage if a customer's payment fails.
+
+
 
 ## Checking for a required balance
 
@@ -227,7 +236,9 @@ curl -X POST "https://api.useautumn.com/v1/balances.finalize" \
 
 </CodeGroup>
 
+
 See [Balance Locking](/documentation/customers/balance-locking) for the full guide, including releasing a lock and adjusting the final amount when actual usage differs from what you reserved.
+
 
 ## Checking boolean features
 

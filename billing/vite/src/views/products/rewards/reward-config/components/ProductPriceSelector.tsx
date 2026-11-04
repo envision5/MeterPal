@@ -15,14 +15,14 @@ import {
 } from "../../components/ChipSelectTrigger";
 import type { FrontendReward } from "../../types/frontendReward";
 import {
-	buildStripeProductGroups,
+	buildProductPriceGroups,
 	expandToFullGroups,
 	findGroupForPriceId,
 	groupLabel,
 	groupSuffix,
 	isGroupSelected,
 	sharedProductHint,
-} from "./stripeProductGroups";
+} from "./productPriceGroups";
 
 interface ProductPriceSelectorProps {
 	reward: FrontendReward;
@@ -44,7 +44,7 @@ export function ProductPriceSelector({
 	const { products: linkedProductVersions } =
 		useProductsByPriceIdsQuery(priceIds);
 
-	const groups = buildStripeProductGroups({
+	const groups = buildProductPriceGroups({
 		products: [...products, ...linkedProductVersions],
 		features,
 	});
@@ -59,7 +59,7 @@ export function ProductPriceSelector({
 			},
 		});
 
-	// Coupons saved before grouping may cover part of a shared Stripe product.
+	// Coupons saved before grouping may cover part of a shared plan family.
 	const expandedPriceIds =
 		applyToAll || priceIds.length === 0 || groups.length === 0
 			? priceIds

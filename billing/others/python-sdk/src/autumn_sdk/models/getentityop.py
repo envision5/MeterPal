@@ -1027,63 +1027,8 @@ class GetEntityDisplay(BaseModel):
         return m
 
 
-class GetEntityStripeTypedDict(TypedDict):
-    product_id: NotRequired[str]
-    r"""Stripe product ID this feature's usage prices bill under."""
-    meter_id: NotRequired[str]
-    r"""Stripe meter ID used to create this feature's metered price."""
-
-
-class GetEntityStripe(BaseModel):
-    product_id: Optional[str] = None
-    r"""Stripe product ID this feature's usage prices bill under."""
-
-    meter_id: Optional[str] = None
-    r"""Stripe meter ID used to create this feature's metered price."""
-
-    @model_serializer(mode="wrap")
-    def serialize_model(self, handler):
-        optional_fields = set(["product_id", "meter_id"])
-        serialized = handler(self)
-        m = {}
-
-        for n, f in type(self).model_fields.items():
-            k = f.alias or n
-            val = serialized.get(k, serialized.get(n))
-
-            if val != UNSET_SENTINEL:
-                if val is not None or k not in optional_fields:
-                    m[k] = val
-
-        return m
-
-
 class GetEntityProcessorsTypedDict(TypedDict):
-    r"""Processor mappings for this feature. Present when a Stripe product or meter is set."""
-
-    stripe: NotRequired[GetEntityStripeTypedDict]
-
-
-class GetEntityProcessors(BaseModel):
-    r"""Processor mappings for this feature. Present when a Stripe product or meter is set."""
-
-    stripe: Optional[GetEntityStripe] = None
-
-    @model_serializer(mode="wrap")
-    def serialize_model(self, handler):
-        optional_fields = set(["stripe"])
-        serialized = handler(self)
-        m = {}
-
-        for n, f in type(self).model_fields.items():
-            k = f.alias or n
-            val = serialized.get(k, serialized.get(n))
-
-            if val != UNSET_SENTINEL:
-                if val is not None or k not in optional_fields:
-                    m[k] = val
-
-        return m
+    r"""Processor mappings for this feature."""
 
 
 class GetEntityFeatureTypedDict(TypedDict):
@@ -1113,8 +1058,6 @@ class GetEntityFeatureTypedDict(TypedDict):
     r"""Per-provider default markup percentages for AI credit systems."""
     display: NotRequired[GetEntityDisplayTypedDict]
     r"""Display names for the feature in billing UI and customer-facing components."""
-    processors: NotRequired[GetEntityProcessorsTypedDict]
-    r"""Processor mappings for this feature. Present when a Stripe product or meter is set."""
 
 
 class GetEntityFeature(BaseModel):
@@ -1153,8 +1096,6 @@ class GetEntityFeature(BaseModel):
     display: Optional[GetEntityDisplay] = None
     r"""Display names for the feature in billing UI and customer-facing components."""
 
-    processors: Optional[GetEntityProcessors] = None
-    r"""Processor mappings for this feature. Present when a Stripe product or meter is set."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -1277,7 +1218,7 @@ class GetEntitySpendLimitTypedDict(TypedDict):
     overage_limit: NotRequired[float]
     r"""Overage cap for the feature: absolute units, or a percent (e.g. 120) when limit_type is usage_percentage."""
     skip_overage_billing: NotRequired[bool]
-    r"""When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally."""
+    r"""When true, overage for this feature is not billed to the processor. Usage tracking and balance resets still behave normally."""
     source: NotRequired[GetEntitySpendLimitSource]
     r"""Response-only: whether the entry is a customer-level override or inherited from an attached plan's defaults."""
 
@@ -1296,7 +1237,7 @@ class GetEntitySpendLimit(BaseModel):
     r"""Overage cap for the feature: absolute units, or a percent (e.g. 120) when limit_type is usage_percentage."""
 
     skip_overage_billing: Optional[bool] = None
-    r"""When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally."""
+    r"""When true, overage for this feature is not billed to the processor. Usage tracking and balance resets still behave normally."""
 
     source: Optional[GetEntitySpendLimitSource] = None
     r"""Response-only: whether the entry is a customer-level override or inherited from an attached plan's defaults."""
@@ -1640,8 +1581,7 @@ class GetEntityBillingControls(BaseModel):
 
 GetEntityProcessorType = Union[
     Literal[
-        "stripe",
-        "revenuecat",
+        "paypal",
     ],
     UnrecognizedStr,
 ]
@@ -1651,8 +1591,8 @@ r"""The billing processor that owns this invoice."""
 class GetEntityInvoiceTypedDict(TypedDict):
     plan_ids: List[str]
     r"""Array of plan IDs included in this invoice"""
-    stripe_id: str
-    r"""The Stripe invoice ID"""
+    processor_invoice_id: str
+    r"""The processor's stable invoice ID."""
     status: str
     r"""The status of the invoice"""
     total: float
@@ -1664,15 +1604,15 @@ class GetEntityInvoiceTypedDict(TypedDict):
     processor_type: NotRequired[GetEntityProcessorType]
     r"""The billing processor that owns this invoice."""
     hosted_invoice_url: NotRequired[Nullable[str]]
-    r"""URL to the Stripe-hosted invoice page"""
+    r"""The hosted invoice URL, when available."""
 
 
 class GetEntityInvoice(BaseModel):
     plan_ids: List[str]
     r"""Array of plan IDs included in this invoice"""
 
-    stripe_id: str
-    r"""The Stripe invoice ID"""
+    processor_invoice_id: str
+    r"""The processor's stable invoice ID."""
 
     status: str
     r"""The status of the invoice"""
@@ -1686,11 +1626,11 @@ class GetEntityInvoice(BaseModel):
     created_at: float
     r"""Timestamp when the invoice was created"""
 
-    processor_type: Optional[GetEntityProcessorType] = "stripe"
+    processor_type: Optional[GetEntityProcessorType] = "paypal"
     r"""The billing processor that owns this invoice."""
 
     hosted_invoice_url: OptionalNullable[str] = UNSET
-    r"""URL to the Stripe-hosted invoice page"""
+    r"""The hosted invoice URL, when available."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):

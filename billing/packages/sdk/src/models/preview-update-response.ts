@@ -575,11 +575,11 @@ export type PreviewUpdateCustomize = {
 };
 
 /**
- * Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses Stripe's send_invoice collection method.
+ * Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses the processor's send_invoice collection method.
  */
 export type PreviewUpdateInvoiceMode = {
   /**
-   * When true, creates an invoice and sends it to the customer instead of charging their card immediately. Uses Stripe's send_invoice collection method.
+   * When true, creates an invoice and sends it to the customer instead of charging their card immediately. Uses the processor's send_invoice collection method.
    */
   enabled: boolean;
   /**
@@ -595,7 +595,7 @@ export type PreviewUpdateInvoiceMode = {
    */
   invoiceTemplateId?: string | undefined;
   /**
-   * Number of days the customer has to pay the invoice before it is due (Stripe days_until_due).
+   * Number of days the customer has to pay the invoice before it is due (days_until_due).
    */
   netTermsDays?: number | undefined;
 };
@@ -648,7 +648,7 @@ export type PreviewUpdateAttachDiscount = {
  */
 export type PreviewUpdateRemoveDiscount = {
   /**
-   * The ID of the reward (or Stripe coupon) to remove.
+   * The ID of the reward to remove.
    */
   rewardId: string;
 };
@@ -765,7 +765,7 @@ export type PreviewUpdateParams = {
    */
   customize?: PreviewUpdateCustomize | undefined;
   /**
-   * Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses Stripe's send_invoice collection method.
+   * Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses the processor's send_invoice collection method.
    */
   invoiceMode?: PreviewUpdateInvoiceMode | undefined;
   /**
@@ -781,7 +781,7 @@ export type PreviewUpdateParams = {
    */
   subscriptionId?: string | undefined;
   /**
-   * List of discounts to apply. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code.
+   * List of discounts to apply. Each discount can be an Autumn reward ID or a promotion code.
    */
   discounts?: Array<PreviewUpdateAttachDiscount> | undefined;
   /**
@@ -801,7 +801,7 @@ export type PreviewUpdateParams = {
    */
   billingCycleAnchor?: string | number | undefined;
   /**
-   * If true, the subscription is updated internally without applying billing changes in Stripe.
+   * If true, the subscription is updated internally without applying billing changes to the processor.
    */
   noBillingChanges?: boolean | undefined;
   /**
@@ -809,7 +809,7 @@ export type PreviewUpdateParams = {
    */
   refundLastPayment?: PreviewUpdateRefundLastPayment | undefined;
   /**
-   * Additional parameters to pass into the Stripe subscription update or cancel call.
+   * Additional parameters to pass into the processor subscription update or cancel call.
    */
   subscriptionParams?: { [k: string]: any } | undefined;
   /**
@@ -1086,19 +1086,19 @@ export const Intent = {
 export type Intent = OpenEnum<typeof Intent>;
 
 /**
- * Calculation status ('complete' when Stripe Tax succeeds or 'incomplete' when Stripe Tax returned 0 or errored).
+ * Calculation status ('complete' when the tax calculation succeeds or 'incomplete' when it returned 0 or errored).
  */
 export const PreviewUpdateStatus = {
   Complete: "complete",
   Incomplete: "incomplete",
 } as const;
 /**
- * Calculation status ('complete' when Stripe Tax succeeds or 'incomplete' when Stripe Tax returned 0 or errored).
+ * Calculation status ('complete' when the tax calculation succeeds or 'incomplete' when it returned 0 or errored).
  */
 export type PreviewUpdateStatus = OpenEnum<typeof PreviewUpdateStatus>;
 
 /**
- * Tax preview for the immediate charge. Contact us to enable the tax flag on your organisation. Shows only with flag enabled, a Stripe customer exists and has a location.
+ * Tax preview for the immediate charge. Contact us to enable the tax flag on your organisation.
  */
 export type PreviewUpdateTax = {
   /**
@@ -1118,17 +1118,17 @@ export type PreviewUpdateTax = {
    */
   currency: string;
   /**
-   * Calculation status ('complete' when Stripe Tax succeeds or 'incomplete' when Stripe Tax returned 0 or errored).
+   * Calculation status ('complete' when the tax calculation succeeds or 'incomplete' when it returned 0 or errored).
    */
   status: PreviewUpdateStatus;
 };
 
 /**
- * Stripe customer invoice credits preview.
+ * Customer invoice credits preview.
  */
 export type PreviewUpdateInvoiceCredits = {
   /**
-   * Stripe customer credit balance available, expressed as a positive number in major currency units.
+   * Customer credit balance available, expressed as a positive number in major currency units.
    */
   balance: number;
   /**
@@ -1187,11 +1187,11 @@ export type PreviewUpdateResponse = {
   outgoing: Array<PreviewUpdateOutgoing>;
   intent: Intent;
   /**
-   * Tax preview for the immediate charge. Contact us to enable the tax flag on your organisation. Shows only with flag enabled, a Stripe customer exists and has a location.
+   * Tax preview for the immediate charge. Contact us to enable the tax flag on your organisation.
    */
   tax?: PreviewUpdateTax | undefined;
   /**
-   * Stripe customer invoice credits preview.
+   * Customer invoice credits preview.
    */
   invoiceCredits?: PreviewUpdateInvoiceCredits | undefined;
 };

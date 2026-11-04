@@ -5,7 +5,7 @@ import { upsertCachedInvoiceV2 } from "@/internal/customers/cache/fullSubject/in
 
 /**
  * Upsert an invoice in the customer's cached invoices array.
- * Matches by stripe_id — replaces if found, appends if not.
+ * Matches by processor_invoice_id — replaces if found, appends if not.
  */
 export const upsertInvoiceInCache = async ({
 	ctx,
@@ -20,7 +20,7 @@ export const upsertInvoiceInCache = async ({
 
 	if (!customerId) {
 		logger.warn(
-			`[upsertInvoiceInCache] Skipping cache update for invoice ${invoice.stripe_id} because customerId is missing`,
+			`[upsertInvoiceInCache] Skipping cache update for invoice ${invoice.id} because customerId is missing`,
 		);
 		return null;
 	}
@@ -33,7 +33,7 @@ export const upsertInvoiceInCache = async ({
 		});
 	} catch (error) {
 		logger.warn(
-			`[upsertInvoiceInCache] FullSubject upsert failed for customer ${customerId}, invoice ${invoice.stripe_id}`,
+			`[upsertInvoiceInCache] FullSubject upsert failed for customer ${customerId}, invoice ${invoice.id}`,
 			error,
 		);
 		return null;

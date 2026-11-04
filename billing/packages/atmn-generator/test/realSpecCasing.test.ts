@@ -167,7 +167,7 @@ test.each([
 	["a_1_b", "a_1B"],
 	["region_1", "region_1"],
 	["tier_1", "tier_1"],
-	["stripe_v2_price_id", "stripeV2PriceId"],
+	["paypal_v2_price_id", "paypalV2PriceId"],
 	["oauth2_token", "oauth2Token"],
 ])("%s round-trips through camelCase", (wire, fixture) => {
 	// `_1` has no uppercase form, so folding it consumed the underscore and

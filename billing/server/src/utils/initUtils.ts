@@ -13,7 +13,7 @@ export const checkEnvVars = () => {
 
 	if (!process.env.ENCRYPTION_IV || !process.env.ENCRYPTION_PASSWORD) {
 		console.error(
-			`ENCRYPTION_IV or ENCRYPTION_PASSWORD is not set (used for Stripe key encryption)`,
+			`ENCRYPTION_IV or ENCRYPTION_PASSWORD is not set (used for secret encryption)`,
 		);
 		process.exit(1);
 	}

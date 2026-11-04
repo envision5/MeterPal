@@ -40,7 +40,7 @@ export const PreviewTaxSchema = z.object({
 	}),
 	status: z.enum(["complete", "incomplete"]).meta({
 		description:
-			"Calculation status ('complete' when Stripe Tax succeeds or 'incomplete' when Stripe Tax returned 0 or errored).",
+			"Calculation status ('complete' when the tax calculation succeeds or 'incomplete' when it returned 0 or errored).",
 	}),
 });
 
@@ -49,7 +49,7 @@ export type PreviewTax = z.infer<typeof PreviewTaxSchema>;
 export const PreviewInvoiceCreditsSchema = z.object({
 	balance: z.number().meta({
 		description:
-			"Stripe customer credit balance available, expressed as a positive number in major currency units.",
+			"Customer credit balance available, expressed as a positive number in major currency units.",
 	}),
 	applied: z.number().optional().meta({
 		description:
@@ -188,7 +188,7 @@ export const ExtBillingPreviewResponseSchema = z.object({
 			}),
 			invoice: z
 				.object({
-					stripe_id: z.string(),
+					processor_invoice_id: z.string(),
 					total: z.number(),
 					current_refunded_amount: z.number(),
 					currency: z.string(),

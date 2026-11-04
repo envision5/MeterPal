@@ -39,7 +39,7 @@ export const BillingParamsBaseV1Schema = z.object({
 
 	invoice_mode: InvoiceModeParamsSchema.optional().meta({
 		description:
-			"Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses Stripe's send_invoice collection method.",
+			"Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses the processor's send_invoice collection method.",
 	}),
 
 	proration_behavior: BillingBehaviorSchema.optional().meta({

@@ -4,31 +4,18 @@ import {
 	keepAutoTopupPendingKey,
 } from "@/external/redis/actions/autoTopUpSuppression/autoTopUpSuppression.js";
 import { withLock } from "@/external/redis/utils/lockUtils/withLock.js";
-import { voidStripeInvoiceIfOpen } from "@/external/stripe/invoices/operations/voidStripeInvoiceIfOpen.js";
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
-import { executeBillingPlan } from "@/internal/billing/v2/execute/executeBillingPlan.js";
-import { logStripeBillingPlan } from "@/internal/billing/v2/providers/stripe/logs/logStripeBillingPlan.js";
-import { logStripeBillingResult } from "@/internal/billing/v2/providers/stripe/logs/logStripeBillingResult.js";
-import { logAutumnBillingPlan } from "@/internal/billing/v2/utils/logs/logAutumnBillingPlan.js";
-import { invalidateCachedFullSubject } from "@/internal/customers/cache/fullSubject/actions/invalidate/invalidateFullSubject.js";
-import { updateCachedCustomerProductV2 } from "@/internal/customers/cache/fullSubject/actions/updateCachedCustomerProduct.js";
-import { deleteCachedFullCustomer } from "@/internal/customers/cusUtils/fullCustomerCacheUtils/deleteCachedFullCustomer.js";
 import type { AutoTopUpPayload } from "@/queue/workflows.js";
-import type { AutoTopupContext } from "./autoTopupContext.js";
-import { computeAutoTopupPlan } from "./compute/computeAutoTopupPlan.js";
+import type { AutoTopupAttemptContext } from "./autoTopupContext.js";
 import { buildAutoTopUpLockKey } from "./helpers/autoTopUpUtils.js";
-import { recordAutoTopupAttempt } from "./helpers/limits/index.js";
-import { logAutoTopupContext } from "./logs/logAutoTopupContext.js";
 import {
 	maybeGetPaypalAutoTopupCustomer,
 	runPaypalAutoTopup,
 } from "./paypal/paypalAutoTopup.js";
-import { setupAutoTopupContext } from "./setup/setupAutoTopupContext.js";
 import {
 	classifyAutoTopupError,
 	sendAutoTopupFailedWebhook,
 } from "./webhooks/sendAutoTopupFailedWebhook.js";
-import { sendAutoTopupSucceededWebhook } from "./webhooks/sendAutoTopupSucceededWebhook.js";
 
 // Must outlive the queue's full retry chain (maxReceiveCount 10 × 30s visibility = 5m),
 // else the gate reopens while copies still cycle and track traffic reseeds the storm.
@@ -45,7 +32,7 @@ export const autoTopup = async ({
 	const { org, env, logger } = ctx;
 	const { customerId, featureId } = payload;
 	let failureWebhookSent = false;
-	let lastAutoTopupContext: AutoTopupContext | undefined;
+	let lastAutoTopupContext: AutoTopupAttemptContext | undefined;
 	let pendingTtlMs: number | undefined;
 
 	const sendFailureWebhook = async ({
@@ -78,150 +65,24 @@ export const autoTopup = async ({
 			return;
 		}
 
-		// 0. PayPal-charged customers have no Stripe customer to run the v2
-		// pipeline against — their instrument is the vaulted billing agreement,
+		// The instrument is the customer's vaulted PayPal billing agreement,
 		// charged merchant-initiated through Orders v2 (paypalAutoTopup.ts).
+		// Customers without one have nothing to charge.
 		const paypalCustomer = await maybeGetPaypalAutoTopupCustomer({
 			ctx,
 			customerId,
 		});
-		if (paypalCustomer) {
-			await runPaypalAutoTopup({
-				ctx,
-				payload,
-				fullCustomer: paypalCustomer,
-			});
+		if (!paypalCustomer) {
+			logger.info(
+				`[autoTopup] Customer ${customerId} has no PayPal billing agreement, skipping`,
+			);
 			return;
 		}
 
-		// 1. Setup — fetch full customer, auto-topup config, cusEnt, Stripe context
-		const setupResult = await setupAutoTopupContext({ ctx, payload });
-
-		if (!setupResult.ok) {
-			if (setupResult.failure) {
-				if (setupResult.failure.suppressionTtlMs) {
-					pendingTtlMs = Math.min(
-						setupResult.failure.suppressionTtlMs,
-						AUTO_TOPUP_RETRY_SUPPRESSION_MS,
-					);
-				}
-				await sendFailureWebhook(setupResult.failure);
-			}
-			return;
-		}
-
-		const { autoTopupContext } = setupResult;
-		lastAutoTopupContext = autoTopupContext;
-
-		logAutoTopupContext({ ctx, autoTopupContext });
-
-		// 3. Compute — build line items + autumn billing plan + stripe invoice action
-		const { autumnBillingPlan, stripeBillingPlan } = computeAutoTopupPlan({
+		await runPaypalAutoTopup({
 			ctx,
-			autoTopupContext,
-		});
-
-		logAutumnBillingPlan({
-			ctx,
-			plan: autumnBillingPlan,
-			billingContext: autoTopupContext,
-		});
-		logStripeBillingPlan({
-			ctx,
-			stripeBillingPlan,
-			billingContext: autoTopupContext,
-		});
-
-		if (org.config.dryrun_autotopups) {
-			const message = "Dry run enabled, skipping recordAutoTopupAttempt";
-			logger.info(`[autoTopup] ${message}`, { extras: ctx.extraLogs });
-			return;
-		}
-
-		let billingResult: Awaited<ReturnType<typeof executeBillingPlan>>;
-		try {
-			billingResult = await executeBillingPlan({
-				ctx,
-				billingContext: autoTopupContext,
-				billingPlan: { autumn: autumnBillingPlan, stripe: stripeBillingPlan },
-			});
-		} catch (error) {
-			// A throw here means the attempt still reached Stripe (and may have
-			// left an invoice behind), so it has to count against the limits —
-			// otherwise queue retries loop with no accounting at all.
-			await recordAutoTopupAttempt({
-				ctx,
-				autoTopupContext,
-				forceFailure: true,
-			});
-			throw error;
-		}
-
-		logStripeBillingResult({ ctx, result: billingResult.stripe });
-
-		await recordAutoTopupAttempt({
-			ctx,
-			autoTopupContext,
-			billingResult,
-		});
-		const isInvoiceMode = Boolean(autoTopupContext.invoiceMode);
-		const invoiceStatus = billingResult.stripe?.stripeInvoice?.status;
-		const isCustomPm = autoTopupContext.paymentMethod?.type === "custom";
-		const isPaymentProcessing =
-			billingResult.stripe?.requiredAction?.code === "payment_processing";
-		const shouldVoidInvoice =
-			!isInvoiceMode &&
-			!isCustomPm &&
-			invoiceStatus !== "paid" &&
-			!isPaymentProcessing;
-
-		if (shouldVoidInvoice) {
-			try {
-				await voidStripeInvoiceIfOpen({
-					ctx,
-					stripeInvoice: billingResult.stripe?.stripeInvoice,
-					source: "autoTopup",
-				});
-			} finally {
-				await sendFailureWebhook({
-					reason: "charge_failed",
-					message: `Auto top-up invoice status was ${invoiceStatus ?? "missing"}, expected paid`,
-					autoTopupContext,
-				});
-			}
-			return;
-		}
-
-		if (isCustomPm) {
-			return;
-		}
-
-		// A loose grant is a new row, not a patch: nothing else refreshes the
-		// cached subject, so drop it or the credits stay invisible.
-		if (autumnBillingPlan.insertCustomerEntitlements?.length) {
-			await invalidateCachedFullSubject({ ctx, customerId });
-			await deleteCachedFullCustomer({
-				ctx,
-				customerId,
-				source: "auto-topup-expiring-grant",
-			});
-		}
-
-		const customerProductUpdate = autumnBillingPlan.updateCustomerProduct;
-		if (customerProductUpdate?.updates.options) {
-			const customerProductId = customerProductUpdate.customerProduct.id;
-			await updateCachedCustomerProductV2({
-				ctx,
-				customerId,
-				customerProductId,
-				updates: customerProductUpdate.updates,
-			});
-		}
-
-		await sendAutoTopupSucceededWebhook({
-			ctx,
-			autoTopupContext,
-			billingResult,
+			payload,
+			fullCustomer: paypalCustomer,
 		});
 
 		const durationMs = Math.round(performance.now() - start);
@@ -231,7 +92,7 @@ export const autoTopup = async ({
 	};
 
 	try {
-		// 2. Execute under lock (shares attach lock to prevent concurrent attach + auto-topup)
+		// Execute under lock (shares attach lock to prevent concurrent attach + auto-topup)
 		await withLock({
 			lockKey: buildAutoTopUpLockKey({
 				orgId: org.id,

@@ -23,6 +23,5 @@ export const productItemToBasePriceParams = ({
 
 		entitlement_id: item.entitlement_id ?? undefined,
 		price_id: item.price_id ?? undefined,
-		stripe_price_id: item.stripe_price_id ?? undefined,
 	};
 };

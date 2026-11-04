@@ -11,8 +11,8 @@ import chalk from "chalk";
 import { AutumnInt } from "@/external/autumn/autumnCli.js";
 import { constructFeatureItem } from "@/utils/scriptUtils/constructItem.js";
 import { constructProduct } from "@/utils/scriptUtils/createTestProducts.js";
-import { initCustomerV3 } from "@/utils/scriptUtils/testUtils/initCustomerV3.js";
-import { initProductsV0 } from "@/utils/scriptUtils/testUtils/initProductsV0.js";
+import { initTestCustomer } from "@tests/utils/testInitUtils/initTestCustomer.js";
+import { initTestProducts } from "@tests/utils/testInitUtils/initTestProducts.js";
 
 /**
  * Test 12.1: One breakdown unlimited, others limited
@@ -57,13 +57,12 @@ describe(`${chalk.yellowBright("track-breakdown-unlimited: limited + unlimited p
 	const autumnV2: AutumnInt = new AutumnInt({ version: ApiVersion.V2_0 });
 
 	beforeAll(async () => {
-		await initCustomerV3({
+		await initTestCustomer({
 			ctx,
 			customerId,
-			withTestClock: false,
 		});
 
-		await initProductsV0({
+		await initTestProducts({
 			ctx,
 			products: [limitedProd, unlimitedProd],
 			prefix: testCase,
@@ -146,13 +145,12 @@ describe(`${chalk.yellowBright("track-breakdown-unlimited-first: unlimited attac
 	const autumnV2: AutumnInt = new AutumnInt({ version: ApiVersion.V2_0 });
 
 	beforeAll(async () => {
-		await initCustomerV3({
+		await initTestCustomer({
 			ctx,
 			customerId,
-			withTestClock: false,
 		});
 
-		await initProductsV0({
+		await initTestProducts({
 			ctx,
 			products: [limitedProd, unlimitedProd],
 			prefix: `${testCase}-first`,

@@ -1,16 +1,16 @@
 ## Fail-Open Defaults
 
-Autumn's SDKs include a **fail-open** mechanism that prevents your application from going down if Autumn is temporarily unreachable. When enabled, critical SDK methods return safe default responses instead of throwing errors.
+MeterPal's SDKs include a **fail-open** mechanism that prevents your application from going down if MeterPal is temporarily unreachable. When enabled, critical SDK methods return safe default responses instead of throwing errors.
 
 ## Why fail-open?
 
-As a billing engine, Autumn sits in the critical path of your application. If your app calls `check()` to gate access to a feature, and Autumn is unreachable, that call would throw an error -- effectively blocking your users from accessing your product.
+As a billing engine, MeterPal sits in the critical path of your application. If your app calls `check()` to gate access to a feature, and MeterPal is unreachable, that call would throw an error -- effectively blocking your users from accessing your product.
 
-Fail-open ensures your users are never blocked by an Autumn outage. Usage events may be lost during the outage, but your customers stay unaffected.
+Fail-open ensures your users are never blocked by an MeterPal outage. Usage events may be lost during the outage, but your customers stay unaffected.
 
 ## Behavior
 
-Fail-open is **enabled by default**. When Autumn is unreachable (network errors, timeouts, or server errors returning 5XX status codes), the SDK returns safe defaults:
+Fail-open is **enabled by default**. When MeterPal is unreachable (network errors, timeouts, or server errors returning 5XX status codes), the SDK returns safe defaults:
 
 | Method | Default response | Effect |
 |--------|-----------------|--------|
@@ -19,23 +19,25 @@ Fail-open is **enabled by default**. When Autumn is unreachable (network errors,
 
 Customer and entity operations, including `customers.getOrCreate()`, `customers.get()`, `entities.get()`, and `entities.create()`, propagate errors even when fail-open is enabled. Only `check()` and `track()` return fail-open defaults.
 
+
 When fail-open triggers, the SDK logs a prominent error to your console so you're immediately aware of the issue.
+
 
 ## When fail-open triggers
 
 Fail-open activates when the SDK encounters:
 
-- **Server errors** -- Autumn returns a 5XX status code (500, 502, 503, etc.)
+- **Server errors** -- MeterPal returns a 5XX status code (500, 502, 503, etc.)
 - **Network failures** -- DNS resolution failure, connection refused, connection reset
-- **Timeouts** -- The request to Autumn times out
+- **Timeouts** -- The request to MeterPal times out
 
-Fail-open does **not** activate for client errors (4XX). If you receive a 400 (bad request), 401 (unauthorized), or 404 (not found), those errors propagate normally since they indicate a problem with your integration, not an Autumn outage.
+Fail-open does **not** activate for client errors (4XX). If you receive a 400 (bad request), 401 (unauthorized), or 404 (not found), those errors propagate normally since they indicate a problem with your integration, not an MeterPal outage.
 
 ## Configuration
 
 ### Disabling fail-open
 
-If you prefer strict error handling and want all Autumn errors to propagate:
+If you prefer strict error handling and want all MeterPal errors to propagate:
 
 <CodeGroup>
 ```typescript TypeScript

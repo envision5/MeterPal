@@ -106,8 +106,8 @@ export interface InitFullCustomerProductOptions {
 	/**
 	 * Tags the customer_product's `processor.type` field. When omitted, the
 	 * processor column is left unwritten (defaults to null in the DB, which
-	 * `cusProductToProcessorType` resolves to Stripe). Used by non-Stripe
-	 * origin flows (e.g. RevenueCat) to mark cus_products explicitly.
+	 * `cusProductToProcessorType` resolves to PayPal). Used by non-processor
+	 * origin flows to mark cus_products explicitly.
 	 */
 	processorType?: ProcessorType;
 }

@@ -1,9 +1,5 @@
 import { createCursorPaginatedResponseSchema } from "@api/common/cursorPaginationSchemas.js";
 import {
-	AdvanceTestClockParamsSchema,
-	AdvanceTestClockResponseSchema,
-} from "@api/customers/advanceTestClock/advanceTestClock.js";
-import {
 	API_CUSTOMER_V5_EXAMPLE,
 	ApiCustomerV5Schema,
 	BaseApiCustomerV5Schema,
@@ -159,29 +155,9 @@ export const deleteCustomerContract = oc
 			examples: [
 				{
 					customer_id: "cus_123",
-					delete_in_stripe: false,
 				},
 			],
 		}),
 	)
 	.output(DeleteCustomerResponseSchema);
 
-export const advanceTestClockDescription =
-	"Advance a customer's Stripe test clock to a future time in milliseconds. Only Stripe test-mode customers with a test clock are supported. Advancement is asynchronous; Stripe enforces clock status and advancement limits.";
-
-export const advanceTestClockContract = oc
-	.route({
-		method: "POST",
-		path: "/v1/customers.advance_test_clock",
-		operationId: "advanceTestClock",
-		tags: ["customers"],
-		description: advanceTestClockDescription,
-		spec: (spec) => ({
-			...spec,
-			"x-speakeasy-name-override": "advanceTestClock",
-		}),
-	})
-	.input(AdvanceTestClockParamsSchema.meta({ title: "AdvanceTestClockParams" }))
-	.output(
-		AdvanceTestClockResponseSchema.meta({ title: "AdvanceTestClockResponse" }),
-	);

@@ -21,14 +21,5 @@ export const CustomerDetailsFields = ({
 		<form.AppField name="fingerprint">
 			{(field) => <field.TextField label="Fingerprint" type="text" />}
 		</form.AppField>
-		<form.AppField name="stripeId">
-			{(field) => (
-				<field.TextField
-					label="Stripe Customer ID"
-					type="text"
-					placeholder="cus_..."
-				/>
-			)}
-		</form.AppField>
 	</div>
 );

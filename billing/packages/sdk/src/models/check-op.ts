@@ -416,23 +416,7 @@ export type FlagDisplay2 = {
   plural?: string | null | undefined;
 };
 
-export type CheckStripe2 = {
-  /**
-   * Stripe product ID this feature's usage prices bill under.
-   */
-  productId?: string | undefined;
-  /**
-   * Stripe meter ID used to create this feature's metered price.
-   */
-  meterId?: string | undefined;
-};
 
-/**
- * Processor mappings for this feature. Present when a Stripe product or meter is set.
- */
-export type CheckProcessors2 = {
-  stripe?: CheckStripe2 | undefined;
-};
 
 /**
  * The full feature object if expanded.
@@ -484,11 +468,7 @@ export type CheckFeature2 = {
    * Whether the feature is archived and hidden from the dashboard.
    */
   archived: boolean;
-  /**
-   * Processor mappings for this feature. Present when a Stripe product or meter is set.
-   */
-  processors?: CheckProcessors2 | undefined;
-};
+  };
 
 export type Flag2 = {
   /**
@@ -828,7 +808,7 @@ export type CheckSpendLimit2 = {
    */
   overageLimit?: number | undefined;
   /**
-   * When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally.
+   * When true, overage for this feature is not posted to the billing processor. Usage tracking and balance resets still behave normally.
    */
   skipOverageBilling?: boolean | undefined;
 };
@@ -1495,23 +1475,7 @@ export type FlagDisplay1 = {
   plural?: string | null | undefined;
 };
 
-export type CheckStripe1 = {
-  /**
-   * Stripe product ID this feature's usage prices bill under.
-   */
-  productId?: string | undefined;
-  /**
-   * Stripe meter ID used to create this feature's metered price.
-   */
-  meterId?: string | undefined;
-};
 
-/**
- * Processor mappings for this feature. Present when a Stripe product or meter is set.
- */
-export type CheckProcessors1 = {
-  stripe?: CheckStripe1 | undefined;
-};
 
 /**
  * The full feature object if expanded.
@@ -1563,11 +1527,7 @@ export type CheckFeature1 = {
    * Whether the feature is archived and hidden from the dashboard.
    */
   archived: boolean;
-  /**
-   * Processor mappings for this feature. Present when a Stripe product or meter is set.
-   */
-  processors?: CheckProcessors1 | undefined;
-};
+  };
 
 export type Flag1 = {
   /**
@@ -1907,7 +1867,7 @@ export type CheckSpendLimit1 = {
    */
   overageLimit?: number | undefined;
   /**
-   * When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally.
+   * When true, overage for this feature is not posted to the billing processor. Usage tracking and balance resets still behave normally.
    */
   skipOverageBilling?: boolean | undefined;
 };
@@ -3005,48 +2965,9 @@ export function flagDisplay2FromJSON(
   );
 }
 
-/** @internal */
-export const CheckStripe2$inboundSchema: z.ZodMiniType<CheckStripe2, unknown> =
-  z.pipe(
-    z.object({
-      product_id: types.optional(types.string()),
-      meter_id: types.optional(types.string()),
-    }),
-    z.transform((v) => {
-      return remap$(v, {
-        "product_id": "productId",
-        "meter_id": "meterId",
-      });
-    }),
-  );
 
-export function checkStripe2FromJSON(
-  jsonString: string,
-): SafeParseResult<CheckStripe2, SDKValidationError> {
-  return safeParse(
-    jsonString,
-    (x) => CheckStripe2$inboundSchema.parse(JSON.parse(x)),
-    `Failed to parse 'CheckStripe2' from JSON`,
-  );
-}
 
-/** @internal */
-export const CheckProcessors2$inboundSchema: z.ZodMiniType<
-  CheckProcessors2,
-  unknown
-> = z.object({
-  stripe: types.optional(z.lazy(() => CheckStripe2$inboundSchema)),
-});
 
-export function checkProcessors2FromJSON(
-  jsonString: string,
-): SafeParseResult<CheckProcessors2, SDKValidationError> {
-  return safeParse(
-    jsonString,
-    (x) => CheckProcessors2$inboundSchema.parse(JSON.parse(x)),
-    `Failed to parse 'CheckProcessors2' from JSON`,
-  );
-}
 
 /** @internal */
 export const CheckFeature2$inboundSchema: z.ZodMiniType<
@@ -3079,9 +3000,6 @@ export const CheckFeature2$inboundSchema: z.ZodMiniType<
       FlagDisplay2$inboundSchema
     )),
     archived: types.boolean(),
-    processors: types.optional(z.lazy(() =>
-      CheckProcessors2$inboundSchema
-    )),
   }),
   z.transform((v) => {
     return remap$(v, {
@@ -4496,48 +4414,9 @@ export function flagDisplay1FromJSON(
   );
 }
 
-/** @internal */
-export const CheckStripe1$inboundSchema: z.ZodMiniType<CheckStripe1, unknown> =
-  z.pipe(
-    z.object({
-      product_id: types.optional(types.string()),
-      meter_id: types.optional(types.string()),
-    }),
-    z.transform((v) => {
-      return remap$(v, {
-        "product_id": "productId",
-        "meter_id": "meterId",
-      });
-    }),
-  );
 
-export function checkStripe1FromJSON(
-  jsonString: string,
-): SafeParseResult<CheckStripe1, SDKValidationError> {
-  return safeParse(
-    jsonString,
-    (x) => CheckStripe1$inboundSchema.parse(JSON.parse(x)),
-    `Failed to parse 'CheckStripe1' from JSON`,
-  );
-}
 
-/** @internal */
-export const CheckProcessors1$inboundSchema: z.ZodMiniType<
-  CheckProcessors1,
-  unknown
-> = z.object({
-  stripe: types.optional(z.lazy(() => CheckStripe1$inboundSchema)),
-});
 
-export function checkProcessors1FromJSON(
-  jsonString: string,
-): SafeParseResult<CheckProcessors1, SDKValidationError> {
-  return safeParse(
-    jsonString,
-    (x) => CheckProcessors1$inboundSchema.parse(JSON.parse(x)),
-    `Failed to parse 'CheckProcessors1' from JSON`,
-  );
-}
 
 /** @internal */
 export const CheckFeature1$inboundSchema: z.ZodMiniType<
@@ -4570,9 +4449,6 @@ export const CheckFeature1$inboundSchema: z.ZodMiniType<
       FlagDisplay1$inboundSchema
     )),
     archived: types.boolean(),
-    processors: types.optional(z.lazy(() =>
-      CheckProcessors1$inboundSchema
-    )),
   }),
   z.transform((v) => {
     return remap$(v, {

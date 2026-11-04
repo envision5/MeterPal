@@ -13,7 +13,7 @@ import LoadingScreen from "../general/LoadingScreen";
 import { ApiKeysPage } from "./api-keys/ApiKeysPage";
 import { PublishableKeySection } from "./publishable-key";
 
-const INTEGRATION_TABS = ["stripe", "vercel", "revenuecat"];
+const INTEGRATION_TABS = ["paypal"];
 
 export default function DevScreen() {
 	const location = useLocation();

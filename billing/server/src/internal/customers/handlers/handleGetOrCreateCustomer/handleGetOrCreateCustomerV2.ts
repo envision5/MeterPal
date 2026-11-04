@@ -29,7 +29,6 @@ export const getOrCreateCustomerV2 = async ({
 			entity_id: params.entity_id,
 			entity_data: params.entity_data,
 		},
-		billingDetails: params.billing_details,
 		source: "handleGetOrCreateCustomerV2",
 		withAutumnId: params.with_autumn_id,
 	});

@@ -15,7 +15,6 @@ import {
 	type InsertCustomerEntitlement,
 	type InsertReplaceable,
 	type Price,
-	ProcessorType,
 	type ProductOptions,
 } from "@autumn/shared";
 import type { DrizzleCli } from "@/db/initDrizzle.js";
@@ -27,7 +26,7 @@ import {
 import { addProductsUpdatedWebhookTask } from "@/internal/analytics/handlers/handleProductsUpdated.js";
 import { searchCusProducts } from "@/internal/customers/cusProducts/cusProductUtils.js";
 import { getEntRelatedPrice } from "@/internal/products/entitlements/entitlementUtils.js";
-import { freeTrialToStripeTimestamp } from "@/internal/products/free-trials/freeTrialUtils.js";
+import { freeTrialToProcessorTimestamp } from "@/internal/products/free-trials/freeTrialUtils.js";
 import { getEntOptions } from "@/internal/products/prices/priceUtils.js";
 import { isFreeProduct, isOneOff } from "@/internal/products/productUtils.js";
 import { generateId, notNullish, nullish } from "@/utils/genUtils.js";
@@ -87,7 +86,6 @@ const initCusProduct = ({
 	internalEntityId,
 	apiVersion,
 	quantity,
-	processor = ProcessorType.Stripe,
 }: {
 	customer: Customer;
 	product: FullProduct;
@@ -111,13 +109,12 @@ const initCusProduct = ({
 	internalEntityId?: string;
 	apiVersion?: ApiVersion;
 	quantity?: number;
-	processor?: ProcessorType;
 }) => {
 	const isFuture = startsAt && startsAt > Date.now();
 
 	let trialEnds = trialEndsAt;
 	if (!trialEndsAt && freeTrial) {
-		trialEnds = freeTrialToStripeTimestamp({ freeTrial })! * 1000;
+		trialEnds = freeTrialToProcessorTimestamp({ freeTrial })! * 1000;
 	}
 
 	const now = Date.now();
@@ -138,13 +135,6 @@ const initCusProduct = ({
 			: isFuture
 				? CusProductStatus.Scheduled
 				: CusProductStatus.Active,
-
-		processor: {
-			type: processor ?? ProcessorType.Stripe,
-			// subscription_id: subscriptionId,
-			// subscription_schedule_id: subscriptionScheduleId,
-			// last_invoice_id: lastInvoiceId,
-		},
 
 		starts_at: startsAt || now,
 		trial_ends_at: trialEnds,
@@ -305,7 +295,6 @@ export const createFullCusProduct = async ({
 	scenario = "default",
 	sendWebhook = true,
 	logger,
-	processorType = ProcessorType.Stripe,
 }: {
 	db: DrizzleCli;
 	attachParams: InsertCusProductParams;
@@ -329,7 +318,6 @@ export const createFullCusProduct = async ({
 	scenario?: string;
 	sendWebhook?: boolean;
 	logger: any;
-	processorType?: ProcessorType;
 }) => {
 	disableFreeTrial = attachParams.disableFreeTrial || disableFreeTrial;
 
@@ -473,7 +461,6 @@ export const createFullCusProduct = async ({
 	const cusProd = initCusProduct({
 		cusProdId,
 		customer,
-		processor: processorType ?? ProcessorType.Stripe,
 		product,
 		startsAt,
 		optionsList,

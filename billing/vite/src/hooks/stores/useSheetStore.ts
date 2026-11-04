@@ -25,12 +25,8 @@ export type SheetType =
 	| "balance-delete"
 	| "balance-create"
 	| "invoice-detail"
-	| "invoice-reissue"
 	| "create-invoice"
 	| "upcoming-invoice-detail"
-	| "sync-stripe"
-	| "sync-stripe-v2"
-	| "verify-stripe"
 	| "customer-config-edit"
 	| "billing-auto-topup-add"
 	| "billing-auto-topup-edit"
@@ -46,10 +42,6 @@ export type SheetType =
 	| "billing-control-plan-managed"
 	| "record-usage"
 	| "check-balance"
-	| "create-schedule"
-	| "create-schedule-review"
-	| "create-schedule-send-invoice"
-	| "create-schedule-checkout"
 	| null;
 
 // Store state interface

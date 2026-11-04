@@ -424,7 +424,6 @@ export const seedEmailMiniCatalog = async ({
 					group,
 				}),
 				prefix: "",
-				createInStripe: false,
 			}),
 		],
 		actions: [],
@@ -444,7 +443,6 @@ export const runEmailMiniSeed = async () => {
 		await clearOrg({
 			orgSlug: process.env.TESTS_ORG,
 			env: AppEnv.Sandbox,
-			skipStripeReset: true,
 		});
 	}
 

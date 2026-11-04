@@ -16,5 +16,4 @@ export * from "./previewAttachSchemas";
 export * from "./previewMultiAttachSchemas";
 export * from "./previewUpdateSubscriptionSchemas";
 export * from "./redeemReferralCodeSchemas";
-export * from "./setupPaymentSchemas";
 export * from "./updateSubscriptionSchemas";

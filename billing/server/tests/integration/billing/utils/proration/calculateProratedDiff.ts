@@ -14,7 +14,7 @@ import {
 } from "./getBillingPeriod";
 
 export type CalculateProratedDiffParams = GetBillingPeriodParams & {
-	advancedTo: number; // From initScenario - auto-floored to match Stripe
+	advancedTo: number; // From initScenario - auto-floored to match the processor
 	oldAmount: number; // Current/old price (will be credited)
 	newAmount: number; // New price (will be charged)
 };
@@ -22,7 +22,7 @@ export type CalculateProratedDiffParams = GetBillingPeriodParams & {
 /**
  * Calculate the prorated price difference for an upgrade or downgrade.
  *
- * Fetches billing period directly from Stripe subscription.
+ * Fetches billing period directly from the processor subscription.
  *
  * Formula: (newAmount - oldAmount) * (remaining / total)
  *
@@ -85,7 +85,7 @@ export const calculateProratedDiff = async ({
 		interval,
 	});
 
-	// Floor to match Stripe's frozen_time calculation (seconds, not ms)
+	// Floor to match the processor's frozen_time calculation (seconds, not ms)
 	const now = new Decimal(Math.floor(advancedTo / 1000) * 1000);
 
 	const start = new Decimal(billingPeriod.start);

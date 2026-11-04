@@ -1,6 +1,6 @@
 # API Versioning System
 
-Stripe-inspired versioning with CalVer (external) and SemVer (internal).
+CalVer (external) and SemVer (internal) versioning.
 
 ## Core Concept
 

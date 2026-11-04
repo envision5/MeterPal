@@ -30,15 +30,15 @@ const LIST_INVOICE_EXAMPLE = {
 	customer_id: "cus_123",
 	entity_id: null,
 	plan_ids: ["pro_plan"],
-	stripe_id: "in_1A2B3C4D5E6F7G8H",
-	processor_type: "stripe",
+	processor_invoice_id: "in_1A2B3C4D5E6F7G8H",
+	processor_type: "paypal",
 	status: "paid",
 	total: 29.99,
 	amount_paid: 29.99,
 	refunded_amount: 0,
 	currency: "usd",
 	created_at: 1759247877000,
-	hosted_invoice_url: "https://invoice.stripe.com/i/acct_123/test_456",
+	hosted_invoice_url: "https://example.com/invoices/acct_123/test_456",
 	items: [
 		{
 			id: "invoice_li_2b3c4d5e6f7g8h",
@@ -89,8 +89,8 @@ export const insertInvoicesContract = oc
 						{
 							customer_id: "cus_123",
 							plan_ids: ["pro"],
-							stripe_id: "in_legacy_123",
-							processor_type: "stripe",
+							processor_invoice_id: "in_legacy_123",
+							processor_type: "paypal",
 							status: "paid",
 							total: 29.99,
 							amount_paid: 29.99,
@@ -114,8 +114,8 @@ export const insertInvoicesContract = oc
 							id: "inv_2b3c4d5e6f7g8h",
 							customer_id: "cus_123",
 							plan_ids: ["pro"],
-							stripe_id: "in_legacy_123",
-							processor_type: "stripe",
+							processor_invoice_id: "in_legacy_123",
+							processor_type: "paypal",
 							status: "paid",
 							total: 29.99,
 							amount_paid: 29.99,
@@ -175,7 +175,7 @@ export const payInvoiceContract = oc
 		operationId: "payInvoice",
 		tags: ["invoices"],
 		description:
-			"Marks an open Stripe invoice as paid out of band. No charge is attempted; use this when payment was collected elsewhere (e.g. a marketplace). Already-paid invoices are returned unchanged.",
+			"Marks an open processor invoice as paid out of band. No charge is attempted; use this when payment was collected elsewhere (e.g. a marketplace). Already-paid invoices are returned unchanged.",
 		spec: (spec) => ({
 			...spec,
 			"x-speakeasy-name-override": "pay",
@@ -200,7 +200,7 @@ export const voidInvoiceContract = oc
 		operationId: "voidInvoice",
 		tags: ["invoices"],
 		description:
-			"Voids an open or uncollectible Stripe invoice. Any plan still waiting on the invoice to be paid expires. Voiding an unpaid subscription invoice lets Stripe re-derive the subscription status from its remaining invoices, which can move a past-due subscription back to active. Already-void invoices are returned unchanged.",
+			"Voids an open or uncollectible processor invoice. Any plan still waiting on the invoice to be paid expires. Voiding an unpaid subscription invoice releases the pending plan. Already-void invoices are returned unchanged.",
 		spec: (spec) => ({
 			...spec,
 			"x-speakeasy-name-override": "void",
@@ -225,7 +225,7 @@ export const reissueInvoiceContract = oc
 		operationId: "reissueInvoice",
 		tags: ["invoices"],
 		description:
-			"Voids an open send-invoice Stripe invoice and issues a replacement with the same line items. An invoice template can supply the replacement's footer (e.g. bank details) and memo. The replacement keeps the original due date unless net_terms_days is passed, which is required once the original is past due. Pass update_customer_email to change the customer's billing email first so the replacement is sent there. The replacement stays linked to the same subscription and fulfils the same pending plan when paid.",
+			"Voids an open send-invoice processor invoice and issues a replacement with the same line items. An invoice template can supply the replacement's footer (e.g. bank details) and memo. The replacement keeps the original due date unless net_terms_days is passed, which is required once the original is past due. Pass update_customer_email to change the customer's billing email first so the replacement is sent there. The replacement stays linked to the same subscription and fulfils the same pending plan when paid.",
 		spec: (spec) => ({
 			...spec,
 			"x-speakeasy-name-override": "reissue",
@@ -316,7 +316,7 @@ export const createInvoiceContract = oc
 		operationId: "createInvoice",
 		tags: ["invoices"],
 		description:
-			"Creates a standalone send-invoice Stripe invoice from catalog pricing and custom charges. Quantities are billable units, exclusive of any included usage; Autumn applies billing units and tiers. Nothing about the customer's plans, balances or subscriptions changes. Pass preview: true to get the calculated lines and totals without creating an invoice.",
+			"Creates a standalone send-invoice processor invoice from catalog pricing and custom charges. Quantities are billable units, exclusive of any included usage; Autumn applies billing units and tiers. Nothing about the customer's plans, balances or subscriptions changes. Pass preview: true to get the calculated lines and totals without creating an invoice.",
 		spec: (spec) => ({
 			...spec,
 			"x-speakeasy-name-override": "create",

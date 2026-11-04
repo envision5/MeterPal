@@ -14,17 +14,12 @@ import { CheckIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { DiscountOption } from "@/components/forms/attach-v2/utils/discountOptionUtils";
-import {
-	rewardToOption,
-	stripeCouponToOption,
-} from "@/components/forms/attach-v2/utils/discountOptionUtils";
+import { rewardToOption } from "@/components/forms/attach-v2/utils/discountOptionUtils";
 import { useRewardsQuery } from "@/hooks/queries/useRewardsQuery";
-import { useStripeCouponsQuery } from "@/hooks/queries/useStripeCouponsQuery";
 import { useDiscountSearch } from "@/hooks/useDiscountSearch";
 import { CusService } from "@/services/customers/CusService";
 import { useAxiosInstance } from "@/services/useAxiosInstance";
 import { getBackendErr } from "@/utils/genUtils";
-import { getOriginalCouponId } from "@/utils/product/couponUtils";
 import { useCusQuery } from "@/views/customers/customer/hooks/useCusQuery";
 import { useCusReferralQuery } from "@/views/customers/customer/hooks/useCusReferralQuery";
 import { InfoBox } from "@/views/onboarding2/integrate/components/InfoBox";
@@ -36,7 +31,7 @@ export const AddCouponDialog = ({
 	open: boolean;
 	setOpen: (open: boolean) => void;
 }) => {
-	const { stripeCus, cusRewardRefetch } = useCusReferralQuery();
+	const { cusRewardRefetch } = useCusReferralQuery();
 	const { customer, refetch } = useCusQuery();
 
 	const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -47,27 +42,17 @@ export const AddCouponDialog = ({
 	const axiosInstance = useAxiosInstance();
 
 	const { rewards, isLoading: rewardsLoading } = useRewardsQuery();
-	const { stripeCoupons, isLoading: stripeCouponsLoading } =
-		useStripeCouponsQuery();
 
-	// Stripe coupons are merged in so coupons created outside Autumn are
-	// selectable here, matching the subscription-level discount picker.
 	const rewardOptions = rewards
 		.filter((reward: Reward) => reward.type !== RewardType.FreeProduct)
 		.map(rewardToOption);
 
-	const rewardOptionIds = new Set(rewardOptions.map((option) => option.id));
-	const stripeOnlyOptions = stripeCoupons
-		.filter((coupon) => !rewardOptionIds.has(coupon.id))
-		.map(stripeCouponToOption);
-
-	// Codes the bulk listing didn't reach are looked up in Stripe on demand.
 	const {
 		options: discountOptions,
 		setSearch,
 		isLookingUp,
 	} = useDiscountSearch({
-		options: [...rewardOptions, ...stripeOnlyOptions],
+		options: rewardOptions,
 	});
 
 	const selectedReward = rewards.find((r: Reward) => r.id === selectedId);
@@ -109,13 +94,14 @@ export const AddCouponDialog = ({
 		}
 	};
 
-	const existingDiscount = stripeCus?.discount;
+	const existingDiscount = customer?.discount;
 
 	const getExistingCoupon = () => {
 		if (existingDiscount?.coupon?.id) {
-			const originalId = getOriginalCouponId(existingDiscount.coupon.id);
 			return discountOptions.find(
-				(option) => option.id === originalId || option.label === originalId,
+				(option) =>
+					option.id === existingDiscount.coupon.id ||
+					option.label === existingDiscount.coupon.id,
 			);
 		}
 		return null;
@@ -170,7 +156,7 @@ export const AddCouponDialog = ({
 						emptyText="No coupons found"
 						onSearchChange={setSearch}
 						shouldFilter
-						isLoading={rewardsLoading || stripeCouponsLoading || isLookingUp}
+						isLoading={rewardsLoading || isLookingUp}
 						triggerClassName="w-full"
 					/>
 

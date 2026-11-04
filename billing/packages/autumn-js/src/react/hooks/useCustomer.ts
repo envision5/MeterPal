@@ -11,7 +11,6 @@ import type {
 	PreviewAttachResponse,
 	PreviewMultiAttachResponse,
 	PreviewUpdateResponse,
-	SetupPaymentResponse,
 } from "@useautumn/sdk";
 import type {
 	AttachParams,
@@ -22,7 +21,6 @@ import type {
 	PreviewAttachParams,
 	PreviewMultiAttachParams,
 	PreviewUpdateSubscriptionParams,
-	SetupPaymentParams,
 	UpdateSubscriptionParams,
 } from "../../types";
 import { useAutumnClient } from "../AutumnContext";
@@ -106,17 +104,7 @@ export type UseCustomerResult = HookResultWithMethods<
 		) => Promise<PreviewMultiAttachResponse>;
 
 		/**
-		 * Creates a payment setup session for the customer to add or update their payment method.
-		 * Automatically redirects to the Stripe setup page.
-		 * @param params - Optional success URL and plan to attach after setup.
-		 * @returns Setup response with URL to redirect the customer.
-		 */
-		setupPayment: (
-			params?: SetupPaymentParams,
-		) => Promise<SetupPaymentResponse>;
-
-		/**
-		 * Opens the Stripe customer billing portal for this customer.
+		 * Opens the processor customer billing portal for this customer.
 		 * @param params - Optional return URL and configuration.
 		 * @returns Portal session response with URL to redirect the customer.
 		 */
@@ -129,7 +117,7 @@ export type UseCustomerResult = HookResultWithMethods<
 /**
  * Fetches or creates an Autumn customer and provides billing actions.
  *
- * @returns Customer data along with billing methods: `attach`, `previewAttach`, `updateSubscription`, `previewUpdateSubscription`, `multiAttach`, `previewMultiAttach`, `check`, `setupPayment`, and `openCustomerPortal`.
+ * @returns Customer data along with billing methods: `attach`, `previewAttach`, `updateSubscription`, `previewUpdateSubscription`, `multiAttach`, `previewMultiAttach`, `check`, and `openCustomerPortal`.
  * @deprecated Autumn's React hooks are deprecated, as they don't scale well over time. Please use our backend SDK instead.
  */
 export const useCustomer = (

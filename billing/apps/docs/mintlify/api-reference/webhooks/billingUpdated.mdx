@@ -165,7 +165,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                   Base price amounts in additional currencies. The base 'amount' is in the org's default currency.
                   <Expandable title="properties">
                     <ParamField body="currency" type="string" required>
-                      Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                      Three-letter currency code (e.g. 'eur', 'gbp').
                     </ParamField>
 
                     <ParamField body="amount" type="number" required>
@@ -192,21 +192,6 @@ openapi: "api/openapi.yml webhook billing.updated"
 
                     <ParamField body="secondary_text" type="string">
                       Secondary display text (e.g. 'per month' or 'then $0.5 per 100').
-                    </ParamField>
-
-                  </Expandable>
-                </ParamField>
-
-                <ParamField body="processors" type="object">
-                  Payment processors this base price is connected to. Omitted when unset.
-                  <Expandable title="properties">
-                    <ParamField body="stripe" type="object | null">
-                      <Expandable title="properties">
-                        <ParamField body="price_id" type="string" required>
-                          Stripe price ID. For prepaid with included > 0 this is the V2 price.
-                        </ParamField>
-
-                      </Expandable>
                     </ParamField>
 
                   </Expandable>
@@ -317,7 +302,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                       Amounts in additional currencies for this flat price. The base 'amount' is in the org's default currency. Only valid with 'amount', not 'tiers' (tiered prices carry per-currency amounts on each tier).
                       <Expandable title="properties">
                         <ParamField body="currency" type="string" required>
-                          Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                          Three-letter currency code (e.g. 'eur', 'gbp').
                         </ParamField>
 
                         <ParamField body="amount" type="number" required>
@@ -339,7 +324,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                         <ParamField body="additional_currencies" type="object[]">
                           <Expandable title="properties">
                             <ParamField body="currency" type="string" required>
-                              Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                              Three-letter currency code (e.g. 'eur', 'gbp').
                             </ParamField>
 
                             <ParamField body="amount" type="number">
@@ -376,21 +361,6 @@ openapi: "api/openapi.yml webhook billing.updated"
 
                     <ParamField body="max_purchase" type="number | null" required>
                       Maximum units a customer can purchase beyond included. E.g. if included=100 and max_purchase=300, customer can use up to 400 total before usage is capped. Null for no limit.
-                    </ParamField>
-
-                    <ParamField body="processors" type="object">
-                      Payment processors this item price is connected to. Omitted when unset.
-                      <Expandable title="properties">
-                        <ParamField body="stripe" type="object | null">
-                          <Expandable title="properties">
-                            <ParamField body="price_id" type="string" required>
-                              Stripe price ID. For prepaid with included > 0 this is the V2 price.
-                            </ParamField>
-
-                          </Expandable>
-                        </ParamField>
-
-                      </Expandable>
                     </ParamField>
 
                   </Expandable>
@@ -561,50 +531,6 @@ openapi: "api/openapi.yml webhook billing.updated"
               </Expandable>
             </ParamField>
 
-            <ParamField body="processors" type="object">
-              Payment processors this plan is connected to. Omitted when unset.
-              <Expandable title="properties">
-                <ParamField body="stripe" type="object | null">
-                  <Expandable title="properties">
-                    <ParamField body="product_id" type="string" required>
-                      Stripe product ID this plan is billed under.
-                    </ParamField>
-
-                    <ParamField body="additional_product_ids" type="string[]">
-                      Extra Stripe product IDs aliased to this plan.
-                    </ParamField>
-
-                  </Expandable>
-                </ParamField>
-
-                <ParamField body="revenuecat" type="object | null">
-                  <Expandable title="properties">
-                    <ParamField body="products" type="object[]" required>
-                      Every RevenueCat product that maps to this plan. Replaces the current set.
-                      <Expandable title="properties">
-                        <ParamField body="product_id" type="string" required>
-                          RevenueCat product ID that grants this plan when purchased.
-                        </ParamField>
-
-                        <ParamField body="feature_quantities" type="object[]">
-                          Prepaid quantities granted when this specific RevenueCat product is purchased, in feature units.
-                          <Expandable title="properties">
-                            <ParamField body="feature_id" type="string" required />
-
-                            <ParamField body="quantity" type="number" />
-
-                          </Expandable>
-                        </ParamField>
-
-                      </Expandable>
-                    </ParamField>
-
-                  </Expandable>
-                </ParamField>
-
-              </Expandable>
-            </ParamField>
-
             <ParamField body="free_trial" type="object">
               Free trial configuration. If set, new customers can try this plan before being charged.
               <Expandable title="properties">
@@ -716,7 +642,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                     </ParamField>
 
                     <ParamField body="skip_overage_billing" type="boolean">
-                      When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally.
+                      When true, overage for this feature is not posted to the payment processor. Usage tracking and balance resets still behave normally.
                     </ParamField>
 
                   </Expandable>
@@ -871,7 +797,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                           Base price amounts in additional currencies. The base 'amount' is in the org's default currency.
                           <Expandable title="properties">
                             <ParamField body="currency" type="string" required>
-                              Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                              Three-letter currency code (e.g. 'eur', 'gbp').
                             </ParamField>
 
                             <ParamField body="amount" type="number" required>
@@ -934,7 +860,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                               Amounts in additional currencies for this flat price. The base 'amount' is in the org's default currency. Only valid with 'amount', not 'tiers'.
                               <Expandable title="properties">
                                 <ParamField body="currency" type="string" required>
-                                  Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                  Three-letter currency code (e.g. 'eur', 'gbp').
                                 </ParamField>
 
                                 <ParamField body="amount" type="number" required>
@@ -956,7 +882,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                                 <ParamField body="additional_currencies" type="object[]">
                                   <Expandable title="properties">
                                     <ParamField body="currency" type="string" required>
-                                      Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                      Three-letter currency code (e.g. 'eur', 'gbp').
                                     </ParamField>
 
                                     <ParamField body="amount" type="number">
@@ -1278,7 +1204,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                             </ParamField>
 
                             <ParamField body="skip_overage_billing" type="boolean">
-                              When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally.
+                              When true, overage for this feature is not posted to the payment processor. Usage tracking and balance resets still behave normally.
                             </ParamField>
 
                           </Expandable>
@@ -1400,7 +1326,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                                   Base price amounts in additional currencies. The base 'amount' is in the org's default currency.
                                   <Expandable title="properties">
                                     <ParamField body="currency" type="string" required>
-                                      Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                      Three-letter currency code (e.g. 'eur', 'gbp').
                                     </ParamField>
 
                                     <ParamField body="amount" type="number" required>
@@ -1462,7 +1388,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                                       Amounts in additional currencies for this flat price. The base 'amount' is in the org's default currency. Only valid with 'amount', not 'tiers'.
                                       <Expandable title="properties">
                                         <ParamField body="currency" type="string" required>
-                                          Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                          Three-letter currency code (e.g. 'eur', 'gbp').
                                         </ParamField>
 
                                         <ParamField body="amount" type="number" required>
@@ -1484,7 +1410,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                                         <ParamField body="additional_currencies" type="object[]">
                                           <Expandable title="properties">
                                             <ParamField body="currency" type="string" required>
-                                              Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                              Three-letter currency code (e.g. 'eur', 'gbp').
                                             </ParamField>
 
                                             <ParamField body="amount" type="number">
@@ -1790,50 +1716,6 @@ openapi: "api/openapi.yml webhook billing.updated"
               Arbitrary key-value metadata defined by you for your own use. Shared across all versions of the plan.
             </ParamField>
 
-            <ParamField body="processors" type="object | null">
-              Previous payment processors when they changed. Null when the plan had none.
-              <Expandable title="properties">
-                <ParamField body="stripe" type="object | null">
-                  <Expandable title="properties">
-                    <ParamField body="product_id" type="string" required>
-                      Stripe product ID this plan is billed under.
-                    </ParamField>
-
-                    <ParamField body="additional_product_ids" type="string[]">
-                      Extra Stripe product IDs aliased to this plan.
-                    </ParamField>
-
-                  </Expandable>
-                </ParamField>
-
-                <ParamField body="revenuecat" type="object | null">
-                  <Expandable title="properties">
-                    <ParamField body="products" type="object[]" required>
-                      Every RevenueCat product that maps to this plan. Replaces the current set.
-                      <Expandable title="properties">
-                        <ParamField body="product_id" type="string" required>
-                          RevenueCat product ID that grants this plan when purchased.
-                        </ParamField>
-
-                        <ParamField body="feature_quantities" type="object[]">
-                          Prepaid quantities granted when this specific RevenueCat product is purchased, in feature units.
-                          <Expandable title="properties">
-                            <ParamField body="feature_id" type="string" required />
-
-                            <ParamField body="quantity" type="number" />
-
-                          </Expandable>
-                        </ParamField>
-
-                      </Expandable>
-                    </ParamField>
-
-                  </Expandable>
-                </ParamField>
-
-              </Expandable>
-            </ParamField>
-
             <ParamField body="base_variant_id" type="string | null">
               The base plan this variant pointed at before this update re-anchored it. Null when it was standalone.
             </ParamField>
@@ -1935,7 +1817,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                     </ParamField>
 
                     <ParamField body="skip_overage_billing" type="boolean">
-                      When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally.
+                      When true, overage for this feature is not posted to the payment processor. Usage tracking and balance resets still behave normally.
                     </ParamField>
 
                   </Expandable>
@@ -2047,7 +1929,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                   Base price amounts in additional currencies. The base 'amount' is in the org's default currency.
                   <Expandable title="properties">
                     <ParamField body="currency" type="string" required>
-                      Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                      Three-letter currency code (e.g. 'eur', 'gbp').
                     </ParamField>
 
                     <ParamField body="amount" type="number" required>
@@ -2074,21 +1956,6 @@ openapi: "api/openapi.yml webhook billing.updated"
 
                     <ParamField body="secondary_text" type="string">
                       Secondary display text (e.g. 'per month' or 'then $0.5 per 100').
-                    </ParamField>
-
-                  </Expandable>
-                </ParamField>
-
-                <ParamField body="processors" type="object">
-                  Payment processors this base price is connected to. Omitted when unset.
-                  <Expandable title="properties">
-                    <ParamField body="stripe" type="object | null">
-                      <Expandable title="properties">
-                        <ParamField body="price_id" type="string" required>
-                          Stripe price ID. For prepaid with included > 0 this is the V2 price.
-                        </ParamField>
-
-                      </Expandable>
                     </ParamField>
 
                   </Expandable>
@@ -2108,7 +1975,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                   Base price amounts in additional currencies. The base 'amount' is in the org's default currency.
                   <Expandable title="properties">
                     <ParamField body="currency" type="string" required>
-                      Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                      Three-letter currency code (e.g. 'eur', 'gbp').
                     </ParamField>
 
                     <ParamField body="amount" type="number" required>
@@ -2135,21 +2002,6 @@ openapi: "api/openapi.yml webhook billing.updated"
 
                     <ParamField body="secondary_text" type="string">
                       Secondary display text (e.g. 'per month' or 'then $0.5 per 100').
-                    </ParamField>
-
-                  </Expandable>
-                </ParamField>
-
-                <ParamField body="processors" type="object">
-                  Payment processors this base price is connected to. Omitted when unset.
-                  <Expandable title="properties">
-                    <ParamField body="stripe" type="object | null">
-                      <Expandable title="properties">
-                        <ParamField body="price_id" type="string" required>
-                          Stripe price ID. For prepaid with included > 0 this is the V2 price.
-                        </ParamField>
-
-                      </Expandable>
                     </ParamField>
 
                   </Expandable>
@@ -2324,7 +2176,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                       Amounts in additional currencies for this flat price. The base 'amount' is in the org's default currency. Only valid with 'amount', not 'tiers' (tiered prices carry per-currency amounts on each tier).
                       <Expandable title="properties">
                         <ParamField body="currency" type="string" required>
-                          Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                          Three-letter currency code (e.g. 'eur', 'gbp').
                         </ParamField>
 
                         <ParamField body="amount" type="number" required>
@@ -2346,7 +2198,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                         <ParamField body="additional_currencies" type="object[]">
                           <Expandable title="properties">
                             <ParamField body="currency" type="string" required>
-                              Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                              Three-letter currency code (e.g. 'eur', 'gbp').
                             </ParamField>
 
                             <ParamField body="amount" type="number">
@@ -2383,21 +2235,6 @@ openapi: "api/openapi.yml webhook billing.updated"
 
                     <ParamField body="max_purchase" type="number | null" required>
                       Maximum units a customer can purchase beyond included. E.g. if included=100 and max_purchase=300, customer can use up to 400 total before usage is capped. Null for no limit.
-                    </ParamField>
-
-                    <ParamField body="processors" type="object">
-                      Payment processors this item price is connected to. Omitted when unset.
-                      <Expandable title="properties">
-                        <ParamField body="stripe" type="object | null">
-                          <Expandable title="properties">
-                            <ParamField body="price_id" type="string" required>
-                              Stripe price ID. For prepaid with included > 0 this is the V2 price.
-                            </ParamField>
-
-                          </Expandable>
-                        </ParamField>
-
-                      </Expandable>
                     </ParamField>
 
                   </Expandable>
@@ -2591,7 +2428,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                   Base price amounts in additional currencies. The base 'amount' is in the org's default currency.
                   <Expandable title="properties">
                     <ParamField body="currency" type="string" required>
-                      Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                      Three-letter currency code (e.g. 'eur', 'gbp').
                     </ParamField>
 
                     <ParamField body="amount" type="number" required>
@@ -2654,7 +2491,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                       Amounts in additional currencies for this flat price. The base 'amount' is in the org's default currency. Only valid with 'amount', not 'tiers'.
                       <Expandable title="properties">
                         <ParamField body="currency" type="string" required>
-                          Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                          Three-letter currency code (e.g. 'eur', 'gbp').
                         </ParamField>
 
                         <ParamField body="amount" type="number" required>
@@ -2676,7 +2513,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                         <ParamField body="additional_currencies" type="object[]">
                           <Expandable title="properties">
                             <ParamField body="currency" type="string" required>
-                              Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                              Three-letter currency code (e.g. 'eur', 'gbp').
                             </ParamField>
 
                             <ParamField body="amount" type="number">
@@ -2998,7 +2835,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                     </ParamField>
 
                     <ParamField body="skip_overage_billing" type="boolean">
-                      When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally.
+                      When true, overage for this feature is not posted to the payment processor. Usage tracking and balance resets still behave normally.
                     </ParamField>
 
                   </Expandable>
@@ -3120,7 +2957,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                           Base price amounts in additional currencies. The base 'amount' is in the org's default currency.
                           <Expandable title="properties">
                             <ParamField body="currency" type="string" required>
-                              Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                              Three-letter currency code (e.g. 'eur', 'gbp').
                             </ParamField>
 
                             <ParamField body="amount" type="number" required>
@@ -3182,7 +3019,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                               Amounts in additional currencies for this flat price. The base 'amount' is in the org's default currency. Only valid with 'amount', not 'tiers'.
                               <Expandable title="properties">
                                 <ParamField body="currency" type="string" required>
-                                  Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                  Three-letter currency code (e.g. 'eur', 'gbp').
                                 </ParamField>
 
                                 <ParamField body="amount" type="number" required>
@@ -3204,7 +3041,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                                 <ParamField body="additional_currencies" type="object[]">
                                   <Expandable title="properties">
                                     <ParamField body="currency" type="string" required>
-                                      Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                      Three-letter currency code (e.g. 'eur', 'gbp').
                                     </ParamField>
 
                                     <ParamField body="amount" type="number">
@@ -3528,7 +3365,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                       Base price amounts in additional currencies. The base 'amount' is in the org's default currency.
                       <Expandable title="properties">
                         <ParamField body="currency" type="string" required>
-                          Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                          Three-letter currency code (e.g. 'eur', 'gbp').
                         </ParamField>
 
                         <ParamField body="amount" type="number" required>
@@ -3555,21 +3392,6 @@ openapi: "api/openapi.yml webhook billing.updated"
 
                         <ParamField body="secondary_text" type="string">
                           Secondary display text (e.g. 'per month' or 'then $0.5 per 100').
-                        </ParamField>
-
-                      </Expandable>
-                    </ParamField>
-
-                    <ParamField body="processors" type="object">
-                      Payment processors this base price is connected to. Omitted when unset.
-                      <Expandable title="properties">
-                        <ParamField body="stripe" type="object | null">
-                          <Expandable title="properties">
-                            <ParamField body="price_id" type="string" required>
-                              Stripe price ID. For prepaid with included > 0 this is the V2 price.
-                            </ParamField>
-
-                          </Expandable>
                         </ParamField>
 
                       </Expandable>
@@ -3680,7 +3502,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                           Amounts in additional currencies for this flat price. The base 'amount' is in the org's default currency. Only valid with 'amount', not 'tiers' (tiered prices carry per-currency amounts on each tier).
                           <Expandable title="properties">
                             <ParamField body="currency" type="string" required>
-                              Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                              Three-letter currency code (e.g. 'eur', 'gbp').
                             </ParamField>
 
                             <ParamField body="amount" type="number" required>
@@ -3702,7 +3524,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                             <ParamField body="additional_currencies" type="object[]">
                               <Expandable title="properties">
                                 <ParamField body="currency" type="string" required>
-                                  Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                  Three-letter currency code (e.g. 'eur', 'gbp').
                                 </ParamField>
 
                                 <ParamField body="amount" type="number">
@@ -3739,21 +3561,6 @@ openapi: "api/openapi.yml webhook billing.updated"
 
                         <ParamField body="max_purchase" type="number | null" required>
                           Maximum units a customer can purchase beyond included. E.g. if included=100 and max_purchase=300, customer can use up to 400 total before usage is capped. Null for no limit.
-                        </ParamField>
-
-                        <ParamField body="processors" type="object">
-                          Payment processors this item price is connected to. Omitted when unset.
-                          <Expandable title="properties">
-                            <ParamField body="stripe" type="object | null">
-                              <Expandable title="properties">
-                                <ParamField body="price_id" type="string" required>
-                                  Stripe price ID. For prepaid with included > 0 this is the V2 price.
-                                </ParamField>
-
-                              </Expandable>
-                            </ParamField>
-
-                          </Expandable>
                         </ParamField>
 
                       </Expandable>
@@ -3924,50 +3731,6 @@ openapi: "api/openapi.yml webhook billing.updated"
                   </Expandable>
                 </ParamField>
 
-                <ParamField body="processors" type="object">
-                  Payment processors this plan is connected to. Omitted when unset.
-                  <Expandable title="properties">
-                    <ParamField body="stripe" type="object | null">
-                      <Expandable title="properties">
-                        <ParamField body="product_id" type="string" required>
-                          Stripe product ID this plan is billed under.
-                        </ParamField>
-
-                        <ParamField body="additional_product_ids" type="string[]">
-                          Extra Stripe product IDs aliased to this plan.
-                        </ParamField>
-
-                      </Expandable>
-                    </ParamField>
-
-                    <ParamField body="revenuecat" type="object | null">
-                      <Expandable title="properties">
-                        <ParamField body="products" type="object[]" required>
-                          Every RevenueCat product that maps to this plan. Replaces the current set.
-                          <Expandable title="properties">
-                            <ParamField body="product_id" type="string" required>
-                              RevenueCat product ID that grants this plan when purchased.
-                            </ParamField>
-
-                            <ParamField body="feature_quantities" type="object[]">
-                              Prepaid quantities granted when this specific RevenueCat product is purchased, in feature units.
-                              <Expandable title="properties">
-                                <ParamField body="feature_id" type="string" required />
-
-                                <ParamField body="quantity" type="number" />
-
-                              </Expandable>
-                            </ParamField>
-
-                          </Expandable>
-                        </ParamField>
-
-                      </Expandable>
-                    </ParamField>
-
-                  </Expandable>
-                </ParamField>
-
                 <ParamField body="free_trial" type="object">
                   Free trial configuration. If set, new customers can try this plan before being charged.
                   <Expandable title="properties">
@@ -4079,7 +3842,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                         </ParamField>
 
                         <ParamField body="skip_overage_billing" type="boolean">
-                          When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally.
+                          When true, overage for this feature is not posted to the payment processor. Usage tracking and balance resets still behave normally.
                         </ParamField>
 
                       </Expandable>
@@ -4234,7 +3997,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                               Base price amounts in additional currencies. The base 'amount' is in the org's default currency.
                               <Expandable title="properties">
                                 <ParamField body="currency" type="string" required>
-                                  Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                  Three-letter currency code (e.g. 'eur', 'gbp').
                                 </ParamField>
 
                                 <ParamField body="amount" type="number" required>
@@ -4297,7 +4060,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                                   Amounts in additional currencies for this flat price. The base 'amount' is in the org's default currency. Only valid with 'amount', not 'tiers'.
                                   <Expandable title="properties">
                                     <ParamField body="currency" type="string" required>
-                                      Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                      Three-letter currency code (e.g. 'eur', 'gbp').
                                     </ParamField>
 
                                     <ParamField body="amount" type="number" required>
@@ -4319,7 +4082,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                                     <ParamField body="additional_currencies" type="object[]">
                                       <Expandable title="properties">
                                         <ParamField body="currency" type="string" required>
-                                          Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                          Three-letter currency code (e.g. 'eur', 'gbp').
                                         </ParamField>
 
                                         <ParamField body="amount" type="number">
@@ -4641,7 +4404,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                                 </ParamField>
 
                                 <ParamField body="skip_overage_billing" type="boolean">
-                                  When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally.
+                                  When true, overage for this feature is not posted to the payment processor. Usage tracking and balance resets still behave normally.
                                 </ParamField>
 
                               </Expandable>
@@ -4763,7 +4526,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                                       Base price amounts in additional currencies. The base 'amount' is in the org's default currency.
                                       <Expandable title="properties">
                                         <ParamField body="currency" type="string" required>
-                                          Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                          Three-letter currency code (e.g. 'eur', 'gbp').
                                         </ParamField>
 
                                         <ParamField body="amount" type="number" required>
@@ -4825,7 +4588,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                                           Amounts in additional currencies for this flat price. The base 'amount' is in the org's default currency. Only valid with 'amount', not 'tiers'.
                                           <Expandable title="properties">
                                             <ParamField body="currency" type="string" required>
-                                              Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                              Three-letter currency code (e.g. 'eur', 'gbp').
                                             </ParamField>
 
                                             <ParamField body="amount" type="number" required>
@@ -4847,7 +4610,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                                             <ParamField body="additional_currencies" type="object[]">
                                               <Expandable title="properties">
                                                 <ParamField body="currency" type="string" required>
-                                                  Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                                  Three-letter currency code (e.g. 'eur', 'gbp').
                                                 </ParamField>
 
                                                 <ParamField body="amount" type="number">
@@ -5179,7 +4942,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                           Base price amounts in additional currencies. The base 'amount' is in the org's default currency.
                           <Expandable title="properties">
                             <ParamField body="currency" type="string" required>
-                              Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                              Three-letter currency code (e.g. 'eur', 'gbp').
                             </ParamField>
 
                             <ParamField body="amount" type="number" required>
@@ -5206,21 +4969,6 @@ openapi: "api/openapi.yml webhook billing.updated"
 
                             <ParamField body="secondary_text" type="string">
                               Secondary display text (e.g. 'per month' or 'then $0.5 per 100').
-                            </ParamField>
-
-                          </Expandable>
-                        </ParamField>
-
-                        <ParamField body="processors" type="object">
-                          Payment processors this base price is connected to. Omitted when unset.
-                          <Expandable title="properties">
-                            <ParamField body="stripe" type="object | null">
-                              <Expandable title="properties">
-                                <ParamField body="price_id" type="string" required>
-                                  Stripe price ID. For prepaid with included > 0 this is the V2 price.
-                                </ParamField>
-
-                              </Expandable>
                             </ParamField>
 
                           </Expandable>
@@ -5331,7 +5079,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                               Amounts in additional currencies for this flat price. The base 'amount' is in the org's default currency. Only valid with 'amount', not 'tiers' (tiered prices carry per-currency amounts on each tier).
                               <Expandable title="properties">
                                 <ParamField body="currency" type="string" required>
-                                  Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                  Three-letter currency code (e.g. 'eur', 'gbp').
                                 </ParamField>
 
                                 <ParamField body="amount" type="number" required>
@@ -5353,7 +5101,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                                 <ParamField body="additional_currencies" type="object[]">
                                   <Expandable title="properties">
                                     <ParamField body="currency" type="string" required>
-                                      Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                      Three-letter currency code (e.g. 'eur', 'gbp').
                                     </ParamField>
 
                                     <ParamField body="amount" type="number">
@@ -5390,21 +5138,6 @@ openapi: "api/openapi.yml webhook billing.updated"
 
                             <ParamField body="max_purchase" type="number | null" required>
                               Maximum units a customer can purchase beyond included. E.g. if included=100 and max_purchase=300, customer can use up to 400 total before usage is capped. Null for no limit.
-                            </ParamField>
-
-                            <ParamField body="processors" type="object">
-                              Payment processors this item price is connected to. Omitted when unset.
-                              <Expandable title="properties">
-                                <ParamField body="stripe" type="object | null">
-                                  <Expandable title="properties">
-                                    <ParamField body="price_id" type="string" required>
-                                      Stripe price ID. For prepaid with included > 0 this is the V2 price.
-                                    </ParamField>
-
-                                  </Expandable>
-                                </ParamField>
-
-                              </Expandable>
                             </ParamField>
 
                           </Expandable>
@@ -5575,50 +5308,6 @@ openapi: "api/openapi.yml webhook billing.updated"
                       </Expandable>
                     </ParamField>
 
-                    <ParamField body="processors" type="object">
-                      Payment processors this plan is connected to. Omitted when unset.
-                      <Expandable title="properties">
-                        <ParamField body="stripe" type="object | null">
-                          <Expandable title="properties">
-                            <ParamField body="product_id" type="string" required>
-                              Stripe product ID this plan is billed under.
-                            </ParamField>
-
-                            <ParamField body="additional_product_ids" type="string[]">
-                              Extra Stripe product IDs aliased to this plan.
-                            </ParamField>
-
-                          </Expandable>
-                        </ParamField>
-
-                        <ParamField body="revenuecat" type="object | null">
-                          <Expandable title="properties">
-                            <ParamField body="products" type="object[]" required>
-                              Every RevenueCat product that maps to this plan. Replaces the current set.
-                              <Expandable title="properties">
-                                <ParamField body="product_id" type="string" required>
-                                  RevenueCat product ID that grants this plan when purchased.
-                                </ParamField>
-
-                                <ParamField body="feature_quantities" type="object[]">
-                                  Prepaid quantities granted when this specific RevenueCat product is purchased, in feature units.
-                                  <Expandable title="properties">
-                                    <ParamField body="feature_id" type="string" required />
-
-                                    <ParamField body="quantity" type="number" />
-
-                                  </Expandable>
-                                </ParamField>
-
-                              </Expandable>
-                            </ParamField>
-
-                          </Expandable>
-                        </ParamField>
-
-                      </Expandable>
-                    </ParamField>
-
                     <ParamField body="free_trial" type="object">
                       Free trial configuration. If set, new customers can try this plan before being charged.
                       <Expandable title="properties">
@@ -5730,7 +5419,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                             </ParamField>
 
                             <ParamField body="skip_overage_billing" type="boolean">
-                              When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally.
+                              When true, overage for this feature is not posted to the payment processor. Usage tracking and balance resets still behave normally.
                             </ParamField>
 
                           </Expandable>
@@ -5885,7 +5574,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                                   Base price amounts in additional currencies. The base 'amount' is in the org's default currency.
                                   <Expandable title="properties">
                                     <ParamField body="currency" type="string" required>
-                                      Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                      Three-letter currency code (e.g. 'eur', 'gbp').
                                     </ParamField>
 
                                     <ParamField body="amount" type="number" required>
@@ -5948,7 +5637,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                                       Amounts in additional currencies for this flat price. The base 'amount' is in the org's default currency. Only valid with 'amount', not 'tiers'.
                                       <Expandable title="properties">
                                         <ParamField body="currency" type="string" required>
-                                          Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                          Three-letter currency code (e.g. 'eur', 'gbp').
                                         </ParamField>
 
                                         <ParamField body="amount" type="number" required>
@@ -5970,7 +5659,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                                         <ParamField body="additional_currencies" type="object[]">
                                           <Expandable title="properties">
                                             <ParamField body="currency" type="string" required>
-                                              Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                              Three-letter currency code (e.g. 'eur', 'gbp').
                                             </ParamField>
 
                                             <ParamField body="amount" type="number">
@@ -6292,7 +5981,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                                     </ParamField>
 
                                     <ParamField body="skip_overage_billing" type="boolean">
-                                      When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally.
+                                      When true, overage for this feature is not posted to the payment processor. Usage tracking and balance resets still behave normally.
                                     </ParamField>
 
                                   </Expandable>
@@ -6414,7 +6103,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                                           Base price amounts in additional currencies. The base 'amount' is in the org's default currency.
                                           <Expandable title="properties">
                                             <ParamField body="currency" type="string" required>
-                                              Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                              Three-letter currency code (e.g. 'eur', 'gbp').
                                             </ParamField>
 
                                             <ParamField body="amount" type="number" required>
@@ -6476,7 +6165,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                                               Amounts in additional currencies for this flat price. The base 'amount' is in the org's default currency. Only valid with 'amount', not 'tiers'.
                                               <Expandable title="properties">
                                                 <ParamField body="currency" type="string" required>
-                                                  Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                                  Three-letter currency code (e.g. 'eur', 'gbp').
                                                 </ParamField>
 
                                                 <ParamField body="amount" type="number" required>
@@ -6498,7 +6187,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                                                 <ParamField body="additional_currencies" type="object[]">
                                                   <Expandable title="properties">
                                                     <ParamField body="currency" type="string" required>
-                                                      Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                                      Three-letter currency code (e.g. 'eur', 'gbp').
                                                     </ParamField>
 
                                                     <ParamField body="amount" type="number">
@@ -6804,50 +6493,6 @@ openapi: "api/openapi.yml webhook billing.updated"
                       Arbitrary key-value metadata defined by you for your own use. Shared across all versions of the plan.
                     </ParamField>
 
-                    <ParamField body="processors" type="object | null">
-                      Previous payment processors when they changed. Null when the plan had none.
-                      <Expandable title="properties">
-                        <ParamField body="stripe" type="object | null">
-                          <Expandable title="properties">
-                            <ParamField body="product_id" type="string" required>
-                              Stripe product ID this plan is billed under.
-                            </ParamField>
-
-                            <ParamField body="additional_product_ids" type="string[]">
-                              Extra Stripe product IDs aliased to this plan.
-                            </ParamField>
-
-                          </Expandable>
-                        </ParamField>
-
-                        <ParamField body="revenuecat" type="object | null">
-                          <Expandable title="properties">
-                            <ParamField body="products" type="object[]" required>
-                              Every RevenueCat product that maps to this plan. Replaces the current set.
-                              <Expandable title="properties">
-                                <ParamField body="product_id" type="string" required>
-                                  RevenueCat product ID that grants this plan when purchased.
-                                </ParamField>
-
-                                <ParamField body="feature_quantities" type="object[]">
-                                  Prepaid quantities granted when this specific RevenueCat product is purchased, in feature units.
-                                  <Expandable title="properties">
-                                    <ParamField body="feature_id" type="string" required />
-
-                                    <ParamField body="quantity" type="number" />
-
-                                  </Expandable>
-                                </ParamField>
-
-                              </Expandable>
-                            </ParamField>
-
-                          </Expandable>
-                        </ParamField>
-
-                      </Expandable>
-                    </ParamField>
-
                     <ParamField body="base_variant_id" type="string | null">
                       The base plan this variant pointed at before this update re-anchored it. Null when it was standalone.
                     </ParamField>
@@ -6949,7 +6594,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                             </ParamField>
 
                             <ParamField body="skip_overage_billing" type="boolean">
-                              When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally.
+                              When true, overage for this feature is not posted to the payment processor. Usage tracking and balance resets still behave normally.
                             </ParamField>
 
                           </Expandable>
@@ -7061,7 +6706,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                           Base price amounts in additional currencies. The base 'amount' is in the org's default currency.
                           <Expandable title="properties">
                             <ParamField body="currency" type="string" required>
-                              Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                              Three-letter currency code (e.g. 'eur', 'gbp').
                             </ParamField>
 
                             <ParamField body="amount" type="number" required>
@@ -7088,21 +6733,6 @@ openapi: "api/openapi.yml webhook billing.updated"
 
                             <ParamField body="secondary_text" type="string">
                               Secondary display text (e.g. 'per month' or 'then $0.5 per 100').
-                            </ParamField>
-
-                          </Expandable>
-                        </ParamField>
-
-                        <ParamField body="processors" type="object">
-                          Payment processors this base price is connected to. Omitted when unset.
-                          <Expandable title="properties">
-                            <ParamField body="stripe" type="object | null">
-                              <Expandable title="properties">
-                                <ParamField body="price_id" type="string" required>
-                                  Stripe price ID. For prepaid with included > 0 this is the V2 price.
-                                </ParamField>
-
-                              </Expandable>
                             </ParamField>
 
                           </Expandable>
@@ -7122,7 +6752,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                           Base price amounts in additional currencies. The base 'amount' is in the org's default currency.
                           <Expandable title="properties">
                             <ParamField body="currency" type="string" required>
-                              Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                              Three-letter currency code (e.g. 'eur', 'gbp').
                             </ParamField>
 
                             <ParamField body="amount" type="number" required>
@@ -7149,21 +6779,6 @@ openapi: "api/openapi.yml webhook billing.updated"
 
                             <ParamField body="secondary_text" type="string">
                               Secondary display text (e.g. 'per month' or 'then $0.5 per 100').
-                            </ParamField>
-
-                          </Expandable>
-                        </ParamField>
-
-                        <ParamField body="processors" type="object">
-                          Payment processors this base price is connected to. Omitted when unset.
-                          <Expandable title="properties">
-                            <ParamField body="stripe" type="object | null">
-                              <Expandable title="properties">
-                                <ParamField body="price_id" type="string" required>
-                                  Stripe price ID. For prepaid with included > 0 this is the V2 price.
-                                </ParamField>
-
-                              </Expandable>
                             </ParamField>
 
                           </Expandable>
@@ -7338,7 +6953,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                               Amounts in additional currencies for this flat price. The base 'amount' is in the org's default currency. Only valid with 'amount', not 'tiers' (tiered prices carry per-currency amounts on each tier).
                               <Expandable title="properties">
                                 <ParamField body="currency" type="string" required>
-                                  Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                  Three-letter currency code (e.g. 'eur', 'gbp').
                                 </ParamField>
 
                                 <ParamField body="amount" type="number" required>
@@ -7360,7 +6975,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                                 <ParamField body="additional_currencies" type="object[]">
                                   <Expandable title="properties">
                                     <ParamField body="currency" type="string" required>
-                                      Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                      Three-letter currency code (e.g. 'eur', 'gbp').
                                     </ParamField>
 
                                     <ParamField body="amount" type="number">
@@ -7397,21 +7012,6 @@ openapi: "api/openapi.yml webhook billing.updated"
 
                             <ParamField body="max_purchase" type="number | null" required>
                               Maximum units a customer can purchase beyond included. E.g. if included=100 and max_purchase=300, customer can use up to 400 total before usage is capped. Null for no limit.
-                            </ParamField>
-
-                            <ParamField body="processors" type="object">
-                              Payment processors this item price is connected to. Omitted when unset.
-                              <Expandable title="properties">
-                                <ParamField body="stripe" type="object | null">
-                                  <Expandable title="properties">
-                                    <ParamField body="price_id" type="string" required>
-                                      Stripe price ID. For prepaid with included > 0 this is the V2 price.
-                                    </ParamField>
-
-                                  </Expandable>
-                                </ParamField>
-
-                              </Expandable>
                             </ParamField>
 
                           </Expandable>
@@ -7605,7 +7205,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                           Base price amounts in additional currencies. The base 'amount' is in the org's default currency.
                           <Expandable title="properties">
                             <ParamField body="currency" type="string" required>
-                              Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                              Three-letter currency code (e.g. 'eur', 'gbp').
                             </ParamField>
 
                             <ParamField body="amount" type="number" required>
@@ -7668,7 +7268,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                               Amounts in additional currencies for this flat price. The base 'amount' is in the org's default currency. Only valid with 'amount', not 'tiers'.
                               <Expandable title="properties">
                                 <ParamField body="currency" type="string" required>
-                                  Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                  Three-letter currency code (e.g. 'eur', 'gbp').
                                 </ParamField>
 
                                 <ParamField body="amount" type="number" required>
@@ -7690,7 +7290,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                                 <ParamField body="additional_currencies" type="object[]">
                                   <Expandable title="properties">
                                     <ParamField body="currency" type="string" required>
-                                      Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                      Three-letter currency code (e.g. 'eur', 'gbp').
                                     </ParamField>
 
                                     <ParamField body="amount" type="number">
@@ -8012,7 +7612,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                             </ParamField>
 
                             <ParamField body="skip_overage_billing" type="boolean">
-                              When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally.
+                              When true, overage for this feature is not posted to the payment processor. Usage tracking and balance resets still behave normally.
                             </ParamField>
 
                           </Expandable>
@@ -8134,7 +7734,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                                   Base price amounts in additional currencies. The base 'amount' is in the org's default currency.
                                   <Expandable title="properties">
                                     <ParamField body="currency" type="string" required>
-                                      Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                      Three-letter currency code (e.g. 'eur', 'gbp').
                                     </ParamField>
 
                                     <ParamField body="amount" type="number" required>
@@ -8196,7 +7796,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                                       Amounts in additional currencies for this flat price. The base 'amount' is in the org's default currency. Only valid with 'amount', not 'tiers'.
                                       <Expandable title="properties">
                                         <ParamField body="currency" type="string" required>
-                                          Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                          Three-letter currency code (e.g. 'eur', 'gbp').
                                         </ParamField>
 
                                         <ParamField body="amount" type="number" required>
@@ -8218,7 +7818,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                                         <ParamField body="additional_currencies" type="object[]">
                                           <Expandable title="properties">
                                             <ParamField body="currency" type="string" required>
-                                              Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                              Three-letter currency code (e.g. 'eur', 'gbp').
                                             </ParamField>
 
                                             <ParamField body="amount" type="number">
@@ -8591,7 +8191,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                   Amounts in additional currencies for this flat price. The base 'amount' is in the org's default currency. Only valid with 'amount', not 'tiers' (tiered prices carry per-currency amounts on each tier).
                   <Expandable title="properties">
                     <ParamField body="currency" type="string" required>
-                      Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                      Three-letter currency code (e.g. 'eur', 'gbp').
                     </ParamField>
 
                     <ParamField body="amount" type="number" required>
@@ -8613,7 +8213,7 @@ openapi: "api/openapi.yml webhook billing.updated"
                     <ParamField body="additional_currencies" type="object[]">
                       <Expandable title="properties">
                         <ParamField body="currency" type="string" required>
-                          Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                          Three-letter currency code (e.g. 'eur', 'gbp').
                         </ParamField>
 
                         <ParamField body="amount" type="number">
@@ -8650,21 +8250,6 @@ openapi: "api/openapi.yml webhook billing.updated"
 
                 <ParamField body="max_purchase" type="number | null" required>
                   Maximum units a customer can purchase beyond included. E.g. if included=100 and max_purchase=300, customer can use up to 400 total before usage is capped. Null for no limit.
-                </ParamField>
-
-                <ParamField body="processors" type="object">
-                  Payment processors this item price is connected to. Omitted when unset.
-                  <Expandable title="properties">
-                    <ParamField body="stripe" type="object | null">
-                      <Expandable title="properties">
-                        <ParamField body="price_id" type="string" required>
-                          Stripe price ID. For prepaid with included > 0 this is the V2 price.
-                        </ParamField>
-
-                      </Expandable>
-                    </ParamField>
-
-                  </Expandable>
                 </ParamField>
 
               </Expandable>

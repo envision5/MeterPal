@@ -10,11 +10,11 @@ import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
  *  see products expired by subscription.deleted. */
 export const setExpiredCustomerProductsCache = async ({
 	ctx,
-	stripeSubscriptionId,
+	processorSubscriptionId,
 	customerProducts,
 }: {
 	ctx: AutumnContext;
-	stripeSubscriptionId: string;
+	processorSubscriptionId: string;
 	customerProducts: FullCusProduct[];
 }): Promise<void> => {
 	const usageBasedCustomerProducts = customerProducts.filter((cp) => {
@@ -24,7 +24,7 @@ export const setExpiredCustomerProductsCache = async ({
 
 	await setCachedExpiredCustomerProducts({
 		ctx,
-		stripeSubscriptionId,
+		processorSubscriptionId,
 		customerProducts: usageBasedCustomerProducts,
 	});
 };

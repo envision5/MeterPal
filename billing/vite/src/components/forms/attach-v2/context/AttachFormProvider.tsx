@@ -119,7 +119,7 @@ interface AttachFormContextValue {
 		invoiceTemplateId?: string;
 		netTermsDays?: number;
 	}) => Promise<{
-		stripeId: string | undefined;
+		processorId: string | undefined;
 		hostedInvoiceUrl: string | null | undefined;
 	}>;
 	handleCheckoutAttach: (params?: { longLivedCheckout?: boolean }) => Promise<{

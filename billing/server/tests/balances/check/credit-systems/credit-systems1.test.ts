@@ -17,8 +17,8 @@ import {
 } from "@/internal/features/creditSystemUtils.js";
 import { constructFeatureItem } from "@/utils/scriptUtils/constructItem.js";
 import { constructProduct } from "@/utils/scriptUtils/createTestProducts.js";
-import { initCustomerV3 } from "@/utils/scriptUtils/testUtils/initCustomerV3.js";
-import { initProductsV0 } from "@/utils/scriptUtils/testUtils/initProductsV0.js";
+import { initTestCustomer } from "@tests/utils/testInitUtils/initTestCustomer.js";
+import { initTestProducts } from "@tests/utils/testInitUtils/initTestProducts.js";
 
 const creditsFeature = constructFeatureItem({
 	featureId: TestFeature.Credits,
@@ -42,14 +42,12 @@ describe(`${chalk.yellowBright("credit-systems1: test /check on action that uses
 	const creditFeature = ctx.features.find((f) => f.id === TestFeature.Credits);
 
 	beforeAll(async () => {
-		await initCustomerV3({
+		await initTestCustomer({
 			ctx,
 			customerId,
-			attachPm: "success",
-			withTestClock: false,
 		});
 
-		await initProductsV0({
+		await initTestProducts({
 			ctx,
 			products: [proProd],
 			prefix: testCase,

@@ -54,8 +54,7 @@ ListInvoicesStatus = Literal[
 
 
 ListInvoicesProcessorTypeRequestBody = Literal[
-    "stripe",
-    "revenuecat",
+    "paypal",
 ]
 
 
@@ -71,7 +70,7 @@ class ListInvoicesParamsTypedDict(TypedDict):
     status: NotRequired[List[ListInvoicesStatus]]
     r"""Filter by invoice status (draft, open, paid, void, uncollectible)."""
     processor_types: NotRequired[List[ListInvoicesProcessorTypeRequestBody]]
-    r"""Filter by billing processor (stripe, revenuecat). Invoices recorded before processor tracking count as stripe."""
+    r"""Filter by billing processor (paypal). Invoices recorded before processor tracking count as paypal."""
 
 
 class ListInvoicesParams(BaseModel):
@@ -91,7 +90,7 @@ class ListInvoicesParams(BaseModel):
     r"""Filter by invoice status (draft, open, paid, void, uncollectible)."""
 
     processor_types: Optional[List[ListInvoicesProcessorTypeRequestBody]] = None
-    r"""Filter by billing processor (stripe, revenuecat). Invoices recorded before processor tracking count as stripe."""
+    r"""Filter by billing processor (paypal). Invoices recorded before processor tracking count as paypal."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -121,8 +120,7 @@ class ListInvoicesParams(BaseModel):
 
 ListInvoicesListProcessorType = Union[
     Literal[
-        "stripe",
-        "revenuecat",
+        "paypal",
     ],
     UnrecognizedStr,
 ]
@@ -235,8 +233,8 @@ class ListInvoicesItem(BaseModel):
 class ListInvoicesListTypedDict(TypedDict):
     plan_ids: List[str]
     r"""Array of plan IDs included in this invoice"""
-    stripe_id: str
-    r"""The Stripe invoice ID"""
+    processor_invoice_id: str
+    r"""The processor's stable invoice ID."""
     status: str
     r"""The status of the invoice"""
     total: float
@@ -258,17 +256,17 @@ class ListInvoicesListTypedDict(TypedDict):
     processor_type: NotRequired[ListInvoicesListProcessorType]
     r"""The billing processor that owns this invoice."""
     hosted_invoice_url: NotRequired[Nullable[str]]
-    r"""URL to the Stripe-hosted invoice page"""
+    r"""The hosted invoice URL, when available."""
     items: NotRequired[List[ListInvoicesItemTypedDict]]
-    r"""Line items on the invoice, one per line as shown in Stripe. Capped at 100. Empty for invoices recorded before line item storage."""
+    r"""Line items on the invoice, one per line. Capped at 100. Empty for invoices recorded before line item storage."""
 
 
 class ListInvoicesList(BaseModel):
     plan_ids: List[str]
     r"""Array of plan IDs included in this invoice"""
 
-    stripe_id: str
-    r"""The Stripe invoice ID"""
+    processor_invoice_id: str
+    r"""The processor's stable invoice ID."""
 
     status: str
     r"""The status of the invoice"""
@@ -297,14 +295,14 @@ class ListInvoicesList(BaseModel):
     refunded_amount: float
     r"""The total amount refunded on the invoice"""
 
-    processor_type: Optional[ListInvoicesListProcessorType] = "stripe"
+    processor_type: Optional[ListInvoicesListProcessorType] = "paypal"
     r"""The billing processor that owns this invoice."""
 
     hosted_invoice_url: OptionalNullable[str] = UNSET
-    r"""URL to the Stripe-hosted invoice page"""
+    r"""The hosted invoice URL, when available."""
 
     items: Optional[List[ListInvoicesItem]] = None
-    r"""Line items on the invoice, one per line as shown in Stripe. Capped at 100. Empty for invoices recorded before line item storage."""
+    r"""Line items on the invoice, one per line. Capped at 100. Empty for invoices recorded before line item storage."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):

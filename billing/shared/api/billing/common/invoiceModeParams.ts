@@ -3,7 +3,7 @@ export const InvoiceModeParamsSchema = z
 	.object({
 		enabled: z.boolean().meta({
 			description:
-				"When true, creates an invoice and sends it to the customer instead of charging their card immediately. Uses Stripe's send_invoice collection method.",
+				"When true, creates an invoice and sends it to the customer instead of charging their card immediately. Uses the processor's send_invoice collection method.",
 		}),
 		enable_plan_immediately: z.boolean().default(false).meta({
 			description:
@@ -19,7 +19,7 @@ export const InvoiceModeParamsSchema = z
 		}),
 		net_terms_days: z.number().int().positive().optional().meta({
 			description:
-				"Number of days the customer has to pay the invoice before it is due (Stripe days_until_due).",
+				"Number of days the customer has to pay the invoice before it is due (days_until_due).",
 		}),
 	})
 	.meta({

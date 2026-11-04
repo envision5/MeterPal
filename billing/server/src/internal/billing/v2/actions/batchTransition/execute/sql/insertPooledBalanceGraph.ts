@@ -34,7 +34,7 @@ const findLivePooledBalanceId = async ({
 					? isNull(pooledBalances.reset_cycle_anchor)
 					: eq(pooledBalances.reset_cycle_anchor, identity.resetCycleAnchor),
 				eq(pooledBalances.reset_mode, identity.resetMode),
-				isNull(pooledBalances.stripe_subscription_id),
+				isNull(pooledBalances.processor_subscription_id),
 				eq(
 					pooledBalances.customer_license_link_id,
 					identity.customerLicenseLinkId,
@@ -132,7 +132,7 @@ export const insertPooledBalanceGraph = async ({
 			interval_count: identity.intervalCount,
 			reset_cycle_anchor: identity.resetCycleAnchor,
 			reset_mode: identity.resetMode,
-			stripe_subscription_id: null,
+			processor_subscription_id: null,
 			customer_license_link_id: identity.customerLicenseLinkId,
 			rollover_signature: identity.rolloverSignature,
 			customer_entitlement_id: customerEntitlementId,

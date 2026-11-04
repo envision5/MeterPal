@@ -15,7 +15,7 @@ export const customLineItemToPreviewLineItem = (
 			lineItem?.discounts.map((discount) => ({
 				amount_off: discount.amountOff,
 				percent_off: discount.percentOff,
-				reward_id: discount.stripeCouponId,
+				reward_id: discount.processorCouponId,
 				reward_name: discount.couponName,
 			})) ?? [],
 		plan_id: "",

@@ -1,5 +1,5 @@
 import type { BillingContext, FullCusProduct } from "@autumn/shared";
-import { buildTransitionPoints } from "@/internal/billing/v2/providers/stripe/utils/subscriptionSchedules/buildTransitionPoints";
+import { buildTransitionPoints } from "@/internal/billing/v2/utils/customerProducts/buildTransitionPoints";
 import {
 	isFutureTimestamp,
 	normalizeMs,
@@ -28,7 +28,7 @@ const getFutureTrialEndsAt = ({
 	return trialEndsAt[0];
 };
 
-/** Builds preview candidates from Stripe schedule transitions plus trial ends. */
+/** Builds preview candidates from product transitions plus trial ends. */
 export const buildNextCycleTransitionPoints = ({
 	billingContext,
 	customerProducts,

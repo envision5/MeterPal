@@ -60,30 +60,7 @@ Reference document for the current log context structure across all pathways. Us
 }
 ```
 
-## 3. Stripe Webhooks
-
-**Pathway:** `baseMiddleware` → `stripeInitLoggerMiddleware`
-
-```json
-{
-  "context": {
-    "req": {},
-    "query": {},
-    "context": {
-      "event_type": "invoice.paid",
-      "event_id": "evt_xxx",
-      "object_id": "in_xxx",
-      "authType": "stripe",
-      "org_id": "org_xxx",
-      "org_slug": "my-org",
-      "env": "sandbox",
-      "customer_id": "cus_123"
-    }
-  }
-}
-```
-
-## 4. SQS Workers
+## 3. SQS Workers
 
 **Pathway:** `initWorkers.ts` (SQS handler)
 
@@ -99,7 +76,7 @@ Reference document for the current log context structure across all pathways. Us
 }
 ```
 
-## 5. BullMQ Workers
+## 4. BullMQ Workers
 
 **Pathway:** `initBullMqWorkers.ts` → `createWorkerContext`
 
@@ -136,7 +113,7 @@ Reference document for the current log context structure across all pathways. Us
 }
 ```
 
-## 6. Migration Jobs
+## 5. Migration Jobs
 
 **Pathway:** `createMigrationCustomerLogger`
 

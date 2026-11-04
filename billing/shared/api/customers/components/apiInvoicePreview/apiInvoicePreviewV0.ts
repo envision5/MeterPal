@@ -5,7 +5,7 @@ export const ApiInvoicePreviewV0Schema = z.object({
 	object: z.literal("invoice_preview").meta({ internal: true }),
 	subscription_id: z.string().meta({
 		internal: true,
-		description: "The Stripe subscription this invoice will be billed against.",
+		description: "The processor subscription this invoice will be billed against.",
 	}),
 	plan_ids: z.array(z.string()).meta({
 		description: "Plan IDs contributing line items to this invoice.",

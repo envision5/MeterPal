@@ -87,7 +87,7 @@ export const isCustomerProductScheduled = (cp?: FullCusProduct) => {
 
 /**
  * Checks if a scheduled customer product should be activated based on its starts_at time.
- * Uses an optional tolerance to handle timing differences between Stripe and webhook arrival.
+ * Uses an optional tolerance to handle timing differences between the processor and webhook arrival.
  *
  * @param toleranceMs - Tolerance in milliseconds (default: 10 minutes)
  */
@@ -134,7 +134,7 @@ export const isCustomerProductTrialing = (
 	return customerProduct.trial_ends_at && customerProduct.trial_ends_at > nowMs;
 };
 
-/** Attach writes nothing to Stripe for a trial that reverts on end. */
+/** Attach writes nothing to the processor for a trial that reverts on end. */
 export const isCustomerProductRevertingTrial = (customerProduct?: {
 	on_trial_end?: string | null;
 }) => customerProduct?.on_trial_end === "revert";
@@ -213,31 +213,20 @@ export const isCusProductOnEntity = ({
 };
 
 // ============================================================================
-// STRIPE SUBSCRIPTION CHECKS
+// PROCESSOR SUBSCRIPTION CHECKS
 // ============================================================================
 
-export const isCustomerProductOnStripeSubscription = ({
+export const isCustomerProductOnProcessorSubscription = ({
 	customerProduct,
-	stripeSubscriptionId,
+	processorSubscriptionId,
 }: {
 	customerProduct: FullCusProduct;
-	stripeSubscriptionId: string;
+	processorSubscriptionId: string;
 }) => {
-	return customerProduct.subscription_ids?.includes(stripeSubscriptionId);
+	return customerProduct.subscription_ids?.includes(processorSubscriptionId);
 };
 
-export const isCustomerProductOnStripeSubscriptionSchedule = ({
-	customerProduct,
-	stripeSubscriptionScheduleId,
-}: {
-	customerProduct: FullCusProduct;
-	stripeSubscriptionScheduleId?: string;
-}) => {
-	if (!stripeSubscriptionScheduleId) return false;
-	return customerProduct.scheduled_ids?.includes(stripeSubscriptionScheduleId);
-};
-
-/** Note: this does not CONFIRM that the subscription is active (might be canceled in Stripe...) */
+/** Note: this does not CONFIRM that the subscription is active (might be canceled) */
 export const cusProductHasSubscription = ({
 	cusProduct,
 }: {

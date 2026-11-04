@@ -43,11 +43,7 @@ import { handleGetAdminRedisV2CacheConfig } from "./handleGetAdminRedisV2CacheCo
 import { handleGetAdminRequestBlockConfig } from "./handleGetAdminRequestBlockConfig";
 import { handleGetAdminResetJobConfig } from "./handleGetAdminResetJobConfig";
 import { handleGetAdminResetJobV2Config } from "./handleGetAdminResetJobV2Config";
-import { handleGetAdminStripeSyncConfig } from "./handleGetAdminStripeSyncConfig";
-
-import { handleGetDefaultStripeAccount } from "./handleGetDefaultStripeAccount";
 import { handleGetInvoiceLineItems } from "./handleGetInvoiceLineItems";
-import { handleGetMasterStripeAccount } from "./handleGetMasterStripeAccount";
 import { handleGetOrgMember } from "./handleGetOrgMember";
 import { handleListAdminOrgs } from "./handleListAdminOrgs";
 import { handleListAdminUsers } from "./handleListAdminUsers";
@@ -76,7 +72,6 @@ import { handleUpsertAdminRedisV2CacheConfig } from "./handleUpsertAdminRedisV2C
 import { handleUpsertAdminRequestBlockConfig } from "./handleUpsertAdminRequestBlockConfig";
 import { handleUpsertAdminResetJobConfig } from "./handleUpsertAdminResetJobConfig";
 import { handleUpsertAdminResetJobV2Config } from "./handleUpsertAdminResetJobV2Config";
-import { handleUpsertAdminStripeSyncConfig } from "./handleUpsertAdminStripeSyncConfig";
 import { handleUpsertSlackMcpOAuthClient } from "./handleUpsertSlackMcpOAuthClient";
 import { handleCreateImpersonationCliTokens } from "./impersonation/handleCreateImpersonationCliTokens";
 import { handleDeleteRollout } from "./rollouts/handleDeleteRollout";
@@ -213,11 +208,6 @@ honoAdminRouter.put(
 	"/reset-job-v2-config",
 	...handleUpsertAdminResetJobV2Config,
 );
-honoAdminRouter.get("/stripe-sync-config", ...handleGetAdminStripeSyncConfig);
-honoAdminRouter.put(
-	"/stripe-sync-config",
-	...handleUpsertAdminStripeSyncConfig,
-);
 honoAdminRouter.get(
 	"/redis-v2-cache-config",
 	...handleGetAdminRedisV2CacheConfig,
@@ -259,11 +249,6 @@ honoAdminRouter.get("/org-member", ...handleGetOrgMember);
 honoAdminRouter.post(
 	"/impersonation/cli-tokens",
 	...handleCreateImpersonationCliTokens,
-);
-honoAdminRouter.get("/master-stripe-account", ...handleGetMasterStripeAccount);
-honoAdminRouter.get(
-	"/default-stripe-account",
-	...handleGetDefaultStripeAccount,
 );
 honoAdminRouter.get("/oauth-clients", ...handleListOAuthClients);
 honoAdminRouter.post(

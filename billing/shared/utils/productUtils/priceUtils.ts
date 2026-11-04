@@ -1,6 +1,5 @@
 import { ApiVersion } from "@api/versionUtils/ApiVersion.js";
 import { Decimal } from "decimal.js";
-import type Stripe from "stripe";
 import type { FullCusProduct } from "../../models/cusProductModels/cusProductModels.js";
 import { BillingInterval } from "../../models/productModels/intervals/billingInterval.js";
 import type { FixedPriceConfig } from "../../models/productModels/priceModels/priceConfig/fixedPriceConfig.js";
@@ -13,10 +12,6 @@ import {
 	PriceType,
 } from "../../models/productModels/priceModels/priceEnums.js";
 import type { Price } from "../../models/productModels/priceModels/priceModels.js";
-import {
-	OnDecrease,
-	OnIncrease,
-} from "../../models/productV2Models/productItemModels/productItemEnums.js";
 import { notNullish } from "../utils.js";
 
 export const getBillingType = (config: FixedPriceConfig | UsagePriceConfig) => {
@@ -76,37 +71,6 @@ export const isV4Usage = ({
 		(cusProduct.api_semver === ApiVersion.V1_Beta ||
 			notNullish(cusProduct.internal_entity_id))
 	);
-};
-
-// export const
-export const onIncreaseToStripeProration = ({
-	onIncrease,
-}: {
-	onIncrease: OnIncrease;
-}) => {
-	let behavior = "none";
-	if (onIncrease === OnIncrease.ProrateImmediately) {
-		behavior = "always_invoice";
-	} else if (onIncrease === OnIncrease.ProrateNextCycle) {
-		behavior = "create_prorations";
-	}
-
-	return behavior as Stripe.SubscriptionItemUpdateParams.ProrationBehavior;
-};
-
-export const onDecreaseToStripeProration = ({
-	onDecrease,
-}: {
-	onDecrease: OnDecrease;
-}) => {
-	let behavior = "none";
-	if (onDecrease === OnDecrease.ProrateImmediately) {
-		behavior = "always_invoice";
-	} else if (onDecrease === OnDecrease.ProrateNextCycle) {
-		behavior = "create_prorations";
-	}
-
-	return behavior as Stripe.SubscriptionItemUpdateParams.ProrationBehavior;
 };
 
 export const roundUsage = ({

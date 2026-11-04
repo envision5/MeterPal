@@ -6,7 +6,6 @@ import { resolveInternalIdRefs } from "@/internal/catalogV2/actions/updateCatalo
 import { setupFeatureStatesContext } from "@/internal/catalogV2/actions/updateCatalog/setup/setupFeatureStatesContext";
 import { setupLicenseStatesContext } from "@/internal/catalogV2/actions/updateCatalog/setup/setupLicenseStatesContext";
 import { setupProductStatesContext } from "@/internal/catalogV2/actions/updateCatalog/setup/setupProductStatesContext";
-import { setupRewardStatesContext } from "@/internal/catalogV2/actions/updateCatalog/setup/setupRewardStatesContext";
 import {
 	type CatalogPhases,
 	timeCatalogPhase,
@@ -33,34 +32,24 @@ export const setupUpdateCatalogContext = async ({
 		run: () => resolveInternalIdRefs({ ctx, params }),
 	});
 
-	const [
-		featureStatesContext,
-		productStatesContext,
-		featureUsagePersisted,
-		rewardStatesContext,
-	] = await Promise.all([
-		timeCatalogPhase({
-			ctx,
-			phases,
-			phase: "feature_states",
-			run: () => setupFeatureStatesContext({ ctx, params }),
-		}),
-		setupProductStatesContext({ ctx, params, phases, internalIdRefs }),
-		preview
-			? timeCatalogPhase({
-					ctx,
-					phases,
-					phase: "feature_usage",
-					run: () => setupFeatureUsagePersisted({ ctx, params }),
-				})
-			: undefined,
-		timeCatalogPhase({
-			ctx,
-			phases,
-			phase: "reward_states",
-			run: () => setupRewardStatesContext({ ctx, params }),
-		}),
-	]);
+	const [featureStatesContext, productStatesContext, featureUsagePersisted] =
+		await Promise.all([
+			timeCatalogPhase({
+				ctx,
+				phases,
+				phase: "feature_states",
+				run: () => setupFeatureStatesContext({ ctx, params }),
+			}),
+			setupProductStatesContext({ ctx, params, phases, internalIdRefs }),
+			preview
+				? timeCatalogPhase({
+						ctx,
+						phases,
+						phase: "feature_usage",
+						run: () => setupFeatureUsagePersisted({ ctx, params }),
+					})
+				: undefined,
+		]);
 
 	// License refs + plan-usage samples both need loaded product internal ids.
 	const [licenseStatesContext, planUsagePersisted] = await Promise.all([
@@ -86,7 +75,6 @@ export const setupUpdateCatalogContext = async ({
 		productStatesContext,
 		internalIdRefs,
 		licenseStatesContext,
-		rewardStatesContext,
 		previewContext: preview
 			? {
 					featureUsagePersisted: featureUsagePersisted ?? {},

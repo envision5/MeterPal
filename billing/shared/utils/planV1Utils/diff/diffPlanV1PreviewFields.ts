@@ -22,7 +22,6 @@ const previousAttributeKeys = [
 	"active",
 	"archived",
 	"metadata",
-	"processors",
 ] as const satisfies readonly (keyof ApiPlanV1)[];
 
 const valuesEqual = (left: unknown, right: unknown): boolean => {

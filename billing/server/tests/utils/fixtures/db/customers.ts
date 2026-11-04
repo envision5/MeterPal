@@ -17,7 +17,7 @@ const create = ({
 	org_id: "org_test",
 	created_at: Date.now(),
 	env: AppEnv.Sandbox,
-	processor: { type: "stripe", id: "cus_stripe_test" },
+	processor: { type: "paypal", id: "cus_paypal_test" },
 	processors: null,
 	metadata: {},
 	config: {},

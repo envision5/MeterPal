@@ -6,7 +6,7 @@ import {
 	customerProducts as customerProductsTable,
 	findCustomerProductById,
 	isCustomerProductRevertingTrial,
-	STRIPE_LINKED_STATUSES,
+	PROCESSOR_LINKED_STATUSES,
 } from "@autumn/shared";
 import { and, eq, type InferSelectModel } from "drizzle-orm";
 import type { DrizzleCli } from "@/db/initDrizzle";
@@ -54,7 +54,7 @@ export const tryProcessRevertExpiry = async ({
 		idOrInternalId: customerId,
 		withEntities: true,
 		withSubs: true,
-		inStatuses: STRIPE_LINKED_STATUSES,
+		inStatuses: PROCESSOR_LINKED_STATUSES,
 	});
 
 	const trialFullCusProduct = findCustomerProductById({

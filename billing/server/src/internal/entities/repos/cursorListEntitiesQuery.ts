@@ -39,16 +39,11 @@ const getEntityListFilterSql = ({
 	if (processors && processors.length > 0) {
 		const processorConditions = processors
 			.map((proc) => {
-				if (proc === "stripe") return sql`(c.processor->>'id' IS NOT NULL)`;
-				if (proc === "revenuecat")
-					return sql`EXISTS (
-						SELECT 1
-						FROM customer_products cp_processor
-						WHERE cp_processor.internal_customer_id = c.internal_id
-							AND cp_processor.processor->>'type' = 'revenuecat'
+				if (proc === "paypal")
+					return sql`(
+						c.paypal_subscription_id IS NOT NULL
+						OR c.paypal_payer_id IS NOT NULL
 					)`;
-				if (proc === "vercel")
-					return sql`(c.processors->>'vercel' IS NOT NULL)`;
 				return null;
 			})
 			.filter((condition): condition is SQL => condition !== null);

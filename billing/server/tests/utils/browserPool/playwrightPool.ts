@@ -2,7 +2,6 @@ import { afterAll } from "bun:test";
 import { type Browser, chromium } from "playwright-core";
 import { createTestWait } from "../testWait/createTestWait";
 import { getChromiumPath, HEADLESS } from "./browserConfig.js";
-import { limitStripeBrowserRequests } from "./limitStripeBrowserRequests.js";
 
 /**
  * Singleton Playwright browser pool for local development.
@@ -71,10 +70,8 @@ class PlaywrightPool {
 			signal,
 			description: "Browser checkout",
 		});
-		let admission: Awaited<ReturnType<typeof limitStripeBrowserRequests>>;
 		try {
 			return await wait.run(async () => {
-				admission = await limitStripeBrowserRequests({ context });
 				wait.remainingMs();
 				const page = await context.newPage();
 				wait.remainingMs();
@@ -82,11 +79,7 @@ class PlaywrightPool {
 			});
 		} finally {
 			wait.close();
-			try {
-				await context.close();
-			} finally {
-				await admission?.close();
-			}
+			await context.close();
 		}
 	}
 

@@ -50,7 +50,6 @@ export const handleFeatureUsageTypeChanged = async ({
 						config: {
 							...(price.config as UsagePriceConfig),
 							should_prorate: newUsageType === FeatureUsageType.Continuous,
-							stripe_price_id: null,
 						},
 					},
 				}),

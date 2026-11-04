@@ -26,8 +26,7 @@ export type VoidInvoiceParams = {
  * The billing processor that owns this invoice.
  */
 export const VoidInvoiceProcessorType = {
-  Stripe: "stripe",
-  Revenuecat: "revenuecat",
+  Paypal: "paypal",
 } as const;
 /**
  * The billing processor that owns this invoice.
@@ -100,9 +99,9 @@ export type VoidInvoiceInvoice = {
    */
   planIds: Array<string>;
   /**
-   * The Stripe invoice ID
+   * The processor invoice ID
    */
-  stripeId: string;
+  processorInvoiceId: string;
   /**
    * The billing processor that owns this invoice.
    */
@@ -124,7 +123,7 @@ export type VoidInvoiceInvoice = {
    */
   createdAt: number;
   /**
-   * URL to the Stripe-hosted invoice page
+   * URL to the processor-hosted invoice page
    */
   hostedInvoiceUrl?: string | null | undefined;
   /**
@@ -148,7 +147,7 @@ export type VoidInvoiceInvoice = {
    */
   refundedAmount: number;
   /**
-   * Line items on the invoice, one per line as shown in Stripe. Capped at 100. Empty for invoices recorded before line item storage.
+   * Line items on the invoice, one per line as shown on the hosted invoice page. Capped at 100. Empty for invoices recorded before line item storage.
    */
   items?: Array<VoidInvoiceItem> | undefined;
 };
@@ -266,10 +265,10 @@ export const VoidInvoiceInvoice$inboundSchema: z.ZodMiniType<
 > = z.pipe(
   z.object({
     plan_ids: z.array(types.string()),
-    stripe_id: types.string(),
+    processor_invoice_id: types.string(),
     processor_type: z._default(
       VoidInvoiceProcessorType$inboundSchema,
-      "stripe",
+      "paypal",
     ),
     status: types.string(),
     total: types.number(),
@@ -286,7 +285,7 @@ export const VoidInvoiceInvoice$inboundSchema: z.ZodMiniType<
   z.transform((v) => {
     return remap$(v, {
       "plan_ids": "planIds",
-      "stripe_id": "stripeId",
+      "processor_invoice_id": "processorInvoiceId",
       "processor_type": "processorType",
       "created_at": "createdAt",
       "hosted_invoice_url": "hostedInvoiceUrl",

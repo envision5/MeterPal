@@ -11,7 +11,6 @@ export const getExistingCusProducts = ({
 	product,
 	cusProducts,
 	internalEntityId,
-	// processorType = ProcessorType.Stripe,
 }: {
 	product: Product;
 	cusProducts: FullCusProduct[];

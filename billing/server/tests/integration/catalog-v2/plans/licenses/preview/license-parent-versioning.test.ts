@@ -15,7 +15,7 @@ import { test } from "bun:test";
 import { initScenario } from "@tests/utils/testInitUtils/initScenario.js";
 import chalk from "chalk";
 import { uniqueTestId } from "../../../utils/uniqueTestId.js";
-import { seedVersionableCustomer } from "../../migrations/utils/seedVersionableCustomer.js";
+import { seedVersionableCustomer } from "../../utils/seedVersionableCustomer.js";
 import {
 	expectPlanPreviewRowCorrect,
 	parsePlanPreview,

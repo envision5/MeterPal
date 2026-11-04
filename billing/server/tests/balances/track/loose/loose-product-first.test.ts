@@ -6,8 +6,8 @@ import chalk from "chalk";
 import { AutumnInt } from "@/external/autumn/autumnCli.js";
 import { constructFeatureItem } from "@/utils/scriptUtils/constructItem.js";
 import { constructProduct } from "@/utils/scriptUtils/createTestProducts.js";
-import { initCustomerV3 } from "@/utils/scriptUtils/testUtils/initCustomerV3.js";
-import { initProductsV0 } from "@/utils/scriptUtils/testUtils/initProductsV0.js";
+import { initTestCustomer } from "@tests/utils/testInitUtils/initTestCustomer.js";
+import { initTestProducts } from "@tests/utils/testInitUtils/initTestProducts.js";
 
 const testCase = "loose-product-first";
 
@@ -28,14 +28,13 @@ describe(`${chalk.yellowBright("loose-product-first: deducts from product before
 	const autumnV1 = new AutumnInt({ version: ApiVersion.V1_2 });
 
 	beforeAll(async () => {
-		await initCustomerV3({
+		await initTestCustomer({
 			ctx,
 			customerId,
-			withTestClock: false,
 		});
 
 		// Create product with 10 messages
-		await initProductsV0({
+		await initTestProducts({
 			ctx,
 			products: [testProduct],
 			prefix: testCase,

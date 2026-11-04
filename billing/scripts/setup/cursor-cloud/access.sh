@@ -43,11 +43,6 @@ if port_up 3000; then echo "  dashboard  :3000  up"; else echo "  dashboard  :30
 if port_up 8080; then echo "  api        :8080  up"; else echo "  api        :8080  down"; fi
 if port_up 3001; then echo "  checkout   :3001  up"; else echo "  checkout   :3001  down"; fi
 if port_up 3099; then echo "  leaf       :3099  up"; else echo "  leaf       :3099  down"; fi
-if pgrep -af 'stripe listen' >/dev/null 2>&1; then
-	echo "  stripe listen  running"
-else
-	echo "  stripe listen  not running (starts with bun dw when STRIPE_SANDBOX_SECRET_KEY is set)"
-fi
 echo
 echo "Open the dashboard from your laptop (best first):"
 echo "  Skip the in-IDE Browser tab — it stays blank (Cursor bug, any URL)."

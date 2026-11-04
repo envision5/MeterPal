@@ -212,16 +212,16 @@ The customer's balance is set to their chosen quantity. Existing usage is then d
 > **Example**: Customer has **3 seats** in use. They purchase a plan with 5 included seats, passing `quantity: 10`.
 > - Balance is set to 10 (5 included + 5 purchased)
 > - 3 existing seats are deducted → **7 remaining**
-> - Stripe charges for 10 seats (with 5 in the free tier)
+> - The processor charges for 10 seats (with 5 in the free tier)
 
 ### Usage-based
 
-No quantity is needed. The Stripe subscription quantity is set to the customer's current usage automatically.
+No quantity is needed. The processor subscription quantity is set to the customer's current usage automatically.
 
 > **Example**: Customer has **3 seats** in use. They purchase a plan with 5 included seats at \$10/extra seat.
 > - Balance starts at 5 (included amount)
 > - 3 existing seats are deducted → **2 remaining**
-> - Stripe subscription reflects 3 seats in use (within the free tier, so no extra charge)
+> - Processor subscription reflects 3 seats in use (within the free tier, so no extra charge)
 > - When they add a 6th seat, billing begins at \$10/seat for the overage
 
 | Scenario | Prepaid (qty: 8) | Usage-based |

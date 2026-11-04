@@ -4,15 +4,15 @@ import type { LineItemContext } from "../../../../models/billingModels/lineItem/
 import type { FullCusEntWithFullCusProduct } from "../../../../models/cusProductModels/cusEntModels/cusEntWithProduct.js";
 import type { Feature } from "../../../../models/featureModels/featureModels.js";
 import {
-	STRIPE_THREE_DECIMAL_CURRENCIES,
-	stripeMinorUnitFactor,
-} from "../../../currencyUtils/stripeCurrencies.js";
+	THREE_DECIMAL_CURRENCIES,
+	minorUnitFactor,
+} from "../../../currencyUtils/currencies.js";
 import { cusEntToInvoiceOverage } from "../../../cusEntUtils/overageUtils/cusEntToInvoiceOverage.js";
 import { parseUsageAttributionKey } from "../../../cusEntUtils/usageAttribution/parseUsageAttributionKey.js";
 import { findFeatureByInternalId } from "../../../featureUtils/findFeatureUtils.js";
 import {
-	atmnToStripeAmount,
-	stripeToAtmnAmount,
+	atmnToMinorUnitAmount,
+	minorUnitToAtmnAmount,
 } from "../../../productUtils/priceUtils/convertAmountUtils.js";
 import { buildLineItem } from "./buildLineItem.js";
 
@@ -36,8 +36,8 @@ const roundToCurrency = ({
 	amount: number;
 	currency: string;
 }): number =>
-	stripeToAtmnAmount({
-		amount: atmnToStripeAmount({ amount, currency }),
+	minorUnitToAtmnAmount({
+		amount: atmnToMinorUnitAmount({ amount, currency }),
 		currency,
 	});
 
@@ -100,9 +100,9 @@ const customerEntitlementToCreditSourceLines = ({
 		});
 
 const smallestBillableUnit = (currency: string): Decimal =>
-	STRIPE_THREE_DECIMAL_CURRENCIES.has(currency.toLowerCase())
+	THREE_DECIMAL_CURRENCIES.has(currency.toLowerCase())
 		? new Decimal(0.01)
-		: new Decimal(1).div(stripeMinorUnitFactor(currency));
+		: new Decimal(1).div(minorUnitFactor(currency));
 
 const roundingResidual = (line: CreditSourceLine): Decimal =>
 	new Decimal(line.amount).sub(line.credits);

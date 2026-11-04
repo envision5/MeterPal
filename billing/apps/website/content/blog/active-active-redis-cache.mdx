@@ -93,7 +93,7 @@ First of all, with the active-active database, even though it solved that counte
 
 - We store each customer as a JSON blob with `customer_id` as the key
 - Your customer performs an upgrade on us-east so we append to their `subscriptions` array
-- At the same time, Stripe sends an `invoice.paid` webhook to our us-west server and we append to the customer’s `invoices` array
+- At the same time, PayPal sends an `invoice.paid` webhook to our us-west server and we append to the customer’s `invoices` array
 
 Now, both of these append operations happen on the same key and are done via a read-update-set operation. Since they happen in different regions, Redis resolves the conflict through a Last-Write-Win strategy. So either the invoices or subscriptions array will be missing an item.
 

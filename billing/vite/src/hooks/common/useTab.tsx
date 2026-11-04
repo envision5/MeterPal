@@ -28,9 +28,6 @@ export const useTab = () => {
 	if (path.startsWith("/products")) {
 		return "products";
 	}
-	if (path.startsWith("/migrations")) {
-		return "migrations";
-	}
 	if (path.startsWith("/customers")) {
 		return "customers";
 	}

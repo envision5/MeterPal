@@ -101,7 +101,6 @@ export const useProductQuery = () => {
 		await Promise.all([
 			queryClient.invalidateQueries({ queryKey: ["product_counts"] }),
 			queryClient.invalidateQueries({ queryKey: ["product_versions"] }),
-			queryClient.invalidateQueries({ queryKey: ["migrations"] }),
 		]);
 	};
 
@@ -117,10 +116,7 @@ export const useProductQuery = () => {
 		isLoading: isLoadingWithCache,
 		refetch: async () => {
 			await refetch();
-			await Promise.all([
-				queryClient.invalidateQueries({ queryKey: ["migrations"] }),
-				refetchCounts(),
-			]);
+			await refetchCounts();
 		},
 		invalidate,
 		error,

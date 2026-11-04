@@ -1,6 +1,5 @@
 import {
 	type AppEnv,
-	copyStripeResourcesToMatchingPrice,
 	type Entitlement,
 	type Feature,
 	isFeatureItem,
@@ -97,27 +96,6 @@ const handleCustomProductItems = ({
 	customEnts: [...newEnts, ...updatedEnts],
 	features,
 });
-
-const carryForwardStripeResources = ({
-	targetPrices,
-	targetEntitlements,
-	candidatePrices,
-	candidateEntitlements,
-}: {
-	targetPrices: Price[];
-	targetEntitlements: Entitlement[];
-	candidatePrices: Price[];
-	candidateEntitlements: Entitlement[];
-}) => {
-	for (const targetPrice of targetPrices) {
-		copyStripeResourcesToMatchingPrice({
-			targetPrice,
-			candidatePrices,
-			targetEntitlements,
-			candidateEntitlements,
-		});
-	}
-};
 
 export const handleNewProductItems = async ({
 	db,
@@ -238,13 +216,6 @@ export const handleNewProductItems = async ({
 			sameEnts.push(sameEnt);
 		}
 	}
-
-	carryForwardStripeResources({
-		targetPrices: [...newPrices, ...updatedPrices],
-		targetEntitlements: [...newEnts, ...updatedEnts, ...sameEnts],
-		candidatePrices: curPrices,
-		candidateEntitlements: curEnts,
-	});
 
 	const printLogs = false;
 	if (printLogs) {

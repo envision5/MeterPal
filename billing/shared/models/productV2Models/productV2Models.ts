@@ -24,7 +24,6 @@ export const ProductV2Schema = z.object({
 	free_trial: ApiFreeTrialSchema.nullish(),
 	items: z.array(ProductItemSchema),
 	created_at: z.number(),
-	stripe_id: z.string().nullish(),
 	archived: z.boolean().default(false).nullish(),
 	base_internal_product_id: z.string().nullish(),
 	base_id: z.string().nullish(),
@@ -40,15 +39,6 @@ export const FrontendProductSchema = ProductV2Schema.extend({
 		.enum(["recurring", "one-off", "usage"])
 		.default("recurring")
 		.nullable(),
-	external_processors: z
-		.object({
-			revenuecat: z
-				.object({
-					linked_product_id: z.string().nullish(),
-				})
-				.nullish(),
-		})
-		.nullish(),
 });
 
 export type ProductV2 = z.infer<typeof ProductV2Schema>;

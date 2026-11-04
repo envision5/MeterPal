@@ -82,8 +82,7 @@ r"""Filter customer products used for entity hydration and plan matching. Defaul
 
 
 ListEntitiesProcessor = Literal[
-    "stripe",
-    "revenuecat",
+    "paypal",
     "vercel",
 ]
 
@@ -100,7 +99,7 @@ class ListEntitiesParamsTypedDict(TypedDict):
     search: NotRequired[str]
     r"""Search entities by id or name."""
     processors: NotRequired[List[ListEntitiesProcessor]]
-    r"""Filter by parent customer processor type (stripe, revenuecat, vercel)."""
+    r"""Filter by parent customer processor type (paypal)."""
     customer_id: NotRequired[str]
     r"""Restrict the response to entities owned by this customer id. Use to bulk-fetch all entities for one customer in a single paginated call instead of iterating entities.get."""
 
@@ -122,7 +121,7 @@ class ListEntitiesParams(BaseModel):
     r"""Search entities by id or name."""
 
     processors: Optional[List[ListEntitiesProcessor]] = None
-    r"""Filter by parent customer processor type (stripe, revenuecat, vercel)."""
+    r"""Filter by parent customer processor type (paypal)."""
 
     customer_id: Optional[str] = None
     r"""Restrict the response to entities owned by this customer id. Use to bulk-fetch all entities for one customer in a single paginated call instead of iterating entities.get."""
@@ -1113,63 +1112,8 @@ class ListEntitiesDisplay(BaseModel):
         return m
 
 
-class ListEntitiesStripeTypedDict(TypedDict):
-    product_id: NotRequired[str]
-    r"""Stripe product ID this feature's usage prices bill under."""
-    meter_id: NotRequired[str]
-    r"""Stripe meter ID used to create this feature's metered price."""
-
-
-class ListEntitiesStripe(BaseModel):
-    product_id: Optional[str] = None
-    r"""Stripe product ID this feature's usage prices bill under."""
-
-    meter_id: Optional[str] = None
-    r"""Stripe meter ID used to create this feature's metered price."""
-
-    @model_serializer(mode="wrap")
-    def serialize_model(self, handler):
-        optional_fields = set(["product_id", "meter_id"])
-        serialized = handler(self)
-        m = {}
-
-        for n, f in type(self).model_fields.items():
-            k = f.alias or n
-            val = serialized.get(k, serialized.get(n))
-
-            if val != UNSET_SENTINEL:
-                if val is not None or k not in optional_fields:
-                    m[k] = val
-
-        return m
-
-
 class ListEntitiesProcessorsTypedDict(TypedDict):
-    r"""Processor mappings for this feature. Present when a Stripe product or meter is set."""
-
-    stripe: NotRequired[ListEntitiesStripeTypedDict]
-
-
-class ListEntitiesProcessors(BaseModel):
-    r"""Processor mappings for this feature. Present when a Stripe product or meter is set."""
-
-    stripe: Optional[ListEntitiesStripe] = None
-
-    @model_serializer(mode="wrap")
-    def serialize_model(self, handler):
-        optional_fields = set(["stripe"])
-        serialized = handler(self)
-        m = {}
-
-        for n, f in type(self).model_fields.items():
-            k = f.alias or n
-            val = serialized.get(k, serialized.get(n))
-
-            if val != UNSET_SENTINEL:
-                if val is not None or k not in optional_fields:
-                    m[k] = val
-
-        return m
+    r"""Processor mappings for this feature."""
 
 
 class ListEntitiesFeatureTypedDict(TypedDict):
@@ -1199,8 +1143,6 @@ class ListEntitiesFeatureTypedDict(TypedDict):
     r"""Per-provider default markup percentages for AI credit systems."""
     display: NotRequired[ListEntitiesDisplayTypedDict]
     r"""Display names for the feature in billing UI and customer-facing components."""
-    processors: NotRequired[ListEntitiesProcessorsTypedDict]
-    r"""Processor mappings for this feature. Present when a Stripe product or meter is set."""
 
 
 class ListEntitiesFeature(BaseModel):
@@ -1239,8 +1181,6 @@ class ListEntitiesFeature(BaseModel):
     display: Optional[ListEntitiesDisplay] = None
     r"""Display names for the feature in billing UI and customer-facing components."""
 
-    processors: Optional[ListEntitiesProcessors] = None
-    r"""Processor mappings for this feature. Present when a Stripe product or meter is set."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -1363,7 +1303,7 @@ class ListEntitiesSpendLimitTypedDict(TypedDict):
     overage_limit: NotRequired[float]
     r"""Overage cap for the feature: absolute units, or a percent (e.g. 120) when limit_type is usage_percentage."""
     skip_overage_billing: NotRequired[bool]
-    r"""When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally."""
+    r"""When true, overage for this feature is not billed to the processor. Usage tracking and balance resets still behave normally."""
     source: NotRequired[ListEntitiesSpendLimitSource]
     r"""Response-only: whether the entry is a customer-level override or inherited from an attached plan's defaults."""
 
@@ -1382,7 +1322,7 @@ class ListEntitiesSpendLimit(BaseModel):
     r"""Overage cap for the feature: absolute units, or a percent (e.g. 120) when limit_type is usage_percentage."""
 
     skip_overage_billing: Optional[bool] = None
-    r"""When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally."""
+    r"""When true, overage for this feature is not billed to the processor. Usage tracking and balance resets still behave normally."""
 
     source: Optional[ListEntitiesSpendLimitSource] = None
     r"""Response-only: whether the entry is a customer-level override or inherited from an attached plan's defaults."""
@@ -1726,8 +1666,7 @@ class ListEntitiesBillingControls(BaseModel):
 
 ListEntitiesProcessorType = Union[
     Literal[
-        "stripe",
-        "revenuecat",
+        "paypal",
     ],
     UnrecognizedStr,
 ]
@@ -1737,8 +1676,8 @@ r"""The billing processor that owns this invoice."""
 class ListEntitiesInvoiceTypedDict(TypedDict):
     plan_ids: List[str]
     r"""Array of plan IDs included in this invoice"""
-    stripe_id: str
-    r"""The Stripe invoice ID"""
+    processor_invoice_id: str
+    r"""The processor's stable invoice ID."""
     status: str
     r"""The status of the invoice"""
     total: float
@@ -1750,15 +1689,15 @@ class ListEntitiesInvoiceTypedDict(TypedDict):
     processor_type: NotRequired[ListEntitiesProcessorType]
     r"""The billing processor that owns this invoice."""
     hosted_invoice_url: NotRequired[Nullable[str]]
-    r"""URL to the Stripe-hosted invoice page"""
+    r"""The hosted invoice URL, when available."""
 
 
 class ListEntitiesInvoice(BaseModel):
     plan_ids: List[str]
     r"""Array of plan IDs included in this invoice"""
 
-    stripe_id: str
-    r"""The Stripe invoice ID"""
+    processor_invoice_id: str
+    r"""The processor's stable invoice ID."""
 
     status: str
     r"""The status of the invoice"""
@@ -1772,11 +1711,11 @@ class ListEntitiesInvoice(BaseModel):
     created_at: float
     r"""Timestamp when the invoice was created"""
 
-    processor_type: Optional[ListEntitiesProcessorType] = "stripe"
+    processor_type: Optional[ListEntitiesProcessorType] = "paypal"
     r"""The billing processor that owns this invoice."""
 
     hosted_invoice_url: OptionalNullable[str] = UNSET
-    r"""URL to the Stripe-hosted invoice page"""
+    r"""The hosted invoice URL, when available."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):

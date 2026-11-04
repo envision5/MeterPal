@@ -17,7 +17,7 @@ describe("invoiceDaysToParams", () => {
 		);
 	});
 
-	test("leaves an issue day of today to Stripe", () => {
+	test("leaves an issue day of today to the processor", () => {
 		const params = invoiceDaysToParams({
 			issueDay: new Date(2026, 8, 24).getTime(),
 			dueDay,

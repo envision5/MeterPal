@@ -25,7 +25,6 @@ const buildFeature = ({
 	archived: false,
 	event_names: [],
 	model_markups: null,
-	stripe_meter: null,
 });
 
 describe("apiSubjectToUsageLimitHeadroom", () => {

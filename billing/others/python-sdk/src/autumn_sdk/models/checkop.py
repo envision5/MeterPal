@@ -911,51 +911,16 @@ class FlagDisplay2(BaseModel):
         return m
 
 
-class CheckStripe2TypedDict(TypedDict):
-    product_id: NotRequired[str]
-    r"""Stripe product ID this feature's usage prices bill under."""
-    meter_id: NotRequired[str]
-    r"""Stripe meter ID used to create this feature's metered price."""
-
-
-class CheckStripe2(BaseModel):
-    product_id: Optional[str] = None
-    r"""Stripe product ID this feature's usage prices bill under."""
-
-    meter_id: Optional[str] = None
-    r"""Stripe meter ID used to create this feature's metered price."""
-
-    @model_serializer(mode="wrap")
-    def serialize_model(self, handler):
-        optional_fields = set(["product_id", "meter_id"])
-        serialized = handler(self)
-        m = {}
-
-        for n, f in type(self).model_fields.items():
-            k = f.alias or n
-            val = serialized.get(k, serialized.get(n))
-
-            if val != UNSET_SENTINEL:
-                if val is not None or k not in optional_fields:
-                    m[k] = val
-
-        return m
-
-
 class CheckProcessors2TypedDict(TypedDict):
-    r"""Processor mappings for this feature. Present when a Stripe product or meter is set."""
-
-    stripe: NotRequired[CheckStripe2TypedDict]
+    r"""Processor mappings for this feature."""
 
 
 class CheckProcessors2(BaseModel):
-    r"""Processor mappings for this feature. Present when a Stripe product or meter is set."""
-
-    stripe: Optional[CheckStripe2] = None
+    r"""Processor mappings for this feature."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
-        optional_fields = set(["stripe"])
+        optional_fields = set([])
         serialized = handler(self)
         m = {}
 
@@ -996,7 +961,7 @@ class CheckFeature2TypedDict(TypedDict):
     display: NotRequired[FlagDisplay2TypedDict]
     r"""Display names for the feature in billing UI and customer-facing components."""
     processors: NotRequired[CheckProcessors2TypedDict]
-    r"""Processor mappings for this feature. Present when a Stripe product or meter is set."""
+    r"""Processor mappings for this feature."""
 
 
 class CheckFeature2(BaseModel):
@@ -1036,7 +1001,7 @@ class CheckFeature2(BaseModel):
     r"""Display names for the feature in billing UI and customer-facing components."""
 
     processors: Optional[CheckProcessors2] = None
-    r"""Processor mappings for this feature. Present when a Stripe product or meter is set."""
+    r"""Processor mappings for this feature."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -1720,7 +1685,7 @@ class CheckSpendLimit2TypedDict(TypedDict):
     overage_limit: NotRequired[float]
     r"""Overage cap for the feature: absolute units, or a percent (e.g. 120) when limit_type is usage_percentage."""
     skip_overage_billing: NotRequired[bool]
-    r"""When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally."""
+    r"""When true, overage for this feature is not billed to the processor. Usage tracking and balance resets still behave normally."""
 
 
 class CheckSpendLimit2(BaseModel):
@@ -1737,7 +1702,7 @@ class CheckSpendLimit2(BaseModel):
     r"""Overage cap for the feature: absolute units, or a percent (e.g. 120) when limit_type is usage_percentage."""
 
     skip_overage_billing: Optional[bool] = None
-    r"""When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally."""
+    r"""When true, overage for this feature is not billed to the processor. Usage tracking and balance resets still behave normally."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -3063,51 +3028,16 @@ class FlagDisplay1(BaseModel):
         return m
 
 
-class CheckStripe1TypedDict(TypedDict):
-    product_id: NotRequired[str]
-    r"""Stripe product ID this feature's usage prices bill under."""
-    meter_id: NotRequired[str]
-    r"""Stripe meter ID used to create this feature's metered price."""
-
-
-class CheckStripe1(BaseModel):
-    product_id: Optional[str] = None
-    r"""Stripe product ID this feature's usage prices bill under."""
-
-    meter_id: Optional[str] = None
-    r"""Stripe meter ID used to create this feature's metered price."""
-
-    @model_serializer(mode="wrap")
-    def serialize_model(self, handler):
-        optional_fields = set(["product_id", "meter_id"])
-        serialized = handler(self)
-        m = {}
-
-        for n, f in type(self).model_fields.items():
-            k = f.alias or n
-            val = serialized.get(k, serialized.get(n))
-
-            if val != UNSET_SENTINEL:
-                if val is not None or k not in optional_fields:
-                    m[k] = val
-
-        return m
-
-
 class CheckProcessors1TypedDict(TypedDict):
-    r"""Processor mappings for this feature. Present when a Stripe product or meter is set."""
-
-    stripe: NotRequired[CheckStripe1TypedDict]
+    r"""Processor mappings for this feature."""
 
 
 class CheckProcessors1(BaseModel):
-    r"""Processor mappings for this feature. Present when a Stripe product or meter is set."""
-
-    stripe: Optional[CheckStripe1] = None
+    r"""Processor mappings for this feature."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
-        optional_fields = set(["stripe"])
+        optional_fields = set([])
         serialized = handler(self)
         m = {}
 
@@ -3148,7 +3078,7 @@ class CheckFeature1TypedDict(TypedDict):
     display: NotRequired[FlagDisplay1TypedDict]
     r"""Display names for the feature in billing UI and customer-facing components."""
     processors: NotRequired[CheckProcessors1TypedDict]
-    r"""Processor mappings for this feature. Present when a Stripe product or meter is set."""
+    r"""Processor mappings for this feature."""
 
 
 class CheckFeature1(BaseModel):
@@ -3188,7 +3118,7 @@ class CheckFeature1(BaseModel):
     r"""Display names for the feature in billing UI and customer-facing components."""
 
     processors: Optional[CheckProcessors1] = None
-    r"""Processor mappings for this feature. Present when a Stripe product or meter is set."""
+    r"""Processor mappings for this feature."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -3872,7 +3802,7 @@ class CheckSpendLimit1TypedDict(TypedDict):
     overage_limit: NotRequired[float]
     r"""Overage cap for the feature: absolute units, or a percent (e.g. 120) when limit_type is usage_percentage."""
     skip_overage_billing: NotRequired[bool]
-    r"""When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally."""
+    r"""When true, overage for this feature is not billed to the processor. Usage tracking and balance resets still behave normally."""
 
 
 class CheckSpendLimit1(BaseModel):
@@ -3889,7 +3819,7 @@ class CheckSpendLimit1(BaseModel):
     r"""Overage cap for the feature: absolute units, or a percent (e.g. 120) when limit_type is usage_percentage."""
 
     skip_overage_billing: Optional[bool] = None
-    r"""When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally."""
+    r"""When true, overage for this feature is not billed to the processor. Usage tracking and balance resets still behave normally."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):

@@ -19,14 +19,14 @@ from typing_extensions import Annotated, NotRequired, TypeAliasType, TypedDict
 
 class AdditionalCurrencyTypedDict(TypedDict):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
 
 
 class AdditionalCurrency(BaseModel):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
 
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
@@ -81,51 +81,8 @@ class PlanPriceDisplay(BaseModel):
         return m
 
 
-class PlanPriceStripeTypedDict(TypedDict):
-    price_id: str
-    r"""Stripe price ID. For prepaid with included > 0 this is the V2 price."""
-
-
-class PlanPriceStripe(BaseModel):
-    price_id: str
-    r"""Stripe price ID. For prepaid with included > 0 this is the V2 price."""
-
-
 class PlanPriceProcessorsTypedDict(TypedDict):
     r"""Payment processors this base price is connected to. Omitted when unset."""
-
-    stripe: NotRequired[Nullable[PlanPriceStripeTypedDict]]
-
-
-class PlanPriceProcessors(BaseModel):
-    r"""Payment processors this base price is connected to. Omitted when unset."""
-
-    stripe: OptionalNullable[PlanPriceStripe] = UNSET
-
-    @model_serializer(mode="wrap")
-    def serialize_model(self, handler):
-        optional_fields = set(["stripe"])
-        nullable_fields = set(["stripe"])
-        serialized = handler(self)
-        m = {}
-
-        for n, f in type(self).model_fields.items():
-            k = f.alias or n
-            val = serialized.get(k, serialized.get(n))
-            is_nullable_and_explicitly_set = (
-                k in nullable_fields
-                and (self.__pydantic_fields_set__.intersection({n}))  # pylint: disable=no-member
-            )
-
-            if val != UNSET_SENTINEL:
-                if (
-                    val is not None
-                    or k not in optional_fields
-                    or is_nullable_and_explicitly_set
-                ):
-                    m[k] = val
-
-        return m
 
 
 class PlanPriceTypedDict(TypedDict):
@@ -139,8 +96,6 @@ class PlanPriceTypedDict(TypedDict):
     r"""Number of intervals per billing cycle. Defaults to 1."""
     display: NotRequired[PlanPriceDisplayTypedDict]
     r"""Display text for showing this price in pricing pages."""
-    processors: NotRequired[PlanPriceProcessorsTypedDict]
-    r"""Payment processors this base price is connected to. Omitted when unset."""
 
 
 class PlanPrice(BaseModel):
@@ -159,8 +114,6 @@ class PlanPrice(BaseModel):
     display: Optional[PlanPriceDisplay] = None
     r"""Display text for showing this price in pricing pages."""
 
-    processors: Optional[PlanPriceProcessors] = None
-    r"""Payment processors this base price is connected to. Omitted when unset."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -347,14 +300,14 @@ class PlanItemReset(BaseModel):
 
 class ItemAdditionalCurrencyTypedDict(TypedDict):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
 
 
 class ItemAdditionalCurrency(BaseModel):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
 
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
@@ -368,7 +321,7 @@ PlanPriceItemTo = TypeAliasType("PlanPriceItemTo", Union[float, str])
 
 class ItemTierAdditionalCurrencyTypedDict(TypedDict):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
     amount: NotRequired[float]
     r"""Per-unit amount for this tier in this currency."""
     flat_amount: NotRequired[float]
@@ -377,7 +330,7 @@ class ItemTierAdditionalCurrencyTypedDict(TypedDict):
 
 class ItemTierAdditionalCurrency(BaseModel):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
 
     amount: Optional[float] = None
     r"""Per-unit amount for this tier in this currency."""
@@ -468,51 +421,8 @@ PlanItemBillingMethod = Union[
 r"""'prepaid' for features like seats where customers pay upfront, 'usage_based' for pay-as-you-go after included usage."""
 
 
-class PlanItemStripeTypedDict(TypedDict):
-    price_id: str
-    r"""Stripe price ID. For prepaid with included > 0 this is the V2 price."""
-
-
-class PlanItemStripe(BaseModel):
-    price_id: str
-    r"""Stripe price ID. For prepaid with included > 0 this is the V2 price."""
-
-
 class PlanItemProcessorsTypedDict(TypedDict):
     r"""Payment processors this item price is connected to. Omitted when unset."""
-
-    stripe: NotRequired[Nullable[PlanItemStripeTypedDict]]
-
-
-class PlanItemProcessors(BaseModel):
-    r"""Payment processors this item price is connected to. Omitted when unset."""
-
-    stripe: OptionalNullable[PlanItemStripe] = UNSET
-
-    @model_serializer(mode="wrap")
-    def serialize_model(self, handler):
-        optional_fields = set(["stripe"])
-        nullable_fields = set(["stripe"])
-        serialized = handler(self)
-        m = {}
-
-        for n, f in type(self).model_fields.items():
-            k = f.alias or n
-            val = serialized.get(k, serialized.get(n))
-            is_nullable_and_explicitly_set = (
-                k in nullable_fields
-                and (self.__pydantic_fields_set__.intersection({n}))  # pylint: disable=no-member
-            )
-
-            if val != UNSET_SENTINEL:
-                if (
-                    val is not None
-                    or k not in optional_fields
-                    or is_nullable_and_explicitly_set
-                ):
-                    m[k] = val
-
-        return m
 
 
 class PlanItemPriceTypedDict(TypedDict):
@@ -533,8 +443,6 @@ class PlanItemPriceTypedDict(TypedDict):
     tier_behavior: NotRequired[PlanItemTierBehavior]
     interval_count: NotRequired[float]
     r"""Number of intervals per billing cycle. Defaults to 1."""
-    processors: NotRequired[PlanItemProcessorsTypedDict]
-    r"""Payment processors this item price is connected to. Omitted when unset."""
 
 
 class PlanItemPrice(BaseModel):
@@ -564,8 +472,6 @@ class PlanItemPrice(BaseModel):
     interval_count: Optional[float] = None
     r"""Number of intervals per billing cycle. Defaults to 1."""
 
-    processors: Optional[PlanItemProcessors] = None
-    r"""Payment processors this item price is connected to. Omitted when unset."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -1392,37 +1298,6 @@ class Item(BaseModel):
         return m
 
 
-class PlanStripeTypedDict(TypedDict):
-    product_id: str
-    r"""Stripe product ID this plan is billed under."""
-    additional_product_ids: NotRequired[List[str]]
-    r"""Extra Stripe product IDs aliased to this plan."""
-
-
-class PlanStripe(BaseModel):
-    product_id: str
-    r"""Stripe product ID this plan is billed under."""
-
-    additional_product_ids: Optional[List[str]] = None
-    r"""Extra Stripe product IDs aliased to this plan."""
-
-    @model_serializer(mode="wrap")
-    def serialize_model(self, handler):
-        optional_fields = set(["additional_product_ids"])
-        serialized = handler(self)
-        m = {}
-
-        for n, f in type(self).model_fields.items():
-            k = f.alias or n
-            val = serialized.get(k, serialized.get(n))
-
-            if val != UNSET_SENTINEL:
-                if val is not None or k not in optional_fields:
-                    m[k] = val
-
-        return m
-
-
 class FeatureQuantityTypedDict(TypedDict):
     feature_id: str
     quantity: NotRequired[float]
@@ -1452,17 +1327,17 @@ class FeatureQuantity(BaseModel):
 
 class ProductTypedDict(TypedDict):
     product_id: str
-    r"""RevenueCat product ID that grants this plan when purchased."""
+    r"""Processor product ID that grants this plan when purchased."""
     feature_quantities: NotRequired[List[FeatureQuantityTypedDict]]
-    r"""Prepaid quantities granted when this specific RevenueCat product is purchased, in feature units."""
+    r"""Prepaid quantities granted when this specific processor product is purchased, in feature units."""
 
 
 class Product(BaseModel):
     product_id: str
-    r"""RevenueCat product ID that grants this plan when purchased."""
+    r"""Processor product ID that grants this plan when purchased."""
 
     feature_quantities: Optional[List[FeatureQuantity]] = None
-    r"""Prepaid quantities granted when this specific RevenueCat product is purchased, in feature units."""
+    r"""Prepaid quantities granted when this specific processor product is purchased, in feature units."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -1481,54 +1356,8 @@ class Product(BaseModel):
         return m
 
 
-class PlanRevenuecatTypedDict(TypedDict):
-    products: List[ProductTypedDict]
-    r"""Every RevenueCat product that maps to this plan. Replaces the current set."""
-
-
-class PlanRevenuecat(BaseModel):
-    products: List[Product]
-    r"""Every RevenueCat product that maps to this plan. Replaces the current set."""
-
-
 class PlanProcessorsTypedDict(TypedDict):
     r"""Payment processors this plan is connected to. Omitted when unset."""
-
-    stripe: NotRequired[Nullable[PlanStripeTypedDict]]
-    revenuecat: NotRequired[Nullable[PlanRevenuecatTypedDict]]
-
-
-class PlanProcessors(BaseModel):
-    r"""Payment processors this plan is connected to. Omitted when unset."""
-
-    stripe: OptionalNullable[PlanStripe] = UNSET
-
-    revenuecat: OptionalNullable[PlanRevenuecat] = UNSET
-
-    @model_serializer(mode="wrap")
-    def serialize_model(self, handler):
-        optional_fields = set(["stripe", "revenuecat"])
-        nullable_fields = set(["stripe", "revenuecat"])
-        serialized = handler(self)
-        m = {}
-
-        for n, f in type(self).model_fields.items():
-            k = f.alias or n
-            val = serialized.get(k, serialized.get(n))
-            is_nullable_and_explicitly_set = (
-                k in nullable_fields
-                and (self.__pydantic_fields_set__.intersection({n}))  # pylint: disable=no-member
-            )
-
-            if val != UNSET_SENTINEL:
-                if (
-                    val is not None
-                    or k not in optional_fields
-                    or is_nullable_and_explicitly_set
-                ):
-                    m[k] = val
-
-        return m
 
 
 PlanDurationType = Union[
@@ -1768,7 +1597,7 @@ class PlanSpendLimitTypedDict(TypedDict):
     overage_limit: NotRequired[float]
     r"""Overage cap for the feature: absolute units, or a percent (e.g. 120) when limit_type is usage_percentage."""
     skip_overage_billing: NotRequired[bool]
-    r"""When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally."""
+    r"""When true, overage for this feature is not billed to the processor. Usage tracking and balance resets still behave normally."""
 
 
 class PlanSpendLimit(BaseModel):
@@ -1785,7 +1614,7 @@ class PlanSpendLimit(BaseModel):
     r"""Overage cap for the feature: absolute units, or a percent (e.g. 120) when limit_type is usage_percentage."""
 
     skip_overage_billing: Optional[bool] = None
-    r"""When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally."""
+    r"""When true, overage for this feature is not billed to the processor. Usage tracking and balance resets still behave normally."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -2167,14 +1996,14 @@ r"""Billing interval (e.g. 'month', 'year')."""
 
 class VariantDetailsAdditionalCurrencyTypedDict(TypedDict):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
 
 
 class VariantDetailsAdditionalCurrency(BaseModel):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
 
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
@@ -2287,14 +2116,14 @@ class PlanVariantDetailsReset(BaseModel):
 
 class AddItemAdditionalCurrencyTypedDict(TypedDict):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
 
 
 class AddItemAdditionalCurrency(BaseModel):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
 
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
@@ -2312,7 +2141,7 @@ PlanVariantDetailsPriceTo = TypeAliasType(
 
 class VariantDetailsTierAdditionalCurrencyTypedDict(TypedDict):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
     amount: NotRequired[float]
     r"""Per-unit amount for this tier in this currency."""
     flat_amount: NotRequired[float]
@@ -2321,7 +2150,7 @@ class VariantDetailsTierAdditionalCurrencyTypedDict(TypedDict):
 
 class VariantDetailsTierAdditionalCurrency(BaseModel):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
 
     amount: Optional[float] = None
     r"""Per-unit amount for this tier in this currency."""
@@ -3612,7 +3441,7 @@ class PlanVariantDetailsSpendLimitTypedDict(TypedDict):
     overage_limit: NotRequired[float]
     r"""Overage cap for the feature: absolute units, or a percent (e.g. 120) when limit_type is usage_percentage."""
     skip_overage_billing: NotRequired[bool]
-    r"""When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally."""
+    r"""When true, overage for this feature is not billed to the processor. Usage tracking and balance resets still behave normally."""
 
 
 class PlanVariantDetailsSpendLimit(BaseModel):
@@ -3629,7 +3458,7 @@ class PlanVariantDetailsSpendLimit(BaseModel):
     r"""Overage cap for the feature: absolute units, or a percent (e.g. 120) when limit_type is usage_percentage."""
 
     skip_overage_billing: Optional[bool] = None
-    r"""When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally."""
+    r"""When true, overage for this feature is not billed to the processor. Usage tracking and balance resets still behave normally."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):

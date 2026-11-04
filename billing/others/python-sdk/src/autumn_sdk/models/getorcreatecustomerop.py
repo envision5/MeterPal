@@ -166,7 +166,7 @@ class GetOrCreateCustomerSpendLimitTypedDict(TypedDict):
     overage_limit: NotRequired[float]
     r"""Overage cap for the feature: absolute units, or a percent (e.g. 120) when limit_type is usage_percentage."""
     skip_overage_billing: NotRequired[bool]
-    r"""When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally."""
+    r"""When true, overage for this feature is not billed to the processor. Usage tracking and balance resets still behave normally."""
 
 
 class GetOrCreateCustomerSpendLimit(BaseModel):
@@ -183,7 +183,7 @@ class GetOrCreateCustomerSpendLimit(BaseModel):
     r"""Overage cap for the feature: absolute units, or a percent (e.g. 120) when limit_type is usage_percentage."""
 
     skip_overage_billing: Optional[bool] = None
-    r"""When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally."""
+    r"""When true, overage for this feature is not billed to the processor. Usage tracking and balance resets still behave normally."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -494,7 +494,7 @@ class GetOrCreateCustomerConfigTypedDict(TypedDict):
     disable_pooled_balance: NotRequired[bool]
     r"""Whether to disable the shared customer-level pool for entities."""
     disable_overage_billing: NotRequired[bool]
-    r"""Stops Autumn from posting usage-overage line items to Stripe for this customer. Check/track and balance resets still behave normally. When set, this overrides the organization-level disable_overage_billing setting."""
+    r"""Stops Autumn from posting usage-overage line items to the processor for this customer. Check/track and balance resets still behave normally. When set, this overrides the organization-level disable_overage_billing setting."""
 
 
 class GetOrCreateCustomerConfig(BaseModel):
@@ -504,7 +504,7 @@ class GetOrCreateCustomerConfig(BaseModel):
     r"""Whether to disable the shared customer-level pool for entities."""
 
     disable_overage_billing: Optional[bool] = None
-    r"""Stops Autumn from posting usage-overage line items to Stripe for this customer. Check/track and balance resets still behave normally. When set, this overrides the organization-level disable_overage_billing setting."""
+    r"""Stops Autumn from posting usage-overage line items to the processor for this customer. Check/track and balance resets still behave normally. When set, this overrides the organization-level disable_overage_billing setting."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -579,14 +579,14 @@ class GetOrCreateCustomerBillingDetailsAddress(BaseModel):
 
 class GetOrCreateCustomerAddBillingDetailsTaxIDTypedDict(TypedDict):
     type: str
-    r"""Stripe tax ID type, e.g. eu_vat, gb_vat, us_ein. See https://docs.stripe.com/billing/customer/tax-ids#supported-tax-id"""
+    r"""Tax ID type, e.g. eu_vat, gb_vat, us_ein."""
     value: str
     r"""The tax ID, e.g. DE123456789."""
 
 
 class GetOrCreateCustomerAddBillingDetailsTaxID(BaseModel):
     type: str
-    r"""Stripe tax ID type, e.g. eu_vat, gb_vat, us_ein. See https://docs.stripe.com/billing/customer/tax-ids#supported-tax-id"""
+    r"""Tax ID type, e.g. eu_vat, gb_vat, us_ein."""
 
     value: str
     r"""The tax ID, e.g. DE123456789."""
@@ -594,21 +594,21 @@ class GetOrCreateCustomerAddBillingDetailsTaxID(BaseModel):
 
 class GetOrCreateCustomerRemoveBillingDetailsTaxIDTypedDict(TypedDict):
     type: str
-    r"""Stripe tax ID type, e.g. eu_vat, gb_vat, us_ein. See https://docs.stripe.com/billing/customer/tax-ids#supported-tax-id"""
+    r"""Tax ID type, e.g. eu_vat, gb_vat, us_ein."""
     value: str
     r"""The tax ID, e.g. DE123456789."""
 
 
 class GetOrCreateCustomerRemoveBillingDetailsTaxID(BaseModel):
     type: str
-    r"""Stripe tax ID type, e.g. eu_vat, gb_vat, us_ein. See https://docs.stripe.com/billing/customer/tax-ids#supported-tax-id"""
+    r"""Tax ID type, e.g. eu_vat, gb_vat, us_ein."""
 
     value: str
     r"""The tax ID, e.g. DE123456789."""
 
 
 class GetOrCreateCustomerTaxIdsTypedDict(TypedDict):
-    r"""Tax IDs to add or remove (e.g. VAT). Stripe tax IDs cannot be edited, so change one by removing the old ID and adding the new one. IDs not listed are kept."""
+    r"""Tax IDs to add or remove (e.g. VAT). Tax IDs cannot be edited, so change one by removing the old ID and adding the new one. IDs not listed are kept."""
 
     add: NotRequired[List[GetOrCreateCustomerAddBillingDetailsTaxIDTypedDict]]
     r"""Tax IDs to add. IDs the customer already has are ignored."""
@@ -617,7 +617,7 @@ class GetOrCreateCustomerTaxIdsTypedDict(TypedDict):
 
 
 class GetOrCreateCustomerTaxIds(BaseModel):
-    r"""Tax IDs to add or remove (e.g. VAT). Stripe tax IDs cannot be edited, so change one by removing the old ID and adding the new one. IDs not listed are kept."""
+    r"""Tax IDs to add or remove (e.g. VAT). Tax IDs cannot be edited, so change one by removing the old ID and adding the new one. IDs not listed are kept."""
 
     add: Optional[List[GetOrCreateCustomerAddBillingDetailsTaxID]] = None
     r"""Tax IDs to add. IDs the customer already has are ignored."""
@@ -703,25 +703,25 @@ class GetOrCreateCustomerInvoiceSettings(BaseModel):
 
 
 class GetOrCreateCustomerBillingDetailsTypedDict(TypedDict):
-    r"""Billing details to set on the Stripe customer. Creates the Stripe customer if needed."""
+    r"""Billing details for the customer."""
 
     address: NotRequired[Nullable[GetOrCreateCustomerBillingDetailsAddressTypedDict]]
-    r"""Billing address, used for tax and shown on invoices. Replaces the whole address, as in Stripe; null clears it."""
+    r"""Billing address, used for tax and shown on invoices. Replaces the whole address; null clears it."""
     tax_ids: NotRequired[GetOrCreateCustomerTaxIdsTypedDict]
-    r"""Tax IDs to add or remove (e.g. VAT). Stripe tax IDs cannot be edited, so change one by removing the old ID and adding the new one. IDs not listed are kept."""
+    r"""Tax IDs to add or remove (e.g. VAT). Tax IDs cannot be edited, so change one by removing the old ID and adding the new one. IDs not listed are kept."""
     tax_exempt: NotRequired[GetOrCreateCustomerTaxExempt]
     r"""Tax exemption status. Use reverse for reverse-charge customers."""
     invoice_settings: NotRequired[GetOrCreateCustomerInvoiceSettingsTypedDict]
 
 
 class GetOrCreateCustomerBillingDetails(BaseModel):
-    r"""Billing details to set on the Stripe customer. Creates the Stripe customer if needed."""
+    r"""Billing details for the customer."""
 
     address: OptionalNullable[GetOrCreateCustomerBillingDetailsAddress] = UNSET
-    r"""Billing address, used for tax and shown on invoices. Replaces the whole address, as in Stripe; null clears it."""
+    r"""Billing address, used for tax and shown on invoices. Replaces the whole address; null clears it."""
 
     tax_ids: Optional[GetOrCreateCustomerTaxIds] = None
-    r"""Tax IDs to add or remove (e.g. VAT). Stripe tax IDs cannot be edited, so change one by removing the old ID and adding the new one. IDs not listed are kept."""
+    r"""Tax IDs to add or remove (e.g. VAT). Tax IDs cannot be edited, so change one by removing the old ID and adding the new one. IDs not listed are kept."""
 
     tax_exempt: Optional[GetOrCreateCustomerTaxExempt] = None
     r"""Tax exemption status. Use reverse for reverse-charge customers."""
@@ -764,10 +764,6 @@ class GetOrCreateCustomerParamsTypedDict(TypedDict):
     r"""Unique identifier (eg, serial number) to detect duplicate customers and prevent free trial abuse"""
     metadata: NotRequired[Nullable[Dict[str, Any]]]
     r"""Additional metadata for the customer"""
-    stripe_id: NotRequired[Nullable[str]]
-    r"""Stripe customer ID if you already have one"""
-    create_in_stripe: NotRequired[bool]
-    r"""Whether to create the customer in Stripe"""
     auto_enable_plan_id: NotRequired[str]
     r"""The ID of the free plan to auto-enable for the customer"""
     send_email_receipts: NotRequired[bool]
@@ -779,7 +775,7 @@ class GetOrCreateCustomerParamsTypedDict(TypedDict):
     config: NotRequired[GetOrCreateCustomerConfigTypedDict]
     r"""Miscellaneous configurations for the customer."""
     billing_details: NotRequired[GetOrCreateCustomerBillingDetailsTypedDict]
-    r"""Billing details to set on the Stripe customer. Creates the Stripe customer if needed."""
+    r"""Billing details for the customer."""
     expand: NotRequired[List[CustomerExpand]]
     r"""Fields to expand in the returned customer response, such as subscriptions.plan, purchases.plan, balances.feature, or flags.feature."""
 
@@ -799,12 +795,6 @@ class GetOrCreateCustomerParams(BaseModel):
     metadata: OptionalNullable[Dict[str, Any]] = UNSET
     r"""Additional metadata for the customer"""
 
-    stripe_id: OptionalNullable[str] = UNSET
-    r"""Stripe customer ID if you already have one"""
-
-    create_in_stripe: Optional[bool] = None
-    r"""Whether to create the customer in Stripe"""
-
     auto_enable_plan_id: Optional[str] = None
     r"""The ID of the free plan to auto-enable for the customer"""
 
@@ -821,7 +811,7 @@ class GetOrCreateCustomerParams(BaseModel):
     r"""Miscellaneous configurations for the customer."""
 
     billing_details: Optional[GetOrCreateCustomerBillingDetails] = None
-    r"""Billing details to set on the Stripe customer. Creates the Stripe customer if needed."""
+    r"""Billing details for the customer."""
 
     expand: Optional[List[CustomerExpand]] = None
     r"""Fields to expand in the returned customer response, such as subscriptions.plan, purchases.plan, balances.feature, or flags.feature."""
@@ -834,8 +824,6 @@ class GetOrCreateCustomerParams(BaseModel):
                 "email",
                 "fingerprint",
                 "metadata",
-                "stripe_id",
-                "create_in_stripe",
                 "auto_enable_plan_id",
                 "send_email_receipts",
                 "currency",
@@ -852,7 +840,6 @@ class GetOrCreateCustomerParams(BaseModel):
                 "email",
                 "fingerprint",
                 "metadata",
-                "stripe_id",
                 "currency",
             ]
         )

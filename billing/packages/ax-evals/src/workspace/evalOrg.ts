@@ -41,15 +41,12 @@ export type EvalOrg = { orgId: string; secretKey: string };
  */
 export const createEvalOrg = async ({
 	runId,
-	withStripe = false,
 }: {
 	runId: string;
-	/** mint + bind a sandbox Stripe sub-account (needed for paid attach/checkout) */
-	withStripe?: boolean;
 }): Promise<EvalOrg> => {
 	const { stdout } = await run(
 		"bun",
-		[EVAL_ORG_SCRIPT, "create", runId, ...(withStripe ? ["--stripe"] : [])],
+		[EVAL_ORG_SCRIPT, "create", runId],
 		{
 			cwd: REPO_ROOT,
 			env: scriptEnv(),
@@ -61,8 +58,6 @@ export const createEvalOrg = async ({
 
 export type SeedCustomerSpec = {
 	customer: { id: string; name?: string; email?: string };
-	/** attach a Stripe test payment method (needed before seeding paid plans) */
-	paymentMethod?: boolean;
 	/** billing.attach bodies (customer_id is filled in) */
 	attach?: Record<string, unknown>[];
 	/** licenses.attach entities (customer_id is filled in) */

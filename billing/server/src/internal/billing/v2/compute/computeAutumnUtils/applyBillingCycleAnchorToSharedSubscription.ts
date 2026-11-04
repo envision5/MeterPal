@@ -3,27 +3,27 @@ import {
 	type BillingContext,
 	customerProductHasRelevantStatus,
 	type FullCusProduct,
-	filterCustomerProductsByStripeSubscriptionId,
 } from "@autumn/shared";
 import { computeBillingCycleAnchorEntitlementUpdates } from "@/internal/billing/v2/compute/computeAutumnUtils/computeBillingCycleAnchorEntitlementUpdates";
 import { applyAutumnBillingPlanToFullCustomer } from "@/internal/billing/v2/utils/autumnBillingPlanToFinalFullCustomer";
 import { getRequestedBillingCycleAnchorResetAt } from "@/internal/billing/v2/utils/billingContext/getRequestedBillingCycleAnchorResetAt";
 import { getUpdateCustomerProducts } from "@/internal/billing/v2/utils/billingPlan/customerProductPlanMutations";
+import { filterCustomerProductsByProcessorSubscriptionId } from "@/internal/billing/v2/utils/customerProducts/processorSubscriptionIds";
 import { customerProductToBillingCycleAnchor } from "@/internal/billing/v2/utils/initFullCustomerProduct/cycleAnchorUtils";
 
 export const applyBillingCycleAnchorToSharedSubscription = ({
 	plan,
 	billingContext,
-	stripeSubscriptionId = billingContext.stripeSubscription?.id,
+	processorSubscriptionId,
 	targetCustomerProduct,
 }: {
 	plan: AutumnBillingPlan;
 	billingContext: BillingContext;
-	stripeSubscriptionId?: string;
+	processorSubscriptionId?: string;
 	targetCustomerProduct?: FullCusProduct;
 }): AutumnBillingPlan => {
 	if (billingContext.requestedBillingCycleAnchor === undefined) return plan;
-	if (!stripeSubscriptionId && !targetCustomerProduct) return plan;
+	if (!processorSubscriptionId && !targetCustomerProduct) return plan;
 
 	const finalCustomer = applyAutumnBillingPlanToFullCustomer({
 		fullCustomer: billingContext.fullCustomer,
@@ -35,10 +35,10 @@ export const applyBillingCycleAnchorToSharedSubscription = ({
 			customerProduct,
 		]),
 	);
-	const relatedCustomerProducts = stripeSubscriptionId
-		? filterCustomerProductsByStripeSubscriptionId({
+	const relatedCustomerProducts = processorSubscriptionId
+		? filterCustomerProductsByProcessorSubscriptionId({
 				customerProducts: billingContext.fullCustomer.customer_products,
-				stripeSubscriptionId,
+				processorSubscriptionId,
 			})
 		: [targetCustomerProduct!];
 	const customerProductUpdateById = new Map(

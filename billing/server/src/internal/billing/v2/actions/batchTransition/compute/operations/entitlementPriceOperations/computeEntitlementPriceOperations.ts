@@ -182,7 +182,7 @@ const computeAddOperation = ({
 					? null
 					: (customerEntitlement.reset_cycle_anchor ?? null),
 				resetMode,
-				stripeSubscriptionId: null,
+				processorSubscriptionId: null,
 				customerLicenseLinkId,
 			},
 		},

@@ -41,6 +41,6 @@ export const ONBOARDING_STEPS: OnboardingStepDefinition[] = [
 		title: "Go to production",
 		shortTitle: "Go to production",
 		description:
-			"Connect your live Stripe account, copy your plans across, and swap in a production key.",
+			"Connect your live PayPal account, copy your plans across, and swap in a production key.",
 	},
 ];

@@ -1,5 +1,5 @@
 /**
- * Mirrors the Stripe handlers' `emitBillingChangeWebhook` step for lifecycle
+ * Mirrors the processor handlers' `emitBillingChangeWebhook` step for lifecycle
  * actions: builds a minimal AutumnBillingPlan and fires `billing.updated`.
  */
 

@@ -20,7 +20,7 @@ export function findBlockingDiscount({
 
 	const allRewardIds = rewardIdsOf({ discounts: form.discounts });
 
-	// Stripe cannot apply a repeating coupon to a one-off invoice.
+	// The processor cannot apply a repeating coupon to a one-off invoice.
 	for (const rewardId of allRewardIds) {
 		const reward = rewardsById.get(rewardId);
 		if (reward?.discount_config?.duration_type === CouponDurationType.Months) {

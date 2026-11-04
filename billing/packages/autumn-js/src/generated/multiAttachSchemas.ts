@@ -173,7 +173,7 @@ export const multiAttachOverageAllowedSchema = z.object({
 
 export const multiAttachInvoiceSchema = z.object({
 	status: z.string().nullable(),
-	stripeId: z.string(),
+	processorInvoiceId: z.string(),
 	total: z.number(),
 	currency: z.string(),
 	hostedInvoiceUrl: z.string().nullable(),

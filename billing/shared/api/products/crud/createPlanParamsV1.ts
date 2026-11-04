@@ -64,7 +64,7 @@ export const CreatePlanParamsV1Schema = z.object({
 			"Arbitrary key-value metadata defined by you for your own use (e.g. UI copy, feature highlights). Values can be any JSON-serializable value. Shared across all versions of the plan.",
 	}),
 
-	create_in_stripe: z.boolean().default(true).meta({
+	create_in_processor: z.boolean().default(true).meta({
 		internal: true,
 	}),
 });

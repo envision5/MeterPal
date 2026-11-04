@@ -1,5 +1,4 @@
 import type {
-	ApiRevenueCatPlanProcessor,
 	CatalogPlanVersioningStrategy,
 	CatalogPropagateParams,
 	CatalogVariantParams,
@@ -24,8 +23,6 @@ export type UpsertProductSource =
 	| "license_pin"
 	| "license_adopt"
 	| "repoint"
-	/** Sibling version taking the plan's Stripe mapping — every version shares it. */
-	| "processor_sync"
 	| "demoted_product";
 
 /** Which product row this plan writes, and its before/after FullProduct. */
@@ -69,19 +66,8 @@ export type UpsertProductPlan = {
 	unlink?: boolean;
 	/** Who follows this row's content change. Copied from planParams so pass 2 can read it. */
 	propagate?: CatalogPropagateParams;
-	/** Stated `processors.revenuecat`. Plan-wide, so only rows naming a concrete plan carry it. */
-	revenuecatProcessor?: ApiRevenueCatPlanProcessor | null;
-	/**
-	 * Stated `processors.stripe: null` — the request asked for NO Stripe product.
-	 * Without it a cleared paid row is indistinguishable from a new paid plan, so
-	 * execute mints a replacement and the unlink dies inside its own request.
-	 * Attach mints lazily, so leaving the row bare is safe.
-	 */
-	stripeUnlinked?: boolean;
 	/** Absent = plan_license links untouched. Present (incl. []) = full-set replace. */
 	planLicenses?: PlanLicensePlan[];
-	/** false = execute may reuse Stripe ids but never create objects. */
-	createInStripe?: boolean;
 	/** Set when this row's id claims a reserved alias — execute deletes that row. */
 	aliasReplacement?: PlanAliasReplacement;
 	/** Product that currently holds `active` — pairs a demoted product plan. */

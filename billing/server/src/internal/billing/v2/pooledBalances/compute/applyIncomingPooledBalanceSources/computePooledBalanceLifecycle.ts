@@ -45,13 +45,13 @@ const findExistingPoolResetCycleAnchor = ({
 	computeContext,
 	customerEntitlement,
 	resetMode,
-	stripeSubscriptionId,
+	processorSubscriptionId,
 	customerLicenseLinkId,
 }: {
 	computeContext: PooledBalanceComputeContext;
 	customerEntitlement: FullCustomerEntitlement;
 	resetMode: PooledBalanceResetMode;
-	stripeSubscriptionId: string | null;
+	processorSubscriptionId: string | null;
 	customerLicenseLinkId: string | null;
 }) => {
 	const sourceIdentity = initCustomerEntitlementPooledIdentity({
@@ -59,7 +59,7 @@ const findExistingPoolResetCycleAnchor = ({
 		lifecycle: {
 			resetCycleAnchor: null,
 			resetMode,
-			stripeSubscriptionId,
+			processorSubscriptionId,
 			customerLicenseLinkId,
 		},
 	});
@@ -71,7 +71,7 @@ const findExistingPoolResetCycleAnchor = ({
 			pooled_balance.interval === sourceIdentity.interval &&
 			pooled_balance.interval_count === sourceIdentity.intervalCount &&
 			pooled_balance.reset_mode === resetMode &&
-			pooled_balance.stripe_subscription_id === stripeSubscriptionId &&
+			pooled_balance.processor_subscription_id === processorSubscriptionId &&
 			pooled_balance.customer_license_link_id === customerLicenseLinkId &&
 			pooled_balance.rollover_signature === sourceIdentity.rolloverSignature,
 	)?.pooled_balance.reset_cycle_anchor;
@@ -80,33 +80,33 @@ const findExistingPoolResetCycleAnchor = ({
 const getPooledBalanceLifecycleIds = ({
 	customerProduct,
 	resetMode,
-	stripeSubscriptionId,
+	processorSubscriptionId,
 }: {
 	customerProduct: FullCusProduct;
 	resetMode: PooledBalanceResetMode;
-	stripeSubscriptionId?: string;
+	processorSubscriptionId?: string;
 }): Pick<
 	PooledBalanceLifecycle,
-	"stripeSubscriptionId" | "customerLicenseLinkId"
+	"processorSubscriptionId" | "customerLicenseLinkId"
 > => {
 	if (customerProduct.customer_license_link_id) {
 		return {
-			stripeSubscriptionId: null,
+			processorSubscriptionId: null,
 			customerLicenseLinkId: customerProduct.customer_license_link_id,
 		};
 	}
 
 	if (resetMode === PooledBalanceResetMode.Lifetime) {
 		return {
-			stripeSubscriptionId: null,
+			processorSubscriptionId: null,
 			customerLicenseLinkId: null,
 		};
 	}
 
 	if (resetMode === PooledBalanceResetMode.Subscription) {
 		return {
-			stripeSubscriptionId:
-				stripeSubscriptionId ??
+			processorSubscriptionId:
+				processorSubscriptionId ??
 				customerProduct.subscription_ids?.[0] ??
 				customerProduct.id,
 			customerLicenseLinkId: null,
@@ -114,7 +114,7 @@ const getPooledBalanceLifecycleIds = ({
 	}
 
 	return {
-		stripeSubscriptionId: null,
+		processorSubscriptionId: null,
 		customerLicenseLinkId: null,
 	};
 };
@@ -123,14 +123,14 @@ const resolveResetCycleAnchor = ({
 	computeContext,
 	customerEntitlement,
 	resetMode,
-	stripeSubscriptionId,
+	processorSubscriptionId,
 	customerLicenseLinkId,
 	customerCreatedAt,
 }: {
 	computeContext: PooledBalanceComputeContext;
 	customerEntitlement: FullCustomerEntitlement;
 	resetMode: PooledBalanceResetMode;
-	stripeSubscriptionId: string | null;
+	processorSubscriptionId: string | null;
 	customerLicenseLinkId: string | null;
 	customerCreatedAt: number;
 }) => {
@@ -139,7 +139,7 @@ const resolveResetCycleAnchor = ({
 		computeContext,
 		customerEntitlement,
 		resetMode,
-		stripeSubscriptionId,
+		processorSubscriptionId,
 		customerLicenseLinkId,
 	});
 	if (existingResetCycleAnchor !== undefined) {
@@ -160,14 +160,14 @@ export const computePooledBalanceLifecycle = ({
 	computeContext,
 	customerEntitlement,
 	customerProduct,
-	stripeSubscriptionId: existingStripeSubscriptionId,
+	processorSubscriptionId: existingProcessorSubscriptionId,
 	customerCreatedAt,
 	now,
 }: {
 	computeContext: PooledBalanceComputeContext;
 	customerEntitlement: FullCustomerEntitlement;
 	customerProduct: FullCusProduct;
-	stripeSubscriptionId?: string;
+	processorSubscriptionId?: string;
 	customerCreatedAt: number;
 	now: number;
 }): PooledBalanceLifecycle => {
@@ -181,18 +181,18 @@ export const computePooledBalanceLifecycle = ({
 	});
 
 	const resetMode = getResetMode({ customerProduct, interval });
-	const { stripeSubscriptionId, customerLicenseLinkId } =
+	const { processorSubscriptionId, customerLicenseLinkId } =
 		getPooledBalanceLifecycleIds({
 			customerProduct,
 			resetMode,
-			stripeSubscriptionId: existingStripeSubscriptionId,
+			processorSubscriptionId: existingProcessorSubscriptionId,
 		});
 
 	if (unlimited || isBoolean) {
 		return {
 			resetMode,
 			resetCycleAnchor: null,
-			stripeSubscriptionId,
+			processorSubscriptionId,
 			customerLicenseLinkId,
 			nextResetAt: null,
 		};
@@ -202,7 +202,7 @@ export const computePooledBalanceLifecycle = ({
 		computeContext,
 		customerEntitlement,
 		resetMode,
-		stripeSubscriptionId,
+		processorSubscriptionId,
 		customerLicenseLinkId,
 		customerCreatedAt,
 	});
@@ -219,7 +219,7 @@ export const computePooledBalanceLifecycle = ({
 	return {
 		resetMode,
 		resetCycleAnchor,
-		stripeSubscriptionId,
+		processorSubscriptionId,
 		customerLicenseLinkId,
 		nextResetAt:
 			resetMode === PooledBalanceResetMode.Lifetime

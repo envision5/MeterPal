@@ -15,8 +15,8 @@ export const subscriptions = pgTable(
 	{
 		id: text().primaryKey().notNull(),
 		org_id: text("org_id").notNull(),
-		stripe_id: text("stripe_id"),
-		stripe_schedule_id: text("stripe_schedule_id"),
+		// External processor subscription id (PayPal: sub-...)
+		processor_id: text("processor_id"),
 		created_at: numeric({ mode: "number" }).notNull().default(sqlNow),
 		metadata: jsonb().default({}),
 		usage_features: text("usage_features").array().default([]),
@@ -33,7 +33,7 @@ export const subscriptions = pgTable(
 			name: "subscriptions_org_id_fkey",
 		}).onDelete("cascade"),
 
-		unique("subscriptions_stripe_id_key").on(table.stripe_id),
+		unique("subscriptions_processor_id_key").on(table.processor_id),
 	],
 );
 

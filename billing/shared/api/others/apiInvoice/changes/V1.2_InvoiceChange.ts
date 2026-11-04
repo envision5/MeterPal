@@ -18,7 +18,7 @@ export function transformInvoiceToV0({
 }): z.infer<typeof ApiInvoiceV0Schema> {
 	return {
 		product_ids: input.plan_ids,
-		stripe_id: input.stripe_id,
+		processor_invoice_id: input.processor_invoice_id,
 		status: input.status,
 		total: input.total,
 		currency: input.currency,

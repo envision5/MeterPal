@@ -65,7 +65,6 @@ export const handlePostCustomer = createRoute({
 				entity_id: createCusParams.entity_id,
 				entity_data: createCusParams.entity_data,
 			},
-			billingDetails: createCusParams.billing_details,
 			source: "handlePostCustomer",
 			withAutumnId: with_autumn_id,
 		});

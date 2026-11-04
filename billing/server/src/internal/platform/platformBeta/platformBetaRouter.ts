@@ -2,11 +2,8 @@ import { Hono } from "hono";
 import type { HonoEnv } from "@/honoUtils/HonoEnv.js";
 import { handleCreatePlatformOrg } from "./handlers/handleCreatePlatformOrg.js";
 import { handleDeletePlatformOrg } from "./handlers/handleDeletePlatformOrg.js";
-import { handleGetPlatformOAuth } from "./handlers/handleGetPlatformOAuth.js";
-import { handleLegacyPlatformExchange } from "./handlers/handleLegacyPlatformExchange.js";
 import { handleListPlatformOrgs } from "./handlers/handleListPlatformOrgs.js";
 import { listPlatformUsers } from "./handlers/handleListPlatformUsers.js";
-import { handleUpdateOrganizationStripe } from "./handlers/handleUpdateOrganizationStripe.js";
 
 const platformBetaRouter = new Hono<HonoEnv>();
 
@@ -62,25 +59,6 @@ platformBetaRouter.use("*", async (c, next) => {
  */
 platformBetaRouter.post("/organizations", ...handleCreatePlatformOrg);
 
-/**
- * POST /oauth_url
- * Generates Stripe OAuth URL for platform organizations
- */
-platformBetaRouter.post("/oauth_url", ...handleGetPlatformOAuth);
-
-/**
- * POST /organization/stripe
- * Updates Stripe Connect configuration for platform organization
- */
-platformBetaRouter.post(
-	"/organization/stripe",
-	...handleUpdateOrganizationStripe,
-);
-platformBetaRouter.post(
-	"/organizations/stripe",
-	...handleUpdateOrganizationStripe,
-);
-
 platformBetaRouter.get("/users", ...listPlatformUsers);
 
 platformBetaRouter.get("/organizations", ...handleListPlatformOrgs);
@@ -90,11 +68,5 @@ platformBetaRouter.get("/organizations", ...handleListPlatformOrgs);
  * Deletes a platform organization by slug
  */
 platformBetaRouter.delete("/organizations", ...handleDeletePlatformOrg);
-
-/**
- * POST /exchange
- * Legacy platform exchange endpoint - creates org, user, and connects Stripe
- */
-platformBetaRouter.post("/exchange", ...handleLegacyPlatformExchange);
 
 export { platformBetaRouter };

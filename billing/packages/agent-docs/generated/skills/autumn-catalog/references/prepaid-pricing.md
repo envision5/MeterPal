@@ -13,6 +13,9 @@ This is in contrast to [usage-based pricing](/documentation/modelling-pricing/us
 
 ## Setting up
 
+
+
+
 Create your features and add them to a plan with `prepaid` prices:
 
 ```ts autumn.config.ts
@@ -66,6 +69,10 @@ export default atmn({ features: [apiCredits, seats], plans: [pro] });
 
 Preview with `atmn push`, then apply with `atmn push --yes`.
 
+
+
+
+
 ## How it works
 
 When a plan has prepaid features, customers select a **quantity** at purchase time. This quantity determines:
@@ -79,7 +86,9 @@ Using our example plan:
 - A customer selects **3,000 API credits**. 500 are included, so they pay for 2,500 → $10 × (2,500 / 1,000) = **$25/month** for credits.
 - The same customer selects **10 seats**. 3 are included, so they pay for 7 → $5 × 7 = **$35/month** for seats.
 
+
 If you pass a `quantity` equal to or less than the included amount, the customer gets the included amount and pays nothing extra for that feature.
+
 
 ## Passing `feature_quantities`
 
@@ -181,7 +190,8 @@ curl -X POST "https://api.useautumn.com/v1/billing/update" \
 
 </CodeGroup>
 
-See [Updating Subscriptions](/documentation/customers/updating-subscriptions) for more on previewing changes. When quantities change mid-cycle, Autumn can prorate the charge — see [Proration](/documentation/modelling-pricing/proration) for configuration options.
+See [Updating Subscriptions](/documentation/customers/updating-subscriptions) for more on previewing changes. When quantities change mid-cycle, MeterPal can prorate the charge — see [Proration](/documentation/modelling-pricing/proration) for configuration options.
+
 
 ## Understanding prepaid balances
 
@@ -194,6 +204,7 @@ Once a customer is attached to a plan with prepaid features, their balance `brea
 | `granted` | Top-level total: `included_grant + prepaid_grant` summed across all breakdown items. |
 | `remaining` | How much is left to use. |
 | `usage` | How much has been consumed. |
+
 
 Using the plan from our setup, a customer who attaches with 3,000 credits and 10 seats will have:
 

@@ -1,6 +1,4 @@
-import { CoinVerticalIcon, TriangleIcon } from "@phosphor-icons/react";
-import { RevenueCatIcon } from "@/components/v2/icons/AutumnIcons";
-import { useOrg } from "@/hooks/common/useOrg";
+import { CoinVerticalIcon } from "@phosphor-icons/react";
 import { useCustomerFilters } from "../../hooks/useCustomerFilters";
 import {
 	type FilterCheckboxOption,
@@ -10,35 +8,21 @@ import {
 
 export const PROCESSOR_OPTIONS: FilterCheckboxOption[] = [
 	{
-		value: "stripe",
-		label: "Stripe",
+		value: "paypal",
+		label: "PayPal",
 		icon: <CoinVerticalIcon size={14} weight="fill" />,
-	},
-	{
-		value: "revenuecat",
-		label: "RevenueCat",
-		icon: <RevenueCatIcon size={14} />,
-	},
-	{
-		value: "vercel",
-		label: "Vercel",
-		icon: <TriangleIcon size={14} weight="fill" />,
 	},
 ];
 
 export const ProcessorSubMenu = ({ onChange }: { onChange?: () => void }) => {
-	const { org } = useOrg();
-	const processorConfigs = org?.processor_configs;
 	const { queryStates, setFilters } = useCustomerFilters();
 	const selected = queryStates.processor || [];
 
-	// Selected options stay listed so a disconnected processor's filter can be cleared.
-	const visibleOptions = PROCESSOR_OPTIONS.filter(({ value }) => {
-		if (value === "stripe" || selected.includes(value)) return true;
-		if (value === "revenuecat") return !!processorConfigs?.revenuecat.connected;
-		if (value === "vercel") return !!processorConfigs?.vercel.connected;
-		return false;
-	});
+	// Selected options stay listed so a filter set before a processor was
+	// removed can still be cleared.
+	const visibleOptions = PROCESSOR_OPTIONS.filter(
+		({ value }) => value === "paypal" || selected.includes(value),
+	);
 
 	return (
 		<FilterCheckboxSubMenu

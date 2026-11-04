@@ -2,6 +2,17 @@ import { zValidator } from "@hono/zod-validator";
 import type { ZodType } from "zod/v4";
 
 /**
+ * The schema type `@hono/zod-validator` accepts.
+ *
+ * The workspace resolves two zod copies: this package's `zod/v4` comes from
+ * zod@3.25.x while the validator's `zod/v4/core` comes from zod@4, so the two
+ * `$ZodType` declarations are structurally incompatible. The validator is
+ * runtime-version-agnostic (it only calls `safeParseAsync`), so the cast is
+ * type-level only.
+ */
+type ZodValidatorSchema = Parameters<typeof zValidator>[1];
+
+/**
  * Custom validator that wraps @hono/zod-validator with error throwing behavior
  * This allows the errorMiddleware to handle validation errors consistently
  * Maintains full type inference from zValidator
@@ -67,9 +78,13 @@ export const validator = <T extends ZodType>(
 		};
 	}
 
-	return zValidator(target, schema, (result, _c) => {
-		if (!result.success) {
-			throw result.error;
-		}
-	});
+	return zValidator(
+		target,
+		schema as unknown as ZodValidatorSchema,
+		(result, _c) => {
+			if (!result.success) {
+				throw result.error;
+			}
+		},
+	);
 };

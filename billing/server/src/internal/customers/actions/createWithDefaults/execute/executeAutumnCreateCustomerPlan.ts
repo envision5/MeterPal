@@ -20,9 +20,9 @@ export type ExecuteAutumnResult = { type: "created" } | { type: "existing" };
  *
  * Returns discriminated union to indicate if customer was created or already existed.
  *
- * Does NOT emit webhooks — the caller emits after the Stripe customer id is
- * persisted, so webhook consumers calling customers.get see a non-null
- * stripe_id (see createCustomerWithDefaults).
+ * Does NOT emit webhooks — the caller emits after the customer row is
+ * committed, so webhook consumers calling customers.get see the customer
+ * (see createCustomerWithDefaults).
  */
 export const executeAutumnCreateCustomerPlan = async ({
 	ctx,

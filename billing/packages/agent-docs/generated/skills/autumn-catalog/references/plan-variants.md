@@ -13,6 +13,9 @@ Variants are most useful for:
 
 ## Setting up
 
+
+
+
 Each variant is its own `variant({...})` fixture, listed in the base plan's `variants`:
 
 ```ts autumn.config.ts
@@ -82,8 +85,12 @@ export default atmn({ features: [emails], plans: [pro] });
 
 Preview with `atmn push`, then apply with `atmn push --yes`.
 
+
+
+
+
 ## How variants work
 
-Each variant is still a plan you can attach by ID, such as `pro_annual` or `pro_100k`. The difference is that Autumn keeps it connected to the base plan.
+Each variant is still a plan you can attach by ID, such as `pro_annual` or `pro_100k`. The difference is that MeterPal keeps it connected to the base plan.
 
 Use variants when plans share most of their features. If a variant changes many unrelated parts of the plan, create a separate plan instead.

@@ -13,6 +13,11 @@ export const orgToCurrency = ({ org }: { org: Organization }) => {
 	return org.default_currency || "usd";
 };
 
+/**
+ * Fallback return URL when a request doesn't pass `success_url`. The PayPal
+ * checkout ignores this (the server return route owns the landing page via
+ * METERPAL_CHECKOUT_RETURN_URL); DB-only checkouts redirect here.
+ */
 export const orgToReturnUrl = ({
 	org,
 	env,
@@ -20,11 +25,9 @@ export const orgToReturnUrl = ({
 	org: Organization;
 	env: AppEnv;
 }) => {
-	if (env === AppEnv.Sandbox) {
-		return org.stripe_config?.sandbox_success_url || "https://useautumn.com";
-	} else {
-		return org.stripe_config?.success_url || "https://useautumn.com";
-	}
+	void org;
+	void env;
+	return "https://useautumn.com";
 };
 
 export const orgDefaultAppliesToEntities = ({
@@ -35,7 +38,14 @@ export const orgDefaultAppliesToEntities = ({
 	return ctx.org.config.default_applies_to_entities;
 };
 
-export const orgDisableStripeWrites = ({
+/**
+ * Whether the org has blocked writes to its billing processor.
+ *
+ * The config field keeps its historical name because it lives in a JSONB blob
+ * on `orgs.config` and renaming it there would orphan every existing row. The
+ * flag gates processor (PayPal) writes.
+ */
+export const orgDisableProcessorWrites = ({
 	ctx,
 	includeSandbox = false,
 }: {
@@ -45,7 +55,7 @@ export const orgDisableStripeWrites = ({
 	if (ctx.env === AppEnv.Sandbox && !includeSandbox) {
 		return false;
 	}
-	return ctx.org.config.disable_stripe_writes;
+	return ctx.org.config.disable_processor_writes;
 };
 
 export const orgPersistFreeOverage = ({ org }: { org: Organization }) => {

@@ -461,7 +461,6 @@ export const seedKnowledgePlatformCustomers = async ({
 					group: productPrefix,
 				}),
 				prefix: "",
-				createInStripe: false,
 			}),
 		],
 		actions: [],
@@ -517,7 +516,6 @@ export const runKnowledgePlatformSeed = async () => {
 		await clearOrg({
 			orgSlug: process.env.TESTS_ORG,
 			env: AppEnv.Sandbox,
-			skipStripeReset: true,
 		});
 	}
 

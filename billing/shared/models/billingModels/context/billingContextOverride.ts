@@ -2,7 +2,6 @@ import type { BillingVersion } from "@models/billingModels/context/billingContex
 import type { PaymentBehaviorIntent } from "@models/billingModels/context/paymentBehaviorIntent";
 import type { TransitionConfig } from "@models/billingModels/context/transitionConfig";
 import type { InsertPlanLicenseSpec } from "@models/billingModels/plan/customerLicensePlan";
-import type { StripeDiscountWithCoupon } from "@models/billingModels/stripe/stripeDiscountWithCoupon";
 import type { FullCustomer } from "@models/cusModels/fullCusModel";
 import type {
 	FeatureOptions,
@@ -12,26 +11,9 @@ import type { ProcessorType } from "@models/genModels/genEnums";
 import type { Entitlement } from "@models/productModels/entModels/entModels";
 import type { Price } from "@models/productModels/priceModels/priceModels";
 import type { FullProduct } from "@models/productModels/productModels";
-import type Stripe from "stripe";
-
-export interface StripeBillingContextOverride {
-	stripeSubscription?: Stripe.Subscription;
-	stripeSubscriptionSchedule?: Stripe.SubscriptionSchedule;
-	stripeCustomer: Stripe.Customer;
-	paymentMethod?: Stripe.PaymentMethod;
-	testClockFrozenTime?: number;
-	stripeDiscounts: StripeDiscountWithCoupon[];
-	stripeTaxRate?: Stripe.TaxRate;
-	/** See `BillingContext.canceledStripeSubscriptionId`. */
-	canceledStripeSubscriptionId?: string;
-	/** See `BillingContext.mismatchedStripeSubscriptionId`. */
-	mismatchedStripeSubscriptionId?: string;
-}
 
 export interface BillingContextOverride {
 	fullCustomer?: FullCustomer;
-
-	stripeBillingContext?: StripeBillingContextOverride;
 
 	productContext?: {
 		fullProduct: FullProduct;
@@ -50,36 +32,31 @@ export interface BillingContextOverride {
 	shouldFinalizeFirstInvoice?: boolean;
 
 	/**
-	 * Skips the "billed outside of Stripe" guard that normally blocks attach
-	 * for customers managed by an external billing platform (Vercel marketplace).
-	 * Internal callers that ARE the origin platform (e.g. Vercel marketplace
-	 * webhook handlers) set this to opt out of the guard. Not exposed via any
-	 * public API schema.
+	 * Skips the custom payment method guard that normally blocks attach for
+	 * customers managed by an external billing platform. Internal callers that
+	 * ARE the origin platform set this to opt out of the guard. Not exposed via
+	 * any public API schema.
 	 */
 	skipCustomPaymentMethodGuard?: boolean;
 
 	/**
-	 * Skips fetching Stripe state (customer/subscription/schedule/discounts/PM)
-	 * during attach setup. Used by external-PSP origin callers (e.g. RevenueCat
-	 * webhook handlers) whose customers don't have a meaningful Stripe presence.
+	 * Skips fetching processor state during attach setup, for callers whose
+	 * customers have no processor presence (e.g. DB-only free plans).
 	 * Independent from `params.no_billing_changes`, which only blocks writes.
 	 */
 	skipBillingFetching?: boolean;
 
 	/**
-	 * Skips the external-PSP guard (`handleExternalPSPErrors`) and the
-	 * "paid current product but no Stripe sub linked" guard. Used by callers
-	 * that ARE the external origin platform (e.g. RevenueCat webhook handlers)
-	 * and so must be allowed to attach onto their own existing non-Stripe
+	 * Skips the external-processor guard and the "paid current product but no
+	 * subscription linked" guard. Used by callers that ARE the external origin
+	 * platform and so must be allowed to attach onto their own existing
 	 * cus_products. Not exposed via any public API schema.
 	 */
 	skipExternalPSPGuard?: boolean;
 
 	/**
-	 * Tags the newly-inserted customer_product's `processor.type` field. Used
-	 * by external-PSP origin callers to mark the cus_product as managed by a
-	 * non-Stripe processor (e.g. RevenueCat). Defaults to leaving `processor`
-	 * unset, which `cusProductToProcessorType` resolves to Stripe.
+	 * Tags the newly-inserted customer_product's processor type. Defaults to
+	 * leaving the processor unset.
 	 */
 	processorTypeOverride?: ProcessorType;
 }

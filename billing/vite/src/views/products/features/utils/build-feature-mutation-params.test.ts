@@ -87,21 +87,4 @@ test("catalog feature params drop a stored invoice_credit flag", () => {
 			credit_cost: 1,
 		},
 	]);
-	expect(result.processors).toBeUndefined();
-});
-
-const creditFeature = {
-	id: "credits",
-	name: "Credits",
-	type: FeatureType.CreditSystem,
-	config: { usage_type: FeatureUsageType.Single, schema: [] },
-	event_names: [],
-};
-
-test("never sends processors: feature Stripe products are managed outside the sheets", () => {
-	const result = featureToCatalogFeatureParams({
-		feature: { ...creditFeature, stripe_product_id: "prod_1" },
-	});
-
-	expect(result.processors).toBeUndefined();
 });

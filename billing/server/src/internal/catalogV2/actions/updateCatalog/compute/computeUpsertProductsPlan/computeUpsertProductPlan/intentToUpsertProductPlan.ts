@@ -16,7 +16,6 @@ import type {
 	UpsertProductPlan,
 } from "@/internal/catalogV2/actions/updateCatalog/types/upsertProductPlan";
 import { activeFullProductForPlan } from "@/internal/catalogV2/actions/updateCatalog/utils/productStateUtils/activeFullProductForPlan";
-import { findFullProductByInternalId } from "@/internal/catalogV2/actions/updateCatalog/utils/productStateUtils/findFullProductByInternalId";
 import { maxVersionForPlan } from "@/internal/catalogV2/actions/updateCatalog/utils/productStateUtils/maxVersionForPlan";
 import { productKeyToState } from "@/internal/catalogV2/actions/updateCatalog/utils/productStateUtils/productKeyToState";
 import { resolveAliasReplacement } from "@/internal/catalogV2/productAliases/resolveAliasReplacement";
@@ -82,16 +81,6 @@ export const intentToUpsertProductPlan = ({
 		currentFullProduct: currentFullProduct ?? baseFullProduct,
 	});
 
-	// variant_link clones content via planParams, not baseFullProduct — the
-	// folded base is still the Stripe baseline (processor + price id carry).
-	const variantBaseFullProduct =
-		source === "variant_link" && baseInternalProductId
-			? findFullProductByInternalId({
-					internalId: baseInternalProductId,
-					productStatesContext,
-				})
-			: null;
-
 	const currentActive = activeFullProductForPlan({
 		planId: productKey.planId,
 		productStatesContext,
@@ -109,9 +98,6 @@ export const intentToUpsertProductPlan = ({
 		currentActive,
 		latestExistingVersion: maxVersion === 0 ? undefined : maxVersion,
 		...(pointer !== undefined ? { baseInternalProductId: pointer } : {}),
-		...(variantBaseFullProduct
-			? { baseProcessor: variantBaseFullProduct.processor }
-			: {}),
 	});
 
 	const entitlementPricesPlan = computeCatalogEntitlementPricesPlan({
@@ -121,14 +107,6 @@ export const intentToUpsertProductPlan = ({
 		planParams,
 		versioning,
 		protectReferencedRows: customerUsage.hasVersionableRowRefs,
-		...(variantBaseFullProduct
-			? {
-					stripeCandidates: {
-						prices: variantBaseFullProduct.prices,
-						entitlements: variantBaseFullProduct.entitlements,
-					},
-				}
-			: {}),
 	});
 
 	// The plan as this update leaves it: a free plan has no card gate, so the
@@ -208,22 +186,6 @@ export const intentToUpsertProductPlan = ({
 		...((source === "direct" || source === "all_versions") &&
 		planParams.propagate !== undefined
 			? { propagate: planParams.propagate }
-			: {}),
-		// Mappings are keyed by public plan id, and a variant is its own plan — so
-		// every source that names a concrete plan writes its own row. The version
-		// fan-out lanes are excluded: they restate the addressed row's plan id.
-		...((source === "direct" ||
-			source === "variant_link" ||
-			source === "variant_propagation") &&
-		planParams.processors?.revenuecat !== undefined
-			? { revenuecatProcessor: planParams.processors.revenuecat }
-			: {}),
-		// Every lane that carries the null needs the flag: the Stripe fan-out and
-		// the variant settings patch both restate `{ stripe: null }` on their own
-		// rows, and a sibling left without it gets a replacement product minted.
-		...(planParams.processors?.stripe === null ? { stripeUnlinked: true } : {}),
-		...(planParams.create_in_stripe !== undefined
-			? { createInStripe: planParams.create_in_stripe }
 			: {}),
 		...(aliasReplacement ? { aliasReplacement } : {}),
 		...(details.product.active &&

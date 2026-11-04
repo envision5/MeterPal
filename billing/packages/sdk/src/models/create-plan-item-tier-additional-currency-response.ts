@@ -36,7 +36,7 @@ export type CreatePlanPriceIntervalRequestBody = ClosedEnum<
 
 export type CreatePlanAdditionalCurrencyRequestBody = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -110,7 +110,7 @@ export type CreatePlanItemResetRequestBody = {
 
 export type CreatePlanItemAdditionalCurrencyRequestBody = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -123,7 +123,7 @@ export type CreatePlanItemPriceToRequestBody = number | string;
 
 export type CreatePlanItemTierAdditionalCurrencyRequestBody = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -697,7 +697,7 @@ export type CreatePlanPriceLicenseInterval = ClosedEnum<
 
 export type CreatePlanLicenseAdditionalCurrency = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -769,7 +769,7 @@ export type CreatePlanLicenseReset = {
 
 export type CreatePlanLicenseAddItemAdditionalCurrency = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -782,7 +782,7 @@ export type CreatePlanLicensePriceTo = number | string;
 
 export type CreatePlanLicenseTierAdditionalCurrency = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -1572,7 +1572,7 @@ export type CreatePlanSpendLimitRequestBody = {
    */
   overageLimit?: number | undefined;
   /**
-   * When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally.
+   * When true, overage for this feature is not posted to the billing processor. Usage tracking and balance resets still behave normally.
    */
   skipOverageBilling?: boolean | undefined;
 };
@@ -1805,12 +1805,11 @@ export type CreatePlanParams = {
    * Arbitrary key-value metadata defined by you for your own use (e.g. UI copy, feature highlights). Values can be any JSON-serializable value. Shared across all versions of the plan.
    */
   metadata?: { [k: string]: any } | undefined;
-  createInStripe?: boolean | undefined;
 };
 
 export type CreatePlanAdditionalCurrencyResponse = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -1851,19 +1850,7 @@ export type CreatePlanPriceDisplay = {
   secondaryText?: string | undefined;
 };
 
-export type CreatePlanPriceStripe = {
-  /**
-   * Stripe price ID. For prepaid with included > 0 this is the V2 price.
-   */
-  priceId: string;
-};
 
-/**
- * Payment processors this base price is connected to. Omitted when unset.
- */
-export type CreatePlanPriceProcessors = {
-  stripe?: CreatePlanPriceStripe | null | undefined;
-};
 
 export type CreatePlanPriceResponse = {
   /**
@@ -1888,11 +1875,7 @@ export type CreatePlanPriceResponse = {
    * Display text for showing this price in pricing pages.
    */
   display?: CreatePlanPriceDisplay | undefined;
-  /**
-   * Payment processors this base price is connected to. Omitted when unset.
-   */
-  processors?: CreatePlanPriceProcessors | undefined;
-};
+  };
 
 export type CreatePlanItemThresholdBillingResponse = {
   threshold: number;
@@ -2000,7 +1983,7 @@ export type CreatePlanItemResetResponse = {
 
 export type CreatePlanItemAdditionalCurrencyResponse = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -2013,7 +1996,7 @@ export type CreatePlanPriceItemToResponse = number | string;
 
 export type CreatePlanItemTierAdditionalCurrencyResponse = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -5467,7 +5450,6 @@ export type CreatePlanParams$Outbound = {
   config?: CreatePlanConfigRequestBody$Outbound | undefined;
   billing_controls?: CreatePlanBillingControlsRequestBody$Outbound | undefined;
   metadata?: { [k: string]: any } | undefined;
-  create_in_stripe: boolean;
 };
 
 /** @internal */
@@ -5497,7 +5479,6 @@ export const CreatePlanParams$outboundSchema: z.ZodMiniType<
       z.lazy(() => CreatePlanBillingControlsRequestBody$outboundSchema),
     ),
     metadata: z.optional(z.record(z.string(), z.any())),
-    createInStripe: z._default(z.boolean(), true),
   }),
   z.transform((v) => {
     return remap$(v, {
@@ -5506,7 +5487,6 @@ export const CreatePlanParams$outboundSchema: z.ZodMiniType<
       autoEnable: "auto_enable",
       freeTrial: "free_trial",
       billingControls: "billing_controls",
-      createInStripe: "create_in_stripe",
     });
   }),
 );
@@ -5572,50 +5552,9 @@ export function createPlanPriceDisplayFromJSON(
   );
 }
 
-/** @internal */
-export const CreatePlanPriceStripe$inboundSchema: z.ZodMiniType<
-  CreatePlanPriceStripe,
-  unknown
-> = z.pipe(
-  z.object({
-    price_id: types.string(),
-  }),
-  z.transform((v) => {
-    return remap$(v, {
-      "price_id": "priceId",
-    });
-  }),
-);
 
-export function createPlanPriceStripeFromJSON(
-  jsonString: string,
-): SafeParseResult<CreatePlanPriceStripe, SDKValidationError> {
-  return safeParse(
-    jsonString,
-    (x) => CreatePlanPriceStripe$inboundSchema.parse(JSON.parse(x)),
-    `Failed to parse 'CreatePlanPriceStripe' from JSON`,
-  );
-}
 
-/** @internal */
-export const CreatePlanPriceProcessors$inboundSchema: z.ZodMiniType<
-  CreatePlanPriceProcessors,
-  unknown
-> = z.object({
-  stripe: z.optional(
-    z.nullable(z.lazy(() => CreatePlanPriceStripe$inboundSchema)),
-  ),
-});
 
-export function createPlanPriceProcessorsFromJSON(
-  jsonString: string,
-): SafeParseResult<CreatePlanPriceProcessors, SDKValidationError> {
-  return safeParse(
-    jsonString,
-    (x) => CreatePlanPriceProcessors$inboundSchema.parse(JSON.parse(x)),
-    `Failed to parse 'CreatePlanPriceProcessors' from JSON`,
-  );
-}
 
 /** @internal */
 export const CreatePlanPriceResponse$inboundSchema: z.ZodMiniType<
@@ -5630,9 +5569,6 @@ export const CreatePlanPriceResponse$inboundSchema: z.ZodMiniType<
     interval: CreatePlanPriceIntervalResponse$inboundSchema,
     interval_count: types.optional(types.number()),
     display: types.optional(z.lazy(() => CreatePlanPriceDisplay$inboundSchema)),
-    processors: types.optional(
-      z.lazy(() => CreatePlanPriceProcessors$inboundSchema),
-    ),
   }),
   z.transform((v) => {
     return remap$(v, {

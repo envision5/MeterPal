@@ -136,7 +136,6 @@ export const initAxEval = ({
 		const scenario = axCase.scenario;
 		const org = await createEvalOrg({
 			runId: orgRunId,
-			withStripe: scenario?.withStripe,
 		});
 		const workspace = await createCaseWorkspace(`${axCase.name}-${arm}`, {
 			secretKey: org.secretKey,

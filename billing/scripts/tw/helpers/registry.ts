@@ -20,7 +20,6 @@ import type {
 	Registry,
 	RegistryEntry,
 	RegistrySandbox,
-	RegistryWebhook,
 } from "../types.ts";
 import type { ProviderName } from "./provider.ts";
 
@@ -126,8 +125,6 @@ export const createRun = ({
 			ref,
 			provider,
 			sandboxes: [],
-			subAccounts: [],
-			webhooks: [],
 		};
 		registry[runId] = entry;
 		await save(registry);
@@ -152,43 +149,6 @@ export const addSandbox = async (
 			return;
 		}
 		entry.sandboxes.push(sandbox);
-	});
-
-/** Record a Stripe Connect sub-account id (`acct_*`) for a run (idempotent). */
-export const addSubAccount = async (
-	runId: string,
-	accountId: string,
-): Promise<RegistryEntry> =>
-	updateEntry(runId, (entry) => {
-		if (!entry.subAccounts.includes(accountId)) {
-			entry.subAccounts.push(accountId);
-		}
-	});
-
-/** Record many sub-accounts in one registry write (idempotent). */
-export const addSubAccounts = async (
-	runId: string,
-	accountIds: string[],
-): Promise<RegistryEntry> =>
-	updateEntry(runId, (entry) => {
-		const known = new Set(entry.subAccounts);
-		for (const accountId of accountIds) {
-			if (!known.has(accountId)) {
-				known.add(accountId);
-				entry.subAccounts.push(accountId);
-			}
-		}
-	});
-
-/** Record a Stripe webhook endpoint for a run (idempotent on `webhookId`). */
-export const addWebhook = async (
-	runId: string,
-	webhook: RegistryWebhook,
-): Promise<RegistryEntry> =>
-	updateEntry(runId, (entry) => {
-		if (!entry.webhooks.some((w) => w.webhookId === webhook.webhookId)) {
-			entry.webhooks.push(webhook);
-		}
 	});
 
 export const getSvixAppIds = (

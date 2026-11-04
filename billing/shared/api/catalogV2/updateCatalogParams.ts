@@ -1,4 +1,3 @@
-import { ApiFeatureProcessorsSchema } from "@api/features/components/processors.js";
 import { CreateFeatureV2ParamsSchema } from "@api/features/crud/createFeatureParams.js";
 import { MigrationParamsSchema } from "@api/products/crud/migrationParams.js";
 import { z } from "zod/v4";
@@ -21,10 +20,6 @@ export const UpdateCatalogFeatureParamsSchema = z.intersection(
 		archived: z.boolean().optional().meta({
 			description:
 				"Archive or unarchive the feature. Omit to leave archived state unchanged.",
-		}),
-		processors: ApiFeatureProcessorsSchema.optional().meta({
-			description:
-				"Processor mappings for this feature. Omit keeps the current Stripe product and meter.",
 		}),
 	}),
 );

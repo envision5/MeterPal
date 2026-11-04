@@ -80,7 +80,7 @@ fi
 if ! wait_elasticmq; then
   echo "[agent-services] WARN: ElasticMQ not ready; skipping CreateQueue" >&2
 else
-  log "Ensuring ElasticMQ queues (autumn.fifo + track + stripe webhook)"
+  log "Ensuring ElasticMQ queues (autumn.fifo + track)"
   fifo_attrs="&Attribute.1.Name=FifoQueue&Attribute.1.Value=true&Attribute.2.Name=ContentBasedDeduplication&Attribute.2.Value=true"
   create_q() {
     local name="$1"
@@ -92,7 +92,6 @@ else
   create_q "autumn.fifo" "$fifo_attrs"
   create_q "autumn-track.fifo" "$fifo_attrs"
   create_q "autumn-track-async" ""
-  create_q "autumn-stripe-webhook.fifo" "$fifo_attrs"
 fi
 
 # =============================================================

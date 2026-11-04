@@ -24,7 +24,9 @@ export const invoices = pgTable(
 		internal_customer_id: text("internal_customer_id").notNull(),
 		internal_entity_id: text("internal_entity_id"),
 
-		stripe_id: text("stripe_id").notNull(),
+		// External processor invoice id — PayPal instruments namespace it as
+		// pp-cap-<captureId> / pp-sale-<saleId> / pp-inv-<invoiceId>
+		processor_invoice_id: text("processor_invoice_id").notNull(),
 		processor_type: text("processor_type"),
 		status: text("status").notNull().default("draft"),
 		hosted_invoice_url: text("hosted_invoice_url"),
@@ -46,7 +48,7 @@ export const invoices = pgTable(
 			foreignColumns: [entities.internal_id],
 			name: "invoices_internal_entity_id_fkey",
 		}).onDelete("cascade"),
-		unique("invoices_stripe_id_key").on(table.stripe_id),
+		unique("invoices_processor_invoice_id_key").on(table.processor_invoice_id),
 		index("idx_invoices_customer_created").on(
 			table.internal_customer_id,
 			sql`${table.created_at} DESC`,

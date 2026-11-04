@@ -10,7 +10,7 @@ import { setupDefaultProductsContext } from "./setupDefaultProductsContext.js";
  *
  * 1. Init full customer
  * 2. Fetch default products
- * 3. Setup Stripe customer + trial context IF paid products exist
+ * 3. Setup trial context IF paid products exist
  */
 export const setupCreateCustomer = async ({
 	ctx,

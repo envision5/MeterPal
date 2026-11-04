@@ -1,11 +1,11 @@
 export enum LoggerAction {
 	AdjustAllowance = "adjust_allowance",
 
-	// Stripe Webhook
-	StripeWebhook = "stripe_webhook",
-	StripeWebhookInvoiceCreated = "stripe_webhook_invoice_created",
+	// Processor Webhook
+	ProcessorWebhook = "processor_webhook",
+	ProcessorWebhookInvoiceCreated = "processor_webhook_invoice_created",
 
 	// Invoice
-	InsertStripeInvoice = "insert_stripe_invoice",
+	InsertProcessorInvoice = "insert_processor_invoice",
 	CreateFullCusProduct = "create_full_cus_product",
 }

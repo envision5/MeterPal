@@ -3,7 +3,7 @@ import {
 	type FullCusProduct,
 	getCycleEnd,
 } from "@autumn/shared";
-import { normalizeCustomerProductTimestamps } from "@/internal/billing/v2/providers/stripe/utils/subscriptionSchedules/normalizeCustomerProductTimestamps";
+import { normalizeCustomerProductTimestamps } from "@/internal/billing/v2/utils/customerProducts/customerProductActivity";
 import { billingContextToFutureTrialEnd } from "@/internal/billing/v2/utils/billingContext/billingContextToFutureTrialEnd";
 import { classifyNextCycleEvent } from "./classifyNextCycleEvent";
 import { getSmallestIntervalForNextCycle } from "./smallestInterval";

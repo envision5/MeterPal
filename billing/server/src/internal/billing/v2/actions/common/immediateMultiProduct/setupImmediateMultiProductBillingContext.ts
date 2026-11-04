@@ -1,9 +1,7 @@
 import {
 	BillingVersion,
 	customerProductHasSubscription,
-	customerProductsToStripeSubscriptionIds,
 	type FullProduct,
-	filterCustomerProductsByStripeSubscriptionId,
 	getTargetSubscriptionCusProduct,
 	type InvoiceMode,
 	isFreeProduct,
@@ -19,12 +17,14 @@ import {
 	resolveCustomerCurrency,
 } from "@autumn/shared";
 import type { FreeTrialParamsV1 } from "@shared/api/common/freeTrial/freeTrialParamsV1";
-import type Stripe from "stripe";
 import type { AutumnContext } from "@/honoUtils/HonoEnv";
 import { setupAttachProductContext } from "@/internal/billing/v2/actions/attach/setup/setupAttachProductContext";
 import { setupAttachTransitionContext } from "@/internal/billing/v2/actions/attach/setup/setupAttachTransitionContext";
-import { setupStripeBillingContext } from "@/internal/billing/v2/providers/stripe/setup/setupStripeBillingContext";
 import { setupCustomerLicenseBillingContext } from "@/internal/billing/v2/setup/customerLicenseBillingContext/setupCustomerLicenseBillingContext";
+import {
+	customerProductsToProcessorSubscriptionIds,
+	filterCustomerProductsByProcessorSubscriptionId,
+} from "@/internal/billing/v2/utils/customerProducts/processorSubscriptionIds";
 import { fetchStoredLineItemsForSubscriptionBilling } from "@/internal/billing/v2/setup/fetchStoredLineItemsForSubscriptionBilling";
 import { setupAnchorResetRefund } from "@/internal/billing/v2/setup/setupAnchorResetRefund";
 import { setupBillingCycleAnchor } from "@/internal/billing/v2/setup/setupBillingCycleAnchor";
@@ -68,12 +68,10 @@ const getSubscriptionTarget = ({
 
 /** Resolve checkout mode for immediate multi-product billing. */
 const setupImmediateMultiProductCheckoutMode = ({
-	paymentMethod,
 	redirectMode,
 	invoiceMode,
 	fullProducts,
 }: {
-	paymentMethod?: Stripe.PaymentMethod;
 	redirectMode?: MultiAttachParamsV0["redirect_mode"];
 	invoiceMode?: InvoiceMode;
 	fullProducts: FullProduct[];
@@ -90,11 +88,7 @@ const setupImmediateMultiProductCheckoutMode = ({
 		return null;
 	}
 
-	if (paymentMethod) {
-		return redirectMode === "always" ? "stripe_checkout" : null;
-	}
-
-	return "stripe_checkout";
+	return "processor_checkout";
 };
 
 /** Resolve trial behavior for immediate multi-product billing. */
@@ -102,14 +96,12 @@ const setupImmediateMultiProductTrialContext = async ({
 	ctx,
 	freeTrialParam,
 	fullCustomer,
-	stripeSubscription,
 	fullProducts,
 	currentEpochMs,
 }: {
 	ctx: AutumnContext;
 	freeTrialParam?: FreeTrialParamsV1 | null;
 	fullCustomer: MultiAttachBillingContext["fullCustomer"];
-	stripeSubscription?: Stripe.Subscription;
 	fullProducts: MultiAttachBillingContext["fullProducts"];
 	currentEpochMs: number;
 }) => {
@@ -129,7 +121,6 @@ const setupImmediateMultiProductTrialContext = async ({
 	if (freeTrialParam !== undefined) {
 		return handleFreeTrialParam({
 			freeTrialParams: freeTrialParam,
-			stripeSubscription,
 			fullProduct: targetProduct,
 			currentEpochMs,
 		});
@@ -145,7 +136,6 @@ const setupImmediateMultiProductTrialContext = async ({
 		ctx,
 		fullProduct: productWithTrial,
 		fullCustomer,
-		stripeSubscription,
 		currentEpochMs,
 	});
 };
@@ -157,14 +147,12 @@ export const setupImmediateMultiProductBillingContext = async ({
 	preview = false,
 	billingStartsAt,
 	billingStartsAtToleranceMs,
-	includeScheduledProductsForScheduleLookup,
 }: {
 	ctx: AutumnContext;
 	params: ImmediateMultiProductParams;
 	preview?: boolean;
 	billingStartsAt?: number;
 	billingStartsAtToleranceMs?: number;
-	includeScheduledProductsForScheduleLookup?: boolean;
 }): Promise<MultiAttachBillingContext> => {
 	const fullCustomer = await setupFullCustomerContext({
 		ctx,
@@ -257,7 +245,7 @@ export const setupImmediateMultiProductBillingContext = async ({
 		: productContexts
 				.map((productContext) => getSubscriptionTarget({ productContext }))
 				.filter(notNullish);
-	const subscriptionIds = customerProductsToStripeSubscriptionIds({
+	const subscriptionIds = customerProductsToProcessorSubscriptionIds({
 		customerProducts: targetCustomerProducts,
 	});
 
@@ -269,51 +257,26 @@ export const setupImmediateMultiProductBillingContext = async ({
 	}
 
 	const [subscriptionId] = subscriptionIds;
-	const [targetCustomerProduct] = filterCustomerProductsByStripeSubscriptionId({
+	const [targetCustomerProduct] = filterCustomerProductsByProcessorSubscriptionId({
 		customerProducts: targetCustomerProducts,
-		stripeSubscriptionId: subscriptionId,
-	});
-
-	const {
-		stripeSubscription,
-		stripeSubscriptionSchedule,
-		stripeCustomer,
-		stripeDiscounts,
-		stripeTaxRate,
-		paymentMethod,
-		testClockFrozenTime,
-	} = await setupStripeBillingContext({
-		ctx,
-		fullCustomer,
-		targetCustomerProduct,
-		params,
-		skipSubscriptionFetching: fullProducts.every((product) =>
-			isOneOffProduct({ product }),
-		),
-		newBillingSubscription: forceNewSubscription || undefined,
-		includeScheduledProductsForScheduleLookup,
-		createStripeCustomerIfMissing:
-			!preview && params.no_billing_changes !== true,
+		processorSubscriptionId: subscriptionId,
 	});
 
 	const invoiceMode = await setupInvoiceModeContext({
 		ctx,
 		fullCustomer,
 		params,
-		stripeCustomer,
 	});
-	const currentEpochMs = testClockFrozenTime ?? Date.now();
+	const currentEpochMs = Date.now();
 	const trialContext = await setupImmediateMultiProductTrialContext({
 		ctx,
 		freeTrialParam: params.free_trial,
 		fullCustomer,
-		stripeSubscription,
 		fullProducts,
 		currentEpochMs,
 	});
 
 	let billingCycleAnchorMs = setupBillingCycleAnchor({
-		stripeSubscription,
 		customerProduct: undefined,
 		newFullProduct: firstProduct,
 		trialContext,
@@ -355,7 +318,7 @@ export const setupImmediateMultiProductBillingContext = async ({
 		await fetchStoredLineItemsForSubscriptionBilling({
 			db: ctx.db,
 			fullCustomer,
-			stripeSubscription,
+			processorSubscriptionId: subscriptionId,
 			outgoingCusProductIds,
 		});
 
@@ -370,7 +333,6 @@ export const setupImmediateMultiProductBillingContext = async ({
 			customer: fullCustomer,
 			org: ctx.org,
 			requested: params.currency,
-			stripeCurrency: stripeCustomer?.currency,
 		}),
 		featureQuantities: productContexts.flatMap(
 			(productContext) => productContext.featureQuantities,
@@ -396,12 +358,6 @@ export const setupImmediateMultiProductBillingContext = async ({
 			billingCycleAnchor: params.billing_cycle_anchor,
 			prorationBehavior: params.billing_behavior,
 		}),
-		stripeCustomer,
-		stripeSubscription,
-		stripeSubscriptionSchedule,
-		stripeDiscounts,
-		stripeTaxRate,
-		paymentMethod,
 		customPrices,
 		customEnts,
 		trialContext,
@@ -410,7 +366,6 @@ export const setupImmediateMultiProductBillingContext = async ({
 			isRevertTrialContext({ trialContext }),
 		isCustom: customPrices.length > 0 || customEnts.length > 0,
 		checkoutMode: setupImmediateMultiProductCheckoutMode({
-			paymentMethod,
 			redirectMode: params.redirect_mode,
 			invoiceMode,
 			fullProducts,
@@ -420,7 +375,6 @@ export const setupImmediateMultiProductBillingContext = async ({
 		successUrl:
 			params.success_url ?? orgToReturnUrl({ org: ctx.org, env: ctx.env }),
 		checkoutSessionParams: params.checkout_session_params,
-		dryRunStripe: preview,
 		storedChargeLineItems,
 		storedRefundLineItems,
 		customerLicenseBillingContext,

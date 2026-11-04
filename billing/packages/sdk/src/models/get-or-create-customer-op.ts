@@ -112,7 +112,7 @@ export type GetOrCreateCustomerSpendLimit = {
    */
   overageLimit?: number | undefined;
   /**
-   * When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally.
+   * When true, overage for this feature is not posted to the billing processor. Usage tracking and balance resets still behave normally.
    */
   skipOverageBilling?: boolean | undefined;
 };
@@ -301,7 +301,7 @@ export type GetOrCreateCustomerConfig = {
    */
   disablePooledBalance?: boolean | undefined;
   /**
-   * Stops Autumn from posting usage-overage line items to Stripe for this customer. Check/track and balance resets still behave normally. When set, this overrides the organization-level disable_overage_billing setting.
+   * Stops Autumn from posting usage-overage line items for this customer. Check/track and balance resets still behave normally. When set, this overrides the organization-level disable_overage_billing setting.
    */
   disableOverageBilling?: boolean | undefined;
 };
@@ -320,7 +320,7 @@ export type GetOrCreateCustomerBillingDetailsAddress = {
 
 export type GetOrCreateCustomerAddBillingDetailsTaxId = {
   /**
-   * Stripe tax ID type, e.g. eu_vat, gb_vat, us_ein. See https://docs.stripe.com/billing/customer/tax-ids#supported-tax-id
+   * Tax ID type, e.g. eu_vat, gb_vat, us_ein.
    */
   type: string;
   /**
@@ -331,7 +331,7 @@ export type GetOrCreateCustomerAddBillingDetailsTaxId = {
 
 export type GetOrCreateCustomerRemoveBillingDetailsTaxId = {
   /**
-   * Stripe tax ID type, e.g. eu_vat, gb_vat, us_ein. See https://docs.stripe.com/billing/customer/tax-ids#supported-tax-id
+   * Tax ID type, e.g. eu_vat, gb_vat, us_ein.
    */
   type: string;
   /**
@@ -341,7 +341,7 @@ export type GetOrCreateCustomerRemoveBillingDetailsTaxId = {
 };
 
 /**
- * Tax IDs to add or remove (e.g. VAT). Stripe tax IDs cannot be edited, so change one by removing the old ID and adding the new one. IDs not listed are kept.
+ * Tax IDs to add or remove (e.g. VAT). Tax IDs cannot be edited, so change one by removing the old ID and adding the new one. IDs not listed are kept.
  */
 export type GetOrCreateCustomerTaxIds = {
   /**
@@ -388,15 +388,15 @@ export type GetOrCreateCustomerInvoiceSettings = {
 };
 
 /**
- * Billing details to set on the Stripe customer. Creates the Stripe customer if needed.
+ * Billing details stored on the linked processor customer. Requires a processor customer.
  */
 export type GetOrCreateCustomerBillingDetails = {
   /**
-   * Billing address, used for tax and shown on invoices. Replaces the whole address, as in Stripe; null clears it.
+   * Billing address, used for tax and shown on invoices. Replaces the whole address; null clears it.
    */
   address?: GetOrCreateCustomerBillingDetailsAddress | null | undefined;
   /**
-   * Tax IDs to add or remove (e.g. VAT). Stripe tax IDs cannot be edited, so change one by removing the old ID and adding the new one. IDs not listed are kept.
+   * Tax IDs to add or remove (e.g. VAT). Tax IDs cannot be edited, so change one by removing the old ID and adding the new one. IDs not listed are kept.
    */
   taxIds?: GetOrCreateCustomerTaxIds | undefined;
   /**
@@ -424,15 +424,7 @@ export type GetOrCreateCustomerParams = {
    * Additional metadata for the customer
    */
   metadata?: { [k: string]: any } | null | undefined;
-  /**
-   * Stripe customer ID if you already have one
-   */
-  stripeId?: string | null | undefined;
-  /**
-   * Whether to create the customer in Stripe
-   */
-  createInStripe?: boolean | undefined;
-  /**
+      /**
    * The ID of the free plan to auto-enable for the customer
    */
   autoEnablePlanId?: string | undefined;
@@ -452,11 +444,7 @@ export type GetOrCreateCustomerParams = {
    * Miscellaneous configurations for the customer.
    */
   config?: GetOrCreateCustomerConfig | undefined;
-  /**
-   * Billing details to set on the Stripe customer. Creates the Stripe customer if needed.
-   */
-  billingDetails?: GetOrCreateCustomerBillingDetails | undefined;
-  /**
+    /**
    * Fields to expand in the returned customer response, such as subscriptions.plan, purchases.plan, balances.feature, or flags.feature.
    */
   expand?: Array<CustomerExpand> | undefined;
@@ -1168,14 +1156,11 @@ export type GetOrCreateCustomerParams$Outbound = {
   email?: string | null | undefined;
   fingerprint?: string | null | undefined;
   metadata?: { [k: string]: any } | null | undefined;
-  stripe_id?: string | null | undefined;
-  create_in_stripe?: boolean | undefined;
   auto_enable_plan_id?: string | undefined;
   send_email_receipts?: boolean | undefined;
   currency?: string | null | undefined;
   billing_controls?: GetOrCreateCustomerBillingControls$Outbound | undefined;
   config?: GetOrCreateCustomerConfig$Outbound | undefined;
-  billing_details?: GetOrCreateCustomerBillingDetails$Outbound | undefined;
   expand?: Array<string> | undefined;
 };
 
@@ -1190,8 +1175,6 @@ export const GetOrCreateCustomerParams$outboundSchema: z.ZodMiniType<
     email: z.optional(z.nullable(z.string())),
     fingerprint: z.optional(z.nullable(z.string())),
     metadata: z.optional(z.nullable(z.record(z.string(), z.any()))),
-    stripeId: z.optional(z.nullable(z.string())),
-    createInStripe: z.optional(z.boolean()),
     autoEnablePlanId: z.optional(z.string()),
     sendEmailReceipts: z.optional(z.boolean()),
     currency: z.optional(z.nullable(z.string())),
@@ -1199,20 +1182,14 @@ export const GetOrCreateCustomerParams$outboundSchema: z.ZodMiniType<
       z.lazy(() => GetOrCreateCustomerBillingControls$outboundSchema),
     ),
     config: z.optional(z.lazy(() => GetOrCreateCustomerConfig$outboundSchema)),
-    billingDetails: z.optional(
-      z.lazy(() => GetOrCreateCustomerBillingDetails$outboundSchema),
-    ),
     expand: z.optional(z.array(CustomerExpand$outboundSchema)),
   }),
   z.transform((v) => {
     return remap$(v, {
       customerId: "customer_id",
-      stripeId: "stripe_id",
-      createInStripe: "create_in_stripe",
       autoEnablePlanId: "auto_enable_plan_id",
       sendEmailReceipts: "send_email_receipts",
       billingControls: "billing_controls",
-      billingDetails: "billing_details",
     });
   }),
 );

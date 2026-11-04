@@ -27,11 +27,11 @@ export const ListCustomersV2ParamsSchema = createPaginationParamsSchema({
 	}),
 
 	processors: z
-		.array(z.enum(["stripe", "revenuecat", "vercel"]))
+		.array(z.enum(["paypal"]))
 		.optional()
 		.meta({
 			description:
-				"Filter by customer processor type (stripe, revenuecat, vercel)",
+				"Filter by customer processor type (paypal)",
 		}),
 });
 

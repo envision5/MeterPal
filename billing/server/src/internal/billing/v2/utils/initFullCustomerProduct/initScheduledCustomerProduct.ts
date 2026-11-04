@@ -49,9 +49,9 @@ export const initScheduledCustomerProduct = ({
 	/** Customer-facing Autumn subscription API id, stored on customer_products.external_id. */
 	externalId?: string;
 	billingCycleAnchorResetsAt?: number | null;
-	/** When syncing from an existing Stripe sub/schedule, link the resulting
+	/** When syncing from an existing processor sub/schedule, link the resulting
 	 * scheduled cusProduct back to it so the customer-products view shows the
-	 * Stripe linkage and downstream actions (cancel, restore) can find it. */
+	 * processor linkage and downstream actions (cancel, restore) can find it. */
 	subscriptionId?: string;
 	subscriptionScheduleId?: string;
 	internalEntityId?: string;

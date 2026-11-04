@@ -1,7 +1,7 @@
 import { AppEnv } from "@autumn/shared";
 import { createRoute } from "../../../../honoMiddlewares/routeHandler.js";
 import { isDeploymentApiKeyMeta } from "../../orgDeploymentUtils.js";
-import { createOrgResponse, isStripeConnected } from "../../orgUtils.js";
+import { createOrgResponse } from "../../orgUtils.js";
 
 export const handleGetOrg = createRoute({
 	scopes: [],
@@ -31,8 +31,7 @@ export const handleGetOrg = createRoute({
 			response.deployed =
 				!!liveProduct ||
 				!!liveFeature ||
-				liveApiKeys.some((key) => isDeploymentApiKeyMeta(key.meta)) ||
-				isStripeConnected({ org, env: AppEnv.Live });
+				liveApiKeys.some((key) => isDeploymentApiKeyMeta(key.meta));
 		}
 
 		return c.json(response);

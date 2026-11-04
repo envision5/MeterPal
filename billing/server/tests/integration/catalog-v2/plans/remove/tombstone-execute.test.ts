@@ -11,7 +11,7 @@ import {
 	expectCatalogResultsCorrect,
 } from "../../utils/expectCatalogUpdate.js";
 import { uniqueTestId } from "../../utils/uniqueTestId.js";
-import { seedVersionableCustomer } from "../migrations/utils/seedVersionableCustomer.js";
+import { seedVersionableCustomer } from "../utils/seedVersionableCustomer.js";
 import {
 	expectPlanPreviewRowCorrect,
 	parsePlanPreview,

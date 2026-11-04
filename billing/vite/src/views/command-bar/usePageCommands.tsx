@@ -1,6 +1,6 @@
 import { Scopes } from "@autumn/shared";
 import { BooksIcon, ListChecksIcon } from "@phosphor-icons/react";
-import { ChartColumn, Workflow } from "lucide-react";
+import { ChartColumn } from "lucide-react";
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router";
 import { useScopes } from "@/hooks/useScopes";
@@ -8,7 +8,6 @@ import { useEnv } from "@/utils/envUtils";
 import { navigateTo } from "@/utils/genUtils";
 import { LogsIcon } from "@/views/event-logs/LogsIcon";
 import { DEV_SUB_TABS } from "@/views/main-sidebar/MainSidebar";
-import { MIGRATIONS_ENABLED } from "@/views/migrations/migrationsEnabled";
 import {
 	SETTINGS_GROUPS,
 	useIsSettingsTabEnabled,
@@ -61,17 +60,6 @@ export const usePageCommands = (): PageCommand[] => {
 			icon: <ListChecksIcon className="size-4" />,
 			path: "/onboarding",
 		},
-		...(MIGRATIONS_ENABLED &&
-			has(Scopes.Migrations.Read)
-			? [
-					{
-						title: "Migrations",
-						section: "Customers",
-						icon: <Workflow className="size-4" />,
-						path: "/migrations",
-					},
-				]
-			: []),
 		{
 			title: "Usage",
 			section: "Customers",

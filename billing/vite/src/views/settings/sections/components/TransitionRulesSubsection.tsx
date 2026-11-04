@@ -38,9 +38,9 @@ const modeFromRule = (
 
 const MODE_DESCRIPTIONS: Record<CarryOverMode, string> = {
 	default:
-		"MeterPal defaults apply: attach only carries usage when requested per call; Stripe back-sync carries all usage.",
+		"MeterPal defaults apply: attach only carries usage when requested per call; processor back-sync carries all usage.",
 	enabled:
-		"Usage is carried onto the new plan whenever a customer changes plans (attach and Stripe back-sync).",
+		"Usage is carried onto the new plan whenever a customer changes plans (attach and processor back-sync).",
 	disabled:
 		"Consumable usage resets on plan changes. Non-consumable features always carry over.",
 };
@@ -198,7 +198,7 @@ export const TransitionRulesSubsection = () => {
 			<p className="text-xs text-tertiary-foreground">
 				Non-consumable features (e.g. seats, contacts) always carry their usage
 				over. These rules also apply when plan changes are synced back from
-				Stripe.
+				the processor.
 			</p>
 		</div>
 	);

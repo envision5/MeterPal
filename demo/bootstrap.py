@@ -176,7 +176,7 @@ def main() -> None:
                f"${DEMO_RATES['input_cost']}/M in, ${DEMO_RATES['output_cost']}/M out)")
 
         step("3. Create free plan granting credits (auto-attaches on signup -- "
-             "the role a Stripe subscription plays in production)")
+             "the role a subscription plays in production)")
         if c.get("/v1/plans/demo-starter").status_code == 200:
             resp = api_call(c, "POST", "/v1/plans/demo-starter", json={
                 "auto_enable": True,
@@ -194,7 +194,7 @@ def main() -> None:
                 "id": "demo-starter",
                 "name": "Demo Starter",
                 "auto_enable": True,
-                "create_in_stripe": False,
+
                 "items": [{
                     "feature_id": FEATURE_ID,
                     "included": STARTING_BALANCE,
@@ -210,7 +210,7 @@ def main() -> None:
             resp = api_call(c, "POST", "/v1/plans", json={
                 "id": "pro",
                 "name": "MeterPal Pro",
-                "create_in_stripe": False,
+
                 "items": [{
                     "feature_id": FEATURE_ID,
                     "included": 100,
@@ -241,7 +241,7 @@ def main() -> None:
                 "id": pack_id,
                 "name": f"{credits:,} credits",
                 "add_on": True,
-                "create_in_stripe": False,
+
                 "items": [{
                     "feature_id": FEATURE_ID,
                     "included": credits,

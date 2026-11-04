@@ -49,8 +49,6 @@ export const OVERLAY: Overlay = {
 		price_id: "Row id; the server matches the price by feature and reuses it.",
 		entitlement_id:
 			"Row id; the server matches the entitlement by feature and reuses it.",
-		stripe_price_id:
-			"Processor mapping; carried by `processors.stripe.priceId` when stated.",
 		base_currency:
 			"FX bookkeeping written beside `currencies`; derived from the org's default.",
 		update_items:

@@ -16,14 +16,14 @@ export const applyIncomingPooledBalanceSources = ({
 	ctx,
 	computeContext,
 	customerProduct,
-	stripeSubscriptionId,
+	processorSubscriptionId,
 	customerCreatedAt,
 	now,
 }: {
 	ctx: AutumnContext;
 	computeContext: PooledBalanceComputeContext;
 	customerProduct: FullCusProduct;
-	stripeSubscriptionId?: string;
+	processorSubscriptionId?: string;
 	customerCreatedAt: number;
 	now: number;
 }) => {
@@ -41,7 +41,7 @@ export const applyIncomingPooledBalanceSources = ({
 			computeContext,
 			customerEntitlement: contributionCustomerEntitlement,
 			customerProduct,
-			stripeSubscriptionId,
+			processorSubscriptionId,
 			customerCreatedAt,
 			now,
 		});

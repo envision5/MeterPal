@@ -22,9 +22,6 @@ export const FixedPriceConfigSchema = z.object({
 	// Usage price fields
 	billing_units: z.number().nullish(),
 	usage_tiers: z.array(UsageTierSchema).nullish(),
-	stripe_price_id: z.string().nullish(),
-	stripe_empty_price_id: z.string().nullish(),
-	stripe_product_id: z.string().nullish(),
 	feature_id: IgnoredFixedPriceMetadataSchema,
 	internal_feature_id: IgnoredFixedPriceMetadataSchema,
 });

@@ -3,7 +3,6 @@ import {
 	findCustomerProductById,
 } from "@autumn/shared";
 import type { AutumnContext } from "@/honoUtils/HonoEnv";
-import { setupStripeBillingContext } from "@/internal/billing/v2/providers/stripe/setup/setupStripeBillingContext";
 import { setupBillingCycleAnchor } from "@/internal/billing/v2/setup/setupBillingCycleAnchor";
 import { setupFullCustomerContext } from "@/internal/billing/v2/setup/setupFullCustomerContext";
 import { setupResetCycleAnchor } from "@/internal/billing/v2/setup/setupResetCycleAnchor";
@@ -38,18 +37,10 @@ export const setupBatchTransitionContext = async ({
 		);
 	}
 
-	const { stripeSubscription, testClockFrozenTime } =
-		await setupStripeBillingContext({
-			ctx,
-			fullCustomer,
-			targetCustomerProduct: parentCustomerProduct,
-			createStripeCustomerIfMissing: false,
-		});
-	const currentEpochMs = testClockFrozenTime ?? Date.now();
+	const currentEpochMs = Date.now();
 	const resolvedBillingCycleAnchorMs =
 		billingCycleAnchorMs ??
 		setupBillingCycleAnchor({
-			stripeSubscription,
 			customerProduct: parentCustomerProduct,
 			newFullProduct: fullProduct,
 			currentEpochMs,

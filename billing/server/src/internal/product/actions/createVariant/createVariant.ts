@@ -9,10 +9,7 @@ import {
 } from "@autumn/shared";
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
 import { ProductService } from "@/internal/products/ProductService.js";
-import { initProductInStripe } from "@/internal/products/productUtils.js";
 import { mapToProductItems } from "@/internal/products/productV2Utils.js";
-import { applyStripeResourceReuseForProduct } from "@/internal/products/stripeResourceUtils/applyStripeResourceReuseForProduct.js";
-import { applyStripeReuseFromVariantFamilies } from "@/internal/products/stripeResourceUtils/applyStripeReuseFromVariantFamilies.js";
 import { createProduct } from "../createProduct.js";
 
 const getVariantItems = ({
@@ -67,7 +64,6 @@ const getVariantCreateParams = ({
 	config: base.config,
 	billing_controls: billingControlsFromColumns(base),
 	metadata: base.metadata,
-	create_in_stripe: false,
 	base_internal_product_id: base.internal_id,
 });
 
@@ -133,16 +129,6 @@ export const createVariant = async ({
 		orgId: org.id,
 		env,
 	});
-
-	await applyStripeResourceReuseForProduct({
-		ctx,
-		product: variant,
-		candidateProducts: [base],
-	});
-
-	await applyStripeReuseFromVariantFamilies({ ctx, products: [variant] });
-
-	await initProductInStripe({ ctx, product: variant });
 
 	return variant;
 };

@@ -25,8 +25,7 @@ export const ListInvoicesStatus = {
 export type ListInvoicesStatus = ClosedEnum<typeof ListInvoicesStatus>;
 
 export const ListInvoicesProcessorTypeRequestBody = {
-  Stripe: "stripe",
-  Revenuecat: "revenuecat",
+  Paypal: "paypal",
 } as const;
 export type ListInvoicesProcessorTypeRequestBody = ClosedEnum<
   typeof ListInvoicesProcessorTypeRequestBody
@@ -54,7 +53,7 @@ export type ListInvoicesParams = {
    */
   status?: Array<ListInvoicesStatus> | undefined;
   /**
-   * Filter by billing processor (stripe, revenuecat). Invoices recorded before processor tracking count as stripe.
+   * Filter by billing processor. Invoices recorded before processor tracking count as paypal.
    */
   processorTypes?: Array<ListInvoicesProcessorTypeRequestBody> | undefined;
 };
@@ -63,8 +62,7 @@ export type ListInvoicesParams = {
  * The billing processor that owns this invoice.
  */
 export const ListInvoicesListProcessorType = {
-  Stripe: "stripe",
-  Revenuecat: "revenuecat",
+  Paypal: "paypal",
 } as const;
 /**
  * The billing processor that owns this invoice.
@@ -137,9 +135,9 @@ export type ListInvoicesList = {
    */
   planIds: Array<string>;
   /**
-   * The Stripe invoice ID
+   * The processor invoice ID
    */
-  stripeId: string;
+  processorInvoiceId: string;
   /**
    * The billing processor that owns this invoice.
    */
@@ -161,7 +159,7 @@ export type ListInvoicesList = {
    */
   createdAt: number;
   /**
-   * URL to the Stripe-hosted invoice page
+   * URL to the processor-hosted invoice page
    */
   hostedInvoiceUrl?: string | null | undefined;
   /**
@@ -185,7 +183,7 @@ export type ListInvoicesList = {
    */
   refundedAmount: number;
   /**
-   * Line items on the invoice, one per line as shown in Stripe. Capped at 100. Empty for invoices recorded before line item storage.
+   * Line items on the invoice, one per line as shown on the hosted invoice page. Capped at 100. Empty for invoices recorded before line item storage.
    */
   items?: Array<ListInvoicesItem> | undefined;
 };
@@ -335,10 +333,10 @@ export const ListInvoicesList$inboundSchema: z.ZodMiniType<
 > = z.pipe(
   z.object({
     plan_ids: z.array(types.string()),
-    stripe_id: types.string(),
+    processor_invoice_id: types.string(),
     processor_type: z._default(
       ListInvoicesListProcessorType$inboundSchema,
-      "stripe",
+      "paypal",
     ),
     status: types.string(),
     total: types.number(),
@@ -357,7 +355,7 @@ export const ListInvoicesList$inboundSchema: z.ZodMiniType<
   z.transform((v) => {
     return remap$(v, {
       "plan_ids": "planIds",
-      "stripe_id": "stripeId",
+      "processor_invoice_id": "processorInvoiceId",
       "processor_type": "processorType",
       "created_at": "createdAt",
       "hosted_invoice_url": "hostedInvoiceUrl",

@@ -79,7 +79,7 @@ const assertCustomerInvoiceCorrect = ({
 
 /**
  * Pass `customerId` (instead of a fetched `customer`) to poll until the
- * invoices settle — Stripe-generated invoices and status flips (draft → paid)
+ * invoices settle — processor-generated invoices and status flips (draft → paid)
  * arrive by webhook. See {@link pollableCustomerExpect}.
  */
 export const expectCustomerInvoiceCorrect = pollableCustomerExpect({

@@ -1,5 +1,7 @@
 ## Setup and payments
 
+import CreatePlans from "/snippets/create-plans.mdx";
+
 In this example we'll create the pricing for a premium AI chatbot. We're going to have:
 
 - A <Badge color="green">Free</Badge> plan that gives users 5 chat messages per month for free
@@ -9,109 +11,12 @@ In this example we'll create the pricing for a premium AI chatbot. We're going t
 <Step title="Create your pricing plans">
 Create a plan for each pricing tier that your app offers. In our example we'll create a "Free" and "Pro" plan, and assign them features.
 
-Browse our [Examples](/examples) for guides on setting up credit systems, top ups and other common pricing models.
-
-Run the following command in your root directory:
-
-<CodeGroup>
-```bash bun
-bunx atmn init
-```
-```bash npm
-npx atmn init
-```
-```bash pnpm
-pnpm dlx atmn init
-```
-</CodeGroup>
-
-This asks how you want to connect (sign in, or create a sandbox with no account), then creates an `autumn/` folder with an `autumn.config.ts` inside. Replace the contents of that file with the code below, or view our [config reference](/cli/config) to build your own.
-
-```typescript autumn.config.ts [expandable]
-import { atmn, feature, plan } from "atmn";
-
-// Features
-export const messages = feature({
-  featureId: "messages",
-  name: "Messages",
-  type: "metered",
-  consumable: true,
-});
-
-// Plans
-export const free = plan({
-  planId: "free",
-  versionSlug: "v1",
-  active: true,
-  name: "Free",
-  autoEnable: true,
-  items: [
-    // 5 messages per month
-    {
-      featureId: messages.featureId,
-      included: 5,
-      reset: { interval: "month" },
-    },
-  ],
-});
-
-export const pro = plan({
-  planId: "pro",
-  versionSlug: "v1",
-  active: true,
-  name: "Pro",
-  price: {
-    amount: 20,
-    interval: "month",
-  },
-  items: [
-    // 100 messages per month
-    {
-      featureId: messages.featureId,
-      included: 100,
-      reset: { interval: "month" },
-    },
-  ],
-});
-
-export default atmn({ features: [messages], plans: [free, pro] });
-```
-
-Then, preview your changes against Autumn's sandbox environment.
-
-<CodeGroup>
-```bash bun
-bunx atmn push
-```
-```bash npm
-npx atmn push
-```
-```bash pnpm
-pnpm dlx atmn push
-```
-</CodeGroup>
-
-Once the preview looks right, apply it:
-
-<CodeGroup>
-```bash bun
-bunx atmn push --yes
-```
-```bash npm
-npx atmn push --yes
-```
-```bash pnpm
-pnpm dlx atmn push --yes
-```
-</CodeGroup>
-
-  If you already have plans created in the dashboard, `atmn init` pulls them
-  into your config for you. Run `atmn pull` at any time to do it again.
+<CreatePlans />
 
 </Step>
 
 <Step title="Installation">
-[Create an Autumn Secret key](https://app.useautumn.com/sandbox/dev?tab=api_keys), and paste it in your `.env` variables. Then, install the Autumn SDK. If you're using the CLI, this will be done for you.
+[Create an MeterPal Secret key](https://app.useautumn.com/sandbox/dev?tab=api_keys), and paste it in your `.env` variables. Then, install the MeterPal SDK. If you're using the CLI, this will be done for you.
 
 ```bash .env
 AUTUMN_SECRET_KEY=am_sk_test_42424242...
@@ -143,8 +48,8 @@ pip install autumn-sdk
 
 </Step>
 
-<Step title="Create an Autumn customer">
-When the customer signs up, create an Autumn customer for them. Autumn will automatically enable the <Badge color="green">Free</Badge> plan, since you marked it with the `auto-enable` flag.
+<Step title="Create an MeterPal customer">
+When the customer signs up, create an MeterPal customer for them. MeterPal will automatically enable the <Badge color="green">Free</Badge> plan, since you marked it with the `auto-enable` flag.
 
 <CodeGroup>
 
@@ -192,15 +97,17 @@ curl --request POST \
 
 </CodeGroup>
 
-    Autumn's customer ID is the same as your internal user or org ID generated
+
+    MeterPal's customer ID is the same as your internal user or org ID generated
     from your auth provider. No need to store any extra IDs.
 
-In the Autumn dashboard, you will see your user under the [customers](https://app.useautumn.com/customers) page.
+
+In the MeterPal dashboard, you will see your user under the [customers](https://app.useautumn.com/customers) page.
 
 </Step>
 
-<Step title="Stripe Payment Flow">
-Call `attach` when the customer wants to purchase the <Badge color="blue">Pro</Badge> plan. This will return a Stripe payment URL. Once they've paid, Autumn will grant access to "100 messages per month" defined in Step 1.
+<Step title="Payment Flow">
+Call `attach` when the customer wants to purchase the <Badge color="blue">Pro</Badge> plan. This will return a payment URL. Once they've paid, MeterPal will grant access to "100 messages per month" defined in Step 1.
 
 <CodeGroup>
 
@@ -250,18 +157,23 @@ curl -X POST 'https://api.useautumn.com/v1/attach' \
 
 </CodeGroup>
 
-    Use Stripe's test card `4242 4242 4242 4242` to make a purchase in sandbox.
+
+    Use your payment processor's sandbox test details to make a purchase in sandbox.
     You can enter any Expiry and CVV.
+
 
 This can be used for any plan changes scenario (upgrades, downgrades, one-time topups, renewals, etc).
 
 Upgrades will happen immediately, and downgrades will be scheduled for the next billing cycle.
 
+
 The **`redirectMode: "always"`** flag will always return a payment URL.
 
-New purchases redirect to Stripe Checkout to enter payment details, and subsequent charges redirect to an Autumn hosted, one-click confirmation page.
+New purchases redirect to the processor's checkout to enter payment details, and subsequent charges redirect to an MeterPal hosted, one-click confirmation page.
 
 You can build your own billing confirmation flows by using the [previewAttach](/api-reference/billing/previewAttach) function.
+
+
 
 </Step>
 </Steps>
@@ -270,5 +182,6 @@ You can build your own billing confirmation flows by using the [previewAttach](/
 
 Now that the plan is enabled and you've handled payments, you can now make sure that customers have the access to the right features and limits based on their plan.
 
-    Enforce usage limits and feature permissions using Autumn's `check` and
+
+    Enforce usage limits and feature permissions using MeterPal's `check` and
     `track` functions

@@ -70,7 +70,7 @@ const findExistingLicensePool = ({
 			pooled_balance.interval === entIdentity.interval &&
 			pooled_balance.interval_count === entIdentity.intervalCount &&
 			pooled_balance.reset_mode === resetMode &&
-			pooled_balance.stripe_subscription_id === null &&
+			pooled_balance.processor_subscription_id === null &&
 			pooled_balance.customer_license_link_id === customerLicense.link_id &&
 			pooled_balance.rollover_signature === entIdentity.rolloverSignature,
 	);
@@ -111,7 +111,7 @@ const licensePooledIdentity = ({
 			...entIdentity,
 			resetCycleAnchor,
 			resetMode,
-			stripeSubscriptionId: null,
+			processorSubscriptionId: null,
 			customerLicenseLinkId: customerLicense.link_id,
 		},
 		nextResetAt,

@@ -49,7 +49,7 @@ type PreviewData = {
 	tax?: { total: number; status: "complete" | "incomplete" };
 	invoice_credits?: { balance: number; applied?: number };
 	amount_due?: number;
-	checkout_type?: "stripe_checkout" | "autumn_checkout" | null;
+	checkout_type?: "processor_checkout" | "autumn_checkout" | null;
 };
 
 /** Optional fields so confirmation stages can pass a bare `{ data }`. */

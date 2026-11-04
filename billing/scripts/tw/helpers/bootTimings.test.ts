@@ -22,7 +22,7 @@ test("splits boot output into steps across chunk boundaries", () => {
 	});
 	recordBootOutput({
 		worker: "worker-0",
-		text: "[tw-boot] +4000ms applying pending DB migrations (schema self-heal)\n[tw-boot] +5000ms binding Stripe sub-account acct_1\n[tw-boot] +5100ms starting Autumn server (bun src/index.ts) on :8080\n[tw-boot] +11100ms server health OK on :8080\n",
+		text: "[tw-boot] +4000ms applying pending DB migrations (schema self-heal)\n[tw-boot] +5100ms starting Autumn server (bun src/index.ts) on :8080\n[tw-boot] +11100ms server health OK on :8080\n",
 	});
 
 	const byStep = Object.fromEntries(
@@ -32,8 +32,7 @@ test("splits boot output into steps across chunk boundaries", () => {
 	expect(byStep["services up"]).toBe(895);
 	expect(byStep["balance queue prep"]).toBe(100);
 	expect(byStep["bun install"]).toBe(3000);
-	expect(byStep["db migrate"]).toBe(1000);
-	expect(byStep["stripe bind"]).toBe(100);
+	expect(byStep["db migrate"]).toBe(1100);
 	expect(byStep["server load → health"]).toBe(6000);
 	expect(byStep["exec → boot.ts running"]).toBeGreaterThanOrEqual(-5);
 });

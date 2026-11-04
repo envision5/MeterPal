@@ -1,25 +1,25 @@
-import { AttachFunction, type CheckoutParamsV0 } from "@autumn/shared";
-import type { AutumnContext } from "../../../honoUtils/HonoEnv";
-import { isPaypalConnected, isStripeConnected } from "../../orgs/orgUtils";
-import { runPaypalCheckout } from "../paypal/runPaypalCheckout";
-import { handleCreateCheckout } from "../../customers/add-product/handleCreateCheckout";
-import { handleCreateInvoiceCheckout } from "../../customers/add-product/handleCreateInvoiceCheckout";
 import {
-	checkStripeConnections,
-	handlePrepaidErrors,
-} from "../../customers/attach/attachRouter";
-import { handleCheckoutErrors } from "../../customers/attach/attachUtils/handleAttachErrors/handleCheckoutErrors";
-import { insertCustomItems } from "../../customers/attach/attachUtils/insertCustomItems";
-import { attachParamsToPreview } from "../attachPreview/attachParamsToPreview";
-import { getHasProrations } from "./getHasProrations";
-import { previewToCheckoutRes } from "./previewToCheckoutRes";
-import { checkoutToAttachContext } from "./utils/checkoutToAttachContext";
-import { getCheckoutOptions } from "./utils/getCheckoutOptions";
+	type AttachParamsV1,
+	type CheckoutParamsV0,
+	type CheckoutResponseV0,
+	type FullProduct,
+} from "@autumn/shared";
+import type { AutumnContext } from "../../../honoUtils/HonoEnv";
+import { isPaypalConnected } from "../../orgs/orgUtils";
+import { runPaypalCheckout } from "../paypal/runPaypalCheckout";
+import { RecaseError, ErrCode } from "@autumn/shared";
+import { computeAttachPlan } from "../v2/actions/attach/compute/computeAttachPlan";
+import { setupAttachBillingContext } from "../v2/actions/attach/setup/setupAttachBillingContext";
+import { computeAttachPreviewBillingPlan } from "../v2/utils/billingPlan/preview/computeAttachPreviewBillingPlan";
+import { logAutumnBillingPlan } from "../v2/utils/logs/logAutumnBillingPlan";
+import { getProductResponse } from "../../products/productUtils/productResponseUtils/getProductResponse";
+import { resolveCarryOverUsagesParam } from "../v2/utils/handleCarryOvers/resolveCarryOverUsagesParam";
 
 /**
- * Core checkout flow, shared by the public `/v1/checkout` route and internal
- * callers that run checkout against a context they build themselves (e.g. the
- * pricing agent's preview sandbox org).
+ * Core checkout flow for the public `/v1/checkout` route: builds the v2
+ * billing context + plan, previews the charges, and — for paid products on a
+ * PayPal-connected org — returns the PayPal buyer-approval URL. Money-in
+ * lands via /webhooks/paypal, which grants wallet credits.
  */
 export const runCheckout = async ({
 	ctx,
@@ -28,101 +28,119 @@ export const runCheckout = async ({
 	ctx: AutumnContext;
 	checkoutParams: CheckoutParamsV0;
 }) => {
-	const { attachParams, branch, func, config, customPrices, customEnts } =
-		await checkoutToAttachContext({
+	const params = {
+		...checkoutParams,
+		carry_over_usages: await resolveCarryOverUsagesParam({
 			ctx,
-			checkoutParams,
-		});
+		}),
+	} as AttachParamsV1;
 
-	let checkoutUrl = null;
-
-	handleCheckoutErrors({
-		attachParams,
-		branch,
+	// 1. Setup + compute (same pipeline as attach)
+	const billingContext = await setupAttachBillingContext({
+		ctx,
+		params,
+		preview: true,
 	});
 
-	if (func === AttachFunction.CreateCheckout) {
-		await insertCustomItems({
-			db: ctx.db,
-			customPrices: customPrices || [],
-			customEnts: customEnts || [],
-		});
+	const autumnBillingPlan = computeAttachPlan({
+		ctx,
+		attachBillingContext: billingContext,
+		params,
+	});
 
-		await handlePrepaidErrors({
-			attachParams,
-			config,
-			useCheckout: config.onlyCheckout,
-		});
+	logAutumnBillingPlan({ ctx, plan: autumnBillingPlan, billingContext });
 
-		if (
-		isPaypalConnected({ org: ctx.org, env: ctx.env }) &&
-		!isStripeConnected({ org: ctx.org, env: ctx.env })
-	) {
-			// PayPal-native path: returns the buyer-approval URL (Orders v2 for
-			// one-off credit packs, Subscriptions for recurring plans).  Money-in
-			// lands via /webhooks/paypal, which grants wallet credits.
-			checkoutUrl = await runPaypalCheckout({
-				attachParams,
-				db: ctx.db,
-				env: ctx.env,
+	const preview = await computeAttachPreviewBillingPlan({
+		ctx,
+		billingContext,
+		autumnBillingPlan,
+	});
+
+	// 2. PayPal approval URL for paid products
+	let checkoutUrl: string | null = null;
+	if (billingContext.checkoutMode === "processor_checkout") {
+		if (!isPaypalConnected({ org: ctx.org, env: ctx.env })) {
+			throw new RecaseError({
+				code: ErrCode.ProcessorConfigNotFound,
+				message:
+					"No PayPal connection for this org — connect PayPal in settings to sell paid plans",
+				statusCode: 400,
 			});
-		} else {
-			await checkStripeConnections({
-				ctx,
-				attachParams,
-				createCus: true,
-				useCheckout: true,
-			});
-
-			if (config.invoiceCheckout) {
-				const result = await handleCreateInvoiceCheckout({
-					ctx,
-					attachParams,
-					config,
-					branch,
-				});
-
-				checkoutUrl = result?.checkout_url;
-			} else {
-				const result = await handleCreateCheckout({
-					ctx,
-					attachParams,
-					config,
-					returnCheckout: true,
-				});
-
-				checkoutUrl = result?.checkout_url;
-			}
 		}
+
+		const products = billingContext.attachProduct
+			? [billingContext.attachProduct]
+			: [];
+		checkoutUrl = await runPaypalCheckout({
+			attachParams: {
+				org: ctx.org,
+				customer: billingContext.fullCustomer,
+				products,
+				prices: products.flatMap((p) => p.prices),
+				successUrl: params.success_url,
+			},
+			db: ctx.db,
+			env: ctx.env,
+		});
 	}
 
-	await getCheckoutOptions({
-		ctx,
-		attachParams,
-	});
+	// 3. Build the checkout response
+	const { fullCustomer, features, org } = billingContext
+		? { fullCustomer: billingContext.fullCustomer, features: ctx.features, org: ctx.org }
+		: ({} as never);
 
-	const preview = await attachParamsToPreview({
-		ctx,
-		attachParams,
-		attachBody: checkoutParams,
-		withPrepaid: true,
-	});
+	const chargeLineItems = (autumnBillingPlan.lineItems ?? []).filter(
+		(li) => li.context.direction === "charge",
+	);
 
-	const checkoutRes = await previewToCheckoutRes({
-		ctx,
-		attachParams,
-		preview,
-		branch,
-	});
+	const lines = chargeLineItems.map((li) => ({
+		description: li.description,
+		amount: li.amountAfterDiscounts ?? li.amount,
+		item: null,
+	}));
 
-	const hasProrations = await getHasProrations({
-		branch,
-		attachParams,
-	});
+	const total = lines.reduce((acc, line) => acc + line.amount, 0);
 
-	return {
-		...checkoutRes,
+	const currentCustomerProduct = billingContext.currentCustomerProduct;
+	const currentProduct = currentCustomerProduct
+		? await getProductResponse({
+				product: {
+					...currentCustomerProduct.product,
+					prices: currentCustomerProduct.customer_prices.map(
+						(customerPrice) => customerPrice.price,
+					),
+					entitlements: currentCustomerProduct.customer_entitlements.map(
+						(customerEntitlement) => customerEntitlement.entitlement,
+					),
+				} as FullProduct,
+				features,
+				currency: org.default_currency || "usd",
+				options: currentCustomerProduct.options,
+			})
+		: null;
+
+	const newProduct = billingContext.attachProduct
+		? await getProductResponse({
+				product: billingContext.attachProduct,
+				features,
+				currency: org.default_currency || "usd",
+				options: billingContext.featureQuantities,
+				fullCus: fullCustomer,
+			})
+		: null;
+
+	const response: CheckoutResponseV0 = {
 		url: checkoutUrl,
-		has_prorations: hasProrations,
+		customer_id: fullCustomer.id || fullCustomer.internal_id,
+		lines,
+		product: newProduct,
+		current_product: currentProduct,
+		options: billingContext.featureQuantities,
+		total,
+		currency: org.default_currency || "usd",
+		has_prorations: chargeLineItems.some((li) => li.prorated ?? false),
+		next_cycle: null,
 	};
+
+	return response;
 };

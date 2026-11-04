@@ -45,7 +45,6 @@ import {
 	markCustomerUpdatedAt,
 } from "@/internal/customers/customerLsns/markCustomerUpdatedAt.js";
 import { hydrateFullCustomerLicenses } from "@/internal/licenses/actions/hydrateFullCustomerLicenses.js";
-import { checkPendingMigrationsForCustomer } from "@/internal/migrations/v2/lazy/checkPendingMigrationsForCustomer.js";
 import { withSpan } from "../analytics/tracer/spanUtils.js";
 import {
 	getOrgCusProductLimit,
@@ -292,10 +291,6 @@ export class CusService {
 						fullCus,
 						ctx,
 					});
-					await checkPendingMigrationsForCustomer({
-						ctx,
-						fullCustomer: fullCus,
-					});
 				}
 
 				return fullCus;
@@ -461,47 +456,9 @@ export class CusService {
 			return null;
 		}
 
-		return customer as Customer & { org?: Organization };
-	}
-
-	static async getByStripeId({
-		ctx,
-		stripeId,
-	}: {
-		ctx: AutumnContext;
-		stripeId: string;
-	}) {
-		const { db, org, env } = ctx;
-		const customer = await db.query.customers.findFirst({
-			where: and(
-				eq(sql`processor->>'id'`, stripeId),
-				eq(customers.org_id, org.id),
-				eq(customers.env, env),
-			),
-		});
-
-		if (!customer) return null;
-
-		return customer as Customer;
-	}
-
-	static async getAllByStripeId({
-		ctx,
-		stripeId,
-	}: {
-		ctx: AutumnContext;
-		stripeId: string;
-	}) {
-		const { db, org, env } = ctx;
-		const results = await db.query.customers.findMany({
-			where: and(
-				eq(sql`processor->>'id'`, stripeId),
-				eq(customers.org_id, org.id),
-				eq(customers.env, env),
-			),
-		});
-
-		return results as Customer[];
+		// The org relation comes back as the raw organizations row, while
+		// `Organization` also carries the self-referential `master` org.
+		return customer as unknown as Customer & { org?: Organization };
 	}
 
 	static async insert({ db, data }: { db: DrizzleCli; data: Customer }) {
@@ -578,26 +535,8 @@ export class CusService {
 			? [query.subscription_status as CusProductStatus]
 			: ACTIVE_STATUSES;
 
-		const processorFilter = query?.processors?.length
-			? or(
-					...query.processors
-						.map((proc) => {
-							if (proc === "stripe")
-								return sql`(${customers.processor}->>'id' IS NOT NULL)`;
-							if (proc === "revenuecat")
-								return sql`EXISTS (
-									SELECT 1
-									FROM customer_products cp_processor
-									WHERE cp_processor.internal_customer_id = ${customers.internal_id}
-										AND cp_processor.processor->>'type' = 'revenuecat'
-								)`;
-							if (proc === "vercel")
-								return sql`(${customers.processors}->>'vercel' IS NOT NULL)`;
-							return undefined;
-						})
-						.filter((c): c is NonNullable<typeof c> => c !== undefined),
-				)
-			: undefined;
+		// PayPal is the only processor, so the legacy `processors` filter has no
+		// column to match on and does not narrow the result set.
 
 		if (!query?.plans?.length) {
 			const [result] = await ctx.db
@@ -614,7 +553,6 @@ export class CusService {
 									ilike(customers.email, `%${search}%`),
 								)
 							: undefined,
-						processorFilter,
 					),
 				);
 
@@ -680,7 +618,6 @@ export class CusService {
 								)
 							: undefined,
 					),
-					processorFilter,
 				),
 			);
 
@@ -863,8 +800,8 @@ export class CusService {
 		}
 	}
 
-	// First paid attach only sends this when unset. Stripe sync also sends it
-	// to relock leftover currency after the previous paid product expired.
+	// First paid attach only sends this when unset. The processor back-sync also
+	// sends it to relock leftover currency after the previous paid product expired.
 	static async lockCurrencyIfUnset({
 		ctx,
 		internalCustomerId,
@@ -969,78 +906,5 @@ export class CusService {
 					),
 				);
 		}
-	}
-
-	static async getByVercelId({
-		ctx,
-		vercelInstallationId,
-		expand,
-	}: {
-		ctx: AutumnContext;
-		vercelInstallationId: string;
-		expand?: (CustomerExpand | EntityExpand)[];
-	}) {
-		const { db, org, env } = ctx;
-
-		// This assumes the "processors" column is a JSONB object that can have a "vercel" object with "installation_id"
-		const results = await db
-			.select()
-			.from(customers as unknown as Table)
-			.where(
-				and(
-					eq(customers.org_id, org.id),
-					eq(customers.env, env),
-					// This JSON path works for Postgres jsonb column
-					// Check for 'vercel.installation_id' inside the processors JSONB column
-					sql`${customers.processors}->'vercel'->>'installation_id' = ${vercelInstallationId}`,
-				),
-			);
-
-		const customer = results[0] ?? null;
-
-		if (!customer) return null;
-		else {
-			return (await CusService.getFull({
-				ctx,
-				idOrInternalId: customer.internal_id,
-				expand,
-			})) as FullCustomer;
-		}
-	}
-
-	static async getByRevenueCatAppUserId({
-		ctx,
-		appUserId,
-		withEntities = false,
-		withSubs = false,
-	}: {
-		ctx: AutumnContext;
-		appUserId: string;
-		withEntities?: boolean;
-		withSubs?: boolean;
-	}): Promise<FullCustomer | null> {
-		const { db, org, env } = ctx;
-
-		const results = await db
-			.select()
-			.from(customers as unknown as Table)
-			.where(
-				and(
-					eq(customers.org_id, org.id),
-					eq(customers.env, env),
-					sql`(${customers.processors}->'revenuecat'->>'id' = ${appUserId} OR ${customers.processors}->'revenuecat'->'aliases' ? ${appUserId})`,
-				),
-			)
-			.limit(1);
-
-		const customer = results[0] ?? null;
-		if (!customer) return null;
-
-		return (await CusService.getFull({
-			ctx,
-			idOrInternalId: customer.internal_id,
-			withEntities,
-			withSubs,
-		})) as FullCustomer;
 	}
 }

@@ -12,7 +12,6 @@ import {
 	previewMultiAttachParamsSchema,
 	previewUpdateParamsSchema,
 	redeemReferralCodeParamsSchema,
-	setupPaymentParamsSchema,
 	updateSubscriptionParamsSchema,
 } from "../../../generated";
 import type { RouteDefinition, RouteName } from "../types";
@@ -118,11 +117,6 @@ export const routeConfigs: RouteDefinition<RouteName>[] = [
 		route: "previewMultiAttach",
 		sdkMethod: (autumn, args) => autumn.billing.previewMultiAttach(args),
 		bodySchema: previewMultiAttachParamsSchema,
-	},
-	{
-		route: "setupPayment",
-		sdkMethod: (autumn, args) => autumn.billing.setupPayment(args),
-		bodySchema: setupPaymentParamsSchema,
 	},
 	{
 		route: "listPlans",

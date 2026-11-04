@@ -7,7 +7,7 @@ interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
 
 /**
  * Skeleton loading placeholder with optional shimmer effect.
- * Shimmer provides a Stripe-style loading animation.
+ * Shimmer provides a sweeping loading animation.
  */
 function Skeleton({ className, shimmer = true, ...props }: SkeletonProps) {
 	return (

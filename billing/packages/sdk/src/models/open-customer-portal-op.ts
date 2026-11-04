@@ -19,7 +19,7 @@ export type OpenCustomerPortalParams = {
    */
   customerId: string;
   /**
-   * Stripe billing portal configuration ID. Create configurations in your Stripe dashboard.
+   * Billing portal configuration ID. Create configurations in your billing processor's dashboard.
    */
   configurationId?: string | undefined;
   /**

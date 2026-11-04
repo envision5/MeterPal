@@ -35,8 +35,8 @@ import { HierarchyFlatSimulator } from "./blogComponents/stop-rebuilding-your-bi
 import { HierarchyLayeredSimulator } from "./blogComponents/stop-rebuilding-your-billing-system/HierarchyLayeredSimulator";
 import { PostgresTablesHero } from "./blogComponents/stop-rebuilding-your-billing-system/PostgresTablesHero";
 import { RelationalDbSimulator } from "./blogComponents/stop-rebuilding-your-billing-system/RelationalDbSimulator";
-import { StripeMappingDiagram } from "./blogComponents/stop-rebuilding-your-billing-system/StripeMappingDiagram";
-import { StripeTransitionDiagram } from "./blogComponents/stop-rebuilding-your-billing-system/StripeTransitionDiagram";
+import { ProcessorMappingDiagram } from "./blogComponents/stop-rebuilding-your-billing-system/ProcessorMappingDiagram";
+import { ProcessorTransitionDiagram } from "./blogComponents/stop-rebuilding-your-billing-system/ProcessorTransitionDiagram";
 import { Expand } from "./blogExpand";
 
 function BlogHeading({
@@ -178,7 +178,7 @@ export const mdxComponents = {
 	TestimonialQuote,
 	PostgresTablesHero,
 	RelationalDbSimulator,
-	StripeMappingDiagram,
-	StripeTransitionDiagram,
+	ProcessorMappingDiagram,
+	ProcessorTransitionDiagram,
 	Toggle,
 };

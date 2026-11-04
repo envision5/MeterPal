@@ -14,7 +14,7 @@ import {
 	messagesItem,
 	withCatalogPlans,
 } from "../../licenses/utils/seedLicensePlans.js";
-import { seedVersionableCustomer } from "../../migrations/utils/seedVersionableCustomer.js";
+import { seedVersionableCustomer } from "../../utils/seedVersionableCustomer.js";
 import {
 	expectExactlyOneActiveVersion,
 	expectVersionIdentityCorrect,

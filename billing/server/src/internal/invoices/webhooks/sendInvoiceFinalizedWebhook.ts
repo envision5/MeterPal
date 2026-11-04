@@ -32,7 +32,7 @@ export const sendInvoiceFinalizedWebhook = async ({
 		ctx,
 		eventType: WebhookEventType.InvoiceFinalized,
 		data,
-		idempotencyKey: `invoice.finalized:${row.invoice.stripe_id}`,
+		idempotencyKey: `invoice.finalized:${row.invoice.processor_invoice_id}`,
 		tags: customerToSvixTags({
 			customerId: row.customer_id ?? row.invoice.internal_customer_id,
 			entityId: row.entity_id,

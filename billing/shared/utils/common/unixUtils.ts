@@ -73,7 +73,7 @@ export const truncateMsToSecondPrecision = (ms: number): number => {
 
 /**
  * Returns true if two timestamps are within `toleranceMs` of each other.
- * Defaults to 1 second to absorb Stripe's second-precision rounding drift.
+ * Defaults to 1 second to absorb the processor's second-precision rounding drift.
  */
 export const timestampsMatch = (
 	a: number,
@@ -95,10 +95,3 @@ export const isPastStartDate = (
 	currentEpochMs: number,
 	toleranceMs = START_DATE_TOLERANCE_MS,
 ): boolean => startDate < currentEpochMs - toleranceMs;
-
-export const stripePhaseStartsInFuture = (
-	startDate: number | "now" | undefined,
-	currentEpochMs: number,
-): boolean =>
-	typeof startDate === "number" &&
-	isFutureStartDate(secondsToMs(startDate), currentEpochMs, 0);

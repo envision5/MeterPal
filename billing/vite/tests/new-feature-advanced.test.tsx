@@ -1,9 +1,6 @@
 /**
- * The feature sheets' Advanced section no longer offers a Stripe product;
- * feature-level Stripe products are managed through the CLI mappings.
- *
- * Red (current):  the section renders a "Stripe Product (optional)" select.
- * Green (after):  only event names remain, so non-metered features get no section.
+ * The feature sheets' Advanced section only carries event names; there is no
+ * product mapping to pick in the dashboard.
  */
 
 import { expect, test } from "bun:test";
@@ -20,7 +17,7 @@ const render = (feature: CreateFeature) =>
 		<NewFeatureAdvanced feature={feature} setFeature={() => {}} />,
 	);
 
-test("metered features keep event names and lose the Stripe product select", () => {
+test("metered features keep event names and no product select", () => {
 	const html = render({
 		id: "messages",
 		name: "Messages",
@@ -30,7 +27,7 @@ test("metered features keep event names and lose the Stripe product select", () 
 	} as CreateFeature);
 
 	expect(html).toContain("Advanced");
-	expect(html).not.toContain("Stripe Product");
+	expect(html).not.toContain("Product");
 });
 
 test("credit systems have no advanced section at all", () => {

@@ -8,7 +8,7 @@ description: |
   - Build a pricing page with upgrade/downgrade buttons
   - Implement plan switching (upgrades/downgrades)
   - Add cancel/uncancel subscription functionality
-  - Open the Stripe billing portal
+  - Open the billing portal
   - Display usage history charts
   - Add prepaid top-ups or credit purchases
 ---
@@ -362,9 +362,9 @@ if cancelling_sub:
 
 ---
 
-## Stripe Billing Portal
+## Billing Portal
 
-The Stripe billing portal lets users manage their payment method, view past invoices, and cancel their plan. Enable the billing portal in your Stripe settings first.
+The billing portal lets users manage their payment method, view past invoices, and cancel their plan. Autumn hosts the portal for you, so there is nothing to enable in your PayPal dashboard.
 
 ### React
 

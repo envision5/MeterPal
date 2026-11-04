@@ -8,10 +8,7 @@ import {
 	RecaseError,
 	Scopes,
 } from "@autumn/shared";
-import { fromUnixTime, isFuture } from "date-fns";
 import { StatusCodes } from "http-status-codes";
-import Stripe from "stripe";
-import { createStripeCli } from "@/external/connect/createStripeCli";
 import { createRoute } from "@/honoMiddlewares/routeHandler";
 import type { AutumnContext } from "@/honoUtils/HonoEnv";
 import { billingActions } from "@/internal/billing/v2/actions";
@@ -19,37 +16,10 @@ import { buildBillingLockKey } from "@/internal/billing/v2/utils/billingLock/bui
 import { billingResultToResponse } from "@/internal/billing/v2/utils/billingResult/billingResultToResponse";
 import { checkoutActions } from "../actions";
 
-const STRIPE_SESSION_ID_REGEX = /cs_(test|live)_[A-Za-z0-9]+/;
-
 const isLongLivedAttachCheckout = (checkout: Checkout) =>
 	checkout.action === CheckoutAction.Attach &&
 	"long_lived_checkout" in checkout.params &&
 	checkout.params.long_lived_checkout === true;
-
-const getActiveStripeCheckoutUrl = async ({
-	ctx,
-	url,
-}: {
-	ctx: AutumnContext;
-	url: string | null | undefined;
-}) => {
-	const sessionId = url?.match(STRIPE_SESSION_ID_REGEX)?.[0];
-	if (!sessionId) return null;
-
-	try {
-		const stripeCli = createStripeCli({ org: ctx.org, env: ctx.env });
-		const session = await stripeCli.checkout.sessions.retrieve(sessionId);
-		return session.status === "open" && isFuture(fromUnixTime(session.expires_at))
-			? session.url
-			: null;
-	} catch (error) {
-		if (error instanceof Stripe.errors.StripeError) {
-			ctx.logger.warn(`Unable to retrieve checkout session ${sessionId}`);
-			return null;
-		}
-		throw error;
-	}
-};
 
 export const handleStartLongLivedCheckout = createRoute({
 	scopes: [Scopes.Public],
@@ -82,12 +52,6 @@ export const handleStartLongLivedCheckout = createRoute({
 				statusCode: StatusCodes.BAD_REQUEST,
 			});
 		}
-
-		const activeUrl = await getActiveStripeCheckoutUrl({
-			ctx,
-			url: checkout.response?.payment_url,
-		});
-		if (activeUrl) return c.redirect(activeUrl, StatusCodes.SEE_OTHER);
 
 		const { billingContext, billingResult } = await billingActions.attach({
 			ctx,

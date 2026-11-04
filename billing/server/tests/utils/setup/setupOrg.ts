@@ -104,7 +104,6 @@ export const setupOrg = async ({
 			config: {
 				...org.config,
 				bill_upgrade_immediately: true,
-				disable_stripe_writes: false,
 			},
 		},
 	});

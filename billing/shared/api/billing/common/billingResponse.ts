@@ -35,8 +35,8 @@ export const BillingResponseSchema = z.object({
 				description:
 					"The status of the invoice (e.g., 'paid', 'open', 'draft').",
 			}),
-			stripe_id: z.string().meta({
-				description: "The Stripe invoice ID.",
+			processor_invoice_id: z.string().meta({
+				description: "The processor invoice ID (PayPal: pp-cap-…/pp-sale-…).",
 			}),
 			total: z.number().meta({
 				description: "The total amount of the invoice in cents.",

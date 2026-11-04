@@ -29,7 +29,6 @@ import {
 	RolloverExpiryDurationType,
 	type UpdateSubscriptionV1ParamsInput,
 } from "@autumn/shared";
-import { runUpdatePlanMigration } from "@tests/integration/billing/migrations-v2/utils/runUpdatePlanMigration.js";
 import { TestFeature } from "@tests/setup/v2Features.js";
 import { items } from "@tests/utils/fixtures/items.js";
 import { products } from "@tests/utils/fixtures/products.js";
@@ -253,38 +252,5 @@ test(
 		expect(
 			customerAfterRegrant.balances?.[TestFeature.Credits]?.remaining,
 		).toBe(POOLED_GRANT_INCREASED + CARRIED);
-	},
-);
-
-test(
-	chalk.yellowBright(
-		"pooled rollover carry (update_plan migration): a prepaid rollover carries onto a pooled included item despite the signature mismatch",
-	),
-	async () => {
-		const scenario = await setupPrepaidOverageCredits({
-			customerId: "prepaid-overage-to-pooled-migration",
-		});
-		const planId = scenario.plan.id;
-
-		await runUpdatePlanMigration({
-			ctx: scenario.ctx,
-			migrationClient: scenario.autumnV2_2,
-			// Migration ids are unique per org+env and outlive the test run.
-			migrationId: `${scenario.customerId}-mig-${Date.now()}`,
-			customerId: scenario.customerId,
-			filter: { customer: { plan: { plan_id: planId } } },
-			operations: {
-				customer: [
-					{
-						type: "update_plan",
-						plan_filter: { plan_id: planId },
-						customize: customization,
-					},
-				],
-			},
-			runOnServer: false,
-		});
-
-		await expectRolloverCarriedToPool({ scenario });
 	},
 );

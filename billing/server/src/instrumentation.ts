@@ -63,7 +63,7 @@ if (process.env.AXIOM_TOKEN) {
 		: undefined;
 
 	// No auto-instrumentations — Bun doesn't support require-in-the-middle.
-	// Stripe, Drizzle, and Redis are instrumented via manual patchers in utils/otel/.
+	// Drizzle and Redis are instrumented via manual patchers in utils/otel/.
 	sdk = new NodeSDK({
 		autoDetectResources: false,
 		resource,

@@ -22,7 +22,7 @@ export const BasePriceSchema = z.object({
 
 /**
  * The base price params, without any processor mapping. Adoption of an existing
- * Stripe price is deliberately scoped to the catalog path, so the `processors`
+ * processor price is deliberately scoped to the catalog path, so the `processors`
  * field is added by `CatalogBasePriceParamsSchema` instead of living here —
  * attach/customize/migration paths must not be able to state one.
  */
@@ -48,11 +48,6 @@ export const BasePriceParamsSchema = BasePriceSchema.omit({
 			internal: true,
 		}),
 		price_id: z.string().optional().meta({
-			internal: true,
-		}),
-		stripe_price_id: z.string().optional().meta({
-			description:
-				"Stripe price id this base price is billed under. Set by sync flows to capture the actual Stripe price when it differs from the catalog default.",
 			internal: true,
 		}),
 	})

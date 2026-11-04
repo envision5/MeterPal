@@ -109,8 +109,8 @@ In the MeterPal dashboard, you will see your user under the [customers](https://
 
 </Step>
 
-<Step title="Stripe Payment Flow">
-Call `attach` when the customer wants to purchase the <Badge color="blue">Pro</Badge> plan. This will return a Stripe payment URL. Once they've paid, MeterPal will grant access to "100 messages per month" defined in Step 1.
+<Step title="Payment Flow">
+Call `attach` when the customer wants to purchase the <Badge color="blue">Pro</Badge> plan. This will return a payment URL. Once they've paid, MeterPal will grant access to "100 messages per month" defined in Step 1.
 
 <CodeGroup>
 
@@ -161,7 +161,7 @@ curl -X POST 'https://api.useautumn.com/v1/attach' \
 </CodeGroup>
 
 <Note>
-    Use Stripe's test card `4242 4242 4242 4242` to make a purchase in sandbox.
+    Use your payment processor's sandbox test details to make a purchase in sandbox.
     You can enter any Expiry and CVV.
 </Note>
 
@@ -172,7 +172,7 @@ Upgrades will happen immediately, and downgrades will be scheduled for the next 
 <Note>
 The **`redirectMode: "always"`** flag will always return a payment URL.
 
-New purchases redirect to Stripe Checkout to enter payment details, and subsequent charges redirect to an MeterPal hosted, one-click confirmation page.
+New purchases redirect to the processor's checkout to enter payment details, and subsequent charges redirect to an MeterPal hosted, one-click confirmation page.
 
 You can build your own billing confirmation flows by using the [previewAttach](/api-reference/billing/previewAttach) function.
 

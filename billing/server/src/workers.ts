@@ -102,7 +102,7 @@ if (cluster.isPrimary) {
 	});
 } else {
 	getAutumnEnv();
-	// Worker process — start OTel SDK so child spans (Stripe/Redis/Drizzle/
+	// Worker process — start OTel SDK so child spans (Redis/Drizzle/
 	// withSpan/withWorkerSpan) export to Axiom.
 	await import("./instrumentation.js");
 

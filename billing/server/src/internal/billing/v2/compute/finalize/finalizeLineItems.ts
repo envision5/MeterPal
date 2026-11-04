@@ -3,12 +3,12 @@ import {
 	type BillingContext,
 	type CustomLineItem,
 	filterUnchangedPricesFromLineItems,
+	type FullCusProduct,
 	type LineItem,
 } from "@autumn/shared";
 import type { AutumnContext } from "@/honoUtils/HonoEnv";
 import { buildSharedSubscriptionTrialLineItems } from "@/internal/billing/v2/compute/computeAutumnUtils/buildSharedSubscriptionTrialLineItems";
 import { filterLineItemsForTrialTransition } from "@/internal/billing/v2/compute/computeAutumnUtils/filterLineItemsForTrialTransition";
-import { applyStripeDiscountsToLineItems } from "@/internal/billing/v2/providers/stripe/utils/discounts/applyStripeDiscountsToLineItems";
 
 /**
  * Finalizes line items for a billing plan by:
@@ -16,7 +16,6 @@ import { applyStripeDiscountsToLineItems } from "@/internal/billing/v2/providers
  * 2. Filtering line items based on trial state transitions
  * 3. Filtering out unchanged prices (refund + charge pairs that cancel out)
  * 4. Adding line items for sibling products affected by trial state changes
- * 5. Applying Stripe discounts to line items
  */
 export const finalizeLineItems = ({
 	ctx,
@@ -27,7 +26,10 @@ export const finalizeLineItems = ({
 }: {
 	ctx: AutumnContext;
 	lineItems: LineItem[];
-	billingContext: BillingContext;
+	billingContext: BillingContext & {
+		currentCustomerProduct?: FullCusProduct;
+		customerProduct?: FullCusProduct;
+	};
 	autumnBillingPlan: AutumnBillingPlan;
 	customLineItems?: CustomLineItem[];
 }): LineItem[] => {
@@ -35,9 +37,12 @@ export const finalizeLineItems = ({
 		return [];
 	}
 
+	const customerProduct =
+		billingContext.currentCustomerProduct ?? billingContext.customerProduct;
+
 	if (
 		billingContext.requestedProrationBehavior === "none" &&
-		billingContext.stripeSubscription &&
+		customerProduct?.subscription_ids?.length &&
 		!billingContext.anchorResetRefund?.noPartialRefund
 	) {
 		return [];
@@ -68,17 +73,6 @@ export const finalizeLineItems = ({
 		autumnBillingPlan,
 	});
 	finalizedLineItems = [...finalizedLineItems, ...sharedTrialLineItems];
-
-	// 4. Apply Stripe discounts if present
-	if (billingContext.stripeDiscounts?.length) {
-		finalizedLineItems = applyStripeDiscountsToLineItems({
-			lineItems: finalizedLineItems,
-			discounts: billingContext.stripeDiscounts,
-			options: {
-				disableDiscountableForFreshDiscounts: true,
-			},
-		});
-	}
 
 	return finalizedLineItems;
 };

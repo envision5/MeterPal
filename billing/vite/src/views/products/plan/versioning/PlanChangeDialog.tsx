@@ -35,7 +35,6 @@ import { LAYOUT_TRANSITION } from "@/components/v2/sheets/SharedSheetComponents"
 import { useOrg } from "@/hooks/common/useOrg";
 import { useFeaturesQuery } from "@/hooks/queries/useFeaturesQuery";
 import { useLicenseProductsQuery } from "@/hooks/queries/useLicenseProductsQuery";
-import { useMigrationsQuery } from "@/hooks/queries/useMigrationsQuery";
 import { usePlanVariants } from "@/hooks/queries/usePlanVariants";
 import { useProductsQuery } from "@/hooks/queries/useProductsQuery";
 import { useProductStore } from "@/hooks/stores/useProductStore";
@@ -294,7 +293,6 @@ export default function PlanChangeDialog({
 	const { setQueryStates } = useProductQueryState();
 	const { products, invalidate: invalidateProducts } = useProductsQuery();
 	const { invalidate: invalidateLicenseProducts } = useLicenseProductsQuery();
-	const { invalidate: invalidateMigrations } = useMigrationsQuery();
 	const { org } = useOrg();
 
 	const [step, setStep] = useState<StepKey>("review");
@@ -501,17 +499,6 @@ export default function PlanChangeDialog({
 			} else {
 				void refetch();
 			}
-
-			if (willMigrate) {
-				void invalidateMigrations();
-				const migrationId = result.migrations?.[0]?.id;
-				navigateTo(
-					migrationId
-						? `/migrations/${migrationId}?step=live&run=true`
-						: "/migrations",
-					navigate,
-				);
-			}
 		} catch (error) {
 			toast.error(
 				getBackendErr(
@@ -661,7 +648,7 @@ export default function PlanChangeDialog({
 										</div>
 										{settingsChanges.some((c) => c.key === "name") && (
 											<div className="rounded-lg bg-secondary/40 px-3 py-2.5 text-xs text-muted-foreground">
-												This update will rename Stripe products.
+												This update will rename products.
 											</div>
 										)}
 									</div>

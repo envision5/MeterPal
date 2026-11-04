@@ -197,7 +197,7 @@ export const billingPlanToChanges = async ({
 
 	// A patch-style customize keeps the existing row and carries its new
 	// prices/entitlements as a patch; the incoming plan must render the
-	// patched row, as the Stripe layer does, or the preview shows the old terms.
+	// patched row, as the processor layer does, or the preview shows the old terms.
 	const patchByCustomerProductId = new Map(
 		getPatchCustomerProducts({ autumnBillingPlan: autumn }).map((patch) => [
 			patch.customerProduct.id,

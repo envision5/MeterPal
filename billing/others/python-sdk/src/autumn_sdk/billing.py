@@ -102,28 +102,28 @@ class Billing(BaseSDK):
         :param version: The version of the plan to attach.
         :param free_trial: Free trial for this plan. A shorthand for customize.free_trial, which takes precedence when both are given.
         :param customize: Customize the plan to attach. Can override the price, items, licenses, free trial, or a combination.
-        :param invoice_mode: Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses Stripe's send_invoice collection method.
+        :param invoice_mode: Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately.
         :param proration_behavior: How to handle proration when updating an existing subscription. 'prorate_immediately' charges/credits prorated amounts now, 'none' skips creating any charges.
         :param redirect_mode: Controls when to return a checkout URL. 'always' returns a URL even if payment succeeds, 'if_required' only when payment action is needed, 'never' disables redirects.
         :param subscription_id: A unique ID to identify this subscription. Can be used to target specific subscriptions in update operations when a customer has multiple products with the same plan.
-        :param discounts: List of discounts to apply. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code.
+        :param discounts: List of discounts to apply. Each discount can be an Autumn reward ID, coupon ID, or promotion code.
         :param success_url: URL to redirect to after successful checkout.
-        :param new_billing_subscription: Only applicable when the customer has an existing Stripe subscription. If true, creates a new separate subscription instead of merging into the existing one.
+        :param new_billing_subscription: Only applicable when the customer has an existing subscription. If true, creates a new separate subscription instead of merging into the existing one.
         :param billing_cycle_anchor: Reset the billing cycle immediately with 'now', or schedule a reset at a future Unix timestamp in milliseconds.
         :param plan_schedule: When the plan change should take effect. 'immediate' applies now, 'end_of_cycle' schedules for the end of the current billing cycle. By default, upgrades are immediate and downgrades are scheduled.
         :param starts_at: Unix timestamp in milliseconds for when the attached plan should start. Future dates create a scheduled subscription.
         :param ends_at: Unix timestamp in milliseconds for when the attached plan should end.
-        :param checkout_session_params: Additional parameters to pass into the creation of the Stripe checkout session.
-        :param long_lived_checkout: If true, returns an Autumn-hosted checkout link that can create a fresh Stripe checkout session when opened.
+        :param checkout_session_params: Additional parameters to pass into the creation of the checkout session.
+        :param long_lived_checkout: If true, returns an Autumn-hosted checkout link that can create a fresh checkout session when opened.
         :param custom_line_items: Custom line items that override the auto-generated proration invoice. Only valid for immediate plan changes (eg. upgrades or one off plans).
-        :param processor_subscription_id: The processor subscription ID to link. Use this to attach an existing Stripe subscription instead of creating a new one.
+        :param processor_subscription_id: The processor subscription ID to link. Use this to attach an existing subscription instead of creating a new one.
         :param carry_over_balances: Whether to carry over balances from the previous plan.
         :param carry_over_usages: Whether to carry over usages from the previous plan.
         :param license_quantities: Seat quantities for the plan's licenses, keyed by license plan.
-        :param metadata: Key-value metadata to attach to the Stripe subscription, invoice, and checkout session created during this attach flow. Keys prefixed with 'autumn_' are reserved and will be stripped.
+        :param metadata: Key-value metadata to attach to the subscription, invoice, and checkout session created during this attach flow. Keys prefixed with 'autumn_' are reserved and will be stripped.
         :param no_billing_changes: If true, skips any billing changes for the attach operation.
-        :param enable_plan_immediately: If true, the customer's plan is activated immediately even when payment is deferred (invoice mode) or pending (Stripe checkout). For Stripe checkout, the customer_product is inserted before the customer completes the hosted form. Set it here rather than on `invoice_mode`, which only covers the invoice-unpaid case.
-        :param tax_rate_id: Stripe tax rate ID (txr_...) to apply as the default tax rate on the created subscription, invoice, or checkout session line items.
+        :param enable_plan_immediately: If true, the customer's plan is activated immediately even when payment is deferred (invoice mode) or pending (hosted checkout). For hosted checkout, the customer_product is inserted before the customer completes the hosted form. Set it here rather than on `invoice_mode`, which only covers the invoice-unpaid case.
+        :param tax_rate_id: Tax rate ID to apply as the default tax rate on the created subscription, invoice, or checkout session line items.
         :param currency: Currency to bill this attach in (e.g. usd, eur). Must match the customer's currency if they are already locked to one, and the plan must offer a paid price in it. Defaults to the customer's currency, then the org default.
         :param remove_plan_ids: Plan IDs to expire on the customer as part of this attach. Each must be an active plan billed on the same subscription as the attach (or a free plan); plans on a separate subscription are rejected.
         :param remove_discounts: Discounts to remove from the subscription, by reward ID. Discounts not listed are left unchanged.
@@ -349,28 +349,28 @@ class Billing(BaseSDK):
         :param version: The version of the plan to attach.
         :param free_trial: Free trial for this plan. A shorthand for customize.free_trial, which takes precedence when both are given.
         :param customize: Customize the plan to attach. Can override the price, items, licenses, free trial, or a combination.
-        :param invoice_mode: Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses Stripe's send_invoice collection method.
+        :param invoice_mode: Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately.
         :param proration_behavior: How to handle proration when updating an existing subscription. 'prorate_immediately' charges/credits prorated amounts now, 'none' skips creating any charges.
         :param redirect_mode: Controls when to return a checkout URL. 'always' returns a URL even if payment succeeds, 'if_required' only when payment action is needed, 'never' disables redirects.
         :param subscription_id: A unique ID to identify this subscription. Can be used to target specific subscriptions in update operations when a customer has multiple products with the same plan.
-        :param discounts: List of discounts to apply. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code.
+        :param discounts: List of discounts to apply. Each discount can be an Autumn reward ID, coupon ID, or promotion code.
         :param success_url: URL to redirect to after successful checkout.
-        :param new_billing_subscription: Only applicable when the customer has an existing Stripe subscription. If true, creates a new separate subscription instead of merging into the existing one.
+        :param new_billing_subscription: Only applicable when the customer has an existing subscription. If true, creates a new separate subscription instead of merging into the existing one.
         :param billing_cycle_anchor: Reset the billing cycle immediately with 'now', or schedule a reset at a future Unix timestamp in milliseconds.
         :param plan_schedule: When the plan change should take effect. 'immediate' applies now, 'end_of_cycle' schedules for the end of the current billing cycle. By default, upgrades are immediate and downgrades are scheduled.
         :param starts_at: Unix timestamp in milliseconds for when the attached plan should start. Future dates create a scheduled subscription.
         :param ends_at: Unix timestamp in milliseconds for when the attached plan should end.
-        :param checkout_session_params: Additional parameters to pass into the creation of the Stripe checkout session.
-        :param long_lived_checkout: If true, returns an Autumn-hosted checkout link that can create a fresh Stripe checkout session when opened.
+        :param checkout_session_params: Additional parameters to pass into the creation of the checkout session.
+        :param long_lived_checkout: If true, returns an Autumn-hosted checkout link that can create a fresh checkout session when opened.
         :param custom_line_items: Custom line items that override the auto-generated proration invoice. Only valid for immediate plan changes (eg. upgrades or one off plans).
-        :param processor_subscription_id: The processor subscription ID to link. Use this to attach an existing Stripe subscription instead of creating a new one.
+        :param processor_subscription_id: The processor subscription ID to link. Use this to attach an existing subscription instead of creating a new one.
         :param carry_over_balances: Whether to carry over balances from the previous plan.
         :param carry_over_usages: Whether to carry over usages from the previous plan.
         :param license_quantities: Seat quantities for the plan's licenses, keyed by license plan.
-        :param metadata: Key-value metadata to attach to the Stripe subscription, invoice, and checkout session created during this attach flow. Keys prefixed with 'autumn_' are reserved and will be stripped.
+        :param metadata: Key-value metadata to attach to the subscription, invoice, and checkout session created during this attach flow. Keys prefixed with 'autumn_' are reserved and will be stripped.
         :param no_billing_changes: If true, skips any billing changes for the attach operation.
-        :param enable_plan_immediately: If true, the customer's plan is activated immediately even when payment is deferred (invoice mode) or pending (Stripe checkout). For Stripe checkout, the customer_product is inserted before the customer completes the hosted form. Set it here rather than on `invoice_mode`, which only covers the invoice-unpaid case.
-        :param tax_rate_id: Stripe tax rate ID (txr_...) to apply as the default tax rate on the created subscription, invoice, or checkout session line items.
+        :param enable_plan_immediately: If true, the customer's plan is activated immediately even when payment is deferred (invoice mode) or pending (hosted checkout). For hosted checkout, the customer_product is inserted before the customer completes the hosted form. Set it here rather than on `invoice_mode`, which only covers the invoice-unpaid case.
+        :param tax_rate_id: Tax rate ID to apply as the default tax rate on the created subscription, invoice, or checkout session line items.
         :param currency: Currency to bill this attach in (e.g. usd, eur). Must match the customer's currency if they are already locked to one, and the plan must offer a paid price in it. Defaults to the customer's currency, then the org default.
         :param remove_plan_ids: Plan IDs to expire on the customer as part of this attach. Each must be an active plan billed on the same subscription as the attach (or a free plan); plans on a separate subscription are rejected.
         :param remove_discounts: Discounts to remove from the subscription, by reward ID. Discounts not listed are left unchanged.
@@ -553,15 +553,15 @@ class Billing(BaseSDK):
         :param phases: Ordered phase definitions for the schedule.
         :param entity_id: Optional entity ID for an entity-scoped schedule.
         :param free_trial: Free trial configuration applied to every plan in the immediate phase.
-        :param currency: Three-letter Stripe-supported currency code used to bill the immediate phase (for example, 'usd').
+        :param currency: Three-letter currency code used to bill the immediate phase (for example, 'usd').
         :param invoice_mode: Invoice mode creates and sends an invoice instead of charging the customer's payment method immediately for the first phase.
-        :param discounts: List of discounts to apply to the immediate phase. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code.
+        :param discounts: List of discounts to apply to the immediate phase. Each discount can be an Autumn reward ID, coupon ID, or promotion code.
         :param success_url: URL to redirect to after successful checkout.
-        :param checkout_session_params: Additional parameters to pass into the creation of the Stripe checkout session.
+        :param checkout_session_params: Additional parameters to pass into the creation of the checkout session.
         :param redirect_mode: Controls when to return a checkout URL for the immediate phase. 'always' forces a confirmation or checkout flow, 'if_required' only redirects when needed, and 'never' disables redirects.
         :param billing_behavior: Whether to prorate the immediate phase. 'none' skips proration charges and credits.
         :param no_billing_changes: If true, skips any billing changes for the schedule.
-        :param enable_plan_immediately: If true, the immediate-phase cusProducts are activated immediately (and scheduled-phase cusProducts pre-inserted) even when payment is pending via Stripe checkout. The Autumn schedule rows are persisted on checkout.session.completed.
+        :param enable_plan_immediately: If true, the immediate-phase cusProducts are activated immediately (and scheduled-phase cusProducts pre-inserted) even when payment is pending via hosted checkout. The Autumn schedule rows are persisted when checkout completes.
         :param preserve_add_ons: Deprecated and ignored. Active plans the schedule does not declare are always retained.
         :param unscheduled_plans: Plans billed with the immediate phase that the schedule never expires or replaces. No phase may declare a plan in the same group and scope.
         :param retries: Override the default retry configuration for this method
@@ -714,15 +714,15 @@ class Billing(BaseSDK):
         :param phases: Ordered phase definitions for the schedule.
         :param entity_id: Optional entity ID for an entity-scoped schedule.
         :param free_trial: Free trial configuration applied to every plan in the immediate phase.
-        :param currency: Three-letter Stripe-supported currency code used to bill the immediate phase (for example, 'usd').
+        :param currency: Three-letter currency code used to bill the immediate phase (for example, 'usd').
         :param invoice_mode: Invoice mode creates and sends an invoice instead of charging the customer's payment method immediately for the first phase.
-        :param discounts: List of discounts to apply to the immediate phase. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code.
+        :param discounts: List of discounts to apply to the immediate phase. Each discount can be an Autumn reward ID, coupon ID, or promotion code.
         :param success_url: URL to redirect to after successful checkout.
-        :param checkout_session_params: Additional parameters to pass into the creation of the Stripe checkout session.
+        :param checkout_session_params: Additional parameters to pass into the creation of the checkout session.
         :param redirect_mode: Controls when to return a checkout URL for the immediate phase. 'always' forces a confirmation or checkout flow, 'if_required' only redirects when needed, and 'never' disables redirects.
         :param billing_behavior: Whether to prorate the immediate phase. 'none' skips proration charges and credits.
         :param no_billing_changes: If true, skips any billing changes for the schedule.
-        :param enable_plan_immediately: If true, the immediate-phase cusProducts are activated immediately (and scheduled-phase cusProducts pre-inserted) even when payment is pending via Stripe checkout. The Autumn schedule rows are persisted on checkout.session.completed.
+        :param enable_plan_immediately: If true, the immediate-phase cusProducts are activated immediately (and scheduled-phase cusProducts pre-inserted) even when payment is pending via hosted checkout. The Autumn schedule rows are persisted when checkout completes.
         :param preserve_add_ons: Deprecated and ignored. Active plans the schedule does not declare are always retained.
         :param unscheduled_plans: Plans billed with the immediate phase that the schedule never expires or replaces. No phase may declare a plan in the same group and scope.
         :param retries: Override the default retry configuration for this method
@@ -867,7 +867,7 @@ class Billing(BaseSDK):
         timeout_ms: Optional[int] = None,
         http_headers: Optional[Mapping[str, str]] = None,
     ) -> models.MultiAttachResponse:
-        r"""Attaches multiple plans to a customer in a single request. Creates a single Stripe subscription with all plans consolidated.
+        r"""Attaches multiple plans to a customer in a single request. Creates a single subscription with all plans consolidated.
 
         Use this endpoint when you need to subscribe a customer to multiple plans at once, such as a base plan plus add-ons, or to create a bundle of products.
 
@@ -878,13 +878,13 @@ class Billing(BaseSDK):
         :param starts_at: Unix timestamp in milliseconds for backdating every plan in this multi-attach.
         :param currency: Currency to bill this multi-attach in (e.g. usd, eur). Must match the customer's currency if they are already locked to one, and every plan must offer a paid price in it. Defaults to the customer's currency, then the org default.
         :param invoice_mode: Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately.
-        :param discounts: List of discounts to apply. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code.
+        :param discounts: List of discounts to apply. Each discount can be an Autumn reward ID, coupon ID, or promotion code.
         :param billing_behavior: How to handle billing. 'prorate_immediately' charges/credits prorated amounts now, 'none' does not charge/credit anything.
         :param success_url: URL to redirect to after successful checkout.
-        :param checkout_session_params: Additional parameters to pass into the creation of the Stripe checkout session.
+        :param checkout_session_params: Additional parameters to pass into the creation of the checkout session.
         :param redirect_mode: Controls when to return a checkout URL. 'always' returns a URL even if payment succeeds, 'if_required' only when payment action is needed, 'never' disables redirects.
-        :param new_billing_subscription: Only applicable when the customer has an existing Stripe subscription. If true, creates a new separate subscription instead of merging into the existing one.
-        :param enable_plan_immediately: If true, the cusProducts are activated immediately even when payment is pending via Stripe checkout.
+        :param new_billing_subscription: Only applicable when the customer has an existing subscription. If true, creates a new separate subscription instead of merging into the existing one.
+        :param enable_plan_immediately: If true, the cusProducts are activated immediately even when payment is pending via hosted checkout.
         :param customer_data: Customer details to set when creating a customer
         :param entity_data:
         :param retries: Override the default retry configuration for this method
@@ -1032,7 +1032,7 @@ class Billing(BaseSDK):
         timeout_ms: Optional[int] = None,
         http_headers: Optional[Mapping[str, str]] = None,
     ) -> models.MultiAttachResponse:
-        r"""Attaches multiple plans to a customer in a single request. Creates a single Stripe subscription with all plans consolidated.
+        r"""Attaches multiple plans to a customer in a single request. Creates a single subscription with all plans consolidated.
 
         Use this endpoint when you need to subscribe a customer to multiple plans at once, such as a base plan plus add-ons, or to create a bundle of products.
 
@@ -1043,13 +1043,13 @@ class Billing(BaseSDK):
         :param starts_at: Unix timestamp in milliseconds for backdating every plan in this multi-attach.
         :param currency: Currency to bill this multi-attach in (e.g. usd, eur). Must match the customer's currency if they are already locked to one, and every plan must offer a paid price in it. Defaults to the customer's currency, then the org default.
         :param invoice_mode: Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately.
-        :param discounts: List of discounts to apply. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code.
+        :param discounts: List of discounts to apply. Each discount can be an Autumn reward ID, coupon ID, or promotion code.
         :param billing_behavior: How to handle billing. 'prorate_immediately' charges/credits prorated amounts now, 'none' does not charge/credit anything.
         :param success_url: URL to redirect to after successful checkout.
-        :param checkout_session_params: Additional parameters to pass into the creation of the Stripe checkout session.
+        :param checkout_session_params: Additional parameters to pass into the creation of the checkout session.
         :param redirect_mode: Controls when to return a checkout URL. 'always' returns a URL even if payment succeeds, 'if_required' only when payment action is needed, 'never' disables redirects.
-        :param new_billing_subscription: Only applicable when the customer has an existing Stripe subscription. If true, creates a new separate subscription instead of merging into the existing one.
-        :param enable_plan_immediately: If true, the cusProducts are activated immediately even when payment is pending via Stripe checkout.
+        :param new_billing_subscription: Only applicable when the customer has an existing subscription. If true, creates a new separate subscription instead of merging into the existing one.
+        :param enable_plan_immediately: If true, the cusProducts are activated immediately even when payment is pending via hosted checkout.
         :param customer_data: Customer details to set when creating a customer
         :param entity_data:
         :param retries: Override the default retry configuration for this method
@@ -1258,28 +1258,28 @@ class Billing(BaseSDK):
         :param version: The version of the plan to attach.
         :param free_trial: Free trial for this plan. A shorthand for customize.free_trial, which takes precedence when both are given.
         :param customize: Customize the plan to attach. Can override the price, items, licenses, free trial, or a combination.
-        :param invoice_mode: Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses Stripe's send_invoice collection method.
+        :param invoice_mode: Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately.
         :param proration_behavior: How to handle proration when updating an existing subscription. 'prorate_immediately' charges/credits prorated amounts now, 'none' skips creating any charges.
         :param redirect_mode: Controls when to return a checkout URL. 'always' returns a URL even if payment succeeds, 'if_required' only when payment action is needed, 'never' disables redirects.
         :param subscription_id: A unique ID to identify this subscription. Can be used to target specific subscriptions in update operations when a customer has multiple products with the same plan.
-        :param discounts: List of discounts to apply. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code.
+        :param discounts: List of discounts to apply. Each discount can be an Autumn reward ID, coupon ID, or promotion code.
         :param success_url: URL to redirect to after successful checkout.
-        :param new_billing_subscription: Only applicable when the customer has an existing Stripe subscription. If true, creates a new separate subscription instead of merging into the existing one.
+        :param new_billing_subscription: Only applicable when the customer has an existing subscription. If true, creates a new separate subscription instead of merging into the existing one.
         :param billing_cycle_anchor: Reset the billing cycle immediately with 'now', or schedule a reset at a future Unix timestamp in milliseconds.
         :param plan_schedule: When the plan change should take effect. 'immediate' applies now, 'end_of_cycle' schedules for the end of the current billing cycle. By default, upgrades are immediate and downgrades are scheduled.
         :param starts_at: Unix timestamp in milliseconds for when the attached plan should start. Future dates create a scheduled subscription.
         :param ends_at: Unix timestamp in milliseconds for when the attached plan should end.
-        :param checkout_session_params: Additional parameters to pass into the creation of the Stripe checkout session.
-        :param long_lived_checkout: If true, returns an Autumn-hosted checkout link that can create a fresh Stripe checkout session when opened.
+        :param checkout_session_params: Additional parameters to pass into the creation of the checkout session.
+        :param long_lived_checkout: If true, returns an Autumn-hosted checkout link that can create a fresh checkout session when opened.
         :param custom_line_items: Custom line items that override the auto-generated proration invoice. Only valid for immediate plan changes (eg. upgrades or one off plans).
-        :param processor_subscription_id: The processor subscription ID to link. Use this to attach an existing Stripe subscription instead of creating a new one.
+        :param processor_subscription_id: The processor subscription ID to link. Use this to attach an existing subscription instead of creating a new one.
         :param carry_over_balances: Whether to carry over balances from the previous plan.
         :param carry_over_usages: Whether to carry over usages from the previous plan.
         :param license_quantities: Seat quantities for the plan's licenses, keyed by license plan.
-        :param metadata: Key-value metadata to attach to the Stripe subscription, invoice, and checkout session created during this attach flow. Keys prefixed with 'autumn_' are reserved and will be stripped.
+        :param metadata: Key-value metadata to attach to the subscription, invoice, and checkout session created during this attach flow. Keys prefixed with 'autumn_' are reserved and will be stripped.
         :param no_billing_changes: If true, skips any billing changes for the attach operation.
-        :param enable_plan_immediately: If true, the customer's plan is activated immediately even when payment is deferred (invoice mode) or pending (Stripe checkout). For Stripe checkout, the customer_product is inserted before the customer completes the hosted form. Set it here rather than on `invoice_mode`, which only covers the invoice-unpaid case.
-        :param tax_rate_id: Stripe tax rate ID (txr_...) to apply as the default tax rate on the created subscription, invoice, or checkout session line items.
+        :param enable_plan_immediately: If true, the customer's plan is activated immediately even when payment is deferred (invoice mode) or pending (hosted checkout). For hosted checkout, the customer_product is inserted before the customer completes the hosted form. Set it here rather than on `invoice_mode`, which only covers the invoice-unpaid case.
+        :param tax_rate_id: Tax rate ID to apply as the default tax rate on the created subscription, invoice, or checkout session line items.
         :param currency: Currency to bill this attach in (e.g. usd, eur). Must match the customer's currency if they are already locked to one, and the plan must offer a paid price in it. Defaults to the customer's currency, then the org default.
         :param remove_plan_ids: Plan IDs to expire on the customer as part of this attach. Each must be an active plan billed on the same subscription as the attach (or a free plan); plans on a separate subscription are rejected.
         :param remove_discounts: Discounts to remove from the subscription, by reward ID. Discounts not listed are left unchanged.
@@ -1516,28 +1516,28 @@ class Billing(BaseSDK):
         :param version: The version of the plan to attach.
         :param free_trial: Free trial for this plan. A shorthand for customize.free_trial, which takes precedence when both are given.
         :param customize: Customize the plan to attach. Can override the price, items, licenses, free trial, or a combination.
-        :param invoice_mode: Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses Stripe's send_invoice collection method.
+        :param invoice_mode: Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately.
         :param proration_behavior: How to handle proration when updating an existing subscription. 'prorate_immediately' charges/credits prorated amounts now, 'none' skips creating any charges.
         :param redirect_mode: Controls when to return a checkout URL. 'always' returns a URL even if payment succeeds, 'if_required' only when payment action is needed, 'never' disables redirects.
         :param subscription_id: A unique ID to identify this subscription. Can be used to target specific subscriptions in update operations when a customer has multiple products with the same plan.
-        :param discounts: List of discounts to apply. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code.
+        :param discounts: List of discounts to apply. Each discount can be an Autumn reward ID, coupon ID, or promotion code.
         :param success_url: URL to redirect to after successful checkout.
-        :param new_billing_subscription: Only applicable when the customer has an existing Stripe subscription. If true, creates a new separate subscription instead of merging into the existing one.
+        :param new_billing_subscription: Only applicable when the customer has an existing subscription. If true, creates a new separate subscription instead of merging into the existing one.
         :param billing_cycle_anchor: Reset the billing cycle immediately with 'now', or schedule a reset at a future Unix timestamp in milliseconds.
         :param plan_schedule: When the plan change should take effect. 'immediate' applies now, 'end_of_cycle' schedules for the end of the current billing cycle. By default, upgrades are immediate and downgrades are scheduled.
         :param starts_at: Unix timestamp in milliseconds for when the attached plan should start. Future dates create a scheduled subscription.
         :param ends_at: Unix timestamp in milliseconds for when the attached plan should end.
-        :param checkout_session_params: Additional parameters to pass into the creation of the Stripe checkout session.
-        :param long_lived_checkout: If true, returns an Autumn-hosted checkout link that can create a fresh Stripe checkout session when opened.
+        :param checkout_session_params: Additional parameters to pass into the creation of the checkout session.
+        :param long_lived_checkout: If true, returns an Autumn-hosted checkout link that can create a fresh checkout session when opened.
         :param custom_line_items: Custom line items that override the auto-generated proration invoice. Only valid for immediate plan changes (eg. upgrades or one off plans).
-        :param processor_subscription_id: The processor subscription ID to link. Use this to attach an existing Stripe subscription instead of creating a new one.
+        :param processor_subscription_id: The processor subscription ID to link. Use this to attach an existing subscription instead of creating a new one.
         :param carry_over_balances: Whether to carry over balances from the previous plan.
         :param carry_over_usages: Whether to carry over usages from the previous plan.
         :param license_quantities: Seat quantities for the plan's licenses, keyed by license plan.
-        :param metadata: Key-value metadata to attach to the Stripe subscription, invoice, and checkout session created during this attach flow. Keys prefixed with 'autumn_' are reserved and will be stripped.
+        :param metadata: Key-value metadata to attach to the subscription, invoice, and checkout session created during this attach flow. Keys prefixed with 'autumn_' are reserved and will be stripped.
         :param no_billing_changes: If true, skips any billing changes for the attach operation.
-        :param enable_plan_immediately: If true, the customer's plan is activated immediately even when payment is deferred (invoice mode) or pending (Stripe checkout). For Stripe checkout, the customer_product is inserted before the customer completes the hosted form. Set it here rather than on `invoice_mode`, which only covers the invoice-unpaid case.
-        :param tax_rate_id: Stripe tax rate ID (txr_...) to apply as the default tax rate on the created subscription, invoice, or checkout session line items.
+        :param enable_plan_immediately: If true, the customer's plan is activated immediately even when payment is deferred (invoice mode) or pending (hosted checkout). For hosted checkout, the customer_product is inserted before the customer completes the hosted form. Set it here rather than on `invoice_mode`, which only covers the invoice-unpaid case.
+        :param tax_rate_id: Tax rate ID to apply as the default tax rate on the created subscription, invoice, or checkout session line items.
         :param currency: Currency to bill this attach in (e.g. usd, eur). Must match the customer's currency if they are already locked to one, and the plan must offer a paid price in it. Defaults to the customer's currency, then the org default.
         :param remove_plan_ids: Plan IDs to expire on the customer as part of this attach. Each must be an active plan billed on the same subscription as the attach (or a free plan); plans on a separate subscription are rejected.
         :param remove_discounts: Discounts to remove from the subscription, by reward ID. Discounts not listed are left unchanged.
@@ -1731,13 +1731,13 @@ class Billing(BaseSDK):
         :param starts_at: Unix timestamp in milliseconds for backdating every plan in this multi-attach.
         :param currency: Currency to bill this multi-attach in (e.g. usd, eur). Must match the customer's currency if they are already locked to one, and every plan must offer a paid price in it. Defaults to the customer's currency, then the org default.
         :param invoice_mode: Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately.
-        :param discounts: List of discounts to apply. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code.
+        :param discounts: List of discounts to apply. Each discount can be an Autumn reward ID, coupon ID, or promotion code.
         :param billing_behavior: How to handle billing. 'prorate_immediately' charges/credits prorated amounts now, 'none' does not charge/credit anything.
         :param success_url: URL to redirect to after successful checkout.
-        :param checkout_session_params: Additional parameters to pass into the creation of the Stripe checkout session.
+        :param checkout_session_params: Additional parameters to pass into the creation of the checkout session.
         :param redirect_mode: Controls when to return a checkout URL. 'always' returns a URL even if payment succeeds, 'if_required' only when payment action is needed, 'never' disables redirects.
-        :param new_billing_subscription: Only applicable when the customer has an existing Stripe subscription. If true, creates a new separate subscription instead of merging into the existing one.
-        :param enable_plan_immediately: If true, the cusProducts are activated immediately even when payment is pending via Stripe checkout.
+        :param new_billing_subscription: Only applicable when the customer has an existing subscription. If true, creates a new separate subscription instead of merging into the existing one.
+        :param enable_plan_immediately: If true, the cusProducts are activated immediately even when payment is pending via hosted checkout.
         :param customer_data: Customer details to set when creating a customer
         :param entity_data:
         :param retries: Override the default retry configuration for this method
@@ -1903,13 +1903,13 @@ class Billing(BaseSDK):
         :param starts_at: Unix timestamp in milliseconds for backdating every plan in this multi-attach.
         :param currency: Currency to bill this multi-attach in (e.g. usd, eur). Must match the customer's currency if they are already locked to one, and every plan must offer a paid price in it. Defaults to the customer's currency, then the org default.
         :param invoice_mode: Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately.
-        :param discounts: List of discounts to apply. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code.
+        :param discounts: List of discounts to apply. Each discount can be an Autumn reward ID, coupon ID, or promotion code.
         :param billing_behavior: How to handle billing. 'prorate_immediately' charges/credits prorated amounts now, 'none' does not charge/credit anything.
         :param success_url: URL to redirect to after successful checkout.
-        :param checkout_session_params: Additional parameters to pass into the creation of the Stripe checkout session.
+        :param checkout_session_params: Additional parameters to pass into the creation of the checkout session.
         :param redirect_mode: Controls when to return a checkout URL. 'always' returns a URL even if payment succeeds, 'if_required' only when payment action is needed, 'never' disables redirects.
-        :param new_billing_subscription: Only applicable when the customer has an existing Stripe subscription. If true, creates a new separate subscription instead of merging into the existing one.
-        :param enable_plan_immediately: If true, the cusProducts are activated immediately even when payment is pending via Stripe checkout.
+        :param new_billing_subscription: Only applicable when the customer has an existing subscription. If true, creates a new separate subscription instead of merging into the existing one.
+        :param enable_plan_immediately: If true, the cusProducts are activated immediately even when payment is pending via hosted checkout.
         :param customer_data: Customer details to set when creating a customer
         :param entity_data:
         :param retries: Override the default retry configuration for this method
@@ -2108,18 +2108,18 @@ class Billing(BaseSDK):
         :param version: The version of the plan to attach.
         :param free_trial: Free trial for this plan. A shorthand for customize.free_trial, which takes precedence when both are given.
         :param customize: Customize the plan to attach. Can override the price, items, licenses, free trial, or a combination.
-        :param invoice_mode: Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses Stripe's send_invoice collection method.
+        :param invoice_mode: Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately.
         :param proration_behavior: How to handle proration when updating an existing subscription. 'prorate_immediately' charges/credits prorated amounts now, 'none' skips creating any charges.
         :param redirect_mode: Controls when to return a checkout URL. 'always' returns a URL even if payment succeeds, 'if_required' only when payment action is needed, 'never' disables redirects.
         :param subscription_id: A unique ID to identify this subscription. Can be used to target specific subscriptions in update operations when a customer has multiple products with the same plan.
-        :param discounts: List of discounts to apply. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code.
+        :param discounts: List of discounts to apply. Each discount can be an Autumn reward ID, coupon ID, or promotion code.
         :param remove_discounts: Discounts to remove from the subscription, by reward ID. Discounts not listed are left unchanged.
         :param custom_line_items: Custom line items that replace the auto-generated proration invoice, or bill a standalone invoice when nothing else changes. Only valid on an existing recurring subscription.
         :param cancel_action: Action to perform for cancellation. 'cancel_immediately' cancels now with prorated refund, 'cancel_end_of_cycle' cancels at period end, 'uncancel' reverses a pending cancellation.
         :param billing_cycle_anchor: Reset the billing cycle immediately with 'now', or schedule a reset at a future Unix timestamp in milliseconds.
-        :param no_billing_changes: If true, the subscription is updated internally without applying billing changes in Stripe.
+        :param no_billing_changes: If true, the subscription is updated internally without applying billing changes in the processor.
         :param refund_last_payment: Controls how the last payment is refunded on immediate cancellation. 'prorated' refunds the unused portion, 'full' refunds the entire last payment.
-        :param subscription_params: Additional parameters to pass into the Stripe subscription update or cancel call.
+        :param subscription_params: Additional parameters to pass into the subscription update or cancel call.
         :param recalculate_balances: Controls whether balances should be recalculated during the subscription update.
         :param carry_over_usages: Whether to carry over usages from the previous plan.
         :param license_quantities: Total seat quantities (inclusive of the license's included count) per license plan offered by this plan. Licenses not listed keep their current paid quantity.
@@ -2335,18 +2335,18 @@ class Billing(BaseSDK):
         :param version: The version of the plan to attach.
         :param free_trial: Free trial for this plan. A shorthand for customize.free_trial, which takes precedence when both are given.
         :param customize: Customize the plan to attach. Can override the price, items, licenses, free trial, or a combination.
-        :param invoice_mode: Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses Stripe's send_invoice collection method.
+        :param invoice_mode: Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately.
         :param proration_behavior: How to handle proration when updating an existing subscription. 'prorate_immediately' charges/credits prorated amounts now, 'none' skips creating any charges.
         :param redirect_mode: Controls when to return a checkout URL. 'always' returns a URL even if payment succeeds, 'if_required' only when payment action is needed, 'never' disables redirects.
         :param subscription_id: A unique ID to identify this subscription. Can be used to target specific subscriptions in update operations when a customer has multiple products with the same plan.
-        :param discounts: List of discounts to apply. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code.
+        :param discounts: List of discounts to apply. Each discount can be an Autumn reward ID, coupon ID, or promotion code.
         :param remove_discounts: Discounts to remove from the subscription, by reward ID. Discounts not listed are left unchanged.
         :param custom_line_items: Custom line items that replace the auto-generated proration invoice, or bill a standalone invoice when nothing else changes. Only valid on an existing recurring subscription.
         :param cancel_action: Action to perform for cancellation. 'cancel_immediately' cancels now with prorated refund, 'cancel_end_of_cycle' cancels at period end, 'uncancel' reverses a pending cancellation.
         :param billing_cycle_anchor: Reset the billing cycle immediately with 'now', or schedule a reset at a future Unix timestamp in milliseconds.
-        :param no_billing_changes: If true, the subscription is updated internally without applying billing changes in Stripe.
+        :param no_billing_changes: If true, the subscription is updated internally without applying billing changes in the processor.
         :param refund_last_payment: Controls how the last payment is refunded on immediate cancellation. 'prorated' refunds the unused portion, 'full' refunds the entire last payment.
-        :param subscription_params: Additional parameters to pass into the Stripe subscription update or cancel call.
+        :param subscription_params: Additional parameters to pass into the subscription update or cancel call.
         :param recalculate_balances: Controls whether balances should be recalculated during the subscription update.
         :param carry_over_usages: Whether to carry over usages from the previous plan.
         :param license_quantities: Total seat quantities (inclusive of the license's included count) per license plan offered by this plan. Licenses not listed keep their current paid quantity.
@@ -2562,18 +2562,18 @@ class Billing(BaseSDK):
         :param version: The version of the plan to attach.
         :param free_trial: Free trial for this plan. A shorthand for customize.free_trial, which takes precedence when both are given.
         :param customize: Customize the plan to attach. Can override the price, items, licenses, free trial, or a combination.
-        :param invoice_mode: Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses Stripe's send_invoice collection method.
+        :param invoice_mode: Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately.
         :param proration_behavior: How to handle proration when updating an existing subscription. 'prorate_immediately' charges/credits prorated amounts now, 'none' skips creating any charges.
         :param redirect_mode: Controls when to return a checkout URL. 'always' returns a URL even if payment succeeds, 'if_required' only when payment action is needed, 'never' disables redirects.
         :param subscription_id: A unique ID to identify this subscription. Can be used to target specific subscriptions in update operations when a customer has multiple products with the same plan.
-        :param discounts: List of discounts to apply. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code.
+        :param discounts: List of discounts to apply. Each discount can be an Autumn reward ID, coupon ID, or promotion code.
         :param remove_discounts: Discounts to remove from the subscription, by reward ID. Discounts not listed are left unchanged.
         :param custom_line_items: Custom line items that replace the auto-generated proration invoice, or bill a standalone invoice when nothing else changes. Only valid on an existing recurring subscription.
         :param cancel_action: Action to perform for cancellation. 'cancel_immediately' cancels now with prorated refund, 'cancel_end_of_cycle' cancels at period end, 'uncancel' reverses a pending cancellation.
         :param billing_cycle_anchor: Reset the billing cycle immediately with 'now', or schedule a reset at a future Unix timestamp in milliseconds.
-        :param no_billing_changes: If true, the subscription is updated internally without applying billing changes in Stripe.
+        :param no_billing_changes: If true, the subscription is updated internally without applying billing changes in the processor.
         :param refund_last_payment: Controls how the last payment is refunded on immediate cancellation. 'prorated' refunds the unused portion, 'full' refunds the entire last payment.
-        :param subscription_params: Additional parameters to pass into the Stripe subscription update or cancel call.
+        :param subscription_params: Additional parameters to pass into the subscription update or cancel call.
         :param recalculate_balances: Controls whether balances should be recalculated during the subscription update.
         :param carry_over_usages: Whether to carry over usages from the previous plan.
         :param license_quantities: Total seat quantities (inclusive of the license's included count) per license plan offered by this plan. Licenses not listed keep their current paid quantity.
@@ -2790,18 +2790,18 @@ class Billing(BaseSDK):
         :param version: The version of the plan to attach.
         :param free_trial: Free trial for this plan. A shorthand for customize.free_trial, which takes precedence when both are given.
         :param customize: Customize the plan to attach. Can override the price, items, licenses, free trial, or a combination.
-        :param invoice_mode: Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses Stripe's send_invoice collection method.
+        :param invoice_mode: Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately.
         :param proration_behavior: How to handle proration when updating an existing subscription. 'prorate_immediately' charges/credits prorated amounts now, 'none' skips creating any charges.
         :param redirect_mode: Controls when to return a checkout URL. 'always' returns a URL even if payment succeeds, 'if_required' only when payment action is needed, 'never' disables redirects.
         :param subscription_id: A unique ID to identify this subscription. Can be used to target specific subscriptions in update operations when a customer has multiple products with the same plan.
-        :param discounts: List of discounts to apply. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code.
+        :param discounts: List of discounts to apply. Each discount can be an Autumn reward ID, coupon ID, or promotion code.
         :param remove_discounts: Discounts to remove from the subscription, by reward ID. Discounts not listed are left unchanged.
         :param custom_line_items: Custom line items that replace the auto-generated proration invoice, or bill a standalone invoice when nothing else changes. Only valid on an existing recurring subscription.
         :param cancel_action: Action to perform for cancellation. 'cancel_immediately' cancels now with prorated refund, 'cancel_end_of_cycle' cancels at period end, 'uncancel' reverses a pending cancellation.
         :param billing_cycle_anchor: Reset the billing cycle immediately with 'now', or schedule a reset at a future Unix timestamp in milliseconds.
-        :param no_billing_changes: If true, the subscription is updated internally without applying billing changes in Stripe.
+        :param no_billing_changes: If true, the subscription is updated internally without applying billing changes in the processor.
         :param refund_last_payment: Controls how the last payment is refunded on immediate cancellation. 'prorated' refunds the unused portion, 'full' refunds the entire last payment.
-        :param subscription_params: Additional parameters to pass into the Stripe subscription update or cancel call.
+        :param subscription_params: Additional parameters to pass into the subscription update or cancel call.
         :param recalculate_balances: Controls whether balances should be recalculated during the subscription update.
         :param carry_over_usages: Whether to carry over usages from the previous plan.
         :param license_quantities: Total seat quantities (inclusive of the license's included count) per license plan offered by this plan. Licenses not listed keep their current paid quantity.
@@ -2948,7 +2948,7 @@ class Billing(BaseSDK):
         :param updates: The list of plan updates to apply to the customer.
         :param entity_id: The ID of the entity to update plans for. Individual updates can override this with their own entity_id.
         :param refund_last_payment: Controls how the last payment is refunded on immediate cancellation. 'prorated' refunds the unused portion, 'full' refunds the entire last payment.
-        :param subscription_params: Additional parameters to pass into the Stripe subscription update or cancel call.
+        :param subscription_params: Additional parameters to pass into the subscription update or cancel call.
         :param retries: Override the default retry configuration for this method
         :param server_url: Override the default server URL for this method
         :param timeout_ms: Override the default request timeout configuration for this method in milliseconds
@@ -3054,7 +3054,7 @@ class Billing(BaseSDK):
         :param updates: The list of plan updates to apply to the customer.
         :param entity_id: The ID of the entity to update plans for. Individual updates can override this with their own entity_id.
         :param refund_last_payment: Controls how the last payment is refunded on immediate cancellation. 'prorated' refunds the unused portion, 'full' refunds the entire last payment.
-        :param subscription_params: Additional parameters to pass into the Stripe subscription update or cancel call.
+        :param subscription_params: Additional parameters to pass into the subscription update or cancel call.
         :param retries: Override the default retry configuration for this method
         :param server_url: Override the default server URL for this method
         :param timeout_ms: Override the default request timeout configuration for this method in milliseconds
@@ -3163,7 +3163,7 @@ class Billing(BaseSDK):
         :param updates: The list of plan updates to apply to the customer.
         :param entity_id: The ID of the entity to update plans for. Individual updates can override this with their own entity_id.
         :param refund_last_payment: Controls how the last payment is refunded on immediate cancellation. 'prorated' refunds the unused portion, 'full' refunds the entire last payment.
-        :param subscription_params: Additional parameters to pass into the Stripe subscription update or cancel call.
+        :param subscription_params: Additional parameters to pass into the subscription update or cancel call.
         :param retries: Override the default retry configuration for this method
         :param server_url: Override the default server URL for this method
         :param timeout_ms: Override the default request timeout configuration for this method in milliseconds
@@ -3274,7 +3274,7 @@ class Billing(BaseSDK):
         :param updates: The list of plan updates to apply to the customer.
         :param entity_id: The ID of the entity to update plans for. Individual updates can override this with their own entity_id.
         :param refund_last_payment: Controls how the last payment is refunded on immediate cancellation. 'prorated' refunds the unused portion, 'full' refunds the entire last payment.
-        :param subscription_params: Additional parameters to pass into the Stripe subscription update or cancel call.
+        :param subscription_params: Additional parameters to pass into the subscription update or cancel call.
         :param retries: Override the default retry configuration for this method
         :param server_url: Override the default server URL for this method
         :param timeout_ms: Override the default request timeout configuration for this method in milliseconds
@@ -3373,7 +3373,7 @@ class Billing(BaseSDK):
         r"""Create a billing portal session for a customer to manage their subscription.
 
         :param customer_id: The ID of the customer to open the billing portal for.
-        :param configuration_id: Stripe billing portal configuration ID. Create configurations in your Stripe dashboard.
+        :param configuration_id: Billing portal configuration ID. Create configurations in your billing processor's dashboard.
         :param return_url: URL to redirect to when back button is clicked in the billing portal
         :param retries: Override the default retry configuration for this method
         :param server_url: Override the default server URL for this method
@@ -3469,7 +3469,7 @@ class Billing(BaseSDK):
         r"""Create a billing portal session for a customer to manage their subscription.
 
         :param customer_id: The ID of the customer to open the billing portal for.
-        :param configuration_id: Stripe billing portal configuration ID. Create configurations in your Stripe dashboard.
+        :param configuration_id: Billing portal configuration ID. Create configurations in your billing processor's dashboard.
         :param return_url: URL to redirect to when back button is clicked in the billing portal
         :param retries: Override the default retry configuration for this method
         :param server_url: Override the default server URL for this method
@@ -3644,21 +3644,21 @@ class Billing(BaseSDK):
         :param customize: Customize the plan to attach. Can override the price, items, licenses, free trial, or a combination.
         :param proration_behavior: How to handle proration when updating an existing subscription. 'prorate_immediately' charges/credits prorated amounts now, 'none' skips creating any charges.
         :param subscription_id: A unique ID to identify this subscription. Can be used to target specific subscriptions in update operations when a customer has multiple products with the same plan.
-        :param discounts: List of discounts to apply. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code.
+        :param discounts: List of discounts to apply. Each discount can be an Autumn reward ID, coupon ID, or promotion code.
         :param success_url: URL to redirect to after successful checkout.
         :param billing_cycle_anchor: Reset the billing cycle immediately with 'now', or schedule a reset at a future Unix timestamp in milliseconds.
         :param starts_at: Unix timestamp in milliseconds for when the attached plan should start. Future dates create a scheduled subscription.
         :param ends_at: Unix timestamp in milliseconds for when the attached plan should end.
-        :param checkout_session_params: Additional parameters to pass into the creation of the Stripe checkout session.
+        :param checkout_session_params: Additional parameters to pass into the creation of the checkout session.
         :param custom_line_items: Custom line items that override the auto-generated proration invoice. Only valid for immediate plan changes (eg. upgrades or one off plans).
-        :param processor_subscription_id: The processor subscription ID to link. Use this to attach an existing Stripe subscription instead of creating a new one.
+        :param processor_subscription_id: The processor subscription ID to link. Use this to attach an existing subscription instead of creating a new one.
         :param carry_over_balances: Whether to carry over balances from the previous plan.
         :param carry_over_usages: Whether to carry over usages from the previous plan.
         :param license_quantities: Seat quantities for the plan's licenses, keyed by license plan.
-        :param metadata: Key-value metadata to attach to the Stripe subscription, invoice, and checkout session created during this attach flow. Keys prefixed with 'autumn_' are reserved and will be stripped.
+        :param metadata: Key-value metadata to attach to the subscription, invoice, and checkout session created during this attach flow. Keys prefixed with 'autumn_' are reserved and will be stripped.
         :param no_billing_changes: If true, skips any billing changes for the attach operation.
-        :param enable_plan_immediately: If true, the customer's plan is activated immediately even when payment is deferred (invoice mode) or pending (Stripe checkout). For Stripe checkout, the customer_product is inserted before the customer completes the hosted form. Set it here rather than on `invoice_mode`, which only covers the invoice-unpaid case.
-        :param tax_rate_id: Stripe tax rate ID (txr_...) to apply as the default tax rate on the created subscription, invoice, or checkout session line items.
+        :param enable_plan_immediately: If true, the customer's plan is activated immediately even when payment is deferred (invoice mode) or pending (hosted checkout). For hosted checkout, the customer_product is inserted before the customer completes the hosted form. Set it here rather than on `invoice_mode`, which only covers the invoice-unpaid case.
+        :param tax_rate_id: Tax rate ID to apply as the default tax rate on the created subscription, invoice, or checkout session line items.
         :param currency: Currency to bill this attach in (e.g. usd, eur). Must match the customer's currency if they are already locked to one, and the plan must offer a paid price in it. Defaults to the customer's currency, then the org default.
         :param remove_plan_ids: Plan IDs to expire on the customer as part of this attach. Each must be an active plan billed on the same subscription as the attach (or a free plan); plans on a separate subscription are rejected.
         :param remove_discounts: Discounts to remove from the subscription, by reward ID. Discounts not listed are left unchanged.
@@ -3877,21 +3877,21 @@ class Billing(BaseSDK):
         :param customize: Customize the plan to attach. Can override the price, items, licenses, free trial, or a combination.
         :param proration_behavior: How to handle proration when updating an existing subscription. 'prorate_immediately' charges/credits prorated amounts now, 'none' skips creating any charges.
         :param subscription_id: A unique ID to identify this subscription. Can be used to target specific subscriptions in update operations when a customer has multiple products with the same plan.
-        :param discounts: List of discounts to apply. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code.
+        :param discounts: List of discounts to apply. Each discount can be an Autumn reward ID, coupon ID, or promotion code.
         :param success_url: URL to redirect to after successful checkout.
         :param billing_cycle_anchor: Reset the billing cycle immediately with 'now', or schedule a reset at a future Unix timestamp in milliseconds.
         :param starts_at: Unix timestamp in milliseconds for when the attached plan should start. Future dates create a scheduled subscription.
         :param ends_at: Unix timestamp in milliseconds for when the attached plan should end.
-        :param checkout_session_params: Additional parameters to pass into the creation of the Stripe checkout session.
+        :param checkout_session_params: Additional parameters to pass into the creation of the checkout session.
         :param custom_line_items: Custom line items that override the auto-generated proration invoice. Only valid for immediate plan changes (eg. upgrades or one off plans).
-        :param processor_subscription_id: The processor subscription ID to link. Use this to attach an existing Stripe subscription instead of creating a new one.
+        :param processor_subscription_id: The processor subscription ID to link. Use this to attach an existing subscription instead of creating a new one.
         :param carry_over_balances: Whether to carry over balances from the previous plan.
         :param carry_over_usages: Whether to carry over usages from the previous plan.
         :param license_quantities: Seat quantities for the plan's licenses, keyed by license plan.
-        :param metadata: Key-value metadata to attach to the Stripe subscription, invoice, and checkout session created during this attach flow. Keys prefixed with 'autumn_' are reserved and will be stripped.
+        :param metadata: Key-value metadata to attach to the subscription, invoice, and checkout session created during this attach flow. Keys prefixed with 'autumn_' are reserved and will be stripped.
         :param no_billing_changes: If true, skips any billing changes for the attach operation.
-        :param enable_plan_immediately: If true, the customer's plan is activated immediately even when payment is deferred (invoice mode) or pending (Stripe checkout). For Stripe checkout, the customer_product is inserted before the customer completes the hosted form. Set it here rather than on `invoice_mode`, which only covers the invoice-unpaid case.
-        :param tax_rate_id: Stripe tax rate ID (txr_...) to apply as the default tax rate on the created subscription, invoice, or checkout session line items.
+        :param enable_plan_immediately: If true, the customer's plan is activated immediately even when payment is deferred (invoice mode) or pending (hosted checkout). For hosted checkout, the customer_product is inserted before the customer completes the hosted form. Set it here rather than on `invoice_mode`, which only covers the invoice-unpaid case.
+        :param tax_rate_id: Tax rate ID to apply as the default tax rate on the created subscription, invoice, or checkout session line items.
         :param currency: Currency to bill this attach in (e.g. usd, eur). Must match the customer's currency if they are already locked to one, and the plan must offer a paid price in it. Defaults to the customer's currency, then the org default.
         :param remove_plan_ids: Plan IDs to expire on the customer as part of this attach. Each must be an active plan billed on the same subscription as the attach (or a free plan); plans on a separate subscription are rejected.
         :param remove_discounts: Discounts to remove from the subscription, by reward ID. Discounts not listed are left unchanged.
@@ -4015,228 +4015,4 @@ class Billing(BaseSDK):
                 "API error occurred", http_res, http_res_text
             )
 
-        raise errors.AutumnDefaultError("Unexpected response received", http_res)
-
-    def import_(
-        self,
-        *,
-        customer_id: str,
-        billables: Union[List[models.Billable], List[models.BillableTypedDict]],
-        customer_data: Optional[
-            Union[models.ImportCustomerData, models.ImportCustomerDataTypedDict]
-        ] = None,
-        processors: Optional[
-            Union[List[models.ImportProcessor], List[models.ImportProcessorTypedDict]]
-        ] = None,
-        dry_run: Optional[bool] = None,
-        retries: OptionalNullable[utils.RetryConfig] = UNSET,
-        server_url: Optional[str] = None,
-        timeout_ms: Optional[int] = None,
-        http_headers: Optional[Mapping[str, str]] = None,
-    ) -> models.DfuFlashResult:
-        r"""Import
-
-        Image a customer into Autumn for live migration. Read-only against processors.
-
-        :param customer_id: Autumn customer to image into.
-        :param billables: The billing objects (subscriptions, one-offs) to image, each carrying its plan.
-        :param customer_data: Optional identity fields upserted onto the customer (applied to existing customers too).
-        :param processors: The customer's processor identities (e.g. Stripe customer id, RevenueCat app_user_id). Omit for customers with no processor, e.g. those only ever on a free plan.
-        :param dry_run: If true, validate and compute without persisting; returns what would be flashed.
-        :param retries: Override the default retry configuration for this method
-        :param server_url: Override the default server URL for this method
-        :param timeout_ms: Override the default request timeout configuration for this method in milliseconds
-        :param http_headers: Additional headers to set or replace on requests.
-        """
-        base_url = None
-        url_variables = None
-        if timeout_ms is None:
-            timeout_ms = self.sdk_configuration.timeout_ms
-
-        if server_url is not None:
-            base_url = server_url
-        else:
-            base_url = self._get_url(base_url, url_variables)
-
-        request = models.DfuFlashParams(
-            customer_id=customer_id,
-            customer_data=utils.get_pydantic_model(
-                customer_data, Optional[models.ImportCustomerData]
-            ),
-            processors=utils.get_pydantic_model(
-                processors, Optional[List[models.ImportProcessor]]
-            ),
-            billables=utils.get_pydantic_model(billables, List[models.Billable]),
-            dry_run=dry_run,
-        )
-
-        req = self._build_request(
-            method="POST",
-            path="/v1/billing.import",
-            base_url=base_url,
-            url_variables=url_variables,
-            request=request,
-            request_body_required=True,
-            request_has_path_params=False,
-            request_has_query_params=True,
-            user_agent_header="user-agent",
-            accept_header_value="application/json",
-            http_headers=http_headers,
-            _globals=models.ImportGlobals(
-                x_api_version=self.sdk_configuration.globals.x_api_version,
-            ),
-            security=self.sdk_configuration.security,
-            get_serialized_body=lambda: utils.serialize_request_body(
-                request, False, False, "json", models.DfuFlashParams
-            ),
-            allow_empty_value=None,
-            timeout_ms=timeout_ms,
-        )
-
-        if retries == UNSET:
-            if self.sdk_configuration.retry_config is not UNSET:
-                retries = self.sdk_configuration.retry_config
-
-        retry_config = None
-        if isinstance(retries, utils.RetryConfig):
-            retry_config = (retries, ["429", "500", "502", "503", "504"])
-
-        http_res = self.do_request(
-            hook_ctx=HookContext(
-                config=self.sdk_configuration,
-                base_url=base_url or "",
-                operation_id="import",
-                oauth2_scopes=None,
-                security_source=self.sdk_configuration.security,
-            ),
-            request=req,
-            is_error_status_code=lambda c: utils.match_status_codes(["4XX", "5XX"], c),
-            retry_config=retry_config,
-        )
-
-        if utils.match_response(http_res, "200", "application/json"):
-            return unmarshal_json_response(models.DfuFlashResult, http_res)
-        if utils.match_response(http_res, "4XX", "*"):
-            http_res_text = utils.stream_to_text(http_res)
-            raise errors.AutumnDefaultError(
-                "API error occurred", http_res, http_res_text
-            )
-        if utils.match_response(http_res, "5XX", "*"):
-            http_res_text = utils.stream_to_text(http_res)
-            raise errors.AutumnDefaultError(
-                "API error occurred", http_res, http_res_text
-            )
-
-        raise errors.AutumnDefaultError("Unexpected response received", http_res)
-
-    async def import__async(
-        self,
-        *,
-        customer_id: str,
-        billables: Union[List[models.Billable], List[models.BillableTypedDict]],
-        customer_data: Optional[
-            Union[models.ImportCustomerData, models.ImportCustomerDataTypedDict]
-        ] = None,
-        processors: Optional[
-            Union[List[models.ImportProcessor], List[models.ImportProcessorTypedDict]]
-        ] = None,
-        dry_run: Optional[bool] = None,
-        retries: OptionalNullable[utils.RetryConfig] = UNSET,
-        server_url: Optional[str] = None,
-        timeout_ms: Optional[int] = None,
-        http_headers: Optional[Mapping[str, str]] = None,
-    ) -> models.DfuFlashResult:
-        r"""Import
-
-        Image a customer into Autumn for live migration. Read-only against processors.
-
-        :param customer_id: Autumn customer to image into.
-        :param billables: The billing objects (subscriptions, one-offs) to image, each carrying its plan.
-        :param customer_data: Optional identity fields upserted onto the customer (applied to existing customers too).
-        :param processors: The customer's processor identities (e.g. Stripe customer id, RevenueCat app_user_id). Omit for customers with no processor, e.g. those only ever on a free plan.
-        :param dry_run: If true, validate and compute without persisting; returns what would be flashed.
-        :param retries: Override the default retry configuration for this method
-        :param server_url: Override the default server URL for this method
-        :param timeout_ms: Override the default request timeout configuration for this method in milliseconds
-        :param http_headers: Additional headers to set or replace on requests.
-        """
-        base_url = None
-        url_variables = None
-        if timeout_ms is None:
-            timeout_ms = self.sdk_configuration.timeout_ms
-
-        if server_url is not None:
-            base_url = server_url
-        else:
-            base_url = self._get_url(base_url, url_variables)
-
-        request = models.DfuFlashParams(
-            customer_id=customer_id,
-            customer_data=utils.get_pydantic_model(
-                customer_data, Optional[models.ImportCustomerData]
-            ),
-            processors=utils.get_pydantic_model(
-                processors, Optional[List[models.ImportProcessor]]
-            ),
-            billables=utils.get_pydantic_model(billables, List[models.Billable]),
-            dry_run=dry_run,
-        )
-
-        req = self._build_request_async(
-            method="POST",
-            path="/v1/billing.import",
-            base_url=base_url,
-            url_variables=url_variables,
-            request=request,
-            request_body_required=True,
-            request_has_path_params=False,
-            request_has_query_params=True,
-            user_agent_header="user-agent",
-            accept_header_value="application/json",
-            http_headers=http_headers,
-            _globals=models.ImportGlobals(
-                x_api_version=self.sdk_configuration.globals.x_api_version,
-            ),
-            security=self.sdk_configuration.security,
-            get_serialized_body=lambda: utils.serialize_request_body(
-                request, False, False, "json", models.DfuFlashParams
-            ),
-            allow_empty_value=None,
-            timeout_ms=timeout_ms,
-        )
-
-        if retries == UNSET:
-            if self.sdk_configuration.retry_config is not UNSET:
-                retries = self.sdk_configuration.retry_config
-
-        retry_config = None
-        if isinstance(retries, utils.RetryConfig):
-            retry_config = (retries, ["429", "500", "502", "503", "504"])
-
-        http_res = await self.do_request_async(
-            hook_ctx=HookContext(
-                config=self.sdk_configuration,
-                base_url=base_url or "",
-                operation_id="import",
-                oauth2_scopes=None,
-                security_source=self.sdk_configuration.security,
-            ),
-            request=req,
-            is_error_status_code=lambda c: utils.match_status_codes(["4XX", "5XX"], c),
-            retry_config=retry_config,
-        )
-
-        if utils.match_response(http_res, "200", "application/json"):
-            return unmarshal_json_response(models.DfuFlashResult, http_res)
-        if utils.match_response(http_res, "4XX", "*"):
-            http_res_text = await utils.stream_to_text_async(http_res)
-            raise errors.AutumnDefaultError(
-                "API error occurred", http_res, http_res_text
-            )
-        if utils.match_response(http_res, "5XX", "*"):
-            http_res_text = await utils.stream_to_text_async(http_res)
-            raise errors.AutumnDefaultError(
-                "API error occurred", http_res, http_res_text
-            )
-
-        raise errors.AutumnDefaultError("Unexpected response received", http_res)
+        raise errors.AutumnDefaultError("Unexpected response received", http_res)

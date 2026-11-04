@@ -13,7 +13,7 @@ export const isDeadlineExceededError = (error: unknown): boolean =>
 
 /** retryAsync only retries a rejection, so a read that never settles needs a
  * deadline to reject at all — a hung socket otherwise waits forever. The
- * deadline is its own error type so only a stall is retried here: the Stripe
+ * deadline is its own error type so only a stall is retried here: the PayPal
  * SDK already retries connection errors, 409, 429 and 5xx beneath us. */
 export const retryBoundedAsync = async <T>({
 	attempts,

@@ -229,7 +229,7 @@ actions:
 
                 res = autumn.billing.import_(customer_id="cus_123", billables=[
                     {
-                        "processor": "stripe",
+                        "processor": "paypal",
                         "link": {
                             "subscription_id": "sub_123",
                         },
@@ -246,8 +246,8 @@ actions:
                     },
                 ], processors=[
                     {
-                        "type": "stripe",
-                        "id": "cus_stripe_123",
+                        "type": "paypal",
+                        "id": "cus_paypal_123",
                     },
                 ])
 
@@ -501,7 +501,7 @@ actions:
                 secret_key="<YOUR_BEARER_TOKEN_HERE>",
             ) as autumn:
 
-                res = autumn.customers.delete(customer_id="cus_123", delete_in_stripe=False)
+                res = autumn.customers.delete(customer_id="cus_123")
 
                 # Handle response
                 print(res)
@@ -864,7 +864,7 @@ actions:
                         "plan_ids": [
                             "pro",
                         ],
-                        "stripe_id": "in_legacy_123",
+                        "processor_invoice_id": "in_legacy_123",
                         "status": "paid",
                         "total": 29.99,
                         "amount_paid": 29.99,
@@ -1106,7 +1106,7 @@ actions:
                             "interval": "month",
                         },
                     },
-                ], create_in_stripe=True)
+                ])
 
                 # Handle response
                 print(res)
@@ -1181,100 +1181,7 @@ actions:
                 res = autumn.plans.update(plan_id="pro_plan", name="Pro Plan (Updated)", price={
                     "amount": 15,
                     "interval": "month",
-                }, create_in_stripe=True, archived=False)
-
-                # Handle response
-                print(res)
-  - target: $["paths"]["/v1/platform.disconnect_stripe"]["post"]
-    update:
-      x-codeSamples:
-        - lang: python
-          label: Python (SDK)
-          source: |-
-            from autumn_sdk import Autumn
-
-
-            with Autumn(
-                x_api_version="2.4.0",
-                secret_key="<YOUR_BEARER_TOKEN_HERE>",
-            ) as autumn:
-
-                res = autumn.platform.disconnect_stripe(organization_slug="my-app", env="test")
-
-                # Handle response
-                print(res)
-  - target: $["paths"]["/v1/platform.get_revenuecat_keys"]["post"]
-    update:
-      x-codeSamples:
-        - lang: python
-          label: Python (SDK)
-          source: |-
-            from autumn_sdk import Autumn
-
-
-            with Autumn(
-                x_api_version="2.4.0",
-                secret_key="<YOUR_BEARER_TOKEN_HERE>",
-            ) as autumn:
-
-                res = autumn.platform.get_revenue_cat_keys(organization_slug="acme", env="test")
-
-                # Handle response
-                print(res)
-  - target: $["paths"]["/v1/platform.get_stripe_connection"]["post"]
-    update:
-      x-codeSamples:
-        - lang: python
-          label: Python (SDK)
-          source: |-
-            from autumn_sdk import Autumn
-
-
-            with Autumn(
-                x_api_version="2.4.0",
-                secret_key="<YOUR_BEARER_TOKEN_HERE>",
-            ) as autumn:
-
-                res = autumn.platform.get_stripe_connection(organization_slug="my-app", env="test")
-
-                # Handle response
-                print(res)
-  - target: $["paths"]["/v1/platform.link_revenuecat"]["post"]
-    update:
-      x-codeSamples:
-        - lang: python
-          label: Python (SDK)
-          source: |-
-            from autumn_sdk import Autumn
-
-
-            with Autumn(
-                x_api_version="2.4.0",
-                secret_key="<YOUR_BEARER_TOKEN_HERE>",
-            ) as autumn:
-
-                res = autumn.platform.link_revenue_cat(organization_slug="acme", env="test", project_name="acme-mobile", redirect_url="https://dashboard.useautumn.com/dev?tab=revenuecat")
-
-                # Handle response
-                print(res)
-  - target: $["paths"]["/v1/platform.sync_revenuecat"]["post"]
-    update:
-      x-codeSamples:
-        - lang: python
-          label: Python (SDK)
-          source: |-
-            from autumn_sdk import Autumn
-
-
-            with Autumn(
-                x_api_version="2.4.0",
-                secret_key="<YOUR_BEARER_TOKEN_HERE>",
-            ) as autumn:
-
-                res = autumn.platform.sync_revenue_cat(organization_slug="acme", env="test", product_ids=[
-                    "pro",
-                    "premium",
-                ])
+                }, archived=False)
 
                 # Handle response
                 print(res)

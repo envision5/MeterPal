@@ -11,10 +11,6 @@ import { handleUpdateSubscriptionErrors } from "@/internal/billing/v2/actions/up
 import { logUpdateSubscriptionContext } from "@/internal/billing/v2/actions/updateSubscription/logs/logUpdateSubscriptionContext";
 import { setupUpdateSubscriptionBillingContext } from "@/internal/billing/v2/actions/updateSubscription/setup/setupUpdateSubscriptionBillingContext";
 import { executeBillingPlan } from "@/internal/billing/v2/execute/executeBillingPlan";
-import { voidInvoicesOnImmediateCancel } from "@/internal/billing/v2/execute/voidInvoicesOnImmediateCancel";
-import { evaluateStripeBillingPlan } from "@/internal/billing/v2/providers/stripe/actionBuilders/evaluateStripeBillingPlan";
-import { logStripeBillingPlan } from "@/internal/billing/v2/providers/stripe/logs/logStripeBillingPlan";
-import { logStripeBillingResult } from "@/internal/billing/v2/providers/stripe/logs/logStripeBillingResult";
 import { computeAttachPreviewBillingPlan } from "@/internal/billing/v2/utils/billingPlan/preview/computeAttachPreviewBillingPlan";
 import { logAutumnBillingPlan } from "@/internal/billing/v2/utils/logs/logAutumnBillingPlan";
 import {
@@ -63,18 +59,7 @@ export async function updateSubscription({
 		autumnBillingPlan,
 	});
 
-	// 3. Evaluate Stripe billing plan
-	const stripeBillingPlan = await evaluateStripeBillingPlan({
-		ctx,
-		billingContext,
-		autumnBillingPlan,
-	});
-	logStripeBillingPlan({ ctx, stripeBillingPlan, billingContext });
-
-	const billingPlan = {
-		autumn: autumnBillingPlan,
-		stripe: stripeBillingPlan,
-	};
+	const billingPlan = { autumn: autumnBillingPlan };
 
 	// 4. Errors
 	await handleUpdateSubscriptionErrors({
@@ -113,21 +98,13 @@ export async function updateSubscription({
 		return autumnCheckoutResult;
 	}
 
-	// 5. Execute billing plan
+	// 5. Execute billing plan (DB-only; PayPal cancel/uncancel is handled in
+	// the handler via paypalSubscriptionLifecycle before this runs)
 	const billingResult = await executeBillingPlan({
 		ctx,
 		billingContext,
 		billingPlan,
 	});
-
-	await voidInvoicesOnImmediateCancel({
-		ctx,
-		billingContext,
-		billingPlan,
-		billingResult,
-	});
-
-	logStripeBillingResult({ ctx, result: billingResult.stripe });
 
 	return {
 		billingContext,

@@ -5,9 +5,9 @@ export const AttachFunctionResponseSchema = z.object({
 	message: z.string().optional(),
 	code: z.string().optional(),
 
-	invoice: z.any().optional(), // Stripe.invoice
-	checkoutSession: z.any().optional(), // Stripe.checkout.session
-	stripeSub: z.any().optional(), // Stripe.subscription
+	invoice: z.any().optional(), // processor invoice
+	checkoutSession: z.any().optional(), // processor checkout session
+	processorSub: z.any().optional(), // processor subscription
 	anchorToUnix: z.number().optional(),
 
 	newCustomerProductId: z.string().optional(),

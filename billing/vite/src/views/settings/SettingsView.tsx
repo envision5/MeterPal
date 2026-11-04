@@ -20,13 +20,11 @@ import {
 	ReceiptIcon,
 	ShieldCheckIcon,
 	SlidersHorizontalIcon,
-	TriangleIcon,
 	UserIcon,
 	UsersIcon,
 } from "lucide-react";
 import { useSearchParams } from "react-router";
 import { PaypalLogoIcon } from "@phosphor-icons/react";
-import { RevenueCatIcon, StripeIcon } from "@/components/v2/icons/AutumnIcons";
 import { useAutumnFlags } from "@/hooks/common/useAutumnFlags";
 import { useScopes } from "@/hooks/useScopes";
 import { cn } from "@/lib/utils";
@@ -42,13 +40,10 @@ import { InvoicesSection } from "./sections/InvoicesSection";
 import { MembersSection } from "./sections/MembersSection";
 import { OrganizationSection } from "./sections/OrganizationSection";
 import { PayPalSection } from "./sections/PayPalSection";
-import { RevenueCatSection } from "./sections/RevenueCatSection";
 import { SsoSection } from "./sections/SsoSection";
-import { StripeSection } from "./sections/StripeSection";
 import { SubscriptionSection } from "./sections/SubscriptionSection";
 import { TransitionRulesSection } from "./sections/TransitionRulesSection";
 import { UsageAlertsSection } from "./sections/UsageAlertsSection";
-import { VercelSection } from "./sections/VercelSection";
 
 export type SettingsTab =
 	| "account"
@@ -64,10 +59,7 @@ export type SettingsTab =
 	| "invoices"
 	| "usage-alerts"
 	| "transition-rules"
-	| "stripe"
-	| "paypal"
-	| "vercel"
-	| "revenuecat";
+	| "paypal";
 
 export interface SettingsNavItem {
 	readonly id: SettingsTab;
@@ -162,24 +154,9 @@ export const SETTINGS_GROUPS: readonly SettingsNavGroup[] = [
 		label: "Integrations",
 		items: [
 			{
-				id: "stripe",
-				label: "Stripe",
-				icon: <StripeIcon size={16} />,
-			},
-			{
 				id: "paypal",
 				label: "PayPal",
 				icon: <PaypalLogoIcon size={16} />,
-			},
-			{
-				id: "vercel",
-				label: "Vercel",
-				icon: <TriangleIcon className="size-4" />,
-			},
-			{
-				id: "revenuecat",
-				label: "RevenueCat",
-				icon: <RevenueCatIcon size={16} />,
 			},
 		],
 	},
@@ -199,25 +176,16 @@ const SECTION_MAP: Record<SettingsTab, React.ComponentType> = {
 	invoices: InvoicesSection,
 	"usage-alerts": UsageAlertsSection,
 	"transition-rules": TransitionRulesSection,
-	stripe: StripeSection,
 	paypal: PayPalSection,
-	vercel: VercelSection,
-	revenuecat: RevenueCatSection,
 };
 
 /** Tabs that only render while their feature flag is on. */
-const FLAGGED_TABS: Partial<Record<SettingsTab, "sso" | "vercel">> = {
+const FLAGGED_TABS: Partial<Record<SettingsTab, "sso">> = {
 	sso: "sso",
-	vercel: "vercel",
 };
 
 /** Integrations were previously behind the developer page's scope. */
-const API_KEY_SCOPED_TABS: readonly SettingsTab[] = [
-	"stripe",
-	"paypal",
-	"vercel",
-	"revenuecat",
-];
+const API_KEY_SCOPED_TABS: readonly SettingsTab[] = ["paypal"];
 
 export const useIsSettingsTabEnabled = () => {
 	const flags = useAutumnFlags();

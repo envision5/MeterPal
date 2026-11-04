@@ -95,7 +95,7 @@ export type MultiUpdateParams = {
    */
   refundLastPayment?: MultiUpdateRefundLastPayment | undefined;
   /**
-   * Additional parameters to pass into the Stripe subscription update or cancel call.
+   * Additional parameters to pass into the processor subscription update or cancel call.
    */
   subscriptionParams?: { [k: string]: any } | undefined;
   /**
@@ -113,9 +113,9 @@ export type MultiUpdateInvoice = {
    */
   status: string | null;
   /**
-   * The Stripe invoice ID.
+   * The processor invoice ID
    */
-  stripeId: string;
+  processorInvoiceId: string;
   /**
    * The total amount of the invoice in cents.
    */
@@ -285,14 +285,14 @@ export const MultiUpdateInvoice$inboundSchema: z.ZodMiniType<
 > = z.pipe(
   z.object({
     status: types.nullable(types.string()),
-    stripe_id: types.string(),
+    processor_invoice_id: types.string(),
     total: types.number(),
     currency: types.string(),
     hosted_invoice_url: types.nullable(types.string()),
   }),
   z.transform((v) => {
     return remap$(v, {
-      "stripe_id": "stripeId",
+      "processor_invoice_id": "processorInvoiceId",
       "hosted_invoice_url": "hostedInvoiceUrl",
     });
   }),

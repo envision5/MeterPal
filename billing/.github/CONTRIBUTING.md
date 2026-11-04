@@ -64,7 +64,7 @@ bun run setup
 
 The `setup` script generates required environment variables to run Autumn locally. It performs two main functions:
 - Auto-spins up a Supabase database and creates required tables (optional)
-- Generates a localtunnel reserved key for receiving Stripe webhooks in development
+- Generates a localtunnel reserved key for receiving webhooks in development
 
 #### Step 3: Start Development Environment
 ```bash
@@ -122,8 +122,8 @@ When you need to create version-controlled migrations (e.g., for new releases):
 - `CLIENT_URL` - Client application URL
 
 ### Encryption
-- `ENCRYPTION_IV` - Initialization vector for AES-256 encryption of Stripe API keys
-- `ENCRYPTION_PASSWORD` - Password for AES-256 encryption of Stripe API keys
+- `ENCRYPTION_IV` - Initialization vector for AES-256 encryption of processor API keys
+- `ENCRYPTION_PASSWORD` - Password for AES-256 encryption of processor API keys
 
 ### Webhooks & Tunneling
 - `LOCALTUNNEL_RESERVED_KEY` - Reserved subdomain key for localtunnel service

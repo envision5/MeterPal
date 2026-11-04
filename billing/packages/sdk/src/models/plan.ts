@@ -33,8 +33,6 @@ import {
   PlanItemFilter$inboundSchema,
   PlanPrice,
   PlanPrice$inboundSchema,
-  PlanProcessors,
-  PlanProcessors$inboundSchema,
   PlanVariantDetailsBillingControls1,
   PlanVariantDetailsBillingControls1$inboundSchema,
 } from "./plan-variant-details-billing-controls-1.js";
@@ -60,7 +58,7 @@ export type PlanPriceUpsertLicenseInterval = OpenEnum<
 
 export type UpsertLicenseAdditionalCurrency = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -132,7 +130,7 @@ export type PlanUpsertLicenseReset = {
 
 export type UpsertLicenseAddItemAdditionalCurrency = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -145,7 +143,7 @@ export type PlanUpsertLicensePriceTo = number | string;
 
 export type UpsertLicenseTierAdditionalCurrency = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -851,11 +849,7 @@ export type Plan = {
    * Feature configurations included in this plan. Each item defines included units, pricing, and reset behavior for a feature.
    */
   items: Array<Item>;
-  /**
-   * Payment processors this plan is connected to. Omitted when unset.
-   */
-  processors?: PlanProcessors | undefined;
-  /**
+    /**
    * Free trial configuration. If set, new customers can try this plan before being charged.
    */
   freeTrial?: FreeTrial | undefined;
@@ -2117,7 +2111,6 @@ export const Plan$inboundSchema: z.ZodMiniType<Plan, unknown> = z.pipe(
     auto_enable: types.boolean(),
     price: types.nullable(PlanPrice$inboundSchema),
     items: z.array(Item$inboundSchema),
-    processors: types.optional(PlanProcessors$inboundSchema),
     free_trial: types.optional(FreeTrial$inboundSchema),
     created_at: types.number(),
     env: PlanEnv$inboundSchema,

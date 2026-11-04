@@ -22,7 +22,6 @@ export const teamThenAssign: IntegrationCase = {
 			name: "Ada Lovelace",
 			email: fixtureUser.email,
 		},
-		paymentMethod: true,
 	},
 	existingFiles: {
 		"src/index.ts": `import { getUser } from "./auth.ts";

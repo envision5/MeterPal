@@ -1,15 +1,13 @@
 import {
 	ALL_STATUSES,
 	CustomerExpand,
-	type FullCusProduct,
 	Scopes,
 } from "@autumn/shared";
-import { getTestClockFrozenTimeMs } from "@/external/stripe/testClocks/utils/convertStripeTestClock";
 import { createRoute } from "@/honoMiddlewares/routeHandler";
 import { CusService } from "@/internal/customers/CusService";
 import { getCusAutoTopupPurchaseLimits } from "@/internal/customers/cusUtils/cusResponseUtils/getCusAutoTopupPurchaseLimits";
-import { getCusRewards } from "@/internal/customers/cusUtils/cusResponseUtils/getCusRewards";
 import { getCusUsageLimitsWithUsage } from "@/internal/customers/cusUtils/cusResponseUtils/getCusUsageLimitsWithUsage";
+import { withDerivedCusProductProcessors } from "@/internal/customers/cusProducts/cusProductUtils/deriveCusProductProcessor";
 
 /**
  * Internal route for get full customer object.
@@ -17,9 +15,6 @@ import { getCusUsageLimitsWithUsage } from "@/internal/customers/cusUtils/cusRes
  * Note: schedules are NOT hydrated here. Dashboard consumers that need the
  * customer's persisted schedule must fetch it separately via
  * `GET /customers/:customer_id/schedule`.
- *
- * Supports optional `?expand=rewards` query param to lazily fetch
- * per-subscription discount data from Stripe.
  */
 export const handleGetCustomer = createRoute({
 	scopes: [Scopes.Customers.Read],
@@ -47,39 +42,21 @@ export const handleGetCustomer = createRoute({
 			includeExpiredLooseEntitlements,
 		});
 
-		const [
-			testClockFrozenTimeMs,
-			autoTopupsWithLimits,
-			rewards,
-			usageLimitsWithUsage,
-			productsPage,
-		] = await Promise.all([
-			getTestClockFrozenTimeMs({
-				ctx,
-				stripeCustomerId: fullCus.processor?.id,
-			}),
-			getCusAutoTopupPurchaseLimits({
-				ctx,
-				internalCustomerId: fullCus.internal_id,
-				autoTopupsConfig: fullCus.auto_topups,
-				expand: [CustomerExpand.AutoTopupsPurchaseLimit],
-			}),
-			getCusRewards({
-				org: ctx.org,
-				env: ctx.env,
-				fullCus,
-				subIds: fullCus.customer_products.flatMap(
-					(cp: FullCusProduct) => cp.subscription_ids || [],
-				),
-				expand,
-			}),
-			getCusUsageLimitsWithUsage({ ctx, fullCus }),
-			CusService.getDefaultProductsPage({
-				ctx,
-				idOrInternalId: customer_id,
-				internalCustomerId: fullCus.internal_id,
-			}),
-		]);
+		const [autoTopupsWithLimits, usageLimitsWithUsage, productsPage] =
+			await Promise.all([
+				getCusAutoTopupPurchaseLimits({
+					ctx,
+					internalCustomerId: fullCus.internal_id,
+					autoTopupsConfig: fullCus.auto_topups,
+					expand: [CustomerExpand.AutoTopupsPurchaseLimit],
+				}),
+				getCusUsageLimitsWithUsage({ ctx, fullCus }),
+				CusService.getDefaultProductsPage({
+					ctx,
+					idOrInternalId: customer_id,
+					internalCustomerId: fullCus.internal_id,
+				}),
+			]);
 
 		// Overlay usage onto the customer and every entity that has caps, so the
 		// pill shows usage regardless of which scope the client fetched.
@@ -95,13 +72,14 @@ export const handleGetCustomer = createRoute({
 			customer: {
 				...fullCus,
 				auto_topups: autoTopupsWithLimits ?? fullCus.auto_topups,
-				rewards: rewards ?? undefined,
 				entities: entities ?? fullCus.entities,
 				usage_limits: usageLimitsWithUsage?.customer ?? fullCus.usage_limits,
 				plan_usage_limits: usageLimitsWithUsage?.plan,
 				products_page: productsPage,
+				customer_products: withDerivedCusProductProcessors(
+					fullCus.customer_products,
+				),
 			},
-			test_clock_frozen_time_ms: testClockFrozenTimeMs,
 		});
 	},
 });

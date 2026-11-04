@@ -37,12 +37,14 @@ export const computeUpdateQuantityPooledAnchorResetPlan = ({
 			message:
 				"Pooled quantity reset is missing its projected customer product.",
 		});
+	const processorSubscriptionId =
+		billingContext.customerProduct.subscription_ids?.[0];
 	const { pooledBalancePlan: transition } = computePooledBalanceTransitionPlan({
 		ctx,
 		fullCustomer: billingContext.fullCustomer,
 		outgoingCustomerProducts: [billingContext.customerProduct],
 		incomingCustomerProducts: [finalCustomerProduct],
-		stripeSubscriptionId: billingContext.stripeSubscription?.id,
+		processorSubscriptionId,
 		now: billingContext.currentEpochMs,
 	});
 	const pooledBalancePlan = mergePooledBalancePlans({
@@ -55,8 +57,8 @@ export const computeUpdateQuantityPooledAnchorResetPlan = ({
 		(entitlement) =>
 			entitlement.pooled_balance?.reset_mode ===
 				PooledBalanceResetMode.Subscription &&
-			entitlement.pooled_balance.stripe_subscription_id ===
-				billingContext.stripeSubscription?.id,
+			entitlement.pooled_balance.processor_subscription_id ===
+				processorSubscriptionId,
 	);
 	if (pools.length === 0) return { ...plan, pooledBalancePlan };
 	const anchorUpdates = computeBillingCycleAnchorEntitlementUpdates({

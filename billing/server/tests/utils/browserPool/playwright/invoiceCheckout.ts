@@ -88,9 +88,9 @@ export const invoiceCheckout = async ({
 				const text = await frame.locator("body").innerText({ timeout: 1000 });
 				if (!/\bverify\b|please try again/i.test(text)) continue;
 				const error = new Error(
-					"Stripe hosted invoice requires a CAPTCHA challenge",
+					"The hosted invoice requires a CAPTCHA challenge",
 				);
-				error.name = "StripeBrowserChallengeError";
+				error.name = "ProcessorBrowserChallengeError";
 				throw error;
 			} finally {
 				await element.dispose();
@@ -120,12 +120,12 @@ export const invoiceCheckout = async ({
 					})),
 			);
 			throw new Error(
-				`Stripe invoice payment rejected: ${message}; fields=${JSON.stringify(fields)}`,
+				`The invoice payment was rejected: ${message}; fields=${JSON.stringify(fields)}`,
 			);
 		}
 		await page.waitForTimeout(250);
 	}
 	throw new Error(
-		"Stripe hosted invoice did not confirm payment within 30000ms",
+		"The hosted invoice did not confirm payment within 30000ms",
 	);
 };

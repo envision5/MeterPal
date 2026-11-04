@@ -25,7 +25,7 @@ Organize `updateProduct` around the same broad flow used by cleaner billing acti
    - Build the proposed product state.
    - Decide whether the update is a no-op.
    - Decide whether to version, update in place, or persist items normally.
-   - Decide whether metadata, free trial, variants, Stripe init, or reward side effects are needed.
+   - Decide whether metadata, free trial, variants, processor init, or reward side effects are needed.
 
 4. **Execute**
    - Persist product details.
@@ -33,7 +33,7 @@ Organize `updateProduct` around the same broad flow used by cleaner billing acti
    - Persist item changes.
    - Persist free trial changes.
    - Apply variant updates.
-   - Run Stripe initialization and reward migration side effects.
+   - Run processor initialization and reward migration side effects.
 
 ## Incremental Plan
 
@@ -101,7 +101,7 @@ Preserve the current ordering until tests cover any intentional ordering change.
 - Product setting updates currently apply directly to the product row.
 - Metadata updates fan out by external product ID.
 - Variant propagation keeps its current behavior.
-- Stripe init and reward migration side effects keep their current behavior.
+- Processor init and reward migration side effects keep their current behavior.
 
 ## Test Plan
 

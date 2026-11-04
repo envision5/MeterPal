@@ -8,7 +8,7 @@
 #   2. bun install --frozen-lockfile        (delta only; deps baked in base)
 #   3. bun db migrate --bootstrap            (tables + trgm indexes, ONCE)
 #   4. bun migrate-functions                 (10 SQL procs in dependency order)
-#   5. seed org/features/products/key        (setup-test, createStripeAccount OFF)
+#   5. seed org/features/products/key        (setup-test)
 #   6. clean-stop services                   (consistent filesystem snapshot)
 #
 # If migrate fails, this aborts — workers are never forked (plan §4b step 3,
@@ -47,7 +47,6 @@ export REDIS_URL="redis://localhost:${DRAGONFLY_PORT}"
 export MISC_CACHE_DRAGONFLY_PUBLIC_URL="$REDIS_URL"
 export CACHE_V2_DRAGONFLY_URL="$REDIS_URL"
 export SQS_QUEUE_URL_V2="http://localhost:${ELASTICMQ_PORT}/000000000000/autumn.fifo"
-export STRIPE_WEBHOOK_SQS_QUEUE_URL="http://localhost:${ELASTICMQ_PORT}/000000000000/autumn-stripe-webhook.fifo"
 export TRACK_SQS_QUEUE_URL="http://localhost:${ELASTICMQ_PORT}/000000000000/autumn-track.fifo"
 export TRACK_ASYNC_SQS_QUEUE_URL="$TRACK_SQS_QUEUE_URL"
 export TRACK_ASYNC_STANDARD_SQS_QUEUE_URL="http://localhost:${ELASTICMQ_PORT}/000000000000/autumn-track-async"
@@ -56,14 +55,8 @@ export TRACK_ASYNC_STANDARD_SQS_QUEUE_URL="http://localhost:${ELASTICMQ_PORT}/00
 # DATABASE_URL injected, which we just set.
 export AUTUMN_DB_DIRECT=1
 # Single-process dev path so feature-guarded services degrade instead of
-# blocking boot, and skip-verify stays on (plan §11a, §6a gotcha a).
+# blocking boot (plan §11a).
 export NODE_ENV="${NODE_ENV:-development}"
-# Worker-mode flag: gates the warm-parent seed to createStripeAccount:false so
-# the warm snapshot bakes org/features/products/keys but NO Stripe sub-account
-# (plan §5a step 5, §6a "Warm-parent change"). The per-worker
-# attachSandboxStripeAccount mints the sub-account at boot. The createTestOrg
-# refactor (separate module) reads this flag to flip createStripeAccount.
-export TW_SKIP_STRIPE_ACCOUNT=true
 export TW_WORKER_MODE=1
 
 cd "$REPO_ROOT"
@@ -165,11 +158,10 @@ log "bun migrate-functions (SQL procedures)"
 bun scripts/migrations/migrate-functions.ts || die "migrate-functions FAILED"
 
 # ---------------------------------------------------------------------------
-# 5. Seed shared org/features/products/key (createStripeAccount disabled via
-#    TW_WORKER_MODE). --yes skips the interactive confirm. This bakes the
-#    identical-across-workers DB state into the warm snapshot.
+# 5. Seed shared org/features/products/key. --yes skips the interactive confirm.
+#    This bakes the identical-across-workers DB state into the warm snapshot.
 # ---------------------------------------------------------------------------
-log "Seeding test org (setup-test, createStripeAccount disabled)"
+log "Seeding test org (setup-test)"
 bun scripts/setup/setup-test.ts --yes || die "setup-test seed FAILED"
 
 # ---------------------------------------------------------------------------

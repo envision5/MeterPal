@@ -197,7 +197,7 @@ const main = async () => {
 	// at the SQL level: a cusEnt is price-backed when a customer_price exists
 	// for the same customer_product whose price.entitlement_id matches the
 	// cusEnt's entitlement_id. Such cusEnts MUST NOT be picked up by the reset
-	// cron — their reset is owned by the Stripe invoice.created handler.
+	// cron — their reset is owned by the processor's invoice.created handler.
 	console.log(
 		"\n=== OPTIMIZED C: Active product + NOT price-backed (NOT EXISTS) ===\n",
 	);

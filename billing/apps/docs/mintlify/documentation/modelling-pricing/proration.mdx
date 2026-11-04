@@ -171,6 +171,6 @@ await autumn.billing.attach({
 
 When `custom_line_items` is provided, MeterPal skips its own proration calculation and creates an invoice with exactly the line items you specified. Amounts can be negative to represent credits.
 
-## Stripe integration
+## Processor integration
 
-MeterPal uses Stripe's proration system under the hood. Prorated amounts appear as line items on the customer's next invoice (or are charged immediately, depending on configuration).
+MeterPal uses the payment processor's proration under the hood. Prorated amounts appear as line items on the customer's next invoice (or are charged immediately, depending on configuration).

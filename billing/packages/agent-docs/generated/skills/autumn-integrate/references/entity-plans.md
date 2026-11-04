@@ -32,11 +32,16 @@ Pick with one question: **do you sell capacity before you know who fills it?**
 
 Different tiers per entity work in **both** modes — attach different plans to different entities, or offer more than one license plan under the same parent.
 
+
 Entities are created with a `feature_id` identifying their type (e.g. a non-consumable `seats` or `workspaces` feature). If you only need to *count* seats and bill for them, with no per-seat balances or identity, you don't need entities at all — see [per-seat pricing](/documentation/modelling-pricing/per-unit-pricing).
+
 
 ## Attaching plans directly
 
 Create your plans as normal — no entity-specific configuration on the plan itself. Put plans that should replace each other on upgrade/downgrade in the same `group`.
+
+
+
 
 ```ts autumn.config.ts
 import { atmn, feature, plan } from "atmn";
@@ -86,6 +91,10 @@ export default atmn({
 ```
 
 Preview with `atmn push`, then apply with `atmn push --yes`.
+
+
+
+
 
 #### Create the entity
 
@@ -166,7 +175,7 @@ curl -X POST "https://api.useautumn.com/v1/billing.attach" \
 
 </CodeGroup>
 
-Each entity's subscription is created separately in Stripe, with billing cycles synced to the parent customer.
+Each entity's subscription is created separately with the payment processor, with billing cycles synced to the parent customer.
 
 To upgrade or downgrade, attach the new plan with the same `entityId` — the usual [upgrade/downgrade](/documentation/customers/subscription-lifecycle) logic applies.
 
@@ -222,6 +231,9 @@ team plan  ──licenses: [{ seat, included: 1 }]──►  pool of seats
 
 The pool has a `granted` size (included seats plus any paid seats), a `usage` count (seats currently assigned), and a `remaining` count. Assigning consumes a seat; releasing gives it back.
 
+
+
+
 Create the feature each seat consumes, then a license plan holding what one seat gets. Link it from the parent plan via `licenses`:
 
 ```ts autumn.config.ts
@@ -272,7 +284,13 @@ export default atmn({ features: [summaries], plans: [seat, team] });
 
 Preview with `atmn push`, then apply with `atmn push --yes`.
 
+
 Give the license plan its own `group`. Attaching a plan replaces other plans in the same group, so a license plan sharing a group with its parent would knock the parent off.
+
+
+
+
+
 
 #### Buy seats
 
@@ -317,9 +335,11 @@ curl -X POST "https://api.useautumn.com/v1/billing.attach" \
 
 </CodeGroup>
 
-With 1 included seat and `quantity: 5`, the customer gets 5 seats and pays for 4. Attach again with a new `quantity` to change the count later — Autumn prorates the difference.
+With 1 included seat and `quantity: 5`, the customer gets 5 seats and pays for 4. Attach again with a new `quantity` to change the count later — MeterPal prorates the difference.
+
 
 A **priced** license plan must be attached at the customer level before it can be assigned to entities. Buying seats with `licenseQuantities` does this for you.
+
 
 #### Assign a license
 
@@ -362,9 +382,11 @@ curl -X POST "https://api.useautumn.com/v1/licenses.attach" \
 
 </CodeGroup>
 
-`feature_id` is the entity type and is required only when the entity doesn't exist yet — Autumn creates it for you. You can pass several entities in one call.
+`feature_id` is the entity type and is required only when the entity doesn't exist yet — MeterPal creates it for you. You can pass several entities in one call.
+
 
 Assignment is idempotent. Re-assigning an entity that already holds an active license for the same plan succeeds without consuming another seat. If the pool has no seats left, the call errors — buy more seats first.
+
 
 #### Release a license
 
@@ -500,7 +522,9 @@ curl -X POST "https://api.useautumn.com/v1/track" \
 | **Entity-level** | Pass `entity_id` in check/track | Checks/deducts from that entity's individual balance |
 | **Customer-level** | Omit `entity_id` | Returns the total balance across all entities |
 
+
 When tracking at the customer level (without `entity_id`), usage is deducted from the first-assigned entity to keep entity-level totals in sync with the customer-level total.
+
 
 ## Worked example
 

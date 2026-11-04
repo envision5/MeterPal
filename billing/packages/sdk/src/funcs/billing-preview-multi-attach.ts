@@ -44,14 +44,14 @@ import { Result } from "../types/fp.js";
  * @param startsAt - Unix timestamp in milliseconds for backdating every plan in this multi-attach. (optional)
  * @param currency - Currency to bill this multi-attach in (e.g. usd, eur). Must match the customer's currency if they are already locked to one, and every plan must offer a paid price in it. Defaults to the customer's currency, then the org default. (optional)
  * @param invoiceMode - Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. (optional)
- * @param discounts - List of discounts to apply. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code. (optional)
+ * @param discounts - List of discounts to apply. Each discount can be an Autumn reward ID or a promotion code. (optional)
  * @param billingBehavior - How to handle billing. 'prorate_immediately' charges/credits prorated amounts now, 'none' does not charge/credit anything. (optional)
  * @param billingCycleAnchor - Pass 'now' to reset the billing cycle of every plan on the subscription to the time of this request. (optional)
  * @param successUrl - URL to redirect to after successful checkout. (optional)
- * @param checkoutSessionParams - Additional parameters to pass into the creation of the Stripe checkout session. (optional)
+ * @param checkoutSessionParams - Additional parameters to pass into the creation of the processor checkout session. (optional)
  * @param redirectMode - Controls when to return a checkout URL. 'always' returns a URL even if payment succeeds, 'if_required' only when payment action is needed, 'never' disables redirects. (optional)
- * @param newBillingSubscription - Only applicable when the customer has an existing Stripe subscription. If true, creates a new separate subscription instead of merging into the existing one. (optional)
- * @param enablePlanImmediately - If true, the cusProducts are activated immediately even when payment is pending via Stripe checkout. (optional)
+ * @param newBillingSubscription - Only applicable when the customer has an existing processor subscription. If true, creates a new separate subscription instead of merging into the existing one. (optional)
+ * @param enablePlanImmediately - If true, the cusProducts are activated immediately even when payment is pending via processor checkout. (optional)
  *
  * @returns A preview response with line items, totals, and effective dates for the proposed multi-plan attachment.
  */

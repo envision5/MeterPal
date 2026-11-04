@@ -37,7 +37,7 @@ export type PaymentMethodType = ClosedEnum<typeof PaymentMethodType>;
  */
 export type ReissueInvoiceInvoiceRequestBody = {
   /**
-   * Enable or disable Stripe automatic tax on the replacement. Omit to inherit. Enabling clears inherited manual tax rates; use tax_rate_id: null to remove all tax.
+   * Enable or disable automatic tax on the replacement. Omit to inherit. Enabling clears inherited manual tax rates; use tax_rate_id: null to remove all tax.
    */
   automaticTax?: boolean | undefined;
   /**
@@ -45,11 +45,11 @@ export type ReissueInvoiceInvoiceRequestBody = {
    */
   customFields?: Array<CustomField> | undefined;
   /**
-   * Stripe tax rate applied to every line. Omit to keep the original's tax, or pass null to issue the replacement with no tax.
+   * Tax rate applied to every line. Omit to keep the original's tax, or pass null to issue the replacement with no tax.
    */
   taxRateId?: string | null | undefined;
   /**
-   * Your own Stripe tax registrations (atx_...) shown as the seller's tax numbers. Not the customer's.
+   * Your own tax registrations shown as the seller's tax numbers. Not the customer's.
    */
   accountTaxIds?: Array<string> | null | undefined;
   /**
@@ -67,7 +67,7 @@ export type ReissueInvoiceInvoiceRequestBody = {
 };
 
 /**
- * Billing address. Drives tax when the org uses Stripe Tax, and is snapshotted onto the replacement.
+ * Billing address. Drives tax when the org uses automatic tax, and is snapshotted onto the replacement.
  */
 export type Address = {
   line1?: string | undefined;
@@ -101,7 +101,7 @@ export type ReissueInvoiceCustomer = {
    */
   name?: string | undefined;
   /**
-   * Billing address. Drives tax when the org uses Stripe Tax, and is snapshotted onto the replacement.
+   * Billing address. Drives tax when the org uses automatic tax, and is snapshotted onto the replacement.
    */
   address?: Address | undefined;
   /**
@@ -133,19 +133,7 @@ export const ReissueInvoiceInterval = {
  */
 export type ReissueInvoiceInterval = ClosedEnum<typeof ReissueInvoiceInterval>;
 
-export type ReissueInvoiceStripe = {
-  /**
-   * Stripe price ID. For prepaid with included > 0 this is the V2 price.
-   */
-  priceId: string;
-};
 
-/**
- * Bill this line under an existing Stripe price instead of an inline one.
- */
-export type ReissueInvoiceProcessors = {
-  stripe?: ReissueInvoiceStripe | null | undefined;
-};
 
 export type ReissueInvoicePrice = {
   /**
@@ -160,17 +148,13 @@ export type ReissueInvoicePrice = {
    * Number of intervals per billing cycle. Defaults to 1.
    */
   intervalCount?: number | undefined;
-  /**
-   * Bill this line under an existing Stripe price instead of an inline one.
-   */
-  processors?: ReissueInvoiceProcessors | undefined;
-};
+  };
 
 export type ReissueInvoicePriceTo = number | string;
 
 export type ReissueInvoiceAdditionalCurrency = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -233,19 +217,7 @@ export type ReissueInvoiceBillingMethod = ClosedEnum<
   typeof ReissueInvoiceBillingMethod
 >;
 
-export type ReissueInvoiceItemStripe = {
-  /**
-   * Stripe price ID. For prepaid with included > 0 this is the V2 price.
-   */
-  priceId: string;
-};
 
-/**
- * Bill this line under an existing Stripe price instead of an inline one.
- */
-export type ReissueInvoiceItemProcessors = {
-  stripe?: ReissueInvoiceItemStripe | null | undefined;
-};
 
 /**
  * Pricing to use for this feature on this invoice.
@@ -276,11 +248,7 @@ export type ReissueInvoiceItemPrice = {
    * 'prepaid' for upfront payment (seats), 'usage_based' for pay-as-you-go.
    */
   billingMethod: ReissueInvoiceBillingMethod;
-  /**
-   * Bill this line under an existing Stripe price instead of an inline one.
-   */
-  processors?: ReissueInvoiceItemProcessors | undefined;
-};
+  };
 
 export type ReissueInvoiceDimensionsMatch4 = string | number | boolean;
 
@@ -624,19 +592,7 @@ export type ReissueInvoiceLicenseQuantityInterval = ClosedEnum<
   typeof ReissueInvoiceLicenseQuantityInterval
 >;
 
-export type ReissueInvoiceLicenseQuantityStripe = {
-  /**
-   * Stripe price ID. For prepaid with included > 0 this is the V2 price.
-   */
-  priceId: string;
-};
 
-/**
- * Bill this line under an existing Stripe price instead of an inline one.
- */
-export type ReissueInvoiceLicenseQuantityProcessors = {
-  stripe?: ReissueInvoiceLicenseQuantityStripe | null | undefined;
-};
 
 export type ReissueInvoiceLicenseQuantityPrice = {
   /**
@@ -651,11 +607,7 @@ export type ReissueInvoiceLicenseQuantityPrice = {
    * Number of intervals per billing cycle. Defaults to 1.
    */
   intervalCount?: number | undefined;
-  /**
-   * Bill this line under an existing Stripe price instead of an inline one.
-   */
-  processors?: ReissueInvoiceLicenseQuantityProcessors | undefined;
-};
+  };
 
 /**
  * Override the license's per-seat price on this invoice.
@@ -835,7 +787,7 @@ export type ReissueInvoiceParams = {
    */
   preview?: boolean | undefined;
   /**
-   * Updates the customer's billing email before the replacement is issued, so Stripe sends the new invoice to this address.
+   * Updates the customer's billing email before the replacement is issued, so the processor sends the new invoice to this address.
    */
   updateCustomerEmail?: string | undefined;
   /**
@@ -856,8 +808,7 @@ export type ReissueInvoiceParams = {
  * The billing processor that owns this invoice.
  */
 export const ReissueInvoiceProcessorType = {
-  Stripe: "stripe",
-  Revenuecat: "revenuecat",
+  Paypal: "paypal",
 } as const;
 /**
  * The billing processor that owns this invoice.
@@ -930,9 +881,9 @@ export type ReissueInvoiceInvoiceResponse = {
    */
   planIds: Array<string>;
   /**
-   * The Stripe invoice ID
+   * The processor invoice ID
    */
-  stripeId: string;
+  processorInvoiceId: string;
   /**
    * The billing processor that owns this invoice.
    */
@@ -954,7 +905,7 @@ export type ReissueInvoiceInvoiceResponse = {
    */
   createdAt: number;
   /**
-   * URL to the Stripe-hosted invoice page
+   * URL to the processor-hosted invoice page
    */
   hostedInvoiceUrl?: string | null | undefined;
   /**
@@ -978,7 +929,7 @@ export type ReissueInvoiceInvoiceResponse = {
    */
   refundedAmount: number;
   /**
-   * Line items on the invoice, one per line as shown in Stripe. Capped at 100. Empty for invoices recorded before line item storage.
+   * Line items on the invoice, one per line as shown on the hosted invoice page. Capped at 100. Empty for invoices recorded before line item storage.
    */
   items?: Array<ReissueInvoiceInvoiceItem> | undefined;
 };
@@ -1009,11 +960,11 @@ export type ReissueInvoiceTax = {
 };
 
 /**
- * The customer's Stripe credit balance and how much of it this invoice consumes.
+ * The customer's credit balance and how much of it this invoice consumes.
  */
 export type ReissueInvoiceInvoiceCredits = {
   /**
-   * Stripe customer credit balance available, expressed as a positive number in major currency units.
+   * Customer credit balance available, expressed as a positive number in major currency units.
    */
   balance: number;
   /**
@@ -1037,7 +988,7 @@ export type ReissueInvoicePreview = {
   tax: ReissueInvoiceTax | null;
   total: number;
   /**
-   * The customer's Stripe credit balance and how much of it this invoice consumes.
+   * The customer's credit balance and how much of it this invoice consumes.
    */
   invoiceCredits?: ReissueInvoiceInvoiceCredits | undefined;
   /**
@@ -1061,7 +1012,7 @@ export type ReissueInvoiceResponse = {
    */
   voidedInvoiceId: string | null;
   /**
-   * The Stripe credit note issued against a paid original, whose amount lands on the customer's balance and covers the replacement. Null when the original was open and voided instead.
+   * The processor credit note issued against a paid original, whose amount lands on the customer's balance and covers the replacement. Null when the original was open and voided instead.
    */
   creditNoteId: string | null;
   /**
@@ -1261,63 +1212,17 @@ export const ReissueInvoiceInterval$outboundSchema: z.ZodMiniEnum<
   typeof ReissueInvoiceInterval
 > = z.enum(ReissueInvoiceInterval);
 
-/** @internal */
-export type ReissueInvoiceStripe$Outbound = {
-  price_id: string;
-};
 
-/** @internal */
-export const ReissueInvoiceStripe$outboundSchema: z.ZodMiniType<
-  ReissueInvoiceStripe$Outbound,
-  ReissueInvoiceStripe
-> = z.pipe(
-  z.object({
-    priceId: z.string(),
-  }),
-  z.transform((v) => {
-    return remap$(v, {
-      priceId: "price_id",
-    });
-  }),
-);
 
-export function reissueInvoiceStripeToJSON(
-  reissueInvoiceStripe: ReissueInvoiceStripe,
-): string {
-  return JSON.stringify(
-    ReissueInvoiceStripe$outboundSchema.parse(reissueInvoiceStripe),
-  );
-}
 
-/** @internal */
-export type ReissueInvoiceProcessors$Outbound = {
-  stripe?: ReissueInvoiceStripe$Outbound | null | undefined;
-};
 
-/** @internal */
-export const ReissueInvoiceProcessors$outboundSchema: z.ZodMiniType<
-  ReissueInvoiceProcessors$Outbound,
-  ReissueInvoiceProcessors
-> = z.object({
-  stripe: z.optional(
-    z.nullable(z.lazy(() => ReissueInvoiceStripe$outboundSchema)),
-  ),
-});
 
-export function reissueInvoiceProcessorsToJSON(
-  reissueInvoiceProcessors: ReissueInvoiceProcessors,
-): string {
-  return JSON.stringify(
-    ReissueInvoiceProcessors$outboundSchema.parse(reissueInvoiceProcessors),
-  );
-}
 
 /** @internal */
 export type ReissueInvoicePrice$Outbound = {
   amount: number;
   interval: string;
   interval_count: number;
-  processors?: ReissueInvoiceProcessors$Outbound | undefined;
 };
 
 /** @internal */
@@ -1329,9 +1234,6 @@ export const ReissueInvoicePrice$outboundSchema: z.ZodMiniType<
     amount: z.number(),
     interval: ReissueInvoiceInterval$outboundSchema,
     intervalCount: z._default(z.number(), 1),
-    processors: z.optional(
-      z.lazy(() => ReissueInvoiceProcessors$outboundSchema),
-    ),
   }),
   z.transform((v) => {
     return remap$(v, {
@@ -1453,58 +1355,11 @@ export const ReissueInvoiceBillingMethod$outboundSchema: z.ZodMiniEnum<
   typeof ReissueInvoiceBillingMethod
 > = z.enum(ReissueInvoiceBillingMethod);
 
-/** @internal */
-export type ReissueInvoiceItemStripe$Outbound = {
-  price_id: string;
-};
 
-/** @internal */
-export const ReissueInvoiceItemStripe$outboundSchema: z.ZodMiniType<
-  ReissueInvoiceItemStripe$Outbound,
-  ReissueInvoiceItemStripe
-> = z.pipe(
-  z.object({
-    priceId: z.string(),
-  }),
-  z.transform((v) => {
-    return remap$(v, {
-      priceId: "price_id",
-    });
-  }),
-);
 
-export function reissueInvoiceItemStripeToJSON(
-  reissueInvoiceItemStripe: ReissueInvoiceItemStripe,
-): string {
-  return JSON.stringify(
-    ReissueInvoiceItemStripe$outboundSchema.parse(reissueInvoiceItemStripe),
-  );
-}
 
-/** @internal */
-export type ReissueInvoiceItemProcessors$Outbound = {
-  stripe?: ReissueInvoiceItemStripe$Outbound | null | undefined;
-};
 
-/** @internal */
-export const ReissueInvoiceItemProcessors$outboundSchema: z.ZodMiniType<
-  ReissueInvoiceItemProcessors$Outbound,
-  ReissueInvoiceItemProcessors
-> = z.object({
-  stripe: z.optional(
-    z.nullable(z.lazy(() => ReissueInvoiceItemStripe$outboundSchema)),
-  ),
-});
 
-export function reissueInvoiceItemProcessorsToJSON(
-  reissueInvoiceItemProcessors: ReissueInvoiceItemProcessors,
-): string {
-  return JSON.stringify(
-    ReissueInvoiceItemProcessors$outboundSchema.parse(
-      reissueInvoiceItemProcessors,
-    ),
-  );
-}
 
 /** @internal */
 export type ReissueInvoiceItemPrice$Outbound = {
@@ -1515,7 +1370,6 @@ export type ReissueInvoiceItemPrice$Outbound = {
   interval_count: number;
   billing_units: number;
   billing_method: string;
-  processors?: ReissueInvoiceItemProcessors$Outbound | undefined;
 };
 
 /** @internal */
@@ -1533,9 +1387,6 @@ export const ReissueInvoiceItemPrice$outboundSchema: z.ZodMiniType<
     intervalCount: z._default(z.number(), 1),
     billingUnits: z._default(z.number(), 1),
     billingMethod: ReissueInvoiceBillingMethod$outboundSchema,
-    processors: z.optional(
-      z.lazy(() => ReissueInvoiceItemProcessors$outboundSchema),
-    ),
   }),
   z.transform((v) => {
     return remap$(v, {
@@ -2415,71 +2266,17 @@ export const ReissueInvoiceLicenseQuantityInterval$outboundSchema:
     ReissueInvoiceLicenseQuantityInterval,
   );
 
-/** @internal */
-export type ReissueInvoiceLicenseQuantityStripe$Outbound = {
-  price_id: string;
-};
 
-/** @internal */
-export const ReissueInvoiceLicenseQuantityStripe$outboundSchema: z.ZodMiniType<
-  ReissueInvoiceLicenseQuantityStripe$Outbound,
-  ReissueInvoiceLicenseQuantityStripe
-> = z.pipe(
-  z.object({
-    priceId: z.string(),
-  }),
-  z.transform((v) => {
-    return remap$(v, {
-      priceId: "price_id",
-    });
-  }),
-);
 
-export function reissueInvoiceLicenseQuantityStripeToJSON(
-  reissueInvoiceLicenseQuantityStripe: ReissueInvoiceLicenseQuantityStripe,
-): string {
-  return JSON.stringify(
-    ReissueInvoiceLicenseQuantityStripe$outboundSchema.parse(
-      reissueInvoiceLicenseQuantityStripe,
-    ),
-  );
-}
 
-/** @internal */
-export type ReissueInvoiceLicenseQuantityProcessors$Outbound = {
-  stripe?: ReissueInvoiceLicenseQuantityStripe$Outbound | null | undefined;
-};
 
-/** @internal */
-export const ReissueInvoiceLicenseQuantityProcessors$outboundSchema:
-  z.ZodMiniType<
-    ReissueInvoiceLicenseQuantityProcessors$Outbound,
-    ReissueInvoiceLicenseQuantityProcessors
-  > = z.object({
-    stripe: z.optional(
-      z.nullable(
-        z.lazy(() => ReissueInvoiceLicenseQuantityStripe$outboundSchema),
-      ),
-    ),
-  });
 
-export function reissueInvoiceLicenseQuantityProcessorsToJSON(
-  reissueInvoiceLicenseQuantityProcessors:
-    ReissueInvoiceLicenseQuantityProcessors,
-): string {
-  return JSON.stringify(
-    ReissueInvoiceLicenseQuantityProcessors$outboundSchema.parse(
-      reissueInvoiceLicenseQuantityProcessors,
-    ),
-  );
-}
 
 /** @internal */
 export type ReissueInvoiceLicenseQuantityPrice$Outbound = {
   amount: number;
   interval: string;
   interval_count: number;
-  processors?: ReissueInvoiceLicenseQuantityProcessors$Outbound | undefined;
 };
 
 /** @internal */
@@ -2491,9 +2288,6 @@ export const ReissueInvoiceLicenseQuantityPrice$outboundSchema: z.ZodMiniType<
     amount: z.number(),
     interval: ReissueInvoiceLicenseQuantityInterval$outboundSchema,
     intervalCount: z._default(z.number(), 1),
-    processors: z.optional(
-      z.lazy(() => ReissueInvoiceLicenseQuantityProcessors$outboundSchema),
-    ),
   }),
   z.transform((v) => {
     return remap$(v, {
@@ -2956,10 +2750,10 @@ export const ReissueInvoiceInvoiceResponse$inboundSchema: z.ZodMiniType<
 > = z.pipe(
   z.object({
     plan_ids: z.array(types.string()),
-    stripe_id: types.string(),
+    processor_invoice_id: types.string(),
     processor_type: z._default(
       ReissueInvoiceProcessorType$inboundSchema,
-      "stripe",
+      "paypal",
     ),
     status: types.string(),
     total: types.number(),
@@ -2978,7 +2772,7 @@ export const ReissueInvoiceInvoiceResponse$inboundSchema: z.ZodMiniType<
   z.transform((v) => {
     return remap$(v, {
       "plan_ids": "planIds",
-      "stripe_id": "stripeId",
+      "processor_invoice_id": "processorInvoiceId",
       "processor_type": "processorType",
       "created_at": "createdAt",
       "hosted_invoice_url": "hostedInvoiceUrl",

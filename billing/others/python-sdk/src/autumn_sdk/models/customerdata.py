@@ -136,7 +136,7 @@ class CustomerDataSpendLimitTypedDict(TypedDict):
     overage_limit: NotRequired[float]
     r"""Overage cap for the feature: absolute units, or a percent (e.g. 120) when limit_type is usage_percentage."""
     skip_overage_billing: NotRequired[bool]
-    r"""When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally."""
+    r"""When true, overage for this feature is not billed to the processor. Usage tracking and balance resets still behave normally."""
 
 
 class CustomerDataSpendLimit(BaseModel):
@@ -153,7 +153,7 @@ class CustomerDataSpendLimit(BaseModel):
     r"""Overage cap for the feature: absolute units, or a percent (e.g. 120) when limit_type is usage_percentage."""
 
     skip_overage_billing: Optional[bool] = None
-    r"""When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally."""
+    r"""When true, overage for this feature is not billed to the processor. Usage tracking and balance resets still behave normally."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -460,7 +460,7 @@ class CustomerDataConfigTypedDict(TypedDict):
     disable_pooled_balance: NotRequired[bool]
     r"""Whether to disable the shared customer-level pool for entities."""
     disable_overage_billing: NotRequired[bool]
-    r"""Stops Autumn from posting usage-overage line items to Stripe for this customer. Check/track and balance resets still behave normally. When set, this overrides the organization-level disable_overage_billing setting."""
+    r"""Stops Autumn from posting usage-overage line items to the processor for this customer. Check/track and balance resets still behave normally. When set, this overrides the organization-level disable_overage_billing setting."""
 
 
 class CustomerDataConfig(BaseModel):
@@ -470,7 +470,7 @@ class CustomerDataConfig(BaseModel):
     r"""Whether to disable the shared customer-level pool for entities."""
 
     disable_overage_billing: Optional[bool] = None
-    r"""Stops Autumn from posting usage-overage line items to Stripe for this customer. Check/track and balance resets still behave normally. When set, this overrides the organization-level disable_overage_billing setting."""
+    r"""Stops Autumn from posting usage-overage line items to the processor for this customer. Check/track and balance resets still behave normally. When set, this overrides the organization-level disable_overage_billing setting."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -500,10 +500,6 @@ class CustomerDataTypedDict(TypedDict):
     r"""Unique identifier (eg, serial number) to detect duplicate customers and prevent free trial abuse"""
     metadata: NotRequired[Nullable[Dict[str, Any]]]
     r"""Additional metadata for the customer"""
-    stripe_id: NotRequired[Nullable[str]]
-    r"""Stripe customer ID if you already have one"""
-    create_in_stripe: NotRequired[bool]
-    r"""Whether to create the customer in Stripe"""
     auto_enable_plan_id: NotRequired[str]
     r"""The ID of the free plan to auto-enable for the customer"""
     send_email_receipts: NotRequired[bool]
@@ -531,12 +527,6 @@ class CustomerData(BaseModel):
     metadata: OptionalNullable[Dict[str, Any]] = UNSET
     r"""Additional metadata for the customer"""
 
-    stripe_id: OptionalNullable[str] = UNSET
-    r"""Stripe customer ID if you already have one"""
-
-    create_in_stripe: Optional[bool] = None
-    r"""Whether to create the customer in Stripe"""
-
     auto_enable_plan_id: Optional[str] = None
     r"""The ID of the free plan to auto-enable for the customer"""
 
@@ -560,8 +550,6 @@ class CustomerData(BaseModel):
                 "email",
                 "fingerprint",
                 "metadata",
-                "stripe_id",
-                "create_in_stripe",
                 "auto_enable_plan_id",
                 "send_email_receipts",
                 "currency",
@@ -570,7 +558,7 @@ class CustomerData(BaseModel):
             ]
         )
         nullable_fields = set(
-            ["name", "email", "fingerprint", "metadata", "stripe_id", "currency"]
+            ["name", "email", "fingerprint", "metadata", "currency"]
         )
         serialized = handler(self)
         m = {}

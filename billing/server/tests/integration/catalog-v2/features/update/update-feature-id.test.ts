@@ -16,7 +16,7 @@ import { items } from "@tests/utils/fixtures/items.js";
 import { products } from "@tests/utils/fixtures/products.js";
 import { initScenario, s } from "@tests/utils/testInitUtils/initScenario.js";
 import chalk from "chalk";
-import { initProductsV0 } from "@/utils/scriptUtils/testUtils/initProductsV0.js";
+import { initTestProducts } from "@tests/utils/testInitUtils/initTestProducts.js";
 import {
 	deleteDbFeatures,
 	expectDbFeaturesAbsent,
@@ -78,7 +78,7 @@ test.concurrent(
 					},
 				],
 			});
-			await initProductsV0({ ctx, products: [activeProduct, archivedProduct] });
+			await initTestProducts({ ctx, products: [activeProduct, archivedProduct] });
 			await autumnV2_3.products.update(archivedProduct.id, { archived: true });
 
 			// Preview reports the rename without writing
@@ -251,7 +251,7 @@ test.concurrent(
 			await autumnV2_3.catalogV2.update({
 				features: [consumableFeature(oldId)],
 			});
-			await initProductsV0({ ctx, products: [attachedProduct] });
+			await initTestProducts({ ctx, products: [attachedProduct] });
 			await autumnV2_3.billing.attach<AttachParamsV1Input>({
 				customer_id: customerId,
 				plan_id: attachedProduct.id,
@@ -308,7 +308,7 @@ test.concurrent(
 					consumableFeature(scopedId),
 				],
 			});
-			await initProductsV0({ ctx, products: [product] });
+			await initTestProducts({ ctx, products: [product] });
 
 			expectCatalogResultsCorrect({
 				response: await autumnV2_3.catalogV2.update({

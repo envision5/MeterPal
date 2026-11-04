@@ -81,91 +81,7 @@ count="$(grep -c 'environments: \[cloud\]' "$tmp/user-skills/tdd/SKILL.md" || tr
 [[ "$count" == "1" ]] || fail "mark-skills should be idempotent, got $count"
 pass "mark-skills adds environments: [cloud] once"
 
-# --- Stripe helper refreshes mismatched installs and keeps exact matches ----
-stripe_tmp="$(mktemp -d)"
-trap 'rm -rf "$tmp" "$stripe_tmp"' EXIT
-mkdir -p "$stripe_tmp/bin" "$stripe_tmp/src-1.33.0" "$stripe_tmp/src-1.34.0"
-cat >"$stripe_tmp/src-1.33.0/stripe" <<'SH'
-#!/usr/bin/env bash
-if [ "${1:-}" = version ]; then
-	echo "Stripe version 1.33.0"
-else
-	echo "stripe stub"
-fi
-SH
-chmod +x "$stripe_tmp/src-1.33.0/stripe"
-( cd "$stripe_tmp/src-1.33.0" && tar -czf "$stripe_tmp/stripe_1.33.0_linux_x86_64.tar.gz" stripe )
-cat >"$stripe_tmp/src-1.34.0/stripe" <<'SH'
-#!/usr/bin/env bash
-if [ "${1:-}" = version ]; then
-	echo "Stripe version 1.34.0"
-else
-	echo "stripe stub"
-fi
-SH
-chmod +x "$stripe_tmp/src-1.34.0/stripe"
-( cd "$stripe_tmp/src-1.34.0" && tar -czf "$stripe_tmp/stripe_1.34.0_linux_x86_64.tar.gz" stripe )
-cat >"$stripe_tmp/bin/curl" <<'SH'
-#!/usr/bin/env bash
-set -euo pipefail
-args=("$@")
-out=""
-for ((i=0; i<$#; i++)); do
-	if [ "${args[i]}" = "-o" ]; then
-		out="${args[i+1]}"
-		break
-	fi
-done
-cp "$STRIPE_ARCHIVE" "$out"
-SH
-chmod +x "$stripe_tmp/bin/curl"
-cat >"$stripe_tmp/bin/tar" <<'SH'
-#!/usr/bin/env bash
-exec /usr/bin/tar "$@"
-SH
-chmod +x "$stripe_tmp/bin/tar"
-cat >"$stripe_tmp/bin/install" <<'SH'
-#!/usr/bin/env bash
-exec /usr/bin/install "$@"
-SH
-chmod +x "$stripe_tmp/bin/install"
-cat >"$stripe_tmp/bin/sudo" <<'SH'
-#!/usr/bin/env bash
-exec "$@"
-SH
-chmod +x "$stripe_tmp/bin/sudo"
-source "$ROOT/scripts/setup/install-stripe-cli.sh"
-old_target="$stripe_tmp/stripe"
-cat >"$old_target" <<'SH'
-#!/usr/bin/env bash
-if [ "${1:-}" = version ]; then
-	echo "Stripe version 1.33.0"
-else
-	echo "old stripe"
-fi
-SH
-chmod +x "$old_target"
-PATH="$stripe_tmp/bin:$PATH" STRIPE_ARCHIVE="$stripe_tmp/stripe_1.33.0_linux_x86_64.tar.gz" install_stripe_cli "[test]" "$old_target" 1.33.0
-[[ "$("$old_target" version)" == "Stripe version 1.33.0" ]] || fail "same-version stripe should stay in place"
-cat >"$old_target" <<'SH'
-#!/usr/bin/env bash
-if [ "${1:-}" = version ]; then
-	echo "Stripe version 0.99.0"
-else
-	echo "old stripe"
-fi
-SH
-chmod +x "$old_target"
-PATH="$stripe_tmp/bin:$PATH" STRIPE_ARCHIVE="$stripe_tmp/stripe_1.34.0_linux_x86_64.tar.gz" install_stripe_cli "[test]" "$old_target" 1.34.0
-[[ "$("$old_target" version)" == "Stripe version 1.34.0" ]] || fail "mismatched stripe should be replaced"
-pass "stripe helper refreshes mismatched installs"
-
-# --- stripe version parser handles edge cases -------------------------------
-[[ "$(parse_stripe_version "Stripe version 11.22.33")" == "11.22.33" ]] || fail "parser must keep a two-digit major"
-parser_output=$'Stripe version 1.33.0\nGo version go1.22.5'
-[[ "$(parse_stripe_version "$parser_output")" == "1.33.0" ]] || fail "parser must stop at first semver"
-pass "stripe parser extracts the first semantic version"
-
+trap 'rm -rf "$tmp"' EXIT
 if grep -q 'repositoryDependencies' "$ROOT/.cursor/environment.json"; then
 	fail "environment.json must not declare useautumn/ai as a sibling repo — it is a submodule"
 fi
@@ -187,20 +103,10 @@ pass "environment.json has no snapshot; install bootstraps bun + packages"
 bun "$CLOUD" --root "$tmp/repo" --home "$tmp/home" persist-env
 grep -q 'export CLOUD_AGENT=1' "$tmp/home/.autumn-agent/env.sh" || fail "env.sh missing CLOUD_AGENT"
 grep -q 'autumn-infisical-token' "$tmp/home/.autumn-agent/env.sh" || fail "env.sh must read token from cache"
-grep -q 'autumn-stripe-sandbox-secret-key' "$tmp/home/.autumn-agent/env.sh" \
-	|| fail "env.sh must read STRIPE_SANDBOX_SECRET_KEY from cache"
 if grep -q 'INFISICAL_TOKEN=secret' "$tmp/home/.autumn-agent/env.sh"; then
 	fail "env.sh must not embed the Infisical token"
 fi
-if grep -qE 'sk_test_|STRIPE_SANDBOX_SECRET_KEY=sk_' "$tmp/home/.autumn-agent/env.sh"; then
-	fail "env.sh must not embed the Stripe sandbox key"
-fi
 grep -Fq ". ${tmp}/home/.autumn-agent/env.sh" "$tmp/home/.bashrc" || fail "bashrc must source env.sh"
-mkdir -p "$tmp/home/.cache"
-printf 'sk_test_cursor_cloud_dummy' > "$tmp/home/.cache/autumn-stripe-sandbox-secret-key"
-sourced="$(HOME="$tmp/home" bash -c '. "$HOME/.autumn-agent/env.sh"; printf %s "$STRIPE_SANDBOX_SECRET_KEY"')"
-[[ "$sourced" == "sk_test_cursor_cloud_dummy" ]] \
-	|| fail "env.sh must export STRIPE_SANDBOX_SECRET_KEY from the cache file"
 pass "persist-env writes env.sh and bashrc"
 
 sync_line="$(rg -n 'ai/src/cli.ts sync --copy' "$ROOT/scripts/setup/cursor-cloud/install.sh" | head -1 | cut -d: -f1)"
@@ -234,17 +140,6 @@ if grep -q 'bun", \["install"\]' "$ROOT/scripts/dw/commands/start.ts"; then
 fi
 grep -q 'autoEnsureLocalTestOrg' "$ROOT/scripts/dw/commands/start.ts" \
 	|| fail "dw start must seed unit-test-org on Cloud agents"
-grep -q 'pull_infisical STRIPE_SANDBOX_SECRET_KEY' \
-	"$ROOT/scripts/setup/cursor-cloud/start.sh" \
-	|| fail "start.sh must pull STRIPE_SANDBOX_SECRET_KEY before dw start"
-grep -q 'autumn-stripe-sandbox-secret-key' \
-	"$ROOT/scripts/setup/cursor-cloud/start.sh" \
-	|| fail "start.sh must cache STRIPE_SANDBOX_SECRET_KEY for later shells"
-grep -q 'STRIPE_SANDBOX_SECRET_KEY unset' \
-	"$ROOT/scripts/dw/helpers/setup.ts" \
-	|| fail "Cloud seed must refuse to run without STRIPE_SANDBOX_SECRET_KEY"
-grep -q 'ensureTestOrgStripeAccount' "$ROOT/scripts/setup/setup-test.ts" \
-	|| fail "setup-test --ensure must attach Stripe if the org already exists"
 grep -q 'writeEnvLocalFiles' "$ROOT/scripts/dw/commands/start.ts" \
 	|| fail "dw start must pin local DATABASE_URL in server/.env.local"
 grep -q 'writeEnvLocalFiles' "$ROOT/scripts/dw/helpers/start.ts" \

@@ -108,7 +108,7 @@ class CreateScheduleInvoiceModeTypedDict(TypedDict):
     r"""Invoice mode creates and sends an invoice instead of charging the customer's payment method immediately for the first phase."""
 
     enabled: bool
-    r"""When true, creates an invoice and sends it to the customer instead of charging their card immediately. Uses Stripe's send_invoice collection method."""
+    r"""When true, creates an invoice and sends it to the customer instead of charging their card immediately."""
     enable_plan_immediately: NotRequired[bool]
     r"""If true, enables the plan immediately even though the invoice is not paid yet."""
     finalize: NotRequired[bool]
@@ -116,14 +116,14 @@ class CreateScheduleInvoiceModeTypedDict(TypedDict):
     invoice_template_id: NotRequired[str]
     r"""ID of an invoice template (configured in billing settings) whose footer (e.g. bank details) is applied to the invoice."""
     net_terms_days: NotRequired[int]
-    r"""Number of days the customer has to pay the invoice before it is due (Stripe days_until_due)."""
+    r"""Number of days the customer has to pay the invoice before it is due."""
 
 
 class CreateScheduleInvoiceMode(BaseModel):
     r"""Invoice mode creates and sends an invoice instead of charging the customer's payment method immediately for the first phase."""
 
     enabled: bool
-    r"""When true, creates an invoice and sends it to the customer instead of charging their card immediately. Uses Stripe's send_invoice collection method."""
+    r"""When true, creates an invoice and sends it to the customer instead of charging their card immediately."""
 
     enable_plan_immediately: Optional[bool] = False
     r"""If true, enables the plan immediately even though the invoice is not paid yet."""
@@ -135,7 +135,7 @@ class CreateScheduleInvoiceMode(BaseModel):
     r"""ID of an invoice template (configured in billing settings) whose footer (e.g. bank details) is applied to the invoice."""
 
     net_terms_days: Optional[int] = None
-    r"""Number of days the customer has to pay the invoice before it is due (Stripe days_until_due)."""
+    r"""Number of days the customer has to pay the invoice before it is due."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -264,14 +264,14 @@ r"""Billing interval (e.g. 'month', 'year')."""
 
 class UnscheduledPlanAdditionalCurrencyTypedDict(TypedDict):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
 
 
 class UnscheduledPlanAdditionalCurrency(BaseModel):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
 
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
@@ -381,14 +381,14 @@ class UnscheduledPlanItemReset(BaseModel):
 
 class UnscheduledPlanItemAdditionalCurrencyTypedDict(TypedDict):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
 
 
 class UnscheduledPlanItemAdditionalCurrency(BaseModel):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
 
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
@@ -406,7 +406,7 @@ UnscheduledPlanItemPriceTo = TypeAliasType(
 
 class UnscheduledPlanItemTierAdditionalCurrencyTypedDict(TypedDict):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
     amount: NotRequired[float]
     r"""Per-unit amount for this tier in this currency."""
     flat_amount: NotRequired[float]
@@ -415,7 +415,7 @@ class UnscheduledPlanItemTierAdditionalCurrencyTypedDict(TypedDict):
 
 class UnscheduledPlanItemTierAdditionalCurrency(BaseModel):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
 
     amount: Optional[float] = None
     r"""Per-unit amount for this tier in this currency."""
@@ -1514,14 +1514,14 @@ class UnscheduledPlanAddItemReset(BaseModel):
 
 class UnscheduledPlanAddItemAdditionalCurrencyTypedDict(TypedDict):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
 
 
 class UnscheduledPlanAddItemAdditionalCurrency(BaseModel):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
 
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
@@ -1539,7 +1539,7 @@ UnscheduledPlanAddItemPriceTo = TypeAliasType(
 
 class UnscheduledPlanAddItemTierAdditionalCurrencyTypedDict(TypedDict):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
     amount: NotRequired[float]
     r"""Per-unit amount for this tier in this currency."""
     flat_amount: NotRequired[float]
@@ -1548,7 +1548,7 @@ class UnscheduledPlanAddItemTierAdditionalCurrencyTypedDict(TypedDict):
 
 class UnscheduledPlanAddItemTierAdditionalCurrency(BaseModel):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
 
     amount: Optional[float] = None
     r"""Per-unit amount for this tier in this currency."""
@@ -2817,7 +2817,7 @@ class UnscheduledPlanSpendLimitTypedDict(TypedDict):
     overage_limit: NotRequired[float]
     r"""Overage cap for the feature: absolute units, or a percent (e.g. 120) when limit_type is usage_percentage."""
     skip_overage_billing: NotRequired[bool]
-    r"""When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally."""
+    r"""When true, overage for this feature is not billed to the processor. Usage tracking and balance resets still behave normally."""
 
 
 class UnscheduledPlanSpendLimit(BaseModel):
@@ -2834,7 +2834,7 @@ class UnscheduledPlanSpendLimit(BaseModel):
     r"""Overage cap for the feature: absolute units, or a percent (e.g. 120) when limit_type is usage_percentage."""
 
     skip_overage_billing: Optional[bool] = None
-    r"""When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally."""
+    r"""When true, overage for this feature is not billed to the processor. Usage tracking and balance resets still behave normally."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -3152,14 +3152,14 @@ r"""Billing interval (e.g. 'month', 'year')."""
 
 class UnscheduledPlanUpsertLicenseAdditionalCurrencyTypedDict(TypedDict):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
 
 
 class UnscheduledPlanUpsertLicenseAdditionalCurrency(BaseModel):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
 
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
@@ -3273,14 +3273,14 @@ class UnscheduledPlanUpsertLicenseReset(BaseModel):
 
 class UnscheduledPlanUpsertLicenseAddItemAdditionalCurrencyTypedDict(TypedDict):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
 
 
 class UnscheduledPlanUpsertLicenseAddItemAdditionalCurrency(BaseModel):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
 
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
@@ -3298,7 +3298,7 @@ UnscheduledPlanUpsertLicensePriceTo = TypeAliasType(
 
 class UnscheduledPlanUpsertLicenseTierAdditionalCurrencyTypedDict(TypedDict):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
     amount: NotRequired[float]
     r"""Per-unit amount for this tier in this currency."""
     flat_amount: NotRequired[float]
@@ -3307,7 +3307,7 @@ class UnscheduledPlanUpsertLicenseTierAdditionalCurrencyTypedDict(TypedDict):
 
 class UnscheduledPlanUpsertLicenseTierAdditionalCurrency(BaseModel):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
 
     amount: Optional[float] = None
     r"""Per-unit amount for this tier in this currency."""

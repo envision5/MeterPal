@@ -30,7 +30,7 @@ export const ExtAttachParamsV0Schema = BillingParamsBaseV0Schema.extend({
 	starts_at: UnixMsTimestampSchema.optional(),
 	ends_at: UnixMsTimestampSchema.optional(),
 
-	// Discounts to apply (Stripe coupon IDs or human-readable promo code strings)
+	// Discounts to apply (reward IDs or human-readable promo code strings)
 	discounts: z.array(AttachDiscountSchema).optional(),
 	// Billing behavior for attach operations (product transitions):
 	// - 'prorate_immediately' (default): Invoice line items are charged immediately

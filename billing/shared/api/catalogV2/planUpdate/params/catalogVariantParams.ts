@@ -1,5 +1,4 @@
 import { CustomizePlanV1Schema } from "@api/billing/common/customizePlan/customizePlanV1.js";
-import { ApiPlanProcessorsSchema } from "@api/products/components/processors.js";
 import { idRegex } from "@utils/utils.js";
 import { z } from "zod/v4";
 import type { CatalogItemIdentityRecipe } from "./catalogPlanItemIdentity.js";
@@ -51,11 +50,6 @@ export const CatalogVariantParamsSchema = z
 		new_version_slug: z.string().nonempty().regex(idRegex).optional().meta({
 			description:
 				"Slug for the row this variant mints. Omit to inherit the base's `new_version_slug`, then `v{n}`. Ignored when this entry resolves to an existing row.",
-		}),
-		processors: ApiPlanProcessorsSchema.optional().meta({
-			"x-atmn-source-path": "plan.processors",
-			description:
-				"Overrides the base plan's processors for this variant. Omit to inherit when the base processors change.",
 		}),
 		base_variant_id: CatalogBaseVariantIdSchema.meta({
 			description:

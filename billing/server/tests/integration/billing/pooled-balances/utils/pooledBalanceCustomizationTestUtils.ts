@@ -38,7 +38,7 @@ const MONTHLY_POOL_LIFECYCLE = {
 	nextResetAt: "present",
 	resetCycleAnchor: "present",
 	resetMode: PooledBalanceResetMode.Subscription,
-	stripeSubscriptionId: "stripe_subscription",
+	processorSubscriptionId: "processor_subscription",
 } as const;
 
 export const buildPooledCustomization = ({

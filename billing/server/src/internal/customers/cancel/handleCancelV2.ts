@@ -1,17 +1,13 @@
 import type { UpdateSubscriptionV1Params } from "@autumn/shared";
 import { Scopes } from "@autumn/shared";
 import { createRoute } from "@/honoMiddlewares/routeHandler";
+import { handlePaypalSubscriptionCancelAction } from "@/internal/billing/paypal/paypalSubscriptionLifecycle.js";
 import { computeUpdateSubscriptionPlan } from "@/internal/billing/v2/actions/updateSubscription/compute/computeUpdateSubscriptionPlan";
 import { handleUpdateSubscriptionErrors } from "@/internal/billing/v2/actions/updateSubscription/errors/handleUpdateSubscriptionErrors";
 import { logUpdateSubscriptionContext } from "@/internal/billing/v2/actions/updateSubscription/logs/logUpdateSubscriptionContext";
 import { setupUpdateSubscriptionBillingContext } from "@/internal/billing/v2/actions/updateSubscription/setup/setupUpdateSubscriptionBillingContext";
-import { discardPendingPlanIfAny } from "@/internal/billing/v2/execute/pendingCustomerProducts/discardPendingPlanIfAny";
 import { executeBillingPlan } from "@/internal/billing/v2/execute/executeBillingPlan";
-import { voidInvoicesOnImmediateCancel } from "@/internal/billing/v2/execute/voidInvoicesOnImmediateCancel";
-import { handlePaypalSubscriptionCancelAction } from "@/internal/billing/paypal/paypalSubscriptionLifecycle.js";
-import { evaluateStripeBillingPlan } from "@/internal/billing/v2/providers/stripe/actionBuilders/evaluateStripeBillingPlan";
-import { logStripeBillingPlan } from "@/internal/billing/v2/providers/stripe/logs/logStripeBillingPlan";
-import { logStripeBillingResult } from "@/internal/billing/v2/providers/stripe/logs/logStripeBillingResult";
+import { discardPendingPlanIfAny } from "@/internal/billing/v2/execute/pendingCustomerProducts/discardPendingPlanIfAny";
 import { buildBillingLockKey } from "@/internal/billing/v2/utils/billingLock/buildBillingLockKey";
 import { logAutumnBillingPlan } from "@/internal/billing/v2/utils/logs/logAutumnBillingPlan";
 
@@ -60,8 +56,8 @@ export const handleCancelV2 = createRoute({
 			`=============== RUNNING CANCEL FOR ${customer_id} ===============`,
 		);
 
-		// PayPal-billed customers: the Stripe-shaped pipeline has no PayPal
-		// executor — cancel through the PayPal subscriptions API instead.
+		// PayPal-billed customers: cancel through the PayPal subscriptions API
+		// instead of the billing engine.
 		const paypalCancel = await handlePaypalSubscriptionCancelAction({
 			ctx,
 			customerId: customer_id,
@@ -98,16 +94,8 @@ export const handleCancelV2 = createRoute({
 		});
 		logAutumnBillingPlan({ ctx, plan: autumnBillingPlan, billingContext });
 
-		const stripeBillingPlan = await evaluateStripeBillingPlan({
-			ctx,
-			billingContext,
-			autumnBillingPlan,
-		});
-		logStripeBillingPlan({ ctx, stripeBillingPlan, billingContext });
-
 		const billingPlan = {
 			autumn: autumnBillingPlan,
-			stripe: stripeBillingPlan,
 		};
 
 		await handleUpdateSubscriptionErrors({
@@ -117,23 +105,11 @@ export const handleCancelV2 = createRoute({
 			params: updateSubscriptionBody,
 		});
 
-		const billingResult = await executeBillingPlan({
-			ctx,
-			billingContext,
-			billingPlan: {
-				autumn: autumnBillingPlan,
-				stripe: stripeBillingPlan,
-			},
-		});
-
-		await voidInvoicesOnImmediateCancel({
+		await executeBillingPlan({
 			ctx,
 			billingContext,
 			billingPlan,
-			billingResult,
 		});
-
-		logStripeBillingResult({ ctx, result: billingResult.stripe });
 
 		return c.json({
 			success: true,

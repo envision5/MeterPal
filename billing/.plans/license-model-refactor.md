@@ -155,7 +155,7 @@ materialization for catalog-edit gaps, orphan cleanup.
 6. `license_quantities` (the goal): param on attach/update → stored on the
    parent cus product (`license_quantities` jsonb, keyed by public
    license_plan_id) → seat line items priced from the effective license
-   product in compute → stripe sub item quantity in evaluate →
+   product in compute → processor sub item quantity in evaluate →
    `granted = included + quantity` in initCustomerLicenses + reconcile.
    Guard: never write granted directly; quantity flows through the definition.
 7. Dead code sweep: planLicenseRepo (`getCatalogByParentAndLicense`,

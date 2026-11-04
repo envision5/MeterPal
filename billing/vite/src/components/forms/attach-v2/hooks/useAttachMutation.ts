@@ -53,7 +53,7 @@ export function useAttachMutation({
 	) => {
 		const result = await mutation.mutateAsync({ ...params, useInvoice: true });
 		return {
-			stripeId: result.data?.invoice?.stripe_id,
+			processorId: result.data?.invoice?.processor_invoice_id,
 			hostedInvoiceUrl: result.data?.invoice?.hosted_invoice_url,
 		};
 	};

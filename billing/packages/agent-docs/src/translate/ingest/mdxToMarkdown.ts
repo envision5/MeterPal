@@ -1,4 +1,4 @@
-const FRONTMATTER = /^---\n[\s\S]*?\n---\n?/;
+const FRONTMATTER = /^---\r?\n[\s\S]*?\r?\n---\r?\n?/;
 const MDX_COMMENT = /\{\/\*[\s\S]*?\*\/\}/g;
 // Layout/callout wrappers we unwrap (keep children, drop the tag) when copying a
 // docs page into an agent resource. Add component names here as docs use them.

@@ -12,6 +12,7 @@ Use `billing.update` to modify an existing subscription. This is different from 
 
 Prepaid features are features where customers pay upfront for a quantity (e.g., seats, team members). Here's an example plan with a prepaid `seats` feature:
 
+
 ```typescript autumn.config.ts
 import { atmn, feature, plan } from "atmn";
 
@@ -46,6 +47,7 @@ export const team = plan({
 
 export default atmn({ features: [seats], plans: [team] });
 ```
+
 
 To update the quantity of seats for a customer:
 

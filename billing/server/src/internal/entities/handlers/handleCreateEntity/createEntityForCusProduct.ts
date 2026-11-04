@@ -14,8 +14,10 @@ import {
 import { acquireLock } from "@/external/redis/utils/lockUtils/acquireLock.js";
 import { clearLock } from "@/external/redis/utils/lockUtils/clearLock.js";
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
-import { adjustAllowance } from "@/internal/balances/utils/paidAllocatedFeature/adjustAllowance.js";
-import { getReps } from "@/internal/balances/utils/paidAllocatedFeature/createPaidAllocatedInvoice/handleProratedUpgrade.js";
+import {
+	adjustAllowance,
+	getReps,
+} from "@/internal/balances/utils/paidAllocatedFeature/adjustAllowance.js";
 import { CusEntService } from "@/internal/customers/cusProducts/cusEnts/CusEntitlementService.js";
 import { findLinkedCusEnts } from "@/internal/customers/cusProducts/cusEnts/cusEntUtils/findCusEntUtils.js";
 import { deleteCachedFullCustomer } from "@/internal/customers/cusUtils/fullCustomerCacheUtils/deleteCachedFullCustomer";

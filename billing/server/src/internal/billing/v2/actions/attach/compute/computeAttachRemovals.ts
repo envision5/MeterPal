@@ -11,8 +11,8 @@ import {
 
 /**
  * Expires the extra plans named in `remove_plan_ids` alongside the attach.
- * Removal flows to Stripe declaratively: the expired plans drop out of the
- * final customer state, so this only reconciles the attach's own subscription.
+ * Removal flows to the processor declaratively: the expired plans drop out of
+ * the final customer state, so this only reconciles the attach's own subscription.
  */
 export const computeAttachRemovals = ({
 	attachBillingContext,
@@ -21,12 +21,8 @@ export const computeAttachRemovals = ({
 	attachBillingContext: AttachBillingContext;
 	params: AttachParamsV1;
 }): CustomerProductUpdate[] => {
-	const {
-		fullCustomer,
-		stripeSubscription,
-		currentCustomerProduct,
-		currentEpochMs,
-	} = attachBillingContext;
+	const { fullCustomer, currentCustomerProduct, currentEpochMs } =
+		attachBillingContext;
 
 	// The current product is already expired via the transition update. Repeats
 	// are collapsed so one plan cannot be credited or settled twice.
@@ -57,12 +53,15 @@ export const computeAttachRemovals = ({
 		});
 	}
 
+	// The processor subscription the attach is transitioning away from.
+	const attachSubscriptionId = currentCustomerProduct?.subscription_ids?.[0];
+
 	return removePlanIds.map((productId) =>
 		computeRemovalUpdate({
 			productId,
 			params,
 			fullCustomer,
-			stripeSubscription,
+			attachSubscriptionId,
 			currentEpochMs,
 		}),
 	);
@@ -72,13 +71,13 @@ const computeRemovalUpdate = ({
 	productId,
 	params,
 	fullCustomer,
-	stripeSubscription,
+	attachSubscriptionId,
 	currentEpochMs,
 }: {
 	productId: string;
 	params: AttachParamsV1;
 	fullCustomer: AttachBillingContext["fullCustomer"];
-	stripeSubscription: AttachBillingContext["stripeSubscription"];
+	attachSubscriptionId?: string;
 	currentEpochMs: number;
 }): CustomerProductUpdate => {
 	if (productId === params.plan_id) {
@@ -102,11 +101,11 @@ const computeRemovalUpdate = ({
 	}
 
 	// Removal only cancels the attach's own subscription, so a plan billed on a
-	// separate subscription would be expired in Autumn but left live in Stripe.
+	// separate subscription would be expired in Autumn but left live at the processor.
 	const removableInThisAttach = cp(customerProduct)
 		.free()
-		.or.onStripeSubscription({
-			stripeSubscriptionId: stripeSubscription?.id ?? "",
+		.or.onProcessorSubscription({
+			processorSubscriptionId: attachSubscriptionId ?? "",
 		}).valid;
 	if (!removableInThisAttach) {
 		throw new RecaseError({

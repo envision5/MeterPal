@@ -575,11 +575,11 @@ export type PreviewAttachCustomize = {
 };
 
 /**
- * Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses Stripe's send_invoice collection method.
+ * Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses the processor's send_invoice collection method.
  */
 export type PreviewAttachInvoiceMode = {
   /**
-   * When true, creates an invoice and sends it to the customer instead of charging their card immediately. Uses Stripe's send_invoice collection method.
+   * When true, creates an invoice and sends it to the customer instead of charging their card immediately. Uses the processor's send_invoice collection method.
    */
   enabled: boolean;
   /**
@@ -595,7 +595,7 @@ export type PreviewAttachInvoiceMode = {
    */
   invoiceTemplateId?: string | undefined;
   /**
-   * Number of days the customer has to pay the invoice before it is due (Stripe days_until_due).
+   * Number of days the customer has to pay the invoice before it is due (days_until_due).
    */
   netTermsDays?: number | undefined;
 };
@@ -717,7 +717,7 @@ export type PreviewAttachLicenseQuantity = {
  */
 export type PreviewAttachRemoveDiscount = {
   /**
-   * The ID of the reward (or Stripe coupon) to remove.
+   * The ID of the reward to remove.
    */
   rewardId: string;
 };
@@ -754,7 +754,7 @@ export type PreviewAttachParams = {
    */
   customize?: PreviewAttachCustomize | undefined;
   /**
-   * Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses Stripe's send_invoice collection method.
+   * Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses the processor's send_invoice collection method.
    */
   invoiceMode?: PreviewAttachInvoiceMode | undefined;
   /**
@@ -770,7 +770,7 @@ export type PreviewAttachParams = {
    */
   subscriptionId?: string | undefined;
   /**
-   * List of discounts to apply. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code.
+   * List of discounts to apply. Each discount can be an Autumn reward ID or a promotion code.
    */
   discounts?: Array<PreviewAttachAttachDiscount> | undefined;
   /**
@@ -778,7 +778,7 @@ export type PreviewAttachParams = {
    */
   successUrl?: string | undefined;
   /**
-   * Only applicable when the customer has an existing Stripe subscription. If true, creates a new separate subscription instead of merging into the existing one.
+   * Only applicable when the customer has an existing processor subscription. If true, creates a new separate subscription instead of merging into the existing one.
    */
   newBillingSubscription?: boolean | undefined;
   /**
@@ -798,11 +798,11 @@ export type PreviewAttachParams = {
    */
   endsAt?: number | undefined;
   /**
-   * Additional parameters to pass into the creation of the Stripe checkout session.
+   * Additional parameters to pass into the creation of the processor checkout session.
    */
   checkoutSessionParams?: { [k: string]: any } | undefined;
   /**
-   * If true, returns an Autumn-hosted checkout link that can create a fresh Stripe checkout session when opened.
+   * If true, returns an Autumn-hosted checkout link that can create a fresh processor checkout session when opened.
    */
   longLivedCheckout?: boolean | undefined;
   /**
@@ -810,7 +810,7 @@ export type PreviewAttachParams = {
    */
   customLineItems?: Array<PreviewAttachCustomLineItem> | undefined;
   /**
-   * The processor subscription ID to link. Use this to attach an existing Stripe subscription instead of creating a new one.
+   * The processor subscription ID to link. Use this to attach an existing processor subscription instead of creating a new one.
    */
   processorSubscriptionId?: string | undefined;
   /**
@@ -826,7 +826,7 @@ export type PreviewAttachParams = {
    */
   licenseQuantities?: Array<PreviewAttachLicenseQuantity> | undefined;
   /**
-   * Key-value metadata to attach to the Stripe subscription, invoice, and checkout session created during this attach flow. Keys prefixed with 'autumn_' are reserved and will be stripped.
+   * Key-value metadata to attach to the processor subscription, invoice, and checkout session created during this attach flow. Keys prefixed with 'autumn_' are reserved and will be stripped.
    */
   metadata?: { [k: string]: string } | undefined;
   /**
@@ -834,11 +834,11 @@ export type PreviewAttachParams = {
    */
   noBillingChanges?: boolean | undefined;
   /**
-   * If true, the customer's plan is activated immediately even when payment is deferred (invoice mode) or pending (Stripe checkout). For Stripe checkout, the customer_product is inserted before the customer completes the hosted form. Set it here rather than on `invoice_mode`, which only covers the invoice-unpaid case.
+   * If true, the customer's plan is activated immediately even when payment is deferred (invoice mode) or pending (processor checkout). For processor checkout, the customer_product is inserted before the customer completes the hosted form. Set it here rather than on `invoice_mode`, which only covers the invoice-unpaid case.
    */
   enablePlanImmediately?: boolean | undefined;
   /**
-   * Stripe tax rate ID (txr_...) to apply as the default tax rate on the created subscription, invoice, or checkout session line items.
+   * Tax rate ID to apply as the default tax rate on the created subscription, invoice, or checkout session line items.
    */
   taxRateId?: string | undefined;
   /**
@@ -1105,7 +1105,7 @@ export type PreviewAttachOutgoing = {
 };
 
 export const PreviewAttachCheckoutType = {
-  StripeCheckout: "stripe_checkout",
+  ProcessorCheckout: "processor_checkout",
   AutumnCheckout: "autumn_checkout",
 } as const;
 export type PreviewAttachCheckoutType = OpenEnum<
@@ -1113,19 +1113,19 @@ export type PreviewAttachCheckoutType = OpenEnum<
 >;
 
 /**
- * Calculation status ('complete' when Stripe Tax succeeds or 'incomplete' when Stripe Tax returned 0 or errored).
+ * Calculation status ('complete' when the tax calculation succeeds or 'incomplete' when it returned 0 or errored).
  */
 export const PreviewAttachStatus = {
   Complete: "complete",
   Incomplete: "incomplete",
 } as const;
 /**
- * Calculation status ('complete' when Stripe Tax succeeds or 'incomplete' when Stripe Tax returned 0 or errored).
+ * Calculation status ('complete' when the tax calculation succeeds or 'incomplete' when it returned 0 or errored).
  */
 export type PreviewAttachStatus = OpenEnum<typeof PreviewAttachStatus>;
 
 /**
- * Tax preview for the immediate charge. Contact us to enable the tax flag on your organisation. Shows only with flag enabled, a Stripe customer exists and has a location.
+ * Tax preview for the immediate charge. Contact us to enable the tax flag on your organisation.
  */
 export type PreviewAttachTax = {
   /**
@@ -1145,17 +1145,17 @@ export type PreviewAttachTax = {
    */
   currency: string;
   /**
-   * Calculation status ('complete' when Stripe Tax succeeds or 'incomplete' when Stripe Tax returned 0 or errored).
+   * Calculation status ('complete' when the tax calculation succeeds or 'incomplete' when it returned 0 or errored).
    */
   status: PreviewAttachStatus;
 };
 
 /**
- * Stripe customer invoice credits preview.
+ * Customer invoice credits preview.
  */
 export type PreviewAttachInvoiceCredits = {
   /**
-   * Stripe customer credit balance available, expressed as a positive number in major currency units.
+   * Customer credit balance available, expressed as a positive number in major currency units.
    */
   balance: number;
   /**
@@ -1218,11 +1218,11 @@ export type PreviewAttachResponse = {
    */
   checkoutType: PreviewAttachCheckoutType | null;
   /**
-   * Tax preview for the immediate charge. Contact us to enable the tax flag on your organisation. Shows only with flag enabled, a Stripe customer exists and has a location.
+   * Tax preview for the immediate charge. Contact us to enable the tax flag on your organisation.
    */
   tax?: PreviewAttachTax | undefined;
   /**
-   * Stripe customer invoice credits preview.
+   * Customer invoice credits preview.
    */
   invoiceCredits?: PreviewAttachInvoiceCredits | undefined;
 };

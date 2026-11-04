@@ -27,7 +27,7 @@ export const lazyLicensePoolLifecycle = {
 	nextResetAt: "present" as const,
 	resetCycleAnchor: "present" as const,
 	resetMode: PooledBalanceResetMode.Lazy,
-	stripeSubscriptionId: null,
+	processorSubscriptionId: null,
 };
 
 export const lifetimeLicensePoolLifecycle = {
@@ -35,7 +35,7 @@ export const lifetimeLicensePoolLifecycle = {
 	nextResetAt: null,
 	resetCycleAnchor: null,
 	resetMode: PooledBalanceResetMode.Lifetime,
-	stripeSubscriptionId: null,
+	processorSubscriptionId: null,
 };
 
 export const pooledMonthlyMessages = ({

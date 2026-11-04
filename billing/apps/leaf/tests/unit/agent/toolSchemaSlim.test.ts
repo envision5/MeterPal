@@ -8,9 +8,7 @@
 import { describe, expect, test } from "bun:test";
 import { z } from "zod/v4";
 
-const { AttachParamsV1Schema, CreateScheduleParamsV0Schema } = await import(
-	"@autumn/shared"
-);
+const { AttachParamsV1Schema } = await import("@autumn/shared");
 const { slimToolSchema } = await import("../../../agent/lib/toolSchemaSlim.js");
 
 type Schema = Record<string, unknown>;
@@ -32,23 +30,6 @@ const propertyNamesAt = (schema: Schema, path: string[]): string[] => {
 	return Object.keys(((target as Schema)?.properties as Schema) ?? {});
 };
 
-/** Every `customize`-shaped object reachable in the schema, however nested. */
-const customizeShapes = (node: unknown, found: Schema[] = []): Schema[] => {
-	if (Array.isArray(node)) {
-		for (const entry of node) customizeShapes(entry, found);
-		return found;
-	}
-	if (!node || typeof node !== "object") return found;
-	const properties = (node as Schema).properties as Schema | undefined;
-	if (properties && "add_items" in properties && "remove_items" in properties) {
-		found.push(properties);
-	}
-	for (const value of Object.values(node as Schema)) {
-		customizeShapes(value, found);
-	}
-	return found;
-};
-
 describe("slimToolSchema customize", () => {
 	test("hides PUT-style items on attach and keeps the patch keys", () => {
 		const names = propertyNamesAt(toModelSchema(AttachParamsV1Schema), [
@@ -59,14 +40,6 @@ describe("slimToolSchema customize", () => {
 		expect(names).toEqual(
 			expect.arrayContaining(["price", "add_items", "remove_items"]),
 		);
-	});
-
-	test("hides items on every nested customize, e.g. schedule phases", () => {
-		const shapes = customizeShapes(toModelSchema(CreateScheduleParamsV0Schema));
-		expect(shapes.length).toBeGreaterThan(0);
-		for (const shape of shapes) {
-			expect(Object.keys(shape)).not.toContain("items");
-		}
 	});
 
 	test("leaves an unrelated `items` property alone", () => {

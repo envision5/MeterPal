@@ -2,7 +2,6 @@ import {
 	CustomerNotFoundError,
 	type DeleteCustomerParams,
 } from "@autumn/shared";
-import { deleteStripeCustomer } from "@/external/stripe/stripeCusUtils";
 import type { AutumnContext } from "@/honoUtils/HonoEnv";
 import { CusService } from "@/internal/customers/CusService";
 import { deleteCachedFullCustomer } from "@/internal/customers/cusUtils/fullCustomerCacheUtils/deleteCachedFullCustomer";
@@ -14,37 +13,19 @@ export const deleteCustomer = async ({
 	ctx: AutumnContext;
 	params: DeleteCustomerParams;
 }) => {
-	const { db, org, env, logger } = ctx;
+	const { db, org, env } = ctx;
 
-	const { customer_id, delete_in_stripe } = params;
+	const { customer_id: customerId } = params;
 
 	const customer = await CusService.get({
 		db,
-		idOrInternalId: customer_id,
+		idOrInternalId: customerId,
 		orgId: org.id,
 		env,
 	});
 
 	if (!customer) {
-		throw new CustomerNotFoundError({ customerId: customer_id });
-	}
-
-	const response = {
-		customer,
-		success: true,
-	};
-
-	try {
-		if (customer.processor?.id && delete_in_stripe) {
-			await deleteStripeCustomer({
-				org,
-				env,
-				stripeId: customer.processor.id,
-			});
-		}
-	} catch (error) {
-		logger.error(`Error deleting customer in stripe: ${error}`);
-		response.success = false;
+		throw new CustomerNotFoundError({ customerId: customerId });
 	}
 
 	await CusService.deleteByInternalId({

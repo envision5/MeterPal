@@ -37,7 +37,7 @@ import {
 	expectPlanVersionsCorrect,
 } from "../utils/expectCatalogPlans.js";
 import { expectTombstoneCorrect } from "../utils/expectTombstoneCorrect.js";
-import { seedVersionableCustomer } from "../migrations/utils/seedVersionableCustomer.js";
+import { seedVersionableCustomer } from "../utils/seedVersionableCustomer.js";
 import {
 	messagesItem,
 	withCatalogPlans,

@@ -26,7 +26,7 @@ export type PooledBalanceLifecycle = Pick<
 	PooledBalanceIdentity,
 	| "resetCycleAnchor"
 	| "resetMode"
-	| "stripeSubscriptionId"
+	| "processorSubscriptionId"
 	| "customerLicenseLinkId"
 > & {
 	nextResetAt: number | null;

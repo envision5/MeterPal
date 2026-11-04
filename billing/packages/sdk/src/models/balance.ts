@@ -350,23 +350,7 @@ export type BalanceDisplay = {
   plural?: string | null | undefined;
 };
 
-export type BalanceStripe = {
-  /**
-   * Stripe product ID this feature's usage prices bill under.
-   */
-  productId?: string | undefined;
-  /**
-   * Stripe meter ID used to create this feature's metered price.
-   */
-  meterId?: string | undefined;
-};
 
-/**
- * Processor mappings for this feature. Present when a Stripe product or meter is set.
- */
-export type BalanceProcessors = {
-  stripe?: BalanceStripe | undefined;
-};
 
 /**
  * The full feature object if expanded.
@@ -418,11 +402,7 @@ export type BalanceFeature = {
    * Whether the feature is archived and hidden from the dashboard.
    */
   archived: boolean;
-  /**
-   * Processor mappings for this feature. Present when a Stripe product or meter is set.
-   */
-  processors?: BalanceProcessors | undefined;
-};
+  };
 
 export const BalanceIntervalEnum = {
   OneOff: "one_off",
@@ -1300,50 +1280,9 @@ export function balanceDisplayFromJSON(
   );
 }
 
-/** @internal */
-export const BalanceStripe$inboundSchema: z.ZodMiniType<
-  BalanceStripe,
-  unknown
-> = z.pipe(
-  z.object({
-    product_id: types.optional(types.string()),
-    meter_id: types.optional(types.string()),
-  }),
-  z.transform((v) => {
-    return remap$(v, {
-      "product_id": "productId",
-      "meter_id": "meterId",
-    });
-  }),
-);
 
-export function balanceStripeFromJSON(
-  jsonString: string,
-): SafeParseResult<BalanceStripe, SDKValidationError> {
-  return safeParse(
-    jsonString,
-    (x) => BalanceStripe$inboundSchema.parse(JSON.parse(x)),
-    `Failed to parse 'BalanceStripe' from JSON`,
-  );
-}
 
-/** @internal */
-export const BalanceProcessors$inboundSchema: z.ZodMiniType<
-  BalanceProcessors,
-  unknown
-> = z.object({
-  stripe: types.optional(z.lazy(() => BalanceStripe$inboundSchema)),
-});
 
-export function balanceProcessorsFromJSON(
-  jsonString: string,
-): SafeParseResult<BalanceProcessors, SDKValidationError> {
-  return safeParse(
-    jsonString,
-    (x) => BalanceProcessors$inboundSchema.parse(JSON.parse(x)),
-    `Failed to parse 'BalanceProcessors' from JSON`,
-  );
-}
 
 /** @internal */
 export const BalanceFeature$inboundSchema: z.ZodMiniType<
@@ -1376,9 +1315,6 @@ export const BalanceFeature$inboundSchema: z.ZodMiniType<
       BalanceDisplay$inboundSchema
     )),
     archived: types.boolean(),
-    processors: types.optional(z.lazy(() =>
-      BalanceProcessors$inboundSchema
-    )),
   }),
   z.transform((v) => {
     return remap$(v, {

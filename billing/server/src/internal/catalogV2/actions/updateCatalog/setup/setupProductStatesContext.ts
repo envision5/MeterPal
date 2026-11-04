@@ -12,11 +12,9 @@ import {
 import { buildProductStatesContext } from "@/internal/catalogV2/actions/updateCatalog/utils/productStateUtils/buildProductStatesContext";
 import { collectProductStateRows } from "@/internal/catalogV2/actions/updateCatalog/utils/productStateUtils/collectProductStateRows";
 import { groupProductsByPlanId } from "@/internal/catalogV2/actions/updateCatalog/utils/productStateUtils/groupProductsByPlanId";
-import { indexRewardProgramsByPlanId } from "@/internal/catalogV2/actions/updateCatalog/utils/productStateUtils/indexRewardProgramsByPlanId";
 import type { VersioningRowRefTargets } from "@/internal/customers/cusProducts/repos/getBoundedVersionableRowRefs.js";
 import { getVersioningFlags } from "@/internal/customers/cusProducts/repos/getVersioningUsage.js";
 import { ProductService } from "@/internal/products/ProductService.js";
-import { rewardProgramRepo } from "@/internal/rewards/repos/index.js";
 
 const payloadPlanIds = ({
 	params,
@@ -115,32 +113,23 @@ export const setupProductStatesContext = async ({
 		),
 	} satisfies VersioningRowRefTargets;
 
-	const [usageByInternalId, rewardPrograms] = await Promise.all([
-		getVersioningFlags({
-			db,
-			internalProductIds: allVersions.map((product) => product.internal_id),
-			rowRefTargets,
-			timePhase: ({ phase, run }) =>
-				timeCatalogPhase({ ctx, phases, phase, run }),
-		}),
-		timeCatalogPhase({
-			ctx,
-			phases,
-			phase: "reward_programs",
-			run: () =>
-				rewardProgramRepo.getByProductId({
-					db,
-					productIds: allPlanIds,
-					orgId: org.id,
-					env,
-				}),
-		}),
-	]);
+	const usageByInternalId = await timeCatalogPhase({
+		ctx,
+		phases,
+		phase: "versioning_usage",
+		run: () =>
+			getVersioningFlags({
+				db,
+				internalProductIds: allVersions.map((product) => product.internal_id),
+				rowRefTargets,
+				timePhase: ({ phase, run }) =>
+					timeCatalogPhase({ ctx, phases, phase, run }),
+			}),
+	});
 
 	return buildProductStatesContext({
 		planIds: allPlanIds,
 		versionsByPlanId: groupProductsByPlanId({ products: allVersions }),
 		usageByInternalId,
-		rewardProgramsByPlanId: indexRewardProgramsByPlanId({ rewardPrograms }),
 	});
 };

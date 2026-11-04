@@ -1,1 +1,0 @@
-ALTER TABLE "invoice_line_items" ADD COLUMN "entities" jsonb DEFAULT '[]'::jsonb NOT NULL;

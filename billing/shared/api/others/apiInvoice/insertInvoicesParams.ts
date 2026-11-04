@@ -13,10 +13,10 @@ export const InsertInvoiceParamsSchema = z.object({
 	plan_ids: z.array(z.string()).default([]).meta({
 		description: "Plan IDs represented by this invoice.",
 	}),
-	stripe_id: z.string().meta({
+	processor_invoice_id: z.string().meta({
 		description: "The processor's stable invoice ID.",
 	}),
-	processor_type: z.enum(ProcessorType).default(ProcessorType.Stripe).meta({
+	processor_type: z.enum(ProcessorType).default(ProcessorType.PayPal).meta({
 		description: "The billing processor that owns this invoice.",
 	}),
 	status: z.enum(InvoiceStatus).meta({

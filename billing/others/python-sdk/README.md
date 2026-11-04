@@ -8,7 +8,6 @@ The official Python SDK for the [Autumn](https://useautumn.com) billing API.
 <!-- Start Summary [summary] -->
 ## Summary
 
-
 <!-- End Summary [summary] -->
 
 <!-- Start Table of Contents [toc] -->
@@ -36,7 +35,6 @@ The official Python SDK for the [Autumn](https://useautumn.com) billing API.
 
 > [!TIP]
 > To finish publishing your SDK to PyPI you must [run your first generation action](https://www.speakeasy.com/docs/github-setup#step-by-step-guide).
-
 
 > [!NOTE]
 > **Python version upgrade policy**
@@ -120,7 +118,6 @@ Generally, the SDK will work well with most IDEs out of the box. However, when u
 # Synchronous Example
 from autumn_sdk import Autumn
 
-
 with Autumn(
     x_api_version="2.4.0",
     secret_key="<YOUR_BEARER_TOKEN_HERE>",
@@ -172,7 +169,6 @@ To authenticate with the API the `secret_key` parameter must be set when initial
 ```python
 from autumn_sdk import Autumn
 
-
 with Autumn(
     secret_key="<YOUR_BEARER_TOKEN_HERE>",
     x_api_version="2.4.0",
@@ -220,7 +216,7 @@ Use this endpoint to subscribe a customer to a plan, upgrade/downgrade between p
 * [create_schedule](docs/sdks/billing/README.md#create_schedule) - Creates a multi-phase subscription schedule for a customer. The first phase starts immediately and subsequent phases automatically transition at their scheduled start times.
 
 Use this endpoint to schedule future plan changes (e.g. switch from a trial plan to a paid plan on a specific date) or to define a sequence of plans that should activate over time.
-* [multi_attach](docs/sdks/billing/README.md#multi_attach) - Attaches multiple plans to a customer in a single request. Creates a single Stripe subscription with all plans consolidated.
+* [multi_attach](docs/sdks/billing/README.md#multi_attach) - Attaches multiple plans to a customer in a single request. Creates a single subscription with all plans consolidated.
 
 Use this endpoint when you need to subscribe a customer to multiple plans at once, such as a base plan plus add-ons, or to create a bundle of products.
 * [preview_attach](docs/sdks/billing/README.md#preview_attach) - Previews the billing changes that would occur when attaching a plan, without actually making any changes.
@@ -243,7 +239,6 @@ Use this endpoint to cancel or uncancel several plans atomically in one call —
 Use this endpoint to show customers the credits and next-cycle changes of canceling multiple plans before confirming.
 * [open_customer_portal](docs/sdks/billing/README.md#open_customer_portal) - Create a billing portal session for a customer to manage their subscription.
 * [setup_payment](docs/sdks/billing/README.md#setup_payment) - Create a payment setup session for a customer to add or update their payment method.
-* [import_](docs/sdks/billing/README.md#import_) - Import
 
 ### [Customers](docs/sdks/customers/README.md)
 
@@ -256,7 +251,6 @@ Use this when you know the customer exists or assert they exist without creating
 * [list](docs/sdks/customers/README.md#list) - Lists customers with cursor pagination and optional filters. Pass `start_cursor: ""` (or omit) for the first page; use `next_cursor` from a prior response for subsequent pages.
 * [update](docs/sdks/customers/README.md#update) - Updates an existing customer by ID.
 * [delete](docs/sdks/customers/README.md#delete) - Deletes a customer by ID.
-* [advance_test_clock](docs/sdks/customers/README.md#advance_test_clock) - Advance a customer's Stripe test clock to a future time in milliseconds. Only Stripe test-mode customers with a test clock are supported. Advancement is asynchronous; Stripe enforces clock status and advancement limits.
 
 ### [Entities](docs/sdks/entities/README.md)
 
@@ -301,13 +295,13 @@ Use this to permanently remove a feature. Note: features that are used in produc
 
 ### [Invoices](docs/sdks/invoices/README.md)
 
-* [create](docs/sdks/invoices/README.md#create) - Creates a standalone send-invoice Stripe invoice from catalog pricing and custom charges. Quantities are billable units, exclusive of any included usage; Autumn applies billing units and tiers. Nothing about the customer's plans, balances or subscriptions changes. Pass preview: true to get the calculated lines and totals without creating an invoice.
+* [create](docs/sdks/invoices/README.md#create) - Creates a standalone invoice from catalog pricing and custom charges. Quantities are billable units, exclusive of any included usage; Autumn applies billing units and tiers. Nothing about the customer's plans, balances or subscriptions changes. Pass preview: true to get the calculated lines and totals without creating an invoice.
 * [insert](docs/sdks/invoices/README.md#insert) - Inserts or updates up to 500 historical invoices without reading or mutating the billing processor.
 * [list](docs/sdks/invoices/README.md#list) - Lists invoices with cursor pagination and optional filters (customer, entity, status, processor). Pass `start_cursor: ""` (or omit) for the first page; use `next_cursor` from a prior response for subsequent pages.
 * [list_templates](docs/sdks/invoices/README.md#list_templates) - Lists the organization's invoice templates, newest first, with offset pagination. Use a template's `id` as `invoice_template_id` when creating or reissuing an invoice.
-* [pay](docs/sdks/invoices/README.md#pay) - Marks an open Stripe invoice as paid out of band. No charge is attempted; use this when payment was collected elsewhere (e.g. a marketplace). Already-paid invoices are returned unchanged.
-* [reissue](docs/sdks/invoices/README.md#reissue) - Voids an open send-invoice Stripe invoice and issues a replacement with the same line items. An invoice template can supply the replacement's footer (e.g. bank details) and memo. The replacement keeps the original due date unless net_terms_days is passed, which is required once the original is past due. Pass update_customer_email to change the customer's billing email first so the replacement is sent there. The replacement stays linked to the same subscription and fulfils the same pending plan when paid.
-* [void](docs/sdks/invoices/README.md#void) - Voids an open or uncollectible Stripe invoice. Any plan still waiting on the invoice to be paid expires. Voiding an unpaid subscription invoice lets Stripe re-derive the subscription status from its remaining invoices, which can move a past-due subscription back to active. Already-void invoices are returned unchanged.
+* [pay](docs/sdks/invoices/README.md#pay) - Marks an open invoice as paid out of band. No charge is attempted; use this when payment was collected elsewhere (e.g. a marketplace). Already-paid invoices are returned unchanged.
+* [reissue](docs/sdks/invoices/README.md#reissue) - Voids an open invoice and issues a replacement with the same line items. An invoice template can supply the replacement's footer (e.g. bank details) and memo. The replacement keeps the original due date unless net_terms_days is passed, which is required once the original is past due. Pass update_customer_email to change the customer's billing email first so the replacement is sent there. The replacement stays linked to the same subscription and fulfils the same pending plan when paid.
+* [void](docs/sdks/invoices/README.md#void) - Voids an open or uncollectible invoice. Any plan still waiting on the invoice to be paid expires. Voiding an unpaid subscription invoice lets the processor re-derive the subscription status from its remaining invoices, which can move a past-due subscription back to active. Already-void invoices are returned unchanged.
 
 ### [Keys](docs/sdks/keys/README.md)
 
@@ -322,7 +316,7 @@ Use this to permanently remove a feature. Note: features that are used in produc
 
 ### [Logs](docs/sdks/logs/README.md)
 
-* [search](docs/sdks/logs/README.md#search) - Search API requests and incoming Stripe webhooks for your organization and environment.
+* [search](docs/sdks/logs/README.md#search) - Search API requests and incoming processor webhooks for your organization and environment.
 
 ### [Plans](docs/sdks/plans/README.md)
 
@@ -331,14 +325,6 @@ Use this to permanently remove a feature. Note: features that are used in produc
 * [list](docs/sdks/plans/README.md#list) - List all plans
 * [update](docs/sdks/plans/README.md#update) - Update a plan
 * [delete](docs/sdks/plans/README.md#delete) - Delete a plan
-
-### [Platform](docs/sdks/platform/README.md)
-
-* [get_stripe_connection](docs/sdks/platform/README.md#get_stripe_connection) - Read a managed organization's Stripe OAuth connection, account ID, and authorization time in the selected environment.
-* [disconnect_stripe](docs/sdks/platform/README.md#disconnect_stripe) - Revoke Autumn's Stripe OAuth access for a managed organization in the selected environment. Does not delete the Stripe account or cancel subscriptions.
-* [link_revenue_cat](docs/sdks/platform/README.md#link_revenue_cat) - Generate a RevenueCat OAuth URL for linking a project to an organization.
-* [sync_revenue_cat](docs/sdks/platform/README.md#sync_revenue_cat) - Push an organization's plans into RevenueCat as products (creating or renaming them across the project's apps) and set test-store prices from each plan's price. Requires the org to have linked RevenueCat via OAuth.
-* [get_revenue_cat_keys](docs/sdks/platform/README.md#get_revenue_cat_keys) - Retrieve a managed organization's RevenueCat public (SDK) API keys, grouped by app — for the test store, App Store, and Google Play Store. Use these to configure the RevenueCat SDK in the org's mobile app.
 
 ### [Referrals](docs/sdks/referrals/README.md)
 
@@ -379,7 +365,6 @@ To change the default retry strategy for a single API call, simply provide a `Re
 from autumn_sdk import Autumn
 from autumn_sdk.utils import BackoffStrategy, RetryConfig
 
-
 with Autumn(
     x_api_version="2.4.0",
     secret_key="<YOUR_BEARER_TOKEN_HERE>",
@@ -397,7 +382,6 @@ If you'd like to override the default retry strategy for all operations that sup
 ```python
 from autumn_sdk import Autumn
 from autumn_sdk.utils import BackoffStrategy, RetryConfig
-
 
 with Autumn(
     retry_config=RetryConfig("backoff", BackoffStrategy(1, 50, 1.1, 100), False),
@@ -430,7 +414,6 @@ with Autumn(
 ```python
 from autumn_sdk import Autumn, errors
 
-
 with Autumn(
     x_api_version="2.4.0",
     secret_key="<YOUR_BEARER_TOKEN_HERE>",
@@ -442,7 +425,6 @@ with Autumn(
 
         # Handle response
         print(res)
-
 
     except errors.AutumnError as e:
         # The base class for HTTP error responses
@@ -467,7 +449,6 @@ with Autumn(
     * [`httpx.ConnectError`](https://www.python-httpx.org/exceptions/#httpx.ConnectError): HTTP client was unable to make a request to a server.
     * [`httpx.TimeoutException`](https://www.python-httpx.org/exceptions/#httpx.TimeoutException): HTTP request timed out.
 
-
 **Inherit from [`AutumnError`](./src/autumn_sdk/errors/autumnerror.py)**:
 * [`ResponseValidationError`](./src/autumn_sdk/errors/responsevalidationerror.py): Type mismatch between the response data and the expected Pydantic model. Provides access to the Pydantic validation error via the `cause` attribute.
 
@@ -482,7 +463,6 @@ with Autumn(
 The default server can be overridden globally by passing a URL to the `server_url: str` optional parameter when initializing the SDK client instance. For example:
 ```python
 from autumn_sdk import Autumn
-
 
 with Autumn(
     server_url="https://api.useautumn.com",
@@ -595,7 +575,6 @@ def main():
         secret_key="<YOUR_BEARER_TOKEN_HERE>",
     ) as autumn:
         # Rest of application here...
-
 
 # Or when using async:
 async def amain():

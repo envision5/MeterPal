@@ -298,7 +298,7 @@ These are mitigations. They do not persist original pages, make webhook acceptan
 2. **Original-page claim and discovery.** Save and claim together inside the existing loop. Make the known version-filter reproduction pass. Prove batch-6 continuation, fresh-run scope controls, and safe ownership transfer.
 3. **Truthful effect completion.** Add strict webhook policy/submission, stable identities and batch acknowledgements. Move success marking after cache plus Svix acceptance. Define Tinybird/item-event replay behavior.
 4. **Real retry and performance proof.** Exercise actual Trigger crash, retry, cancellation, multiple pages, lost provider responses, and count reconstruction. Measure SQL/storage overhead and API latency under load.
-5. **Cleanup cron and gated rollout.** Delete only safely closed bulky records, preserve unresolved work, and prove old task replays cannot repeat effects after pruning. Enable automatic chunk retries only for supported operations after these gates pass. Extend remove/replace/license and per-customer/Stripe recovery separately.
+5. **Cleanup cron and gated rollout.** Delete only safely closed bulky records, preserve unresolved work, and prove old task replays cannot repeat effects after pruning. Enable automatic chunk retries only for supported operations after these gates pass. Extend remove/replace/license and per-customer recovery separately.
 
 Split each unit into 1–3 source-file review slices. Keep recovery mechanics centralized and names readable. Avoid runtime Zod parsing in the recovery conversions. Do not enable retries merely because the SQL result tests pass.
 
@@ -312,6 +312,6 @@ git diff 5ca6808e35^ 5ca6808e35 -- server/src/internal/migrations/v2
 
 Create a fresh worktree from current `origin/dev` for implementation. Port the recovery changes deliberately; the current branch is behind later production fixes. Its Drizzle migration is `shared/drizzle/0082_even_raider.sql`, with generated snapshot/journal changes. Regenerate/rebase the schema migration against current `dev` using the DB migration workflow; do not blindly apply the old number or snapshot.
 
-Use the Autumn worktree setup (`bun i`, `bun dw setup` as needed), then run the narrowest relevant tests through `bun tw`. Integration tests may use Stripe, so run one named case at a time and save complete output. Recheck the real Trigger experiments before claiming durable task replay works.
+Use the Autumn worktree setup (`bun i`, `bun dw setup` as needed), then run the narrowest relevant tests through `bun tw`. Integration tests may use PayPal, so run one named case at a time and save complete output. Recheck the real Trigger experiments before claiming durable task replay works.
 
 **Next concrete milestone:** a committed v1→v2 page remains discoverable after Redis failure, and replay repairs its cache from original saved results without repeating SQL. Stop there for review before broadening webhook recovery or enabling automatic retries.

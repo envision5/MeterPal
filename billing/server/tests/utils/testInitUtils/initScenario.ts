@@ -1,40 +1,25 @@
 import type { CustomerData } from "@autumn/shared";
 import {
 	ApiVersion,
-	type CreateReward,
-	type CreateRewardProgram,
 	type CustomerBillingControlsParams,
-	type EntitlementDuration,
 	type OrgConfig,
 	type PlanLicenseParams,
 	type PlanTiming,
 	type ProductItem,
 	type ProductV2,
-	type ReferralCode,
-	type RewardEntitlement,
-	type RewardRedemption,
-	RewardType,
 } from "@autumn/shared";
 import { resetAndGetCusEnt } from "@tests/balances/track/rollovers/rolloverTestUtils.js";
 import { warmEntityCaches as warmEntityCachesFn } from "@tests/integration/balances/utils/warmEntityCaches.js";
-import { addHours, addMonths } from "date-fns";
-import type Stripe from "stripe";
+import { addDays, addHours, addMonths } from "date-fns";
 import { AutumnInt } from "@/external/autumn/autumnCli.js";
-import { removeAllPaymentMethods } from "@/external/stripe/customers/paymentMethods/operations/removeAllPaymentMethods.js";
 import { CusService } from "@/internal/customers/CusService.js";
-import { rewardRepo } from "@/internal/rewards/repos/index.js";
 import { generateId } from "@/utils/genUtils.js";
-import { attachPaymentMethod as attachPaymentMethodFn } from "@/utils/scriptUtils/initCustomer.js";
-import { initCustomerV3 } from "@/utils/scriptUtils/testUtils/initCustomerV3.js";
-import { initProductsV0 } from "@/utils/scriptUtils/testUtils/initProductsV0.js";
 import { hoursToFinalizeInvoice } from "../constants.js";
-import { createReferralProgram, createReward } from "../productUtils.js";
-import { advanceTestClock as advanceTestClockFn } from "../stripeUtils.js";
-import {
-	createSubOrgTestContext,
-	type TaxRegistrationCountry,
-} from "./createSubOrgTestContext.js";
+import { advanceBillingCycle } from "./advanceBillingCycle.js";
+import { createSubOrgTestContext } from "./createSubOrgTestContext.js";
 import defaultCtx, { type TestContext } from "./createTestContext.js";
+import { initTestCustomer } from "./initTestCustomer.js";
+import { initTestProducts } from "./initTestProducts.js";
 
 // ═══════════════════════════════════════════════════════════════════
 // TYPES
@@ -72,38 +57,9 @@ type GeneratedLicenseAssignment = {
 
 type OtherCustomerConfig = {
 	id: string;
+	/** Accepted for call-site compatibility; the PayPal processor has no card payment methods. */
 	paymentMethod?: "success" | "fail" | "authenticate" | "alipay";
 	data?: CustomerData;
-	/** Create a separate Stripe test clock for this customer instead of sharing the primary customer's clock */
-	distinctTestClock?: boolean;
-};
-
-type ReferralProgramConfig = {
-	reward: CreateReward;
-	program: CreateRewardProgram;
-};
-
-type RewardConfig = {
-	reward: CreateReward;
-	productId: string;
-};
-
-type FeatureGrantEntitlement = {
-	feature_id: string;
-	// Optional: boolean features grant on/off access with no allowance
-	allowance?: number;
-	expiry?: { duration: EntitlementDuration; length: number };
-};
-
-type FeatureGrantConfig = {
-	id?: string;
-	name?: string;
-	entitlements: FeatureGrantEntitlement[];
-	promoCodes: {
-		code: string;
-		max_redemptions?: number;
-		first_time_transaction?: boolean;
-	}[];
 };
 
 // Discriminated union for all action types
@@ -131,15 +87,6 @@ type AdvanceClockAction = {
 	months?: number;
 	toNextInvoice?: boolean;
 	waitForSeconds?: number;
-};
-
-type AttachPaymentMethodAction = {
-	type: "attachPaymentMethod";
-	paymentMethodType: "success" | "fail" | "authenticate" | "alipay";
-};
-
-type RemovePaymentMethodAction = {
-	type: "removePaymentMethod";
 };
 
 type TrackAction = {
@@ -214,20 +161,6 @@ type AssignLicenseAction = {
 	parentProductId?: string;
 };
 
-type CreateReferralCodeAction = {
-	type: "createReferralCode";
-};
-
-type RedeemReferralCodeAction = {
-	type: "redeemReferralCode";
-	customerId: string;
-};
-
-type CreateAndRedeemReferralCodeAction = {
-	type: "createAndRedeemReferralCode";
-	customerId: string;
-};
-
 type ResetFeatureAction = {
 	type: "resetFeature";
 	featureId: string;
@@ -239,19 +172,11 @@ type ParallelAction = {
 	actions: ScenarioAction[];
 };
 
-type RedeemRewardAction = {
-	type: "redeemReward";
-	code: string;
-	customerId?: string;
-};
-
 type ScenarioAction =
 	| AttachAction
 	| { type: "warmEntityCaches" }
 	| CancelAction
 	| AdvanceClockAction
-	| AttachPaymentMethodAction
-	| RemovePaymentMethodAction
 	| TrackAction
 	| UpdateSubscriptionAction
 	| AdvanceToNextInvoiceAction
@@ -259,12 +184,8 @@ type ScenarioAction =
 	| BillingMultiAttachAction
 	| LinkLicenseAction
 	| AssignLicenseAction
-	| CreateReferralCodeAction
-	| RedeemReferralCodeAction
-	| CreateAndRedeemReferralCodeAction
 	| ResetFeatureAction
-	| ParallelAction
-	| RedeemRewardAction;
+	| ParallelAction;
 
 type CleanupConfig = {
 	customerIdsToDelete: string[];
@@ -276,13 +197,15 @@ type PlatformCreateConfig = {
 	name?: string;
 	userEmail?: string;
 	configOverrides?: Partial<OrgConfig>;
-	taxRegistrations?: TaxRegistrationCountry[];
 	setupDefaultFeatures?: boolean;
 };
 
 type ScenarioConfig = {
+	/**
+	 * Retained for call-site compatibility. The PayPal processor has no
+	 * processor-side test clock, so there is nothing to switch off.
+	 */
 	testClock: boolean;
-	attachPm?: "success" | "fail" | "authenticate" | "alipay";
 	customerData?: CustomerData;
 	withDefault: boolean;
 	defaultGroup?: string;
@@ -290,19 +213,14 @@ type ScenarioConfig = {
 	sendEmailReceipts?: boolean;
 	nameOverride?: string | null;
 	emailOverride?: string | null;
-	stripeCustomerOverrides?: Partial<Stripe.CustomerCreateParams>;
 	products: ProductV2[];
 	productPrefix?: string;
-	productCreateInStripe?: boolean;
 	entityConfig?: EntityConfig;
 	customerIds?: string[];
 	cleanup: CleanupConfig;
 	actions: ScenarioAction[];
 	otherCustomers: OtherCustomerConfig[];
-	referralProgram?: ReferralProgramConfig;
-	rewards: RewardConfig[];
 	platformConfig?: PlatformCreateConfig;
-	featureGrants: FeatureGrantConfig[];
 };
 
 type ConfigFn = (config: ScenarioConfig) => ScenarioConfig;
@@ -325,14 +243,48 @@ const generateEntities = (config: EntityConfig): GeneratedEntity[] => {
 // ═══════════════════════════════════════════════════════════════════
 
 /**
- * Configure customer options: test clock, payment method, data, default product.
+ * Shift a date forward by the requested amount of days/weeks/hours/months.
+ * Mirrors the offsets the old processor test clock accepted.
+ */
+const addBillingDelta = ({
+	startingFrom,
+	days,
+	weeks,
+	hours,
+	months,
+}: {
+	startingFrom: Date;
+	days?: number;
+	weeks?: number;
+	hours?: number;
+	months?: number;
+}): Date => {
+	let result = startingFrom;
+	if (months) {
+		result = addMonths(result, months);
+	}
+	if (weeks) {
+		result = addDays(result, weeks * 7);
+	}
+	if (days) {
+		result = addDays(result, days);
+	}
+	if (hours) {
+		result = addHours(result, hours);
+	}
+	return result;
+};
+
+/**
+ * Configure customer options: payment method, data, default product.
  * Pass `name: null` / `email: null` for a nameless / emailless customer.
+ * `paymentMethod` is accepted for call-site compatibility only: the PayPal
+ * processor has no card payment methods, so nothing is attached.
  * @example s.customer({ paymentMethod: "success" })
  * @example s.customer({ withDefault: true, defaultGroup: "enterprise" })
  */
 const customer = ({
 	testClock = true,
-	paymentMethod,
 	data,
 	withDefault,
 	defaultGroup,
@@ -340,7 +292,6 @@ const customer = ({
 	send_email_receipts,
 	name,
 	email,
-	stripeCustomerOverrides,
 }: {
 	testClock?: boolean;
 	paymentMethod?: "success" | "fail" | "authenticate" | "alipay";
@@ -351,12 +302,10 @@ const customer = ({
 	send_email_receipts?: boolean;
 	name?: string | null;
 	email?: string | null;
-	stripeCustomerOverrides?: Partial<Stripe.CustomerCreateParams>;
 } = {}): ConfigFn => {
 	return (config) => ({
 		...config,
 		testClock,
-		attachPm: paymentMethod ?? config.attachPm,
 		customerData: data ?? config.customerData,
 		withDefault: withDefault ?? config.withDefault,
 		defaultGroup: defaultGroup ?? config.defaultGroup,
@@ -364,8 +313,6 @@ const customer = ({
 		sendEmailReceipts: send_email_receipts ?? config.sendEmailReceipts,
 		nameOverride: name,
 		emailOverride: email,
-		stripeCustomerOverrides:
-			stripeCustomerOverrides ?? config.stripeCustomerOverrides,
 	});
 };
 
@@ -378,19 +325,16 @@ const products = ({
 	list,
 	prefix,
 	customerIdsToDelete,
-	createInStripe,
 }: {
 	list: ProductV2[];
 	prefix?: string;
 	customerIdsToDelete?: string[];
-	createInStripe?: boolean;
 }): ConfigFn => {
 	return (config) => ({
 		...config,
 		products: list,
 		productPrefix: prefix,
 		customerIds: customerIdsToDelete,
-		productCreateInStripe: createInStripe,
 	});
 };
 
@@ -415,46 +359,11 @@ const entities = ({
 
 /**
  * Define additional customers for this test scenario.
- * Useful for referral tests where you need a referrer and redeemer.
- * By default, other customers share the primary customer's test clock.
- * Use `distinctTestClock: true` to give a customer its own clock (avoids Stripe's 3-customer-per-clock limit).
- * All test clock IDs are returned in the `testClockIds` dict keyed by customer ID.
- * @example s.otherCustomers([{ id: "redeemer", paymentMethod: "success" }])
- * @example s.otherCustomers([{ id: "redeemer", paymentMethod: "success", distinctTestClock: true }])
+ * Useful for scenarios that need more than one customer.
+ * @example s.otherCustomers([{ id: "other" }])
  */
 const otherCustomers = (customers: OtherCustomerConfig[]): ConfigFn => {
 	return (config) => ({ ...config, otherCustomers: customers });
-};
-
-/**
- * Referral program. IDs auto-suffixed with productPrefix for isolation.
- * @example s.referralProgram({ reward: rewards.monthOff(), program: referralPrograms.onCheckoutReferrer({...}) })
- */
-const referralProgramSetup = ({
-	reward,
-	program,
-}: {
-	reward: CreateReward;
-	program: CreateRewardProgram;
-}): ConfigFn => {
-	return (config) => ({ ...config, referralProgram: { reward, program } });
-};
-
-/**
- * Reward/coupon. Reward ID auto-suffixed with productPrefix.
- * @example s.reward({ reward: constructCoupon({ id: "50-off", discountValue: 50, ... }), productId: "pro" })
- */
-const rewardSetup = ({
-	reward,
-	productId,
-}: {
-	reward: CreateReward;
-	productId: string;
-}): ConfigFn => {
-	return (config) => ({
-		...config,
-		rewards: [...config.rewards, { reward, productId }],
-	});
 };
 
 /**
@@ -519,7 +428,7 @@ const cancel = ({
 };
 
 /**
- * Advance the Stripe test clock. Successive calls chain from the previous endpoint.
+ * Advance the customer's billing cycle. Successive calls chain from the previous endpoint.
  * @example s.advanceTestClock({ days: 15 })
  * @example s.advanceTestClock({ toNextInvoice: true })
  * @example s.advanceTestClock({ days: 8, waitForSeconds: 30 })
@@ -551,40 +460,6 @@ const advanceTestClock = ({
 				months,
 				toNextInvoice,
 				waitForSeconds,
-			},
-		],
-	});
-};
-
-/**
- * Attach/replace the customer's payment method. Useful for mid-scenario PM swaps.
- * @example s.attachPaymentMethod({ type: "authenticate" })
- */
-const attachPaymentMethod = ({
-	type,
-}: {
-	type: "success" | "fail" | "authenticate" | "alipay";
-}): ConfigFn => {
-	return (config) => ({
-		...config,
-		actions: [
-			...config.actions,
-			{
-				type: "attachPaymentMethod" as const,
-				paymentMethodType: type,
-			},
-		],
-	});
-};
-
-/** Remove all of the customer's payment methods. */
-const removePaymentMethod = (): ConfigFn => {
-	return (config) => ({
-		...config,
-		actions: [
-			...config.actions,
-			{
-				type: "removePaymentMethod" as const,
 			},
 		],
 	});
@@ -682,7 +557,7 @@ const advanceToNextInvoice = ({
 };
 
 /**
- * Reset a feature's usage cycle. Use for FREE products (no Stripe sub);
+ * Reset a feature's usage cycle. Use for FREE products (no subscription);
  * use s.advanceToNextInvoice() for PAID products.
  * @example s.resetFeature({ featureId: TestFeature.Messages })
  */
@@ -914,82 +789,6 @@ const parallel = (...actions: ConfigFn[]): ConfigFn => {
 };
 
 /**
- * Define a feature grant reward for this test scenario.
- * Inserts a reward of type `feature_grant` with entitlements and promo codes.
- * Feature IDs are external (e.g., TestFeature.Messages) and resolved to internal IDs during setup.
- * @param config - Feature grant configuration
- */
-const featureGrant = (config: FeatureGrantConfig): ConfigFn => {
-	return (scenarioConfig) => ({
-		...scenarioConfig,
-		featureGrants: [...scenarioConfig.featureGrants, config],
-	});
-};
-
-/**
- * Redeem a reward promo code for a customer.
- * @param code - The promo code to redeem
- * @param customerId - Optional: use this customer instead of primary
- */
-const redeemReward = ({
-	code,
-	customerId,
-}: {
-	code: string;
-	customerId?: string;
-}): ConfigFn => {
-	return (config) => ({
-		...config,
-		actions: [
-			...config.actions,
-			{ type: "redeemReward" as const, code, customerId },
-		],
-	});
-};
-
-// ═══════════════════════════════════════════════════════════════════
-// REFERRAL ACTIONS
-// ═══════════════════════════════════════════════════════════════════
-
-/** Create a referral code (requires s.referralProgram()). */
-const createReferralCode = (): ConfigFn => {
-	return (config) => ({
-		...config,
-		actions: [...config.actions, { type: "createReferralCode" as const }],
-	});
-};
-
-/** Redeem the referral code for `customerId` (requires s.referral.createCode() first). */
-const redeemReferralCode = ({
-	customerId,
-}: {
-	customerId: string;
-}): ConfigFn => {
-	return (config) => ({
-		...config,
-		actions: [
-			...config.actions,
-			{ type: "redeemReferralCode" as const, customerId },
-		],
-	});
-};
-
-/** Create code on primary, redeem for `customerId` in one step. */
-const createAndRedeemReferralCode = ({
-	customerId,
-}: {
-	customerId: string;
-}): ConfigFn => {
-	return (config) => ({
-		...config,
-		actions: [
-			...config.actions,
-			{ type: "createAndRedeemReferralCode" as const, customerId },
-		],
-	});
-};
-
-/**
  * Provision a fresh platform sub-org via `POST /platform/organizations` and
  * rebind ctx to it for the rest of the scenario. Use to isolate tests that
  * mutate org-level config.
@@ -1001,10 +800,9 @@ const createAndRedeemReferralCode = ({
  * @param name - Display name; defaults to slug.
  * @param userEmail - Owner email; defaults to "platform-tests@autumn.test".
  * @param configOverrides - Merged into the sub-org's config jsonb.
- * @param taxRegistrations - Countries to register Stripe Tax for.
  * @param setupDefaultFeatures - Inserts standard test features on the sub-org.
  *
- * @example s.platform.create({ configOverrides: { automatic_tax: true }, taxRegistrations: ["AU"] })
+ * @example s.platform.create({ configOverrides: { automatic_tax: true } })
  */
 const platformCreate = (cfg: PlatformCreateConfig = {}): ConfigFn => {
 	return (config) => ({
@@ -1019,14 +817,10 @@ export const s = {
 	otherCustomers,
 	products,
 	entities,
-	referralProgram: referralProgramSetup,
-	reward: rewardSetup,
 	attach,
 	cancel,
 	advanceTestClock,
 	advanceToNextInvoice,
-	attachPaymentMethod,
-	removePaymentMethod,
 	warmEntityCaches,
 	track,
 	updateSubscription,
@@ -1042,17 +836,8 @@ export const s = {
 	},
 	multiAttach,
 	parallel,
-	featureGrant,
-	referral: {
-		createCode: createReferralCode,
-		redeem: redeemReferralCode,
-		createAndRedeem: createAndRedeemReferralCode,
-	},
 	platform: {
 		create: platformCreate,
-	},
-	rewards: {
-		redeem: redeemReward,
 	},
 } as const;
 
@@ -1072,9 +857,6 @@ const defaultConfig: ScenarioConfig = {
 	},
 	actions: [],
 	otherCustomers: [],
-	referralProgram: undefined,
-	rewards: [],
-	featureGrants: [],
 };
 
 /**
@@ -1093,7 +875,7 @@ const defaultConfig: ScenarioConfig = {
  */
 type OtherCustomerResult = {
 	id: string;
-	customer: Awaited<ReturnType<typeof initCustomerV3>>["customer"];
+	customer: Awaited<ReturnType<typeof initTestCustomer>>["customer"];
 };
 
 type InitScenarioImplementationResult = {
@@ -1108,16 +890,12 @@ type InitScenarioImplementationResult = {
 	autumnV2_2: AutumnInt;
 	autumnV2_3: AutumnInt;
 	autumnV2_4: AutumnInt;
-	testClockId: string | undefined;
-	testClockIds: Record<string, string>;
-	customer: Awaited<ReturnType<typeof initCustomerV3>>["customer"] | null;
+	customer: Awaited<ReturnType<typeof initTestCustomer>>["customer"] | null;
 	ctx: TestContext;
 	entities: GeneratedEntity[];
 	licenseAssignments: GeneratedLicenseAssignment[];
 	advancedTo: number;
 	otherCustomers: Map<string, OtherCustomerResult>;
-	referralCode: ReferralCode | null;
-	redemption: RewardRedemption | null;
 };
 
 // customerId provided -> customerId: string in return.
@@ -1138,16 +916,12 @@ export async function initScenario(params: {
 	autumnV2_2: AutumnInt;
 	autumnV2_3: AutumnInt;
 	autumnV2_4: AutumnInt;
-	testClockId: string | undefined;
-	testClockIds: Record<string, string>;
-	customer: Awaited<ReturnType<typeof initCustomerV3>>["customer"];
+	customer: Awaited<ReturnType<typeof initTestCustomer>>["customer"];
 	ctx: TestContext;
 	entities: GeneratedEntity[];
 	licenseAssignments: GeneratedLicenseAssignment[];
 	advancedTo: number;
 	otherCustomers: Map<string, OtherCustomerResult>;
-	referralCode: ReferralCode | null;
-	redemption: RewardRedemption | null;
 }>;
 
 // customerId omitted -> customerId: undefined in return.
@@ -1168,16 +942,12 @@ export async function initScenario(params: {
 	autumnV2_2: AutumnInt;
 	autumnV2_3: AutumnInt;
 	autumnV2_4: AutumnInt;
-	testClockId: undefined;
-	testClockIds: Record<string, string>;
 	customer: null;
 	ctx: TestContext;
 	entities: GeneratedEntity[];
 	licenseAssignments: GeneratedLicenseAssignment[];
 	advancedTo: number;
 	otherCustomers: Map<string, OtherCustomerResult>;
-	referralCode: ReferralCode | null;
-	redemption: RewardRedemption | null;
 }>;
 
 export async function initScenario({
@@ -1221,8 +991,7 @@ export async function initScenario({
 			subOrgSlug: response.org_slug,
 			testSecretKey: response.test_secret_key,
 			configOverrides: config.platformConfig.configOverrides,
-			taxRegistrations: config.platformConfig.taxRegistrations,
-			setupDefaultFeatures: config.platformConfig.setupDefaultFeatures,
+				setupDefaultFeatures: config.platformConfig.setupDefaultFeatures,
 		});
 
 		console.log(
@@ -1277,144 +1046,41 @@ export async function initScenario({
 	];
 
 	if (config.products.length > 0) {
-		await initProductsV0({
+		await initTestProducts({
 			ctx,
 			products: config.products,
 			prefix: productPrefix,
 			customerIds: allCustomerIds,
-			createInStripe: config.productCreateInStripe,
-		});
-	}
-
-	// 1.5. Referral program. Suffix IDs with productPrefix for isolation.
-	if (config.referralProgram) {
-		const { reward, program } = config.referralProgram;
-
-		// Suffix reward ID and free_product_id (if set)
-		reward.id = `${reward.id}_${productPrefix}`;
-		if (reward.free_product_id) {
-			reward.free_product_id = `${reward.free_product_id}_${productPrefix}`;
-		}
-
-		program.id = `${program.id}_${productPrefix}`;
-		program.internal_reward_id = reward.id;
-
-		if (program.product_ids && program.product_ids.length > 0) {
-			program.product_ids = program.product_ids.map(
-				(pid) => `${pid}_${productPrefix}`,
-			);
-		}
-
-		await createReferralProgram({
-			db: ctx.db,
-			orgId: ctx.org.id,
-			env: ctx.env,
-			autumn: cleanupAutumn,
-			reward,
-			rewardProgram: program,
-		});
-	}
-
-	// 1.6. Standalone rewards. Suffix IDs with productPrefix.
-	for (const rewardConfig of config.rewards) {
-		const { reward, productId } = rewardConfig;
-
-		reward.id = `${reward.id}_${productPrefix}`;
-		const prefixedProductId = `${productId}_${productPrefix}`;
-
-		await createReward({
-			db: ctx.db,
-			orgId: ctx.org.id,
-			env: ctx.env,
-			autumn: cleanupAutumn,
-			reward,
-			productId: prefixedProductId,
-		});
-	}
-
-	// 1.7. Insert feature grant rewards (if configured)
-	for (const fg of config.featureGrants) {
-		const rewardId = fg.id ?? `feature-grant-${Date.now()}`;
-
-		// Resolve external feature_ids to internal_feature_ids
-		const resolvedEntitlements: RewardEntitlement[] = fg.entitlements.map(
-			(ent) => {
-				const feature = ctx.features.find((f) => f.id === ent.feature_id);
-				if (!feature) {
-					throw new Error(
-						`Feature "${ent.feature_id}" not found in ctx.features for feature grant reward`,
-					);
-				}
-				return {
-					internal_feature_id: feature.internal_id!,
-					allowance: ent.allowance,
-					expiry: ent.expiry,
-				};
-			},
-		);
-
-		await rewardRepo.insert({
-			db: ctx.db,
-			data: {
-				internal_id: generateId("rew"),
-				id: rewardId,
-				org_id: ctx.org.id,
-				env: ctx.env,
-				type: RewardType.FeatureGrant,
-				name: fg.name ?? rewardId,
-				entitlements: resolvedEntitlements,
-				promo_codes: fg.promoCodes.map((pc) => ({
-					code: pc.code,
-					max_redemptions: pc.max_redemptions,
-					first_time_transaction: pc.first_time_transaction,
-				})),
-				created_at: Date.now(),
-			},
 		});
 	}
 
 	// 2. Initialize customer (only if customerId is provided)
-	let testClockId: string | undefined;
-	let customer: Awaited<ReturnType<typeof initCustomerV3>>["customer"] | null =
+	let customer: Awaited<ReturnType<typeof initTestCustomer>>["customer"] | null =
 		null;
 
 	if (customerId) {
-		const result = await initCustomerV3({
+		const result = await initTestCustomer({
 			ctx,
 			customerId,
 			customerData: config.customerData,
-			attachPm: config.attachPm,
-			withTestClock: config.testClock,
 			withDefault: config.withDefault ?? false,
-			// Default group matches the product prefix used in initProductsV0.
+			// Default group matches the product prefix used in initTestProducts.
 			defaultGroup: config.defaultGroup ?? customerId,
 			skipWebhooks: config.skipWebhooks,
 			sendEmailReceipts: config.sendEmailReceipts,
 			nameOverride: config.nameOverride,
 			emailOverride: config.emailOverride,
-			stripeCustomerOverrides: config.stripeCustomerOverrides,
 		});
-		testClockId = result.testClockId;
 		customer = result.customer;
 	}
 
-	// 2.5. Initialize other customers (share test clock with primary customer unless distinctTestClock is set)
+	// 2.5. Initialize other customers.
 	const otherCustomersMap = new Map<string, OtherCustomerResult>();
-	const testClockIds: Record<string, string> = {};
-	if (testClockId && customerId) {
-		testClockIds[customerId] = testClockId;
-	}
 	for (const otherCusConfig of config.otherCustomers) {
-		const useDistinctClock = otherCusConfig.distinctTestClock === true;
-		const otherResult = await initCustomerV3({
+		const otherResult = await initTestCustomer({
 			ctx,
 			customerId: otherCusConfig.id,
 			customerData: otherCusConfig.data,
-			attachPm: otherCusConfig.paymentMethod,
-			withTestClock: useDistinctClock,
-			...(!useDistinctClock && testClockId
-				? { existingTestClockId: testClockId }
-				: {}),
 			withDefault: false,
 			defaultGroup: productPrefix,
 			skipWebhooks: config.skipWebhooks,
@@ -1423,9 +1089,6 @@ export async function initScenario({
 			id: otherCusConfig.id,
 			customer: otherResult.customer,
 		});
-		if (otherResult.testClockId) {
-			testClockIds[otherCusConfig.id] = otherResult.testClockId;
-		}
 	}
 
 	// 3. Create autumn clients
@@ -1495,8 +1158,6 @@ export async function initScenario({
 	// plans.update takes the complete link set, so sequential link actions on
 	// the same parent accumulate here instead of clobbering earlier links.
 	const catalogLinksByParent = new Map<string, Record<string, unknown>[]>();
-	let referralCode: ReferralCode | null = null;
-	let redemption: RewardRedemption | null = null;
 
 	const runAction = async (action: ScenarioAction): Promise<void> => {
 		if (action.type === "parallel") {
@@ -1557,9 +1218,9 @@ export async function initScenario({
 				entity_id: entityId,
 			});
 		} else if (action.type === "advanceClock") {
-			if (!testClockId) {
+			if (!customer) {
 				throw new Error(
-					"Cannot advance test clock: testClock not enabled in customer config",
+					"Cannot advance the billing cycle: no customer was created for this scenario",
 				);
 			}
 
@@ -1568,50 +1229,31 @@ export async function initScenario({
 			if (action.toNextInvoice) {
 				// Advance to next month + hours to finalize invoice
 				const baseDate = startingFrom ?? new Date();
-				advancedTo = await advanceTestClockFn({
-					stripeCli: ctx.stripeCli,
-					testClockId,
-					advanceTo: addHours(
-						addMonths(baseDate, 1),
-						hoursToFinalizeInvoice,
-					).getTime(),
-					waitForSeconds: 30,
+				const target = addHours(
+					addMonths(baseDate, 1),
+					hoursToFinalizeInvoice,
+				).getTime();
+				advancedTo = target;
+				await advanceBillingCycle({
+					db: ctx.db,
+					internalCustomerId: customer.internal_id,
+					deltaMs: target - startingFrom.getTime(),
 				});
 			} else {
-				advancedTo = await advanceTestClockFn({
-					stripeCli: ctx.stripeCli,
-					testClockId,
+				const target = addBillingDelta({
 					startingFrom,
-					numberOfDays: action.days,
-					numberOfWeeks: action.weeks,
-					numberOfHours: action.hours,
-					numberOfMonths: action.months,
-					waitForSeconds: action.waitForSeconds,
+					days: action.days,
+					weeks: action.weeks,
+					hours: action.hours,
+					months: action.months,
+				});
+				advancedTo = target.getTime();
+				await advanceBillingCycle({
+					db: ctx.db,
+					internalCustomerId: customer.internal_id,
+					deltaMs: target.getTime() - startingFrom.getTime(),
 				});
 			}
-		} else if (action.type === "attachPaymentMethod") {
-			const stripeCusId = customer?.processor?.id;
-			if (!stripeCusId) {
-				throw new Error(
-					"Cannot attach payment method: customer has no Stripe ID",
-				);
-			}
-			await attachPaymentMethodFn({
-				stripeCli: ctx.stripeCli,
-				stripeCusId,
-				type: action.paymentMethodType,
-			});
-		} else if (action.type === "removePaymentMethod") {
-			const stripeCusId = customer?.processor?.id;
-			if (!stripeCusId) {
-				throw new Error(
-					"Cannot remove payment method: customer has no Stripe ID",
-				);
-			}
-			await removeAllPaymentMethods({
-				stripeClient: ctx.stripeCli,
-				stripeCustomerId: stripeCusId,
-			});
 		} else if (action.type === "warmEntityCaches") {
 			if (!customerId) {
 				throw new Error(
@@ -1676,36 +1318,41 @@ export async function initScenario({
 				items: action.items,
 			});
 		} else if (action.type === "advanceToNextInvoice") {
-			if (!testClockId) {
+			if (!customer) {
 				throw new Error(
-					"Cannot advance to next invoice: testClock not enabled in customer config",
+					"Cannot advance to next invoice: no customer was created for this scenario",
 				);
 			}
 
 			const startingFrom = new Date(advancedTo);
 			if (action.withPause) {
-				advancedTo = await advanceTestClockFn({
-					stripeCli: ctx.stripeCli,
-					testClockId,
-					advanceTo: addMonths(startingFrom, 1).getTime(),
-					waitForSeconds: 15,
+				const monthBoundary = addMonths(startingFrom, 1).getTime();
+				await advanceBillingCycle({
+					db: ctx.db,
+					internalCustomerId: customer.internal_id,
+					deltaMs: monthBoundary - startingFrom.getTime(),
 				});
-				await advanceTestClockFn({
-					stripeCli: ctx.stripeCli,
-					testClockId,
-					advanceTo: addHours(advancedTo, hoursToFinalizeInvoice).getTime(),
-					waitForSeconds: 15,
+				const finalizeAt = addHours(
+					new Date(monthBoundary),
+					hoursToFinalizeInvoice,
+				).getTime();
+				await advanceBillingCycle({
+					db: ctx.db,
+					internalCustomerId: customer.internal_id,
+					deltaMs: finalizeAt - monthBoundary,
 				});
+				advancedTo = finalizeAt;
 			} else {
-				advancedTo = await advanceTestClockFn({
-					stripeCli: ctx.stripeCli,
-					testClockId,
-					advanceTo: addHours(
-						addMonths(startingFrom, 1),
-						hoursToFinalizeInvoice,
-					).getTime(),
-					waitForSeconds: 30,
+				const target = addHours(
+					addMonths(startingFrom, 1),
+					hoursToFinalizeInvoice,
+				).getTime();
+				await advanceBillingCycle({
+					db: ctx.db,
+					internalCustomerId: customer.internal_id,
+					deltaMs: target - startingFrom.getTime(),
 				});
+				advancedTo = target;
 			}
 		} else if (action.type === "billingAttach") {
 			// Override or fall back to primary customerId.
@@ -1843,49 +1490,6 @@ export async function initScenario({
 			licenseAssignments.push(
 				...list.filter((assignment) => assignedIds.has(assignment.entity_id)),
 			);
-		} else if (action.type === "createReferralCode") {
-			if (!customerId) {
-				throw new Error("Cannot create referral code: customerId is required");
-			}
-			if (!config.referralProgram) {
-				throw new Error(
-					"Cannot create referral code: s.referralProgram() must be configured in setup",
-				);
-			}
-			referralCode = await autumnV1.referrals.createCode({
-				customerId,
-				referralId: config.referralProgram.program.id,
-			});
-		} else if (action.type === "redeemReferralCode") {
-			if (!referralCode) {
-				throw new Error(
-					"Cannot redeem referral code: s.referral.createCode() must be called first",
-				);
-			}
-			redemption = await autumnV1.referrals.redeem({
-				customerId: action.customerId,
-				code: referralCode.code,
-			});
-		} else if (action.type === "createAndRedeemReferralCode") {
-			if (!customerId) {
-				throw new Error("Cannot create referral code: customerId is required");
-			}
-			if (!config.referralProgram) {
-				throw new Error(
-					"Cannot create referral code: s.referralProgram() must be configured in setup",
-				);
-			}
-			// Create code for primary customer
-			const createdCode = await autumnV1.referrals.createCode({
-				customerId,
-				referralId: config.referralProgram.program.id,
-			});
-			referralCode = createdCode;
-			// Redeem for specified customer
-			redemption = await autumnV1.referrals.redeem({
-				customerId: action.customerId,
-				code: createdCode.code,
-			});
 		} else if (action.type === "resetFeature") {
 			if (!customerId) {
 				throw new Error(
@@ -1911,18 +1515,7 @@ export async function initScenario({
 			// Wait for cache to clear.
 			const waitTime = action.timeout ?? 2000;
 			await new Promise((resolve) => setTimeout(resolve, waitTime));
-		} else if (action.type === "redeemReward") {
-			const targetCustomerId = action.customerId ?? customerId;
-			if (!targetCustomerId) {
-				throw new Error(
-					"Cannot redeem reward: customerId is required when using s.rewards.redeem()",
-				);
-			}
-			await autumnV1.rewards.redeem({
-				code: action.code,
-				customerId: targetCustomerId,
-			});
-		}
+	}
 	};
 
 	for (const action of config.actions) {
@@ -1939,15 +1532,11 @@ export async function initScenario({
 		autumnV2_2,
 		autumnV2_3,
 		autumnV2_4,
-		testClockId,
-		testClockIds,
 		customer,
 		ctx,
 		entities: generatedEntities,
 		licenseAssignments,
 		advancedTo,
 		otherCustomers: otherCustomersMap,
-		referralCode,
-		redemption,
 	};
 }

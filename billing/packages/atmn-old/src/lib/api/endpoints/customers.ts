@@ -15,7 +15,7 @@ export interface ApiCustomer {
 	email: string | null;
 	created_at: number;
 	fingerprint: string | null;
-	stripe_id: string | null;
+	processor_id: string | null;
 	env: string;
 	metadata: Record<string, unknown>;
 	subscriptions: unknown[];

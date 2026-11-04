@@ -41,7 +41,6 @@ export const insertCopyTestOrg = async ({
 		created_at: Date.now(),
 		created_by: masterOrgId,
 		is_sandbox: isSandbox,
-		stripe_connected: false,
 		default_currency: "usd",
 		config: {} as OrgConfig,
 		onboarded: true,

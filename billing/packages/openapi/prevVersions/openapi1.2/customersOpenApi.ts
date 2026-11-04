@@ -133,12 +133,6 @@ export const customersOpenApi = {
 				path: z.object({
 					customer_id: z.string(),
 				}),
-				query: z.object({
-					delete_in_stripe: z.boolean().default(false).meta({
-						description:
-							"Whether to delete the customer and cancel all existing subscriptions in Stripe.",
-					}),
-				}),
 			},
 			responses: {
 				"200": {

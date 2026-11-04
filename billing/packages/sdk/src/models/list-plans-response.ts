@@ -30,8 +30,6 @@ import {
   ListPlansItem$inboundSchema,
   ListPlansPrice,
   ListPlansPrice$inboundSchema,
-  ListPlansProcessors,
-  ListPlansProcessors$inboundSchema,
 } from "./list-plans-variant-details-usage-alert.js";
 import { SDKValidationError } from "./sdk-validation-error.js";
 import {
@@ -53,8 +51,6 @@ import {
   VariantPlanSpendLimit$inboundSchema,
   VariantPlanUsageLimitInterval,
   VariantPlanUsageLimitInterval$inboundSchema,
-  VariantProcessors,
-  VariantProcessors$inboundSchema,
 } from "./variant-plan-usage-limit-interval.js";
 
 /**
@@ -306,11 +302,7 @@ export type ListPlansPlan = {
    * Feature configurations included in this plan. Each item defines included units, pricing, and reset behavior for a feature.
    */
   items: Array<VariantItem>;
-  /**
-   * Payment processors this plan is connected to. Omitted when unset.
-   */
-  processors?: VariantProcessors | undefined;
-  /**
+    /**
    * Free trial configuration. If set, new customers can try this plan before being charged.
    */
   freeTrial?: VariantFreeTrial | undefined;
@@ -412,11 +404,7 @@ export type ListPlansList = {
    * Feature configurations included in this plan. Each item defines included units, pricing, and reset behavior for a feature.
    */
   items: Array<ListPlansItem>;
-  /**
-   * Payment processors this plan is connected to. Omitted when unset.
-   */
-  processors?: ListPlansProcessors | undefined;
-  /**
+    /**
    * Free trial configuration. If set, new customers can try this plan before being charged.
    */
   freeTrial?: ListPlansFreeTrial | undefined;
@@ -714,7 +702,6 @@ export const ListPlansPlan$inboundSchema: z.ZodMiniType<
     auto_enable: types.boolean(),
     price: types.nullable(VariantPlanPrice$inboundSchema),
     items: z.array(VariantItem$inboundSchema),
-    processors: types.optional(VariantProcessors$inboundSchema),
     free_trial: types.optional(VariantFreeTrial$inboundSchema),
     created_at: types.number(),
     env: VariantEnv$inboundSchema,
@@ -798,7 +785,6 @@ export const ListPlansList$inboundSchema: z.ZodMiniType<
     auto_enable: types.boolean(),
     price: types.nullable(ListPlansPrice$inboundSchema),
     items: z.array(ListPlansItem$inboundSchema),
-    processors: types.optional(ListPlansProcessors$inboundSchema),
     free_trial: types.optional(ListPlansFreeTrial$inboundSchema),
     created_at: types.number(),
     env: ListPlansEnv$inboundSchema,

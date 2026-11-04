@@ -9,11 +9,11 @@ openapi: "api/openapi.yml webhook invoice.finalized"
   Array of plan IDs included in this invoice
 </ParamField>
 
-<ParamField body="stripe_id" type="string" required>
-  The Stripe invoice ID
+<ParamField body="processor_invoice_id" type="string" required>
+  The processor invoice ID
 </ParamField>
 
-<ParamField body="processor_type" type="'stripe' | 'revenuecat'" required>
+<ParamField body="processor_type" type="'paypal'" required>
   The billing processor that owns this invoice.
 </ParamField>
 
@@ -34,7 +34,7 @@ openapi: "api/openapi.yml webhook invoice.finalized"
 </ParamField>
 
 <ParamField body="hosted_invoice_url" type="string | null">
-  URL to the Stripe-hosted invoice page
+  URL to the processor-hosted invoice page
 </ParamField>
 
 <ParamField body="id" type="string" required>
@@ -58,7 +58,7 @@ openapi: "api/openapi.yml webhook invoice.finalized"
 </ParamField>
 
 <ParamField body="items" type="object[]">
-  Line items on the invoice, one per line as shown in Stripe. Capped at 100. Empty for invoices recorded before line item storage.
+  Line items on the invoice, one per line as shown in the processor. Capped at 100. Empty for invoices recorded before line item storage.
   <Expandable title="properties">
     <ParamField body="id" type="string" required>
       The MeterPal invoice line item ID. Stable across reads, and can be used to reference this line in later calls.

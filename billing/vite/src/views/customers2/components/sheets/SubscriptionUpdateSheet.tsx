@@ -32,13 +32,11 @@ import {
 } from "@/components/v2/sheets/SharedSheetComponents";
 import { useFeaturesQuery } from "@/hooks/queries/useFeaturesQuery";
 import { useLicenseProductsQuery } from "@/hooks/queries/useLicenseProductsQuery";
-import { useOrgStripeQuery } from "@/hooks/queries/useOrgStripeQuery";
 import { useProductVersionQuery } from "@/hooks/queries/useProductVersionQuery";
 import { usePrepaidItems } from "@/hooks/stores/useProductStore";
 import { useSheetStore } from "@/hooks/stores/useSheetStore";
 import { useSubscriptionById } from "@/hooks/stores/useSubscriptionStore";
 import { cn } from "@/lib/utils";
-import { useEnv } from "@/utils/envUtils";
 import { useSettleApprovalOnApply } from "@/views/approvals/hooks/useSettleApprovalOnApply";
 import { approvalSeedFromSheetData } from "@/views/approvals/utils/approvalSheetIntegration";
 import { useCusQuery } from "@/views/customers/customer/hooks/useCusQuery";
@@ -49,8 +47,6 @@ function SendInvoiceContent() {
 	const { formContext, isPending, handleInvoiceUpdate, previewQuery } =
 		useUpdateSubscriptionFormContext();
 	const { customerProduct } = formContext;
-	const { stripeAccount } = useOrgStripeQuery();
-	const env = useEnv();
 	const { setSheet } = useSheetStore();
 	const itemId = useSheetStore((s) => s.itemId);
 
@@ -62,8 +58,6 @@ function SendInvoiceContent() {
 					previewQuery={previewQuery}
 					isPending={isPending}
 					onSubmit={handleInvoiceUpdate}
-					stripeAccount={stripeAccount}
-					env={env}
 					onBack={() => setSheet({ type: "subscription-update", itemId })}
 				/>
 			</div>

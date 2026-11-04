@@ -7,6 +7,9 @@ Per-unit pricing charges customers based on the quantity of a resource they use 
 
 ## Setting up
 
+
+
+
 Create a `non-consumable` metered feature and add it to a plan with a per-unit price:
 
 ```ts autumn.config.ts
@@ -43,6 +46,10 @@ export default atmn({ features: [seats], plans: [pro] });
 
 Preview with `atmn push`, then apply with `atmn push --yes`.
 
+
+
+
+
 ## Billing methods
 
 | Method | When charged | Quantity | Best for |
@@ -52,7 +59,7 @@ Preview with `atmn push`, then apply with `atmn push --yes`.
 
 ### Prepaid per-unit
 
-With prepaid, the customer selects a **total quantity** when purchasing. The `quantity` includes any free included amount — Autumn subtracts the included amount and charges for the remainder.
+With prepaid, the customer selects a **total quantity** when purchasing. The `quantity` includes any free included amount — MeterPal subtracts the included amount and charges for the remainder.
 
 For example, with 5 included seats at $10/extra seat, a customer who selects `quantity: 10` gets 10 seats total and pays for 5 extra seats ($50/month).
 
@@ -108,11 +115,13 @@ curl -X POST "https://api.useautumn.com/v1/billing/attach" \
 
 The customer's balance is set to the total quantity (10). If they're upgrading and already have seats in use, the existing usage is carried over — so a customer with 3 seats in use would see a remaining balance of 7.
 
-Autumn does not prevent you from passing a `quantity` lower than the customer's current usage. If the customer has 5 seats in use and you pass `quantity: 3`, the balance goes negative (-2). The `check` endpoint will return `allowed: false`, preventing new seats from being added, but existing seats are not forcibly removed.
+
+MeterPal does not prevent you from passing a `quantity` lower than the customer's current usage. If the customer has 5 seats in use and you pass `quantity: 3`, the balance goes negative (-2). The `check` endpoint will return `allowed: false`, preventing new seats from being added, but existing seats are not forcibly removed.
+
 
 ### Usage-based per-unit
 
-With usage-based billing, no quantity is needed at purchase time. Track seat additions and removals as they happen, and Autumn bills for the actual number of seats in use.
+With usage-based billing, no quantity is needed at purchase time. Track seat additions and removals as they happen, and MeterPal bills for the actual number of seats in use.
 
 <CodeGroup>
 
@@ -179,7 +188,7 @@ When a customer purchases the plan, any seats already in use are **automatically
 
 ## Existing usage on upgrade
 
-When a customer upgrades from one plan to another, Autumn **automatically carries over** their current seat usage to the new plan. This ensures there's no gap in tracking — existing seats don't disappear or go unbilled.
+When a customer upgrades from one plan to another, MeterPal **automatically carries over** their current seat usage to the new plan. This ensures there's no gap in tracking — existing seats don't disappear or go unbilled.
 
 ### Prepaid
 
@@ -188,16 +197,16 @@ The customer's balance is set to their chosen quantity. Existing usage is then d
 > **Example**: Customer has **3 seats** in use. They purchase a plan with 5 included seats, passing `quantity: 10`.
 > - Balance is set to 10 (5 included + 5 purchased)
 > - 3 existing seats are deducted → **7 remaining**
-> - Stripe charges for 10 seats (with 5 in the free tier)
+> - The processor charges for 10 seats (with 5 in the free tier)
 
 ### Usage-based
 
-No quantity is needed. The Stripe subscription quantity is set to the customer's current usage automatically.
+No quantity is needed. The processor subscription quantity is set to the customer's current usage automatically.
 
 > **Example**: Customer has **3 seats** in use. They purchase a plan with 5 included seats at $10/extra seat.
 > - Balance starts at 5 (included amount)
 > - 3 existing seats are deducted → **2 remaining**
-> - Stripe subscription reflects 3 seats in use (within the free tier, so no extra charge)
+> - Processor subscription reflects 3 seats in use (within the free tier, so no extra charge)
 > - When they add a 6th seat, billing begins at $10/seat for the overage
 
 | Scenario | Prepaid (qty: 8) | Usage-based |

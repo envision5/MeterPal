@@ -2,7 +2,7 @@
  * Shared, mutable UI state for the `bun tw` opentui TUI.
  *
  * The orchestrator (commands/run.ts) drives this store via the exported mutators
- * at each lifecycle hook (warm activity, stripe/worker provisioning, per-file
+ * at each lifecycle hook (warm activity, worker provisioning, per-file
  * test results, teardown deletions, final summary). The React app reads the live
  * state and re-renders on a fixed ~10fps tick (see App.tsx) — the proven
  * mutable-state + interval-flush pattern, which decouples high-frequency updates
@@ -66,8 +66,6 @@ export type TuiState = {
 	/** Latest non-empty log line in ANY phase — the dashboard's activity ticker. */
 	lastLine: string;
 	/** FAN-OUT progress. */
-	stripeDone: number;
-	stripeTotal: number;
 	workersReady: number;
 	workersTotal: number;
 	/** Workers that failed to provision (restore/checkout/boot error before READY). */
@@ -78,8 +76,6 @@ export type TuiState = {
 	/** TEARDOWN progress. */
 	sandboxesDone: number;
 	sandboxesTotal: number;
-	accountsDone: number;
-	accountsTotal: number;
 	/** DONE. */
 	summary?: TuiSummary;
 	/** Raw logs ring buffer for Pane B. */
@@ -123,8 +119,6 @@ const state: TuiState = {
 	warmHit: null,
 	phaseStartedAt: Date.now(),
 	lastLine: "",
-	stripeDone: 0,
-	stripeTotal: 0,
 	workersReady: 0,
 	workersTotal: 0,
 	workersFailed: 0,
@@ -132,8 +126,6 @@ const state: TuiState = {
 	runTotal: 0,
 	sandboxesDone: 0,
 	sandboxesTotal: 0,
-	accountsDone: 0,
-	accountsTotal: 0,
 	summary: undefined,
 	logs: [],
 	dashboardUrl: undefined,
@@ -156,8 +148,6 @@ export const resetTui = (): void => {
 	state.warmHit = null;
 	state.phaseStartedAt = Date.now();
 	state.lastLine = "";
-	state.stripeDone = 0;
-	state.stripeTotal = 0;
 	state.workersReady = 0;
 	state.workersTotal = 0;
 	state.workersFailed = 0;
@@ -165,8 +155,6 @@ export const resetTui = (): void => {
 	state.runTotal = 0;
 	state.sandboxesDone = 0;
 	state.sandboxesTotal = 0;
-	state.accountsDone = 0;
-	state.accountsTotal = 0;
 	state.summary = undefined;
 	state.logs = [];
 	state.dashboardUrl = undefined;
@@ -192,24 +180,14 @@ export const setWarmHit = (kind: "exact" | "stale"): void => {
 	state.warmHit = kind;
 };
 
-export const setStripeProgress = (done: number, total: number): void => {
-	state.stripeDone = done;
-	state.stripeTotal = total;
-};
-
 export const setWorkerProgress = (ready: number, total: number): void => {
 	state.workersReady = ready;
 	state.workersTotal = total;
 };
 
-/** Set fan-out totals (Stripe accounts + workers both equal the pool size). */
+/** Set fan-out totals (the worker pool size). */
 export const setFanoutTotals = (total: number): void => {
-	state.stripeTotal = total;
 	state.workersTotal = total;
-};
-
-export const bumpStripeDone = (): void => {
-	state.stripeDone++;
 };
 
 export const bumpWorkerReady = (): void => {
@@ -222,10 +200,6 @@ export const bumpWorkerFailed = (): void => {
 
 export const bumpSandboxDone = (): void => {
 	state.sandboxesDone++;
-};
-
-export const bumpAccountDone = (): void => {
-	state.accountsDone++;
 };
 
 export const setRunTotal = (total: number): void => {
@@ -271,11 +245,6 @@ export const upsertTestFile = (result: TuiTestFile): void => {
 export const setTeardownSandboxes = (done: number, total: number): void => {
 	state.sandboxesDone = done;
 	state.sandboxesTotal = total;
-};
-
-export const setTeardownAccounts = (done: number, total: number): void => {
-	state.accountsDone = done;
-	state.accountsTotal = total;
 };
 
 export const setSummary = (summary: TuiSummary): void => {

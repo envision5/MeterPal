@@ -463,7 +463,7 @@ class Entities(BaseSDK):
         :param plans: Filter by plan ID and version. Returns entities with active subscriptions to this plan, including plans inherited from the parent customer.
         :param subscription_status: Filter customer products used for entity hydration and plan matching. Defaults to active and scheduled.
         :param search: Search entities by id or name.
-        :param processors: Filter by parent customer processor type (stripe, revenuecat, vercel).
+        :param processors: Filter by parent customer processor type (paypal).
         :param customer_id: Restrict the response to entities owned by this customer id. Use to bulk-fetch all entities for one customer in a single paginated call instead of iterating entities.get.
         :param retries: Override the default retry configuration for this method
         :param server_url: Override the default server URL for this method
@@ -577,7 +577,7 @@ class Entities(BaseSDK):
         :param plans: Filter by plan ID and version. Returns entities with active subscriptions to this plan, including plans inherited from the parent customer.
         :param subscription_status: Filter customer products used for entity hydration and plan matching. Defaults to active and scheduled.
         :param search: Search entities by id or name.
-        :param processors: Filter by parent customer processor type (stripe, revenuecat, vercel).
+        :param processors: Filter by parent customer processor type (paypal).
         :param customer_id: Restrict the response to entities owned by this customer id. Use to bulk-fetch all entities for one customer in a single paginated call instead of iterating entities.get.
         :param retries: Override the default retry configuration for this method
         :param server_url: Override the default server URL for this method

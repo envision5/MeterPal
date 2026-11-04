@@ -13,7 +13,7 @@ import { transformResponsePattern } from "./utils/transform-response-pattern";
 const SCHEMA_FIELD_REMOVALS: Record<string, string[]> = {
 	ProductItem: ["feature"],
 	Product: ["properties"],
-	// CustomerData: ["fingerprint", "metadata", "stripe_id", "disable_default"],
+	// CustomerData: ["fingerprint", "metadata", "disable_default"],
 };
 
 const SNIPPET_REMOVALS: Record<string, string[]> = {
@@ -99,10 +99,17 @@ interface Transformation {
 }
 
 async function pull() {
-	const response = await fetch(
-		"https://app.stainless.com/api/spec/documented/autumn/openapi.documented.yml",
-	);
-	const data = await response.text();
+	// `OPENAPI_SPEC_PATH` pulls from a spec on disk instead of the hosted
+	// Stainless spec service — used to publish the docs from the repo's own
+	// generated contract set (e.g. right after the OpenAPI package changes).
+	const localSpecPath = process.env.OPENAPI_SPEC_PATH;
+	const data = localSpecPath
+		? await Bun.file(localSpecPath).text()
+		: await (
+				await fetch(
+					"https://app.stainless.com/api/spec/documented/autumn/openapi.documented.yml",
+				)
+			).text();
 
 	// Parse the OpenAPI spec
 	const spec = parse(data);
@@ -157,6 +164,10 @@ async function pull() {
 	// Write the modified spec
 	const filename = `./mintlify/api/openapi-${version}.yml`;
 	await Bun.write(filename, stringify(finalSpec));
+
+	// `mintlify/api/openapi.yml` is the spec Mintlify renders the
+	// api-reference pages from — keep it in sync with the versioned file.
+	await Bun.write("./mintlify/api/openapi.yml", stringify(finalSpec));
 
 	console.log(`\n✓ Pulled OpenAPI spec version ${version} to ${filename}`);
 }

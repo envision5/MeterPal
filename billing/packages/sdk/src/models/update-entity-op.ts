@@ -50,7 +50,7 @@ export type UpdateEntitySpendLimitRequestBody = {
    */
   overageLimit?: number | undefined;
   /**
-   * When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally.
+   * When true, overage for this feature is not posted to the billing processor. Usage tracking and balance resets still behave normally.
    */
   skipOverageBilling?: boolean | undefined;
 };
@@ -799,23 +799,7 @@ export type UpdateEntityDisplay = {
   plural?: string | null | undefined;
 };
 
-export type UpdateEntityStripe = {
-  /**
-   * Stripe product ID this feature's usage prices bill under.
-   */
-  productId?: string | undefined;
-  /**
-   * Stripe meter ID used to create this feature's metered price.
-   */
-  meterId?: string | undefined;
-};
 
-/**
- * Processor mappings for this feature. Present when a Stripe product or meter is set.
- */
-export type UpdateEntityProcessors = {
-  stripe?: UpdateEntityStripe | undefined;
-};
 
 /**
  * The full feature object if expanded.
@@ -874,11 +858,7 @@ export type UpdateEntityFeature = {
    * Whether the feature is archived and hidden from the dashboard.
    */
   archived: boolean;
-  /**
-   * Processor mappings for this feature. Present when a Stripe product or meter is set.
-   */
-  processors?: UpdateEntityProcessors | undefined;
-};
+  };
 
 export type UpdateEntityFlags = {
   /**
@@ -949,7 +929,7 @@ export type UpdateEntitySpendLimitResponse = {
    */
   overageLimit?: number | undefined;
   /**
-   * When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally.
+   * When true, overage for this feature is not posted to the billing processor. Usage tracking and balance resets still behave normally.
    */
   skipOverageBilling?: boolean | undefined;
   /**
@@ -1187,8 +1167,7 @@ export type UpdateEntityBillingControlsResponse = {
  * The billing processor that owns this invoice.
  */
 export const UpdateEntityProcessorType = {
-  Stripe: "stripe",
-  Revenuecat: "revenuecat",
+  Paypal: "paypal",
 } as const;
 /**
  * The billing processor that owns this invoice.
@@ -1203,9 +1182,9 @@ export type UpdateEntityInvoice = {
    */
   planIds: Array<string>;
   /**
-   * The Stripe invoice ID
+   * The processor invoice ID
    */
-  stripeId: string;
+  processorInvoiceId: string;
   /**
    * The billing processor that owns this invoice.
    */
@@ -1227,7 +1206,7 @@ export type UpdateEntityInvoice = {
    */
   createdAt: number;
   /**
-   * URL to the Stripe-hosted invoice page
+   * URL to the processor-hosted invoice page
    */
   hostedInvoiceUrl?: string | null | undefined;
 };
@@ -2578,50 +2557,9 @@ export function updateEntityDisplayFromJSON(
   );
 }
 
-/** @internal */
-export const UpdateEntityStripe$inboundSchema: z.ZodMiniType<
-  UpdateEntityStripe,
-  unknown
-> = z.pipe(
-  z.object({
-    product_id: types.optional(types.string()),
-    meter_id: types.optional(types.string()),
-  }),
-  z.transform((v) => {
-    return remap$(v, {
-      "product_id": "productId",
-      "meter_id": "meterId",
-    });
-  }),
-);
 
-export function updateEntityStripeFromJSON(
-  jsonString: string,
-): SafeParseResult<UpdateEntityStripe, SDKValidationError> {
-  return safeParse(
-    jsonString,
-    (x) => UpdateEntityStripe$inboundSchema.parse(JSON.parse(x)),
-    `Failed to parse 'UpdateEntityStripe' from JSON`,
-  );
-}
 
-/** @internal */
-export const UpdateEntityProcessors$inboundSchema: z.ZodMiniType<
-  UpdateEntityProcessors,
-  unknown
-> = z.object({
-  stripe: types.optional(z.lazy(() => UpdateEntityStripe$inboundSchema)),
-});
 
-export function updateEntityProcessorsFromJSON(
-  jsonString: string,
-): SafeParseResult<UpdateEntityProcessors, SDKValidationError> {
-  return safeParse(
-    jsonString,
-    (x) => UpdateEntityProcessors$inboundSchema.parse(JSON.parse(x)),
-    `Failed to parse 'UpdateEntityProcessors' from JSON`,
-  );
-}
 
 /** @internal */
 export const UpdateEntityFeature$inboundSchema: z.ZodMiniType<
@@ -2654,9 +2592,6 @@ export const UpdateEntityFeature$inboundSchema: z.ZodMiniType<
       UpdateEntityDisplay$inboundSchema
     )),
     archived: types.boolean(),
-    processors: types.optional(z.lazy(() =>
-      UpdateEntityProcessors$inboundSchema
-    )),
   }),
   z.transform((v) => {
     return remap$(v, {
@@ -2985,10 +2920,10 @@ export const UpdateEntityInvoice$inboundSchema: z.ZodMiniType<
 > = z.pipe(
   z.object({
     plan_ids: z.array(types.string()),
-    stripe_id: types.string(),
+    processor_invoice_id: types.string(),
     processor_type: z._default(
       UpdateEntityProcessorType$inboundSchema,
-      "stripe",
+      "paypal",
     ),
     status: types.string(),
     total: types.number(),
@@ -2999,7 +2934,7 @@ export const UpdateEntityInvoice$inboundSchema: z.ZodMiniType<
   z.transform((v) => {
     return remap$(v, {
       "plan_ids": "planIds",
-      "stripe_id": "stripeId",
+      "processor_invoice_id": "processorInvoiceId",
       "processor_type": "processorType",
       "created_at": "createdAt",
       "hosted_invoice_url": "hostedInvoiceUrl",

@@ -23,7 +23,7 @@ const CONFIG_TOGGLES = [
 	{
 		key: "disable_overage_billing",
 		label: "Disable overage billing",
-		description: "Stop posting usage overage line items to Stripe",
+		description: "Stop posting usage overage line items to invoices",
 	},
 ] as const satisfies readonly {
 	key: keyof CustomerConfig;

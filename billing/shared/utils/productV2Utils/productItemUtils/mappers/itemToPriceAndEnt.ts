@@ -36,7 +36,6 @@ import {
 import { RecaseError } from "../../../../api/errors/base/RecaseError";
 import { entsAreSame } from "../../../productUtils/entUtils/compareEnt/entsAreSame.js";
 import { pricesAreSame } from "../../../productUtils/priceUtils/comparePrice/pricesAreSame.js";
-import { stripePriceIdForInitializedPrice } from "../../../productUtils/priceUtils/match/stripePriceIdForInitializedPrice.js";
 import { getBillingType } from "../../../productUtils/priceUtils.js";
 import { notNullish, nullish } from "../../../utils.js";
 import { itemCanBeProrated } from "../classifyItemUtils.js";
@@ -76,7 +75,6 @@ const toPrice = ({
 	isCustom,
 	newVersion,
 	curPrice,
-	stripeReusePrice,
 }: {
 	item: ProductItem;
 	orgId: string;
@@ -84,16 +82,12 @@ const toPrice = ({
 	isCustom: boolean;
 	newVersion?: boolean;
 	curPrice?: Price;
-	stripeReusePrice?: Price;
 }) => {
 	const config: FixedPriceConfig = {
 		type: PriceType.Fixed,
 		amount: notNullish(item.price) ? item.price : item.tiers![0].amount,
 		interval: itemToBillingInterval({ item }) as BillingInterval,
 		interval_count: itemToBillingIntervalCount({ item }),
-		// stripe_price_id: item.stripe_price_id ?? null,
-		stripe_product_id: null,
-		stripe_price_id: undefined,
 		feature_id: null,
 		internal_feature_id: null,
 	};
@@ -122,12 +116,6 @@ const toPrice = ({
 			created_at: Date.now(),
 		};
 	}
-
-	config.stripe_price_id = stripePriceIdForInitializedPrice({
-		requestedStripePriceId: item.stripe_price_id,
-		currentPrice: stripeReusePrice ?? curPrice,
-		newPrice: price,
-	});
 
 	return { price, ent: null };
 };
@@ -210,7 +198,6 @@ const toFeatureAndPrice = ({
 	curEnt,
 	newVersion,
 	features,
-	stripeReusePrice,
 }: {
 	item: ProductItem;
 	orgId: string;
@@ -221,7 +208,6 @@ const toFeatureAndPrice = ({
 	curEnt?: Entitlement;
 	newVersion?: boolean;
 	features: Feature[];
-	stripeReusePrice?: Price;
 }) => {
 	const resetUsage = getResetUsage({
 		item,
@@ -307,7 +293,6 @@ const toFeatureAndPrice = ({
 				})) as UsageTier[]),
 		interval: itemToBillingInterval({ item }) as BillingInterval,
 		interval_count: itemToBillingIntervalCount({ item }),
-		stripe_price_id: null,
 		threshold_billing: item.config?.threshold_billing,
 	};
 
@@ -370,36 +355,12 @@ const toFeatureAndPrice = ({
 		});
 	}
 
-	const priceOrEntDifferent =
-		(curPrice && !pricesAreSame(curPrice, price, true)) ||
-		(curEnt && !entsAreSame(curEnt, ent));
-
-	if (curPrice && (priceOrEntDifferent || newVersion)) {
-		const newConfig = price.config as UsagePriceConfig;
-		const curConfig = curPrice.config as UsagePriceConfig;
-		newConfig.stripe_meter_id = curConfig.stripe_meter_id;
-		newConfig.stripe_product_id = curConfig.stripe_product_id;
-		price.config = newConfig;
-	}
-
 	if ((isCustom || newVersion) && !item.price_id) {
 		price = {
 			...price,
 			id: priceId(),
 			created_at: Date.now(),
 		};
-	}
-
-	config.stripe_price_id =
-		stripePriceIdForInitializedPrice({
-			requestedStripePriceId: item.stripe_price_id,
-			currentPrice: stripeReusePrice ?? curPrice,
-			newPrice: price,
-		}) ?? null;
-
-	// Adopted V2 price: honoured as stated, existence-checked before Stripe init.
-	if (item.stripe_prepaid_price_v2_id) {
-		config.stripe_prepaid_price_v2_id = item.stripe_prepaid_price_v2_id;
 	}
 
 	return { price, ent };
@@ -415,7 +376,6 @@ export const itemToPriceAndEnt = ({
 	isCustom,
 	newVersion,
 	features,
-	stripeReusePrice,
 }: {
 	item: ProductItem;
 	orgId: string;
@@ -426,7 +386,6 @@ export const itemToPriceAndEnt = ({
 	isCustom: boolean;
 	newVersion?: boolean;
 	features: Feature[];
-	stripeReusePrice?: Price;
 }) => {
 	let newPrice: Price | null = null;
 	let newEnt: Entitlement | null = null;
@@ -445,7 +404,6 @@ export const itemToPriceAndEnt = ({
 			isCustom,
 			newVersion,
 			curPrice,
-			stripeReusePrice,
 		});
 
 		if (!curPrice || newVersion) {
@@ -501,7 +459,6 @@ export const itemToPriceAndEnt = ({
 			curEnt,
 			newVersion,
 			features,
-			stripeReusePrice,
 		});
 
 		const entSame = curEnt && entsAreSame(curEnt, ent);

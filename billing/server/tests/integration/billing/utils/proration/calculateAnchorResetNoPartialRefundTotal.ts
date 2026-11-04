@@ -2,7 +2,7 @@
  * Calculate the expected invoice total for `billing_cycle_anchor: "now"` +
  * `proration_behavior: "none"` with full-period-only refunds.
  *
- * Fetches the billing period from Stripe and computes:
+ * Fetches the billing period from the processor and computes:
  * - Charge: full newAmount (no proration on the incoming plan)
  * - Refund: time-based prorated credit from the snapped cycle boundary to period end
  *
@@ -18,7 +18,7 @@ import { Decimal } from "decimal.js";
 import { calculateProrationFromPeriod } from "./calculateProration";
 import { getBillingPeriod } from "./getBillingPeriod";
 
-const floorToStripeSecond = (timestampMs: number) =>
+const floorToProcessorSecond = (timestampMs: number) =>
 	Math.floor(timestampMs / 1000) * 1000;
 
 export const calculateAnchorResetNoPartialRefundTotal = async ({
@@ -43,7 +43,7 @@ export const calculateAnchorResetNoPartialRefundTotal = async ({
 		interval,
 	});
 
-	const now = floorToStripeSecond(advancedTo);
+	const now = floorToProcessorSecond(advancedTo);
 
 	const cycleStart = getCycleStart({
 		anchor: billingPeriod.start,

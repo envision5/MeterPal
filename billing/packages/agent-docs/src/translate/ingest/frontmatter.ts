@@ -1,4 +1,4 @@
-const BLOCK = /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/;
+const BLOCK = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/;
 const FIELD = /^([A-Za-z0-9_-]+):\s*(.*)$/;
 
 /** Parse simple `key: value` frontmatter plus the remaining body. */
@@ -14,7 +14,7 @@ export const parseFrontmatter = ({
 		throw new Error(`Missing frontmatter in ${path}`);
 	}
 	const data: Record<string, string> = {};
-	for (const line of (match[1] ?? "").split("\n")) {
+	for (const line of (match[1] ?? "").split(/\r?\n/)) {
 		if (!line.trim()) {
 			continue;
 		}

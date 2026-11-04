@@ -52,12 +52,12 @@ const remoteItem = (interval: string) => {
 		mappingIdentity: mappingIdentityOf({ value, identity }),
 		price: {
 			...value.price,
-			processors: { stripe: { priceId: `price_${interval}` } },
+			processors: { paypal: { priceId: `price_${interval}` } },
 		},
 	};
 };
 
-test("internal schema generates every existing catalog mapping location", () => {
+test("internal schema generates the catalog item identity", () => {
 	const spec = loadSpec();
 	const plans = mappingProjection({
 		schema: collectionItemSchema({ spec, collection: "plans" }),
@@ -65,23 +65,7 @@ test("internal schema generates every existing catalog mapping location", () => 
 		overlay: OVERLAY,
 		collection: "plans",
 	});
-	expect(plans?.properties?.processors?.mapping).toBe(true);
-	expect(plans?.properties?.price?.properties?.processors?.mapping).toBe(true);
-	expect(
-		plans?.properties?.items?.items?.properties?.price?.properties?.processors
-			?.mapping,
-	).toBe(true);
 	expect(plans?.properties?.items?.identity).toEqual(identity);
-	expect(
-		plans?.properties?.variants?.items?.properties?.processors?.sourcePath,
-	).toEqual(["plan", "processors"]);
-	const features = mappingProjection({
-		schema: collectionItemSchema({ spec, collection: "features" }),
-		root: spec as JsonSchema,
-		overlay: OVERLAY,
-		collection: "features",
-	});
-	expect(features?.properties?.processors?.mapping).toBe(true);
 });
 
 test("mapping assignments follow generated identity, not remote array order", () => {
@@ -94,11 +78,11 @@ test("mapping assignments follow generated identity, not remote array order", ()
 	expect(result.assignments).toEqual([
 		{
 			path: ["items", 0, "price", "processors"],
-			text: JSON.stringify({ stripe: { priceId: "price_year" } }),
+			text: JSON.stringify({ paypal: { priceId: "price_year" } }),
 		},
 		{
 			path: ["items", 1, "price", "processors"],
-			text: JSON.stringify({ stripe: { priceId: "price_month" } }),
+			text: JSON.stringify({ paypal: { priceId: "price_month" } }),
 		},
 	]);
 });
@@ -187,7 +171,7 @@ test("mapping splices never invent an incomplete price container", () => {
 	const result = mappingAssignments({
 		projection: priceProjection,
 		local: {},
-		remote: { price: { processors: { stripe: { priceId: "price_123" } } } },
+		remote: { price: { processors: { paypal: { priceId: "price_123" } } } },
 	});
 	expect(result.assignments).toEqual([]);
 	expect(result.errors).toEqual([
@@ -198,7 +182,7 @@ test("mapping splices never invent an incomplete price container", () => {
 test("authoritative mapping projection removes mappings the server no longer returns", () => {
 	const result = mappingAssignments({
 		projection,
-		local: { processors: { stripe: { productId: "prod_old" } } },
+		local: { processors: { paypal: { productId: "prod_old" } } },
 		remote: {},
 	});
 	expect(result.errors).toEqual([]);

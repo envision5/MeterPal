@@ -90,10 +90,10 @@ export const createSvixApp = async (orgId: string): Promise<string> => {
 
 /**
  * Orphan sweep for the dedicated svix-shard app (plan §9a `kill --orphans`),
- * mirroring the Stripe sub-account + Vercel sandbox sweeps: deletes test Svix
- * apps left behind by runs that SIGKILLed before recording `entry.svixAppId`.
+ * mirroring the Vercel sandbox sweep: deletes test Svix apps left behind by runs
+ * that SIGKILLed before recording `entry.svixAppId`.
  *
- * IMPORTANT: unlike Stripe/Vercel orphans, Svix test apps carry NO per-owner
+ * IMPORTANT: unlike Vercel orphans, Svix test apps carry NO per-owner
  * tag today — every run names its app `<slug>_<env>` and tags it
  * `{ org_id, env }` for the SHARED unit-test org. So we cannot scope by owner;
  * the AGE CUTOFF is the only thing preventing us from nuking an in-flight run's

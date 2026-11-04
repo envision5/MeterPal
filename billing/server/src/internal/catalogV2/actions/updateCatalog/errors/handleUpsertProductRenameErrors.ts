@@ -1,8 +1,6 @@
 import { ErrCode, RecaseError, type UpdateCatalogParams } from "@autumn/shared";
-import type { AutumnContext } from "@/honoUtils/HonoEnv";
 import type { ProductStatesContext } from "@/internal/catalogV2/actions/updateCatalog/types/updateCatalogContext";
 import type { UpdateCatalogPlan } from "@/internal/catalogV2/actions/updateCatalog/types/updateCatalogPlan";
-import { hasVercelCustomerOnProduct } from "@/internal/customers/cusProducts/repos/hasVercelCustomerOnProduct";
 
 type RenameTarget = {
 	fromId: string;
@@ -76,16 +74,13 @@ const takenPlanIdsForRename = ({
 };
 
 /**
- * Block new_plan_id when the target id is a live plan id, or when a
- * Vercel-installed customer is live on the plan (its id is their billing id).
+ * Block new_plan_id when the target id is a live plan id.
  */
 export const handleUpsertProductRenameErrors = async ({
-	ctx,
 	params,
 	productStatesContext,
 	updateCatalogPlan,
 }: {
-	ctx: AutumnContext;
 	params: UpdateCatalogParams;
 	productStatesContext: ProductStatesContext;
 	updateCatalogPlan: UpdateCatalogPlan;
@@ -103,24 +98,6 @@ export const handleUpsertProductRenameErrors = async ({
 		) {
 			throw new RecaseError({
 				message: `Cannot change product ID to ${toId}: a plan with that ID already exists (plan_id=${fromId})`,
-				code: ErrCode.InvalidRequest,
-				statusCode: 400,
-			});
-		}
-
-		if (!ctx.org.processor_configs?.vercel) continue;
-
-		const hasVercelCustomer = await hasVercelCustomerOnProduct({
-			db: ctx.db,
-			orgId: ctx.org.id,
-			env: ctx.env,
-			internalProductIds: (
-				productStatesContext.versionsByPlanId[fromId] ?? []
-			).map((product) => product.internal_id),
-		});
-		if (hasVercelCustomer) {
-			throw new RecaseError({
-				message: `Cannot change product ID while Vercel customers are subscribed to this plan (plan_id=${fromId})`,
 				code: ErrCode.InvalidRequest,
 				statusCode: 400,
 			});

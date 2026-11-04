@@ -28,8 +28,6 @@ export const useCusReferralQuery = () => {
 	});
 
 	return {
-		stripeCus: cusRewardData?.stripeCus,
-
 		redeemed: cusRewardData?.redeemed,
 		referred: cusRewardData?.referred,
 		cusRewardLoading,

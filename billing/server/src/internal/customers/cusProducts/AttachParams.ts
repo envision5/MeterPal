@@ -17,16 +17,12 @@ import type {
 	ProductOptions,
 	Reward,
 } from "@autumn/shared";
-import type Stripe from "stripe";
 import type { AutumnContext } from "../../../honoUtils/HonoEnv";
 
 // Get misc
 
 export type AttachParams = {
-	stripeCli: Stripe;
-	stripeCus?: Stripe.Customer;
 	now?: number;
-	paymentMethod: Stripe.PaymentMethod | null | undefined;
 	rewards?: Reward[];
 
 	org: Organization;
@@ -85,7 +81,6 @@ export type AttachParams = {
 	config?: AttachConfig;
 
 	// Invoice action required
-	stripeInvoiceId?: string;
 	cusEntIds?: string[];
 
 	newBillingSubscription?: boolean;

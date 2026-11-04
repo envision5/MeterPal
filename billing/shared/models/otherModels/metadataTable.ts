@@ -22,8 +22,8 @@ export const metadata = pgTable(
 		expires_at: numeric({ mode: "number" }),
 		data: jsonb(),
 		type: text("type").$type<MetadataType>(),
-		stripe_invoice_id: text("stripe_invoice_id"),
-		stripe_checkout_session_id: text("stripe_checkout_session_id"),
+		processor_invoice_id: text("processor_invoice_id"),
+		processor_checkout_session_id: text("processor_checkout_session_id"),
 	},
 	(table) => [
 		index("idx_metadata_on_type_expires_at")

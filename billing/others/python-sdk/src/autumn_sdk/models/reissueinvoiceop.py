@@ -71,13 +71,13 @@ class ReissueInvoiceInvoiceRequestBodyTypedDict(TypedDict):
     r"""Changes that apply to the replacement invoice only."""
 
     automatic_tax: NotRequired[bool]
-    r"""Enable or disable Stripe automatic tax on the replacement. Omit to inherit. Enabling clears inherited manual tax rates; use tax_rate_id: null to remove all tax."""
+    r"""Enable or disable automatic tax on the replacement. Omit to inherit. Enabling clears inherited manual tax rates; use tax_rate_id: null to remove all tax."""
     custom_fields: NotRequired[List[CustomFieldTypedDict]]
     r"""Fields shown on this invoice only, such as a PO number. Up to four; pass an empty array to clear them."""
     tax_rate_id: NotRequired[Nullable[str]]
-    r"""Stripe tax rate applied to every line. Omit to keep the original's tax, or pass null to issue the replacement with no tax."""
+    r"""Tax rate applied to every line. Omit to keep the original's tax, or pass null to issue the replacement with no tax."""
     account_tax_ids: NotRequired[Nullable[List[str]]]
-    r"""Your own Stripe tax registrations (atx_...) shown as the seller's tax numbers. Not the customer's."""
+    r"""Your own tax registrations shown as the seller's tax numbers. Not the customer's."""
     footer: NotRequired[Nullable[str]]
     r"""Footer text, overriding the original's and any template's."""
     memo: NotRequired[Nullable[str]]
@@ -90,16 +90,16 @@ class ReissueInvoiceInvoiceRequestBody(BaseModel):
     r"""Changes that apply to the replacement invoice only."""
 
     automatic_tax: Optional[bool] = None
-    r"""Enable or disable Stripe automatic tax on the replacement. Omit to inherit. Enabling clears inherited manual tax rates; use tax_rate_id: null to remove all tax."""
+    r"""Enable or disable automatic tax on the replacement. Omit to inherit. Enabling clears inherited manual tax rates; use tax_rate_id: null to remove all tax."""
 
     custom_fields: Optional[List[CustomField]] = None
     r"""Fields shown on this invoice only, such as a PO number. Up to four; pass an empty array to clear them."""
 
     tax_rate_id: OptionalNullable[str] = UNSET
-    r"""Stripe tax rate applied to every line. Omit to keep the original's tax, or pass null to issue the replacement with no tax."""
+    r"""Tax rate applied to every line. Omit to keep the original's tax, or pass null to issue the replacement with no tax."""
 
     account_tax_ids: OptionalNullable[List[str]] = UNSET
-    r"""Your own Stripe tax registrations (atx_...) shown as the seller's tax numbers. Not the customer's."""
+    r"""Your own tax registrations shown as the seller's tax numbers. Not the customer's."""
 
     footer: OptionalNullable[str] = UNSET
     r"""Footer text, overriding the original's and any template's."""
@@ -147,7 +147,7 @@ class ReissueInvoiceInvoiceRequestBody(BaseModel):
 
 
 class AddressTypedDict(TypedDict):
-    r"""Billing address. Drives tax when the org uses Stripe Tax, and is snapshotted onto the replacement."""
+    r"""Billing address. Drives tax when the org uses automatic tax, and is snapshotted onto the replacement."""
 
     line1: NotRequired[str]
     line2: NotRequired[str]
@@ -158,7 +158,7 @@ class AddressTypedDict(TypedDict):
 
 
 class Address(BaseModel):
-    r"""Billing address. Drives tax when the org uses Stripe Tax, and is snapshotted onto the replacement."""
+    r"""Billing address. Drives tax when the org uses automatic tax, and is snapshotted onto the replacement."""
 
     line1: Optional[str] = None
 
@@ -221,7 +221,7 @@ class ReissueInvoiceCustomerTypedDict(TypedDict):
     name: NotRequired[str]
     r"""Customer name shown on this and every later invoice."""
     address: NotRequired[AddressTypedDict]
-    r"""Billing address. Drives tax when the org uses Stripe Tax, and is snapshotted onto the replacement."""
+    r"""Billing address. Drives tax when the org uses automatic tax, and is snapshotted onto the replacement."""
     tax_ids: NotRequired[List[TaxIDTypedDict]]
     r"""The customer's own tax registrations, e.g. { type: 'eu_vat', value: 'FR123...' }. Replaces the existing set; pass an empty array to remove them."""
     invoice_settings_custom_fields: NotRequired[
@@ -240,7 +240,7 @@ class ReissueInvoiceCustomer(BaseModel):
     r"""Customer name shown on this and every later invoice."""
 
     address: Optional[Address] = None
-    r"""Billing address. Drives tax when the org uses Stripe Tax, and is snapshotted onto the replacement."""
+    r"""Billing address. Drives tax when the org uses automatic tax, and is snapshotted onto the replacement."""
 
     tax_ids: Optional[List[TaxID]] = None
     r"""The customer's own tax registrations, e.g. { type: 'eu_vat', value: 'FR123...' }. Replaces the existing set; pass an empty array to remove them."""
@@ -289,51 +289,8 @@ ReissueInvoiceInterval = Literal[
 r"""Billing interval (e.g. 'month', 'year')."""
 
 
-class ReissueInvoiceStripeTypedDict(TypedDict):
-    price_id: str
-    r"""Stripe price ID. For prepaid with included > 0 this is the V2 price."""
-
-
-class ReissueInvoiceStripe(BaseModel):
-    price_id: str
-    r"""Stripe price ID. For prepaid with included > 0 this is the V2 price."""
-
-
 class ReissueInvoiceProcessorsTypedDict(TypedDict):
-    r"""Bill this line under an existing Stripe price instead of an inline one."""
-
-    stripe: NotRequired[Nullable[ReissueInvoiceStripeTypedDict]]
-
-
-class ReissueInvoiceProcessors(BaseModel):
-    r"""Bill this line under an existing Stripe price instead of an inline one."""
-
-    stripe: OptionalNullable[ReissueInvoiceStripe] = UNSET
-
-    @model_serializer(mode="wrap")
-    def serialize_model(self, handler):
-        optional_fields = set(["stripe"])
-        nullable_fields = set(["stripe"])
-        serialized = handler(self)
-        m = {}
-
-        for n, f in type(self).model_fields.items():
-            k = f.alias or n
-            val = serialized.get(k, serialized.get(n))
-            is_nullable_and_explicitly_set = (
-                k in nullable_fields
-                and (self.__pydantic_fields_set__.intersection({n}))  # pylint: disable=no-member
-            )
-
-            if val != UNSET_SENTINEL:
-                if (
-                    val is not None
-                    or k not in optional_fields
-                    or is_nullable_and_explicitly_set
-                ):
-                    m[k] = val
-
-        return m
+    r"""Bill this line under an existing processor price instead of an inline one."""
 
 
 class ReissueInvoicePriceTypedDict(TypedDict):
@@ -343,8 +300,6 @@ class ReissueInvoicePriceTypedDict(TypedDict):
     r"""Billing interval (e.g. 'month', 'year')."""
     interval_count: NotRequired[float]
     r"""Number of intervals per billing cycle. Defaults to 1."""
-    processors: NotRequired[ReissueInvoiceProcessorsTypedDict]
-    r"""Bill this line under an existing Stripe price instead of an inline one."""
 
 
 class ReissueInvoicePrice(BaseModel):
@@ -357,8 +312,6 @@ class ReissueInvoicePrice(BaseModel):
     interval_count: Optional[float] = 1
     r"""Number of intervals per billing cycle. Defaults to 1."""
 
-    processors: Optional[ReissueInvoiceProcessors] = None
-    r"""Bill this line under an existing Stripe price instead of an inline one."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -387,7 +340,7 @@ ReissueInvoicePriceTo = TypeAliasType("ReissueInvoicePriceTo", Union[float, str]
 
 class ReissueInvoiceAdditionalCurrencyTypedDict(TypedDict):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
     amount: NotRequired[float]
     r"""Per-unit amount for this tier in this currency."""
     flat_amount: NotRequired[float]
@@ -396,7 +349,7 @@ class ReissueInvoiceAdditionalCurrencyTypedDict(TypedDict):
 
 class ReissueInvoiceAdditionalCurrency(BaseModel):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
 
     amount: Optional[float] = None
     r"""Per-unit amount for this tier in this currency."""
@@ -480,51 +433,8 @@ ReissueInvoiceBillingMethod = Literal[
 r"""'prepaid' for upfront payment (seats), 'usage_based' for pay-as-you-go."""
 
 
-class ReissueInvoiceItemStripeTypedDict(TypedDict):
-    price_id: str
-    r"""Stripe price ID. For prepaid with included > 0 this is the V2 price."""
-
-
-class ReissueInvoiceItemStripe(BaseModel):
-    price_id: str
-    r"""Stripe price ID. For prepaid with included > 0 this is the V2 price."""
-
-
 class ReissueInvoiceItemProcessorsTypedDict(TypedDict):
-    r"""Bill this line under an existing Stripe price instead of an inline one."""
-
-    stripe: NotRequired[Nullable[ReissueInvoiceItemStripeTypedDict]]
-
-
-class ReissueInvoiceItemProcessors(BaseModel):
-    r"""Bill this line under an existing Stripe price instead of an inline one."""
-
-    stripe: OptionalNullable[ReissueInvoiceItemStripe] = UNSET
-
-    @model_serializer(mode="wrap")
-    def serialize_model(self, handler):
-        optional_fields = set(["stripe"])
-        nullable_fields = set(["stripe"])
-        serialized = handler(self)
-        m = {}
-
-        for n, f in type(self).model_fields.items():
-            k = f.alias or n
-            val = serialized.get(k, serialized.get(n))
-            is_nullable_and_explicitly_set = (
-                k in nullable_fields
-                and (self.__pydantic_fields_set__.intersection({n}))  # pylint: disable=no-member
-            )
-
-            if val != UNSET_SENTINEL:
-                if (
-                    val is not None
-                    or k not in optional_fields
-                    or is_nullable_and_explicitly_set
-                ):
-                    m[k] = val
-
-        return m
+    r"""Bill this line under an existing processor price instead of an inline one."""
 
 
 class ReissueInvoiceItemPriceTypedDict(TypedDict):
@@ -543,8 +453,6 @@ class ReissueInvoiceItemPriceTypedDict(TypedDict):
     r"""Number of intervals per billing cycle. Defaults to 1."""
     billing_units: NotRequired[float]
     r"""Units per price increment. Usage is rounded UP when billed (e.g. billing_units=100 means 101 rounds to 200)."""
-    processors: NotRequired[ReissueInvoiceItemProcessorsTypedDict]
-    r"""Bill this line under an existing Stripe price instead of an inline one."""
 
 
 class ReissueInvoiceItemPrice(BaseModel):
@@ -570,8 +478,6 @@ class ReissueInvoiceItemPrice(BaseModel):
     billing_units: Optional[float] = 1
     r"""Units per price increment. Usage is rounded UP when billed (e.g. billing_units=100 means 101 rounds to 200)."""
 
-    processors: Optional[ReissueInvoiceItemProcessors] = None
-    r"""Bill this line under an existing Stripe price instead of an inline one."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -1317,51 +1223,8 @@ ReissueInvoiceLicenseQuantityInterval = Literal[
 r"""Billing interval (e.g. 'month', 'year')."""
 
 
-class ReissueInvoiceLicenseQuantityStripeTypedDict(TypedDict):
-    price_id: str
-    r"""Stripe price ID. For prepaid with included > 0 this is the V2 price."""
-
-
-class ReissueInvoiceLicenseQuantityStripe(BaseModel):
-    price_id: str
-    r"""Stripe price ID. For prepaid with included > 0 this is the V2 price."""
-
-
 class ReissueInvoiceLicenseQuantityProcessorsTypedDict(TypedDict):
-    r"""Bill this line under an existing Stripe price instead of an inline one."""
-
-    stripe: NotRequired[Nullable[ReissueInvoiceLicenseQuantityStripeTypedDict]]
-
-
-class ReissueInvoiceLicenseQuantityProcessors(BaseModel):
-    r"""Bill this line under an existing Stripe price instead of an inline one."""
-
-    stripe: OptionalNullable[ReissueInvoiceLicenseQuantityStripe] = UNSET
-
-    @model_serializer(mode="wrap")
-    def serialize_model(self, handler):
-        optional_fields = set(["stripe"])
-        nullable_fields = set(["stripe"])
-        serialized = handler(self)
-        m = {}
-
-        for n, f in type(self).model_fields.items():
-            k = f.alias or n
-            val = serialized.get(k, serialized.get(n))
-            is_nullable_and_explicitly_set = (
-                k in nullable_fields
-                and (self.__pydantic_fields_set__.intersection({n}))  # pylint: disable=no-member
-            )
-
-            if val != UNSET_SENTINEL:
-                if (
-                    val is not None
-                    or k not in optional_fields
-                    or is_nullable_and_explicitly_set
-                ):
-                    m[k] = val
-
-        return m
+    r"""Bill this line under an existing processor price instead of an inline one."""
 
 
 class ReissueInvoiceLicenseQuantityPriceTypedDict(TypedDict):
@@ -1371,8 +1234,6 @@ class ReissueInvoiceLicenseQuantityPriceTypedDict(TypedDict):
     r"""Billing interval (e.g. 'month', 'year')."""
     interval_count: NotRequired[float]
     r"""Number of intervals per billing cycle. Defaults to 1."""
-    processors: NotRequired[ReissueInvoiceLicenseQuantityProcessorsTypedDict]
-    r"""Bill this line under an existing Stripe price instead of an inline one."""
 
 
 class ReissueInvoiceLicenseQuantityPrice(BaseModel):
@@ -1385,8 +1246,6 @@ class ReissueInvoiceLicenseQuantityPrice(BaseModel):
     interval_count: Optional[float] = 1
     r"""Number of intervals per billing cycle. Defaults to 1."""
 
-    processors: Optional[ReissueInvoiceLicenseQuantityProcessors] = None
-    r"""Bill this line under an existing Stripe price instead of an inline one."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -1780,7 +1639,7 @@ class ReissueInvoiceParamsTypedDict(TypedDict):
     preview: NotRequired[bool]
     r"""If true, returns the replacement invoice's lines and totals without voiding anything or issuing it."""
     update_customer_email: NotRequired[str]
-    r"""Updates the customer's billing email before the replacement is issued, so Stripe sends the new invoice to this address."""
+    r"""Updates the customer's billing email before the replacement is issued, so the new invoice is sent to this address."""
     invoice: NotRequired[ReissueInvoiceInvoiceRequestBodyTypedDict]
     r"""Changes that apply to the replacement invoice only."""
     customer: NotRequired[ReissueInvoiceCustomerTypedDict]
@@ -1803,7 +1662,7 @@ class ReissueInvoiceParams(BaseModel):
     r"""If true, returns the replacement invoice's lines and totals without voiding anything or issuing it."""
 
     update_customer_email: Optional[str] = None
-    r"""Updates the customer's billing email before the replacement is issued, so Stripe sends the new invoice to this address."""
+    r"""Updates the customer's billing email before the replacement is issued, so the new invoice is sent to this address."""
 
     invoice: Optional[ReissueInvoiceInvoiceRequestBody] = None
     r"""Changes that apply to the replacement invoice only."""
@@ -1843,8 +1702,7 @@ class ReissueInvoiceParams(BaseModel):
 
 ReissueInvoiceProcessorType = Union[
     Literal[
-        "stripe",
-        "revenuecat",
+        "paypal",
     ],
     UnrecognizedStr,
 ]
@@ -1957,8 +1815,8 @@ class ReissueInvoiceInvoiceItem(BaseModel):
 class ReissueInvoiceInvoiceResponseTypedDict(TypedDict):
     plan_ids: List[str]
     r"""Array of plan IDs included in this invoice"""
-    stripe_id: str
-    r"""The Stripe invoice ID"""
+    processor_invoice_id: str
+    r"""The processor's stable invoice ID."""
     status: str
     r"""The status of the invoice"""
     total: float
@@ -1980,17 +1838,17 @@ class ReissueInvoiceInvoiceResponseTypedDict(TypedDict):
     processor_type: NotRequired[ReissueInvoiceProcessorType]
     r"""The billing processor that owns this invoice."""
     hosted_invoice_url: NotRequired[Nullable[str]]
-    r"""URL to the Stripe-hosted invoice page"""
+    r"""The hosted invoice URL, when available."""
     items: NotRequired[List[ReissueInvoiceInvoiceItemTypedDict]]
-    r"""Line items on the invoice, one per line as shown in Stripe. Capped at 100. Empty for invoices recorded before line item storage."""
+    r"""Line items on the invoice, one per line. Capped at 100. Empty for invoices recorded before line item storage."""
 
 
 class ReissueInvoiceInvoiceResponse(BaseModel):
     plan_ids: List[str]
     r"""Array of plan IDs included in this invoice"""
 
-    stripe_id: str
-    r"""The Stripe invoice ID"""
+    processor_invoice_id: str
+    r"""The processor's stable invoice ID."""
 
     status: str
     r"""The status of the invoice"""
@@ -2019,14 +1877,14 @@ class ReissueInvoiceInvoiceResponse(BaseModel):
     refunded_amount: float
     r"""The total amount refunded on the invoice"""
 
-    processor_type: Optional[ReissueInvoiceProcessorType] = "stripe"
+    processor_type: Optional[ReissueInvoiceProcessorType] = "paypal"
     r"""The billing processor that owns this invoice."""
 
     hosted_invoice_url: OptionalNullable[str] = UNSET
-    r"""URL to the Stripe-hosted invoice page"""
+    r"""The hosted invoice URL, when available."""
 
     items: Optional[List[ReissueInvoiceInvoiceItem]] = None
-    r"""Line items on the invoice, one per line as shown in Stripe. Capped at 100. Empty for invoices recorded before line item storage."""
+    r"""Line items on the invoice, one per line. Capped at 100. Empty for invoices recorded before line item storage."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -2129,10 +1987,10 @@ class ReissueInvoiceTax(BaseModel):
 
 
 class ReissueInvoiceInvoiceCreditsTypedDict(TypedDict):
-    r"""The customer's Stripe credit balance and how much of it this invoice consumes."""
+    r"""The customer's credit balance and how much of it this invoice consumes."""
 
     balance: float
-    r"""Stripe customer credit balance available, expressed as a positive number in major currency units."""
+    r"""Customer credit balance available, expressed as a positive number in major currency units."""
     currency: str
     r"""Three-letter currency code."""
     applied: NotRequired[float]
@@ -2140,10 +1998,10 @@ class ReissueInvoiceInvoiceCreditsTypedDict(TypedDict):
 
 
 class ReissueInvoiceInvoiceCredits(BaseModel):
-    r"""The customer's Stripe credit balance and how much of it this invoice consumes."""
+    r"""The customer's credit balance and how much of it this invoice consumes."""
 
     balance: float
-    r"""Stripe customer credit balance available, expressed as a positive number in major currency units."""
+    r"""Customer credit balance available, expressed as a positive number in major currency units."""
 
     currency: str
     r"""Three-letter currency code."""
@@ -2182,7 +2040,7 @@ class ReissueInvoicePreviewTypedDict(TypedDict):
     issue_date: float
     due_date: Nullable[float]
     invoice_credits: NotRequired[ReissueInvoiceInvoiceCreditsTypedDict]
-    r"""The customer's Stripe credit balance and how much of it this invoice consumes."""
+    r"""The customer's credit balance and how much of it this invoice consumes."""
 
 
 class ReissueInvoicePreview(BaseModel):
@@ -2208,7 +2066,7 @@ class ReissueInvoicePreview(BaseModel):
     due_date: Nullable[float]
 
     invoice_credits: Optional[ReissueInvoiceInvoiceCredits] = None
-    r"""The customer's Stripe credit balance and how much of it this invoice consumes."""
+    r"""The customer's credit balance and how much of it this invoice consumes."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -2244,7 +2102,7 @@ class ReissueInvoiceResponseTypedDict(TypedDict):
     voided_invoice_id: Nullable[str]
     r"""The Autumn ID of the original invoice, now void. Null when previewing, and when the original was paid and got a credit note instead."""
     credit_note_id: Nullable[str]
-    r"""The Stripe credit note issued against a paid original, whose amount lands on the customer's balance and covers the replacement. Null when the original was open and voided instead."""
+    r"""The credit note issued against a paid original, whose amount lands on the customer's balance and covers the replacement. Null when the original was open and voided instead."""
     preview: ReissueInvoicePreviewTypedDict
     r"""The replacement's lines and totals."""
 
@@ -2259,7 +2117,7 @@ class ReissueInvoiceResponse(BaseModel):
     r"""The Autumn ID of the original invoice, now void. Null when previewing, and when the original was paid and got a credit note instead."""
 
     credit_note_id: Nullable[str]
-    r"""The Stripe credit note issued against a paid original, whose amount lands on the customer's balance and covers the replacement. Null when the original was open and voided instead."""
+    r"""The credit note issued against a paid original, whose amount lands on the customer's balance and covers the replacement. Null when the original was open and voided instead."""
 
     preview: ReissueInvoicePreview
     r"""The replacement's lines and totals."""

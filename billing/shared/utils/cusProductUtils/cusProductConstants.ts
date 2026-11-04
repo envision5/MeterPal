@@ -16,9 +16,9 @@ export const ATTACH_CONFLICT_STATUSES = [
 	CusProductStatus.Pending,
 ];
 
-/** Products whose Stripe subscription is live — a plan parked by a reverting
- * trial keeps billing on Stripe. */
-export const STRIPE_LINKED_STATUSES = [
+/** Products whose processor subscription is live — a plan parked by a reverting
+ * trial keeps billing on the processor. */
+export const PROCESSOR_LINKED_STATUSES = [
 	...RELEVANT_STATUSES,
 	CusProductStatus.Paused,
 ];

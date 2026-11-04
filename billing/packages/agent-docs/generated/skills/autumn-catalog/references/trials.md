@@ -1,11 +1,14 @@
 ## Trials
 
-Free trials give customers temporary access to a paid plan before they're charged. Autumn supports two trial modes: **card required** (collect payment info upfront, bill when trial ends) and **card not required** (no payment info needed, access expires automatically).
+Free trials give customers temporary access to a paid plan before they're charged. MeterPal supports two trial modes: **card required** (collect payment info upfront, bill when trial ends) and **card not required** (no payment info needed, access expires automatically).
 
 > **Example** <br />
 > A SaaS tool offers a 14-day free trial of their Pro plan. If the customer doesn't cancel, billing begins on day 15.
 
 ## Setting up
+
+
+
 
 Add a `freeTrial` object to your plan:
 
@@ -47,9 +50,13 @@ Trial duration types: `day`, `month`, `year`.
 
 Preview with `atmn push`, then apply with `atmn push --yes`.
 
+
+
+
+
 ## Card required trials
 
-When `cardRequired` is `true`, the customer must provide payment information to start the trial. Stripe creates a subscription with a trial period — no charge occurs until the trial ends.
+When `cardRequired` is `true`, the customer must provide payment information to start the trial. The processor creates a subscription with a trial period — no charge occurs until the trial ends.
 
 <CodeGroup>
 
@@ -63,7 +70,7 @@ const { data } = await autumn.checkout({
   plan_id: "pro",
 });
 
-// Returns Stripe Checkout URL — customer adds card and starts trial
+// Returns the checkout URL — customer adds card and starts trial
 ```
 
 ```python Python
@@ -75,7 +82,7 @@ response = await autumn.checkout(
     customer_id="user_123",
     plan_id="pro",
 )
-# Returns Stripe Checkout URL
+# Returns the checkout URL
 ```
 
 ```bash cURL
@@ -126,7 +133,13 @@ curl -X POST "https://api.useautumn.com/v1/attach" \
 
 When the trial expires, the customer loses access unless they add a payment method. If a [free plan](/documentation/modelling-pricing/free-plans) with `autoEnable` exists in the same group, it's activated as a fallback.
 
+
 You can combine `autoEnable` with `cardRequired: false` to create an **auto-trial** plan. The trial starts automatically when a customer is created, and expires after the trial period — no API call needed.
+
+
+
+
+
 
 ## Checking trial status
 
@@ -154,11 +167,20 @@ for sub in response.subscriptions:
 
 </CodeGroup>
 
+
+
+
+
+
+
+
+
+
 ## Trial deduplication
 
 Each customer can only use a plan's trial **once**. If they try to attach the same plan again, the trial is skipped and they're billed immediately.
 
-To prevent trial abuse across multiple accounts, set a `fingerprint` when creating a customer (e.g., device ID, browser fingerprint). Autumn checks whether any customer with the same fingerprint has already used the trial.
+To prevent trial abuse across multiple accounts, set a `fingerprint` when creating a customer (e.g., device ID, browser fingerprint). MeterPal checks whether any customer with the same fingerprint has already used the trial.
 
 <CodeGroup>
 
@@ -194,7 +216,10 @@ curl -X POST "https://api.useautumn.com/v1/customers" \
 
 </CodeGroup>
 
+
 Custom trials passed via `customize.freeTrial` always **bypass** deduplication. Use this for support cases where you want to grant a second trial.
+
+
 
 You can check which trials a customer has already used by expanding `trials_used` on the customer object:
 
@@ -227,6 +252,11 @@ curl -X POST "https://api.useautumn.com/v1/customers" \
 
 </CodeGroup>
 
+
+
+
+
+
 ## Upgrades and Downgrades
 
 When upgrading to a plan with a trial, the trial behavior depends on the customer's current state and whether the new plan has an unused trial:
@@ -240,11 +270,16 @@ When upgrading to a plan with a trial, the trial behavior depends on the custome
 
 When a customer downgrades during a trial, the lower plan is scheduled to activate when the trial ends. The lower plan's own trial is not applied - you cannot get a new trial on a downgrade.
 
+
 You can override any of these behaviors by passing `customize.freeTrial` on the attach call. See [Overriding trial behavior](#overriding-trial-behavior) below.
+
 
 ## Overriding trial behavior
 
 You can override the default trial behavior on any `/attach` or `/update-subscription` call by passing `customize.freeTrial`:
+
+
+
 
 Pass a `freeTrial` object to start a trial with a custom duration. This **bypasses deduplication** — the customer always gets the trial, even if they've trialed this plan before.
 
@@ -297,6 +332,9 @@ curl -X POST "https://api.useautumn.com/v1/attach" \
 
 </CodeGroup>
 
+
+
+
 Pass `freeTrial: null` to skip the trial entirely and begin billing immediately — even if the plan has a trial configured.
 
 <CodeGroup>
@@ -335,6 +373,9 @@ curl -X POST "https://api.useautumn.com/v1/attach" \
 
 You can also pass `freeTrial: null` on `/update-subscription` to end an active trial early and start billing right away.
 
+
+
+
 To extend a trial, call `/update-subscription` with a new `customize.freeTrial`. The new trial duration is computed **from now** — it replaces the current trial end date rather than adding to it.
 
 <CodeGroup>
@@ -369,13 +410,30 @@ await autumn.update_subscription(
 
 </CodeGroup>
 
+
 Trial extensions are **replacement**, not additive. If a customer is 5 days into a 14-day trial and you set a new 14-day trial, they get 14 days from today (19 days total from the original start), not 14 days added to the remaining 9.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ## Trials with shared subscriptions
 
-When using [entities](/documentation/modelling-pricing/entity-plans) or add-ons, trial state is shared across the same Stripe subscription. This is because Stripe manages trials at the subscription level.
+When using [entities](/documentation/modelling-pricing/entity-plans) or add-ons, trial state is shared across the same processor subscription. This is because the processor manages trials at the subscription level.
+
 
 You can pass in `newBillingSubscription: true` to create a new subscription for each plan, rather than merging into the existing subscription.
+
 
 Here are some principles to keep in mind when using trials with shared subscriptions:
 
@@ -395,11 +453,14 @@ Because entities (by default) share a subscription, trial state changes affect *
 - **Entity upgrade to a plan without a trial**: the trial ends for **all** entities, and they're all billed immediately.
 - **Entity downgrade during trial**: the downgrade is scheduled for when the trial ends.
 
+
 Passing `customize.freeTrial` on an entity attach or upgrade affects the **shared subscription**, so all entities are affected. Similarly, passing `freeTrial: null` ends the trial for all entities on the subscription.
 
 ## Resetting usage after trial 
 
+
 This feature is coming soon.
+
 
 By default, feature usage during a trial carries over into the paid period. If you want usage to **reset when billing starts**, pass `transition_rules.reset_after_trial_end` with the feature IDs to reset:
 

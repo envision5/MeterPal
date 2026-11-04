@@ -13,7 +13,6 @@ export type {
 	ClientPreviewMultiAttachParams as PreviewMultiAttachParams,
 	ClientPreviewUpdateSubscriptionParams as PreviewUpdateSubscriptionParams,
 	ClientRedeemReferralCodeParams as RedeemReferralCodeParams,
-	ClientSetupPaymentParams as SetupPaymentParams,
 	ClientUpdateSubscriptionParams as UpdateSubscriptionParams,
 	ProtectedFields,
 } from "./params";

@@ -152,7 +152,7 @@ const CASES: Case[] = [
 			type: "metered",
 			consumable: true,
 			processors: {
-				stripe: { productId: "prod_123", meterId: "meter_456" },
+				paypal: { productId: "prod_123", meterId: "meter_456" },
 			},
 		},
 		includeMappings: true,
@@ -162,7 +162,7 @@ const CASES: Case[] = [
 			type: "metered",
 			consumable: true,
 			processors: {
-				stripe: { product_id: "prod_123", meter_id: "meter_456" },
+				paypal: { product_id: "prod_123", meter_id: "meter_456" },
 			},
 		},
 	},
@@ -174,7 +174,7 @@ const CASES: Case[] = [
 			type: "metered",
 			consumable: true,
 			processors: {
-				stripe: { productId: "prod_123", meterId: "meter_456" },
+				paypal: { productId: "prod_123", meterId: "meter_456" },
 			},
 		},
 		includeMappings: false,

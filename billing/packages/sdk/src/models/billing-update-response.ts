@@ -574,11 +574,11 @@ export type BillingUpdateCustomize = {
 };
 
 /**
- * Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses Stripe's send_invoice collection method.
+ * Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses the processor's send_invoice collection method.
  */
 export type BillingUpdateInvoiceMode = {
   /**
-   * When true, creates an invoice and sends it to the customer instead of charging their card immediately. Uses Stripe's send_invoice collection method.
+   * When true, creates an invoice and sends it to the customer instead of charging their card immediately. Uses the processor's send_invoice collection method.
    */
   enabled: boolean;
   /**
@@ -594,7 +594,7 @@ export type BillingUpdateInvoiceMode = {
    */
   invoiceTemplateId?: string | undefined;
   /**
-   * Number of days the customer has to pay the invoice before it is due (Stripe days_until_due).
+   * Number of days the customer has to pay the invoice before it is due (days_until_due).
    */
   netTermsDays?: number | undefined;
 };
@@ -647,7 +647,7 @@ export type BillingUpdateAttachDiscount = {
  */
 export type BillingUpdateRemoveDiscount = {
   /**
-   * The ID of the reward (or Stripe coupon) to remove.
+   * The ID of the reward to remove.
    */
   rewardId: string;
 };
@@ -762,7 +762,7 @@ export type UpdateSubscriptionParams = {
    */
   customize?: BillingUpdateCustomize | undefined;
   /**
-   * Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses Stripe's send_invoice collection method.
+   * Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses the processor's send_invoice collection method.
    */
   invoiceMode?: BillingUpdateInvoiceMode | undefined;
   /**
@@ -778,7 +778,7 @@ export type UpdateSubscriptionParams = {
    */
   subscriptionId?: string | undefined;
   /**
-   * List of discounts to apply. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code.
+   * List of discounts to apply. Each discount can be an Autumn reward ID or a promotion code.
    */
   discounts?: Array<BillingUpdateAttachDiscount> | undefined;
   /**
@@ -798,7 +798,7 @@ export type UpdateSubscriptionParams = {
    */
   billingCycleAnchor?: string | number | undefined;
   /**
-   * If true, the subscription is updated internally without applying billing changes in Stripe.
+   * If true, the subscription is updated internally without applying billing changes to the processor.
    */
   noBillingChanges?: boolean | undefined;
   /**
@@ -806,7 +806,7 @@ export type UpdateSubscriptionParams = {
    */
   refundLastPayment?: BillingUpdateRefundLastPayment | undefined;
   /**
-   * Additional parameters to pass into the Stripe subscription update or cancel call.
+   * Additional parameters to pass into the processor subscription update or cancel call.
    */
   subscriptionParams?: { [k: string]: any } | undefined;
   /**
@@ -832,9 +832,9 @@ export type BillingUpdateInvoice = {
    */
   status: string | null;
   /**
-   * The Stripe invoice ID.
+   * The processor invoice ID
    */
-  stripeId: string;
+  processorInvoiceId: string;
   /**
    * The total amount of the invoice in cents.
    */
@@ -2550,14 +2550,14 @@ export const BillingUpdateInvoice$inboundSchema: z.ZodMiniType<
 > = z.pipe(
   z.object({
     status: types.nullable(types.string()),
-    stripe_id: types.string(),
+    processor_invoice_id: types.string(),
     total: types.number(),
     currency: types.string(),
     hosted_invoice_url: types.nullable(types.string()),
   }),
   z.transform((v) => {
     return remap$(v, {
-      "stripe_id": "stripeId",
+      "processor_invoice_id": "processorInvoiceId",
       "hosted_invoice_url": "hostedInvoiceUrl",
     });
   }),

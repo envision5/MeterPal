@@ -339,7 +339,7 @@ const main = async () => {
 					created_at: startsAt,
 					starts_at: startsAt,
 					status: cpEntry.trialEndsAt ? "trialing" : "active",
-					processor: { type: "stripe", id: subId },
+					processor: { type: "paypal", id: subId },
 					subscription_ids: [subId],
 					scheduled_ids: [],
 					quantity: cpEntry.isAddon ? randInt(1, 5) : 1,

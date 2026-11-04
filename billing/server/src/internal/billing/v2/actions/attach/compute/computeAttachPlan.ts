@@ -202,8 +202,7 @@ export const computeAttachPlan = ({
 	plan = applyBillingCycleAnchorToSharedSubscription({
 		plan,
 		billingContext: attachBillingContext,
-		stripeSubscriptionId:
-			attachBillingContext.stripeSubscription?.id ??
+		processorSubscriptionId:
 			attachBillingContext.currentCustomerProduct?.subscription_ids?.[0],
 	});
 	plan.balanceTransitionPlan = computeAttachBalanceTransitionPlan({

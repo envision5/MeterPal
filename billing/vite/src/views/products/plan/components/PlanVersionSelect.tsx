@@ -9,7 +9,6 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@autumn/ui";
-import { ArrowsClockwiseIcon } from "@phosphor-icons/react";
 import { useState } from "react";
 import { useProductVersionsQuery } from "@/hooks/queries/useProductVersionsQuery";
 import {
@@ -25,15 +24,8 @@ import {
 import { ActiveVersionDot, PlanVersionOption } from "./PlanVersionOption";
 import { versionLabel } from "./versionLabel";
 
-const MIGRATE_CUSTOMERS = "__migrate_customers__";
 
-export const PlanVersionSelect = ({
-	canMigrate,
-	onMigrateCustomers,
-}: {
-	canMigrate: boolean;
-	onMigrateCustomers: () => void;
-}) => {
+export const PlanVersionSelect = () => {
 	const product = useProductStore((s) => s.product);
 	const { versionCounts } = useProductQuery();
 	const { queryStates, setQueryStates } = useProductQueryState();
@@ -55,10 +47,6 @@ export const PlanVersionSelect = ({
 	});
 
 	const handleVersionChange = (version: string) => {
-		if (version === MIGRATE_CUSTOMERS) {
-			onMigrateCustomers();
-			return;
-		}
 		const versionNumber = Number.parseInt(version, 10);
 		const selected = sortedRows.find((row) => row.version === versionNumber);
 		// Pin unless we know the row is active; a missing flag must not read as active.
@@ -79,7 +67,6 @@ export const PlanVersionSelect = ({
 				versionLabel({ versionSlug: row.version_slug, version: row.version }),
 			]),
 		),
-		...(canMigrate ? { [MIGRATE_CUSTOMERS]: "Migrate customers" } : {}),
 	};
 
 	const triggerContent = (
@@ -142,17 +129,6 @@ export const PlanVersionSelect = ({
 							</SelectItem>
 						);
 					})
-				)}
-				{canMigrate && (
-					<>
-						<SelectSeparator />
-						<SelectItem value={MIGRATE_CUSTOMERS} indicator={false}>
-							<div className="flex items-center gap-2">
-								<ArrowsClockwiseIcon />
-								<span>Migrate customers</span>
-							</div>
-						</SelectItem>
-					</>
 				)}
 			</SelectContent>
 		</Select>

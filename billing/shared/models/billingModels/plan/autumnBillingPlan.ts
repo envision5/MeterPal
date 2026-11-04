@@ -1,5 +1,4 @@
 import { CustomLineItemSchema } from "@api/billing/common/customLineItem";
-import type { SetupPaymentParamsV1 } from "@api/billing/setupPayment/setupPaymentParamsV1";
 import type { InsertCustomerEntitlement } from "@autumn/shared";
 import {
 	type AppEnv,
@@ -123,30 +122,6 @@ export const AutumnBillingPlanSchema = z.object({
 	updateCustomerProduct: CustomerProductUpdateSchema.optional(),
 	updateCustomerProducts: z.array(CustomerProductUpdateSchema).optional(),
 
-	updateByStripeScheduleId: z
-		.object({
-			oldScheduleId: z.string(),
-			newScheduleId: z.string(),
-		})
-		.optional(),
-
-	// Set by actions that rewrite the schedule rows themselves, so phases must not
-	// be repointed underneath them.
-	ownsSchedulePersistence: z.boolean().optional(),
-
-	// A null newCustomerProductId drops the old id from its phases instead of
-	// remapping it — the plan retires it without a successor.
-	schedulePhaseCustomerProductReplacements: z
-		.array(
-			z.object({
-				oldCustomerProductId: z.string(),
-				newCustomerProductId: z.string().nullable(),
-				internalCustomerId: z.string(),
-				internalEntityId: z.string().nullish(),
-			}),
-		)
-		.optional(),
-
 	deleteCustomerProduct: FullCusProductSchema.optional(), // Scheduled product to delete (e.g., when updating while canceling)
 	deleteCustomerProducts: z.array(FullCusProductSchema).optional(),
 
@@ -209,7 +184,7 @@ export const AutumnBillingPlanSchema = z.object({
 		})
 		.optional(),
 
-	// Upsert operations (populated during webhook handling, e.g., checkout.session.completed)
+	// Upsert operations (populated during webhook handling, e.g., checkout.order.approved)
 	upsertSubscriptions: SubscriptionSchema.array().optional(),
 	upsertInvoice: z.custom<InsertInvoice>().optional(),
 
@@ -218,7 +193,7 @@ export const AutumnBillingPlanSchema = z.object({
 		.object({
 			amount: z.number(),
 			invoice: z.object({
-				stripe_id: z.string(),
+				processor_invoice_id: z.string(),
 				total: z.number(),
 				current_refunded_amount: z.number(),
 				currency: z.string(),
@@ -239,23 +214,11 @@ export type UpdateCustomerEntitlement = z.infer<
 	typeof UpdateCustomerEntitlementSchema
 >;
 
-export enum StripeBillingStage {
-	InvoiceAction = "invoice_action",
-	SubscriptionAction = "subscription_action",
-}
-
 export type DeferredAutumnBillingPlanData = {
 	requestId: string;
 	orgId: string;
 	env: AppEnv;
 	billingPlan: BillingPlan;
 	billingContext: BillingContext;
-	resumeAfter?: StripeBillingStage;
 };
 
-export type DeferredSetupPaymentData = {
-	requestId: string;
-	orgId: string;
-	env: AppEnv;
-	params: SetupPaymentParamsV1;
-};

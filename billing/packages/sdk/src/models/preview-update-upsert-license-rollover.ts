@@ -98,7 +98,7 @@ export type PreviewUpdatePriceInterval = ClosedEnum<
 
 export type PreviewUpdateAdditionalCurrency = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -170,7 +170,7 @@ export type PreviewUpdateItemReset = {
 
 export type PreviewUpdateItemAdditionalCurrency = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -183,7 +183,7 @@ export type PreviewUpdateItemPriceTo = number | string;
 
 export type PreviewUpdateItemTierAdditionalCurrency = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -762,7 +762,7 @@ export type PreviewUpdateAddItemReset = {
 
 export type PreviewUpdateAddItemAdditionalCurrency = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -775,7 +775,7 @@ export type PreviewUpdateAddItemPriceTo = number | string;
 
 export type PreviewUpdateAddItemTierAdditionalCurrency = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -1544,7 +1544,7 @@ export type PreviewUpdateSpendLimit = {
    */
   overageLimit?: number | undefined;
   /**
-   * When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally.
+   * When true, overage for this feature is not posted to the billing processor. Usage tracking and balance resets still behave normally.
    */
   skipOverageBilling?: boolean | undefined;
 };
@@ -1740,7 +1740,7 @@ export type PreviewUpdatePriceUpsertLicenseInterval = ClosedEnum<
 
 export type PreviewUpdateUpsertLicenseAdditionalCurrency = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -1814,7 +1814,7 @@ export type PreviewUpdateUpsertLicenseReset = {
 
 export type PreviewUpdateUpsertLicenseAddItemAdditionalCurrency = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -1827,7 +1827,7 @@ export type PreviewUpdateUpsertLicensePriceTo = number | string;
 
 export type PreviewUpdateUpsertLicenseTierAdditionalCurrency = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**

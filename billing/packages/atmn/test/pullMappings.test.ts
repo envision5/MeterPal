@@ -19,7 +19,7 @@ const remoteItem = ({
 		interval,
 		intervalCount: 1,
 		amount: 10,
-		processors: { stripe: { priceId } },
+		processors: { paypal: { priceId } },
 	},
 });
 const planRow = {
@@ -27,11 +27,11 @@ const planRow = {
 	name: "Pro",
 	active: true,
 	versionSlug: "v1",
-	processors: { stripe: { productId: "prod_synthetic" } },
+	processors: { paypal: { productId: "prod_synthetic" } },
 	price: {
 		amount: 20,
 		interval: "month",
-		processors: { stripe: { priceId: "price_base" } },
+		processors: { paypal: { priceId: "price_base" } },
 	},
 	items: [
 		remoteItem({ interval: "month", priceId: "price_month" }),
@@ -85,12 +85,12 @@ test("mapping splice scopes equal public plan IDs to their version", () => {
 				{
 					id: "pro",
 					versionSlug: "v2",
-					processors: { stripe: { productId: "prod_v2" } },
+					processors: { paypal: { productId: "prod_v2" } },
 				},
 				{
 					id: "pro",
 					versionSlug: "v1",
-					processors: { stripe: { productId: "prod_v1" } },
+					processors: { paypal: { productId: "prod_v1" } },
 				},
 			],
 		},
@@ -108,14 +108,14 @@ test("mapping splice refreshes changed IDs and removes unset mappings", () => {
 	const files = new Map([
 		[
 			configPath,
-			'feature({ featureId: "seats", processors: { stripe: { productId: "prod_old" } } });',
+			'feature({ featureId: "seats", processors: { paypal: { productId: "prod_old" } } });',
 		],
 	]);
 	expect(
 		applyMappings({
 			catalog: {
 				features: [
-					{ id: "seats", processors: { stripe: { productId: "prod_new" } } },
+					{ id: "seats", processors: { paypal: { productId: "prod_new" } } },
 				],
 			},
 			configPath,
@@ -168,7 +168,7 @@ test("variant mappings use the generated response path and identity", () => {
 						{
 							variantPlanId: "annual",
 							mappingIdentity: '["annual"]',
-							plan: { processors: { stripe: { productId: "prod_variant" } } },
+							plan: { processors: { paypal: { productId: "prod_variant" } } },
 						},
 					],
 				},
@@ -195,7 +195,7 @@ test("generated client carries server item identities through the splice", async
 								price: {
 									billing_method: "prepaid",
 									interval: "month",
-									processors: { stripe: { price_id: "price_wire" } },
+									processors: { paypal: { price_id: "price_wire" } },
 								},
 							},
 						],
@@ -236,7 +236,7 @@ export default atmn({ features: [feature({ featureId: "seats", name: "Seats", ty
 					name: "Seats",
 					type: "metered",
 					consumable: false,
-					processors: { stripe: { productId: "prod_feature" } },
+					processors: { paypal: { productId: "prod_feature" } },
 				},
 			],
 		}),
@@ -288,13 +288,13 @@ export default atmn({ plans: [plan({ planId: "pro", name: "Pro", active: true, v
 					id: "pro",
 					name: "Pro",
 					versionSlug: "v1",
-					processors: { stripe: { productId: "prod_pro" } },
+					processors: { paypal: { productId: "prod_pro" } },
 				},
 			],
 			features: [
 				{
 					id: "unmanaged",
-					processors: { stripe: { productId: "prod_unmanaged" } },
+					processors: { paypal: { productId: "prod_unmanaged" } },
 				},
 			],
 		}),

@@ -26,7 +26,6 @@ import { getLastRunExitCode, run } from "./commands/run.ts";
 import {
 	DEFAULT_PER_WORKER,
 	DEFAULT_WORKERS,
-	STRIPE_SUBACCOUNT_CONCURRENCY,
 } from "./constants.ts";
 import { runPreflight } from "./helpers/preflight.ts";
 import type { ProviderName } from "./helpers/provider.ts";
@@ -119,17 +118,6 @@ const parseRunArgs = (args: string[]): TwRunArgs => {
 	}
 	const provider = providerArg as ProviderName;
 
-	// `--stripe-concurrency=N` is surfaced as an env var the (lazily-built) Stripe
-	// limiter in helpers/stripe.ts reads when the run starts.
-	if (args.some((arg) => arg.startsWith("--stripe-concurrency="))) {
-		const concurrency = parseIntFlag(
-			args,
-			"--stripe-concurrency",
-			STRIPE_SUBACCOUNT_CONCURRENCY,
-		);
-		process.env.STRIPE_SUBACCOUNT_CONCURRENCY = String(concurrency);
-	}
-
 	return {
 		groupsOrPatterns,
 		workers,
@@ -185,23 +173,22 @@ const printUsage = (): void => {
 			"  bun tw kill --orphans             tag-sweep fallback for SIGKILL'd runs",
 			"  bun tw kill-all [--all-users]     tear down all your non-completed runs",
 			"  bun tw refresh-warm [--ref=<ref>] synchronously refresh the freestyle warm snapshot (default ref: dev)",
-			"  bun tw doctor                     health check: warm cache, stripe pool, locks, env",
+			"  bun tw doctor                     health check: warm cache, locks, env",
 			"",
 			"Flags:",
 			`  --max=N      pool size (default ${DEFAULT_WORKERS}); auto-capped to file count`,
 			`  --per-worker=K   per-worker file concurrency (default ${DEFAULT_PER_WORKER})`,
 			"  --ref=<git-ref>  ref the warm snapshot checks out (default current HEAD)",
 			"  --keep           leave the pool up for debugging (clean up with `bun tw kill`)",
-			`  --stripe-concurrency=N   concurrent Stripe account creations (default ${STRIPE_SUBACCOUNT_CONCURRENCY})`,
 			"  --allow-dirty    skip the preflight git gate (dirty tree / unpushed HEAD)",
 			"  --no-dashboard   disable the live web dashboard (on by default; opens + keeps it up after the run)",
 			"  --provider=NAME  cloud backend: modalv2 (default, high-scale), modal (classic V1), vercel, or freestyle (memory-snapshot restores)",
 			"  --fanout-bench   provision + report fan-out timings, then tear down (no tests)",
 			"",
 			chalk.bold("Env:"),
-			"  STRIPE_TEST_KEY_POOL   comma-separated Stripe platform secret keys; workers",
-			"                         shard across them round-robin (K keys ≈ K× the Stripe",
-			"                         rate limit). Falls back to STRIPE_SANDBOX_SECRET_KEY.",
+			"  PAYPAL_CLIENT_ID / PAYPAL_CLIENT_SECRET   the PayPal credentials the workers",
+			"                         bill with (the test org has no paypal_config).",
+			"  PAYPAL_ENV           sandbox (default) or live.",
 			"",
 			formatTargets(),
 		].join("\n"),

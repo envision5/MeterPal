@@ -4,7 +4,6 @@ export const DEFAULT_PROTECTED_BODY_FIELDS = [
 	"customerData",
 	"name",
 	"email",
-	"stripeId",
 ] as const;
 
 export const CUSTOMER_PROTECTED_BODY_FIELDS = [

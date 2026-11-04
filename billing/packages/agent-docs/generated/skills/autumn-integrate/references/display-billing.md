@@ -299,11 +299,15 @@ curl -X POST 'https://api.useautumn.com/v1/customers' \
 ```
 </CodeGroup>
 
-## Stripe billing portal
 
-The Stripe billing portal lets users manage their payment method, view past invoices, and cancel their plan.
 
-Enable the billing portal in your [Stripe settings](https://dashboard.stripe.com/settings/billing/portal).
+## Billing portal
+
+The billing portal lets users manage their payment method, view past invoices, and cancel their plan.
+
+
+Enable the billing portal in your payment processor's dashboard.
+
 
 <CodeGroup>
 
@@ -344,9 +348,10 @@ curl -X POST 'https://api.useautumn.com/v1/billing.open_customer_portal' \
 
 </CodeGroup>
 
+
 ## Usage timeseries chart
 
-Autumn provides aggregate time series queries for usage data. Pass the response to a charting library like Recharts.
+MeterPal provides aggregate time series queries for usage data. Pass the response to a charting library like Recharts.
 
 <CodeGroup>
 
@@ -394,5 +399,6 @@ You can also use the [`events.list`](/api-reference/events/listEvents) method to
 **Next: Deploy to production**
 
 Once your billing page is in place, go through the production checklist to launch with real payments.
+
 
 A checklist to go live with confidence

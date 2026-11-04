@@ -89,7 +89,7 @@ export const MultiAttachParamsV0Schema = z.object({
 
 	discounts: z.array(AttachDiscountSchema).optional().meta({
 		description:
-			"List of discounts to apply. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code.",
+			"List of discounts to apply. Each discount can be an Autumn reward ID or a promotion code.",
 	}),
 	billing_behavior: BillingBehaviorSchema.optional(),
 
@@ -104,7 +104,7 @@ export const MultiAttachParamsV0Schema = z.object({
 
 	checkout_session_params: z.record(z.string(), z.unknown()).optional().meta({
 		description:
-			"Additional parameters to pass into the creation of the Stripe checkout session.",
+			"Additional parameters to pass into the creation of the processor checkout session.",
 	}),
 
 	redirect_mode: RedirectModeSchema.default("if_required").meta({
@@ -114,12 +114,12 @@ export const MultiAttachParamsV0Schema = z.object({
 
 	new_billing_subscription: z.boolean().optional().meta({
 		description:
-			"Only applicable when the customer has an existing Stripe subscription. If true, creates a new separate subscription instead of merging into the existing one.",
+			"Only applicable when the customer has an existing processor subscription. If true, creates a new separate subscription instead of merging into the existing one.",
 	}),
 
 	enable_plan_immediately: z.boolean().optional().meta({
 		description:
-			"If true, the cusProducts are activated immediately even when payment is pending via Stripe checkout.",
+			"If true, the cusProducts are activated immediately even when payment is pending via processor checkout.",
 	}),
 
 	// Internal

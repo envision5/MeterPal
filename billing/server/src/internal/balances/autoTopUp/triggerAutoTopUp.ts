@@ -6,7 +6,6 @@ import {
 } from "@autumn/shared";
 import { RedisUnavailableError } from "@/external/redis/utils/errors.js";
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
-import { resolveThresholdSettlement } from "../thresholdBilling/resolve/resolveThresholdSettlement.js";
 import { enqueueAutoTopupWithBurstSuppression } from "./helpers/enqueueAutoTopupWithBurstSuppression.js";
 import { fullCustomerToAutoTopupObjects } from "./helpers/fullCustomerToAutoTopupObjects.js";
 import { sendAutoTopupFailedWebhook } from "./webhooks/sendAutoTopupFailedWebhook.js";
@@ -35,12 +34,7 @@ export const triggerAutoTopUp = async ({
 			featureId: relevantFeatureId,
 		});
 
-		const settlement = resolveThresholdSettlement({
-			fullCustomer: newFullCus,
-			featureId: relevantFeatureId,
-		});
-
-		if (!resolved?.balanceBelowThreshold && settlement.kind !== "settle") {
+		if (!resolved?.balanceBelowThreshold) {
 			continue;
 		}
 

@@ -5,9 +5,7 @@ import { useNavigate, useSearchParams } from "react-router";
 
 type SecondaryTabType =
 	| "api_keys"
-	| "stripe"
-	| "vercel"
-	| "revenuecat"
+	| "paypal"
 	| "products"
 	| "rewards"
 	| "features"

@@ -63,7 +63,7 @@ app; MeterPal is never in their UI unless they embed the billing components.
 
 | # | Gap | Evidence in the repo | Becomes |
 | --- | --- | --- | --- |
-| 1 | **PayPal is single-tenant.** One PayPal account for the whole server. | `billing/server/src/external/paypal/client.ts` reads `PAYPAL_CLIENT_ID` / `PAYPAL_CLIENT_SECRET` from `process.env`; one module-level `cache: TokenCache` for all callers. `isPaypalConfigured()` (`internal/billing/paypal/runPaypalCheckout.ts:52`) is process-level, and `isPaypalNativeOrg(ctx)` (`:60`) is `isPaypalConfigured() && !isStripeConnected(...)` — it takes a `ctx` and ignores it. | §4.1 |
+| 1 | **PayPal is single-tenant.** One PayPal account for the whole server. | `billing/server/src/external/paypal/client.ts` reads `PAYPAL_CLIENT_ID` / `PAYPAL_CLIENT_SECRET` from `process.env`; one module-level `cache: TokenCache` for all callers. `isPaypalNativeOrg(ctx)` resolves per-org PayPal credentials from `org.paypal_config`, falling back to the process-level `PAYPAL_*` environment for single-tenant deployments. | §4.1 |
 | 2 | **Models and costs live in a YAML file.** No merchant-facing model configuration exists. | `gateway/config.yaml` `model_list` hardcodes `model_name → provider → os.environ/OPENAI_API_KEY_A`. Costs are resolved from models.dev (`internal/features/utils/getModelPricing.ts`) with plan-level overrides in `features.model_markups`. The alias→billable-id bridge is `PAB_MODEL_ID_MAP` in `gateway/.env`. | §4.2 |
 | 3 | **The SDK is a billing-UI SDK, not an inference SDK.** | `sdk/typescript/src/index.ts` exports React components + `createMeterPalClient`. The client is a thin `createAutumnClient` wrapper (`sdk/typescript/src/client.ts`) that requires the host to wrap the tree in `<AutumnProvider>` *and* mount `autumn-js/backend` routes server-side. | §4.4, §4.5 |
 | 4 | **No install/provision step.** | Nothing in the repo writes config or provisions an app. `demo-app/server.ts` shows the manual wiring (4 route mounts + 2 env vars) that a merchant would have to copy. | §4.5 |
@@ -72,8 +72,7 @@ app; MeterPal is never in their UI unless they embed the billing components.
 
 Everything else the vision needs already exists: the PayPal subscription lifecycle (§8), the
 reservation pattern and concurrency primitives (`docs/plan.md` §4–5), the MeterPal↔LiteLLM contract
-(`docs/bridge.md`), the customer-facing billing components (`docs/customer-ui.md`), and MeterPal's
-per-org Stripe model, which is the pattern to copy for PayPal.
+(`docs/bridge.md`), the customer-facing billing components (`docs/customer-ui.md`), and MeterPal's per-org PayPal model, which multi-tenant billing builds on.
 
 ---
 
@@ -81,7 +80,7 @@ per-org Stripe model, which is the pattern to copy for PayPal.
 
 ### 4.1 Multi-tenant PayPal
 
-MeterPal already solved multi-tenant payments for Stripe. Mirror it.
+MeterPal's multi-tenant PayPal model keeps each org's credentials isolated.
 
 **Storage.** Add to `orgs` (table definition: `billing/shared/models/orgModels/orgTable.ts`):
 
@@ -91,9 +90,9 @@ paypal_config    : jsonb    -- { client_id, client_secret_enc, env, webhook_id,
                                account_email, connected_at }
 ```
 
-`stripe_config` and `processor_configs` on the same table are the precedent. Encrypt
+The per-env connection record on the same table is the precedent. Encrypt
 `client_secret` with the repo's existing `encryptData()` (`ENCRYPTION_PASSWORD` / `ENCRYPTION_IV`
-in `billing/server/.env`) — the same helper used for the Stripe Connect connection string.
+in `billing/server/.env`).
 
 **Client.** Replace the module-global in `external/paypal/client.ts` with a per-org client:
 
@@ -116,7 +115,7 @@ client instead:
 - `external/paypal/subscriptions.ts`, `orders.ts`, `invoicing.ts`
 
 `isPaypalConfigured()` becomes `isPaypalConnected({ org, env })` and `isPaypalNativeOrg(ctx)`
-becomes `isPaypalConnected({org, env}) && !isStripeConnected({ org, env })`. The "PayPal-native"
+becomes `isPaypalConnected({org, env})`. The "PayPal-native"
 branch in `internal/billing/v2/actions/attach/attach.ts:109` and in
 `internal/billing/checkout/runCheckout.ts:57` then become genuinely per-org.
 
@@ -129,7 +128,7 @@ POST /webhooks/paypal/{org_id}/{webhook_id}
 
 The handler resolves the org from the path, then verifies the signature against **that org's**
 webhook id (`external/paypal/webhookSecurity.ts` already does the crypto verification — it just
-needs the per-org id). Idempotency mirrors `stripe_webhook_events`: a new
+needs the per-org id). Idempotency mirrors the `webhook_events` table: a new
 `paypal_webhook_events` table keyed by PayPal's event id.
 
 **Catalog mapping.** `paypal_catalog_map` is already org-scoped (`org_id`, `env`,
@@ -137,8 +136,8 @@ needs the per-org id). Idempotency mirrors `stripe_webhook_events`: a new
 
 **Dashboard.** New `views/developer/configure-paypal/ConfigurePayPal.tsx` and
 `views/settings/sections/PayPalSection.tsx`, modelled directly on
-`views/developer/configure-stripe/ConfigureStripe.tsx` and
-`views/settings/sections/StripeSection.tsx`. It shows: connection state, the connected PayPal
+`views/developer/configure-paypal/ConfigurePayPal.tsx` and
+`views/settings/sections/PayPalSection.tsx`. It shows: connection state, the connected PayPal
 account email, sandbox/live mode, the registered webhook URL (copyable), and a "verify" button.
 
 **Back-compat.** If `paypal_config` is absent on the org, fall back to the env vars. The current
@@ -316,7 +315,7 @@ cards) — the wizard should reuse that machinery rather than invent a second on
 | Change | Where |
 | --- | --- |
 | `orgs.paypal_connected`, `orgs.paypal_config` | new migration on `orgs` |
-| `paypal_webhook_events` | new table (idempotency, mirrors `stripe_webhook_events`) |
+| `webhook_events` | table (durable webhook idempotency; ids prefixed `paypal:`) |
 | `served_models` | new table |
 | `virtual_key` → org mapping | either a column on `customers` (`paypal_*` columns already sit there) or a new table |
 | *(none)* `paypal_catalog_map` | already org-scoped |
@@ -443,7 +442,7 @@ Publish `@meterpal/sdk` and the Python package; `meterpal` CLI; hosted gateway e
 | The MeterPal↔LiteLLM contract (`/check`, `/balances.finalize`, `/track_tokens`) | `docs/bridge.md`, `gateway/litellm/integrations/meterpal_billing.py` |
 | The reservation pattern, concurrency primitives, the 402 wall | `docs/plan.md` §4–5, §7 |
 | The customer-facing billing components and their contract | `docs/customer-ui.md`, `sdk/typescript/src/components/` |
-| The per-org payment-processor pattern to copy | `billing/shared/models/orgModels/orgTable.ts` (`stripe_config`), `billing/vite/src/views/developer/configure-stripe/` |
+| The per-org payment-processor pattern to copy | `billing/shared/models/orgModels/orgTable.ts` (`paypal_config`), `billing/vite/src/views/developer/configure-paypal/` |
 | The metering bridge (admission, commit/release, per-token debit) | `gateway/litellm/integrations/meterpal_billing.py` |
 | Per-customer virtual key provisioning | `billing/server/src/internal/keys/litellmKeys.ts` |
 | The model pricing feed | `billing/server/src/internal/features/utils/getModelPricing.ts` |

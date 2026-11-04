@@ -13,7 +13,7 @@ const PREVIEW_CUSTOMER_ID = "preview_customer";
 const PreviewCheckoutSchema = z.object({
 	product_id: z.string(),
 	/**
-	 * Dashboard-relative path Stripe returns the user to. Only a path is
+	 * Dashboard-relative path the processor returns the user to. Only a path is
 	 * accepted — the origin is fixed server-side so this can't be turned into
 	 * an open redirect.
 	 */
@@ -23,7 +23,7 @@ const PreviewCheckoutSchema = z.object({
 /**
  * Resolves the client-supplied path against the dashboard origin and drops it
  * if it escapes that origin — so an absolute or protocol-relative value can't
- * turn the Stripe success redirect into an open redirect.
+ * turn the success redirect into an open redirect.
  */
 export const buildSuccessUrl = ({
 	successPath,
@@ -48,7 +48,7 @@ export const buildSuccessUrl = ({
 };
 
 /**
- * Creates a Stripe checkout session against the user's preview sandbox org.
+ * Creates a checkout session against the user's preview sandbox org.
  *
  * Runs server-side under session auth: the preview org is resolved from the
  * session, so no sandbox API key has to be handed to the browser.

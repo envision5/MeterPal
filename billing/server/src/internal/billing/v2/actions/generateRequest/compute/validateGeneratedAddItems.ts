@@ -30,8 +30,8 @@ const anchoredPlanId = ({
 	return currentPlans.length === 1 ? currentPlans[0]?.plan_id : undefined;
 };
 
-/** Every generated request normalizes to plan customizations: schedule
- * phases and unscheduled plans, or the primary plan plus additional_plans. */
+/** Every generated request normalizes to plan customizations: the primary
+ * plan plus additional_plans. */
 const planCustomizations = ({
 	context,
 	customerProductId,
@@ -41,12 +41,6 @@ const planCustomizations = ({
 	customerProductId?: string;
 	generated: GeneratedBillingParams;
 }): PlanCustomization[] => {
-	if ("phases" in generated) {
-		return [
-			...generated.phases.flatMap((phase) => phase.plans),
-			...(generated.unscheduled_plans ?? []),
-		].map((plan) => ({ planId: plan.plan_id, customize: plan.customize }));
-	}
 	return [
 		{
 			planId:

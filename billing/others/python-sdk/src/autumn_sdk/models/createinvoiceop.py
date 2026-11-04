@@ -56,51 +56,8 @@ CreateInvoiceInterval = Literal[
 r"""Billing interval (e.g. 'month', 'year')."""
 
 
-class CreateInvoiceStripeTypedDict(TypedDict):
-    price_id: str
-    r"""Stripe price ID. For prepaid with included > 0 this is the V2 price."""
-
-
-class CreateInvoiceStripe(BaseModel):
-    price_id: str
-    r"""Stripe price ID. For prepaid with included > 0 this is the V2 price."""
-
-
 class CreateInvoiceProcessorsTypedDict(TypedDict):
-    r"""Bill this line under an existing Stripe price instead of an inline one."""
-
-    stripe: NotRequired[Nullable[CreateInvoiceStripeTypedDict]]
-
-
-class CreateInvoiceProcessors(BaseModel):
-    r"""Bill this line under an existing Stripe price instead of an inline one."""
-
-    stripe: OptionalNullable[CreateInvoiceStripe] = UNSET
-
-    @model_serializer(mode="wrap")
-    def serialize_model(self, handler):
-        optional_fields = set(["stripe"])
-        nullable_fields = set(["stripe"])
-        serialized = handler(self)
-        m = {}
-
-        for n, f in type(self).model_fields.items():
-            k = f.alias or n
-            val = serialized.get(k, serialized.get(n))
-            is_nullable_and_explicitly_set = (
-                k in nullable_fields
-                and (self.__pydantic_fields_set__.intersection({n}))  # pylint: disable=no-member
-            )
-
-            if val != UNSET_SENTINEL:
-                if (
-                    val is not None
-                    or k not in optional_fields
-                    or is_nullable_and_explicitly_set
-                ):
-                    m[k] = val
-
-        return m
+    r"""Bill this line under an existing processor price instead of an inline one."""
 
 
 class CreateInvoicePriceTypedDict(TypedDict):
@@ -110,8 +67,6 @@ class CreateInvoicePriceTypedDict(TypedDict):
     r"""Billing interval (e.g. 'month', 'year')."""
     interval_count: NotRequired[float]
     r"""Number of intervals per billing cycle. Defaults to 1."""
-    processors: NotRequired[CreateInvoiceProcessorsTypedDict]
-    r"""Bill this line under an existing Stripe price instead of an inline one."""
 
 
 class CreateInvoicePrice(BaseModel):
@@ -124,8 +79,6 @@ class CreateInvoicePrice(BaseModel):
     interval_count: Optional[float] = 1
     r"""Number of intervals per billing cycle. Defaults to 1."""
 
-    processors: Optional[CreateInvoiceProcessors] = None
-    r"""Bill this line under an existing Stripe price instead of an inline one."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -154,7 +107,7 @@ CreateInvoicePriceTo = TypeAliasType("CreateInvoicePriceTo", Union[float, str])
 
 class CreateInvoiceAdditionalCurrencyTypedDict(TypedDict):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
     amount: NotRequired[float]
     r"""Per-unit amount for this tier in this currency."""
     flat_amount: NotRequired[float]
@@ -163,7 +116,7 @@ class CreateInvoiceAdditionalCurrencyTypedDict(TypedDict):
 
 class CreateInvoiceAdditionalCurrency(BaseModel):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
 
     amount: Optional[float] = None
     r"""Per-unit amount for this tier in this currency."""
@@ -247,51 +200,8 @@ CreateInvoiceBillingMethod = Literal[
 r"""'prepaid' for upfront payment (seats), 'usage_based' for pay-as-you-go."""
 
 
-class CreateInvoiceItemStripeTypedDict(TypedDict):
-    price_id: str
-    r"""Stripe price ID. For prepaid with included > 0 this is the V2 price."""
-
-
-class CreateInvoiceItemStripe(BaseModel):
-    price_id: str
-    r"""Stripe price ID. For prepaid with included > 0 this is the V2 price."""
-
-
 class CreateInvoiceItemProcessorsTypedDict(TypedDict):
-    r"""Bill this line under an existing Stripe price instead of an inline one."""
-
-    stripe: NotRequired[Nullable[CreateInvoiceItemStripeTypedDict]]
-
-
-class CreateInvoiceItemProcessors(BaseModel):
-    r"""Bill this line under an existing Stripe price instead of an inline one."""
-
-    stripe: OptionalNullable[CreateInvoiceItemStripe] = UNSET
-
-    @model_serializer(mode="wrap")
-    def serialize_model(self, handler):
-        optional_fields = set(["stripe"])
-        nullable_fields = set(["stripe"])
-        serialized = handler(self)
-        m = {}
-
-        for n, f in type(self).model_fields.items():
-            k = f.alias or n
-            val = serialized.get(k, serialized.get(n))
-            is_nullable_and_explicitly_set = (
-                k in nullable_fields
-                and (self.__pydantic_fields_set__.intersection({n}))  # pylint: disable=no-member
-            )
-
-            if val != UNSET_SENTINEL:
-                if (
-                    val is not None
-                    or k not in optional_fields
-                    or is_nullable_and_explicitly_set
-                ):
-                    m[k] = val
-
-        return m
+    r"""Bill this line under an existing processor price instead of an inline one."""
 
 
 class CreateInvoiceItemPriceTypedDict(TypedDict):
@@ -310,8 +220,6 @@ class CreateInvoiceItemPriceTypedDict(TypedDict):
     r"""Number of intervals per billing cycle. Defaults to 1."""
     billing_units: NotRequired[float]
     r"""Units per price increment. Usage is rounded UP when billed (e.g. billing_units=100 means 101 rounds to 200)."""
-    processors: NotRequired[CreateInvoiceItemProcessorsTypedDict]
-    r"""Bill this line under an existing Stripe price instead of an inline one."""
 
 
 class CreateInvoiceItemPrice(BaseModel):
@@ -337,8 +245,6 @@ class CreateInvoiceItemPrice(BaseModel):
     billing_units: Optional[float] = 1
     r"""Units per price increment. Usage is rounded UP when billed (e.g. billing_units=100 means 101 rounds to 200)."""
 
-    processors: Optional[CreateInvoiceItemProcessors] = None
-    r"""Bill this line under an existing Stripe price instead of an inline one."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -1084,51 +990,8 @@ CreateInvoiceLicenseQuantityInterval = Literal[
 r"""Billing interval (e.g. 'month', 'year')."""
 
 
-class CreateInvoiceLicenseQuantityStripeTypedDict(TypedDict):
-    price_id: str
-    r"""Stripe price ID. For prepaid with included > 0 this is the V2 price."""
-
-
-class CreateInvoiceLicenseQuantityStripe(BaseModel):
-    price_id: str
-    r"""Stripe price ID. For prepaid with included > 0 this is the V2 price."""
-
-
 class CreateInvoiceLicenseQuantityProcessorsTypedDict(TypedDict):
-    r"""Bill this line under an existing Stripe price instead of an inline one."""
-
-    stripe: NotRequired[Nullable[CreateInvoiceLicenseQuantityStripeTypedDict]]
-
-
-class CreateInvoiceLicenseQuantityProcessors(BaseModel):
-    r"""Bill this line under an existing Stripe price instead of an inline one."""
-
-    stripe: OptionalNullable[CreateInvoiceLicenseQuantityStripe] = UNSET
-
-    @model_serializer(mode="wrap")
-    def serialize_model(self, handler):
-        optional_fields = set(["stripe"])
-        nullable_fields = set(["stripe"])
-        serialized = handler(self)
-        m = {}
-
-        for n, f in type(self).model_fields.items():
-            k = f.alias or n
-            val = serialized.get(k, serialized.get(n))
-            is_nullable_and_explicitly_set = (
-                k in nullable_fields
-                and (self.__pydantic_fields_set__.intersection({n}))  # pylint: disable=no-member
-            )
-
-            if val != UNSET_SENTINEL:
-                if (
-                    val is not None
-                    or k not in optional_fields
-                    or is_nullable_and_explicitly_set
-                ):
-                    m[k] = val
-
-        return m
+    r"""Bill this line under an existing processor price instead of an inline one."""
 
 
 class CreateInvoiceLicenseQuantityPriceTypedDict(TypedDict):
@@ -1138,8 +1001,6 @@ class CreateInvoiceLicenseQuantityPriceTypedDict(TypedDict):
     r"""Billing interval (e.g. 'month', 'year')."""
     interval_count: NotRequired[float]
     r"""Number of intervals per billing cycle. Defaults to 1."""
-    processors: NotRequired[CreateInvoiceLicenseQuantityProcessorsTypedDict]
-    r"""Bill this line under an existing Stripe price instead of an inline one."""
 
 
 class CreateInvoiceLicenseQuantityPrice(BaseModel):
@@ -1152,8 +1013,6 @@ class CreateInvoiceLicenseQuantityPrice(BaseModel):
     interval_count: Optional[float] = 1
     r"""Number of intervals per billing cycle. Defaults to 1."""
 
-    processors: Optional[CreateInvoiceLicenseQuantityProcessors] = None
-    r"""Bill this line under an existing Stripe price instead of an inline one."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -1511,7 +1370,7 @@ class CreateInvoiceParamsTypedDict(TypedDict):
     due_date: NotRequired[int]
     r"""When payment is due, in milliseconds. Must be in the future; takes precedence over net_terms_days."""
     tax_rate_id: NotRequired[str]
-    r"""Stripe tax rate ID (txr_...) applied to every line."""
+    r"""Tax rate ID applied to every line."""
     period_start: NotRequired[int]
     r"""Start of the period being invoiced, in milliseconds. Prorated lines are charged for period_start → period_end against one price interval starting at period_start."""
     period_end: NotRequired[int]
@@ -1545,7 +1404,7 @@ class CreateInvoiceParams(BaseModel):
     r"""When payment is due, in milliseconds. Must be in the future; takes precedence over net_terms_days."""
 
     tax_rate_id: Optional[str] = None
-    r"""Stripe tax rate ID (txr_...) applied to every line."""
+    r"""Tax rate ID applied to every line."""
 
     period_start: Optional[int] = None
     r"""Start of the period being invoiced, in milliseconds. Prorated lines are charged for period_start → period_end against one price interval starting at period_start."""
@@ -1589,8 +1448,7 @@ class CreateInvoiceParams(BaseModel):
 
 CreateInvoiceProcessorType = Union[
     Literal[
-        "stripe",
-        "revenuecat",
+        "paypal",
     ],
     UnrecognizedStr,
 ]
@@ -1703,8 +1561,8 @@ class CreateInvoiceInvoiceItem(BaseModel):
 class CreateInvoiceInvoiceTypedDict(TypedDict):
     plan_ids: List[str]
     r"""Array of plan IDs included in this invoice"""
-    stripe_id: str
-    r"""The Stripe invoice ID"""
+    processor_invoice_id: str
+    r"""The processor's stable invoice ID."""
     status: str
     r"""The status of the invoice"""
     total: float
@@ -1726,17 +1584,17 @@ class CreateInvoiceInvoiceTypedDict(TypedDict):
     processor_type: NotRequired[CreateInvoiceProcessorType]
     r"""The billing processor that owns this invoice."""
     hosted_invoice_url: NotRequired[Nullable[str]]
-    r"""URL to the Stripe-hosted invoice page"""
+    r"""The hosted invoice URL, when available."""
     items: NotRequired[List[CreateInvoiceInvoiceItemTypedDict]]
-    r"""Line items on the invoice, one per line as shown in Stripe. Capped at 100. Empty for invoices recorded before line item storage."""
+    r"""Line items on the invoice, one per line. Capped at 100. Empty for invoices recorded before line item storage."""
 
 
 class CreateInvoiceInvoice(BaseModel):
     plan_ids: List[str]
     r"""Array of plan IDs included in this invoice"""
 
-    stripe_id: str
-    r"""The Stripe invoice ID"""
+    processor_invoice_id: str
+    r"""The processor's stable invoice ID."""
 
     status: str
     r"""The status of the invoice"""
@@ -1765,14 +1623,14 @@ class CreateInvoiceInvoice(BaseModel):
     refunded_amount: float
     r"""The total amount refunded on the invoice"""
 
-    processor_type: Optional[CreateInvoiceProcessorType] = "stripe"
+    processor_type: Optional[CreateInvoiceProcessorType] = "paypal"
     r"""The billing processor that owns this invoice."""
 
     hosted_invoice_url: OptionalNullable[str] = UNSET
-    r"""URL to the Stripe-hosted invoice page"""
+    r"""The hosted invoice URL, when available."""
 
     items: Optional[List[CreateInvoiceInvoiceItem]] = None
-    r"""Line items on the invoice, one per line as shown in Stripe. Capped at 100. Empty for invoices recorded before line item storage."""
+    r"""Line items on the invoice, one per line. Capped at 100. Empty for invoices recorded before line item storage."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -1875,10 +1733,10 @@ class CreateInvoiceTax(BaseModel):
 
 
 class CreateInvoiceInvoiceCreditsTypedDict(TypedDict):
-    r"""The customer's Stripe credit balance and how much of it this invoice consumes."""
+    r"""The customer's credit balance and how much of it this invoice consumes."""
 
     balance: float
-    r"""Stripe customer credit balance available, expressed as a positive number in major currency units."""
+    r"""Customer credit balance available, expressed as a positive number in major currency units."""
     currency: str
     r"""Three-letter currency code."""
     applied: NotRequired[float]
@@ -1886,10 +1744,10 @@ class CreateInvoiceInvoiceCreditsTypedDict(TypedDict):
 
 
 class CreateInvoiceInvoiceCredits(BaseModel):
-    r"""The customer's Stripe credit balance and how much of it this invoice consumes."""
+    r"""The customer's credit balance and how much of it this invoice consumes."""
 
     balance: float
-    r"""Stripe customer credit balance available, expressed as a positive number in major currency units."""
+    r"""Customer credit balance available, expressed as a positive number in major currency units."""
 
     currency: str
     r"""Three-letter currency code."""
@@ -1926,7 +1784,7 @@ class CreateInvoicePreviewTypedDict(TypedDict):
     issue_date: float
     due_date: Nullable[float]
     invoice_credits: NotRequired[CreateInvoiceInvoiceCreditsTypedDict]
-    r"""The customer's Stripe credit balance and how much of it this invoice consumes."""
+    r"""The customer's credit balance and how much of it this invoice consumes."""
 
 
 class CreateInvoicePreview(BaseModel):
@@ -1950,7 +1808,7 @@ class CreateInvoicePreview(BaseModel):
     due_date: Nullable[float]
 
     invoice_credits: Optional[CreateInvoiceInvoiceCredits] = None
-    r"""The customer's Stripe credit balance and how much of it this invoice consumes."""
+    r"""The customer's credit balance and how much of it this invoice consumes."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):

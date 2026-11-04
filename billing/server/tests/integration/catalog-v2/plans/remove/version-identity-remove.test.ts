@@ -15,7 +15,7 @@ import chalk from "chalk";
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
 import { ProductService } from "@/internal/products/ProductService.js";
 import { uniqueTestId } from "../../utils/uniqueTestId.js";
-import { seedVersionableCustomer } from "../migrations/utils/seedVersionableCustomer.js";
+import { seedVersionableCustomer } from "../utils/seedVersionableCustomer.js";
 import { cleanupPlanCustomerRefs } from "../utils/cleanupPlanCustomerRefs.js";
 import { deleteDbPlans } from "../utils/expectCatalogPlans.js";
 

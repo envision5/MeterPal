@@ -9,7 +9,6 @@ import type {
 } from "@autumn/shared";
 import { SendMessageCommand } from "@aws-sdk/client-sqs";
 import { generateId } from "@server/utils/genUtils";
-import type { StripeWebhookReplayPayload } from "@/external/stripe/webhookReplay/runStripeWebhookReplay.js";
 import type { BatchResetCustomerEntitlementsV2Payload } from "@/internal/balances/batchReset/types.js";
 import type { PublishedBalanceTransition } from "@/internal/customers/cache/fullSubject/actions/publishCachedFullSubject.js";
 import type { CustomerCreationRecoveryPayload } from "@/internal/customers/recovery/customerCreationRecoveryTypes.js";
@@ -94,7 +93,6 @@ export interface Payloads {
 		balanceTransitions: PublishedBalanceTransition[];
 	};
 	[JobName.CustomerCreationRecovery]: CustomerCreationRecoveryPayload;
-	[JobName.StripeWebhookReplay]: StripeWebhookReplayPayload;
 	[JobName.ClearCreditSystemCustomerCache]: ClearCreditSystemCachePayload;
 	[JobName.GenerateFeatureDisplay]: GenerateFeatureDisplayPayload;
 	[JobName.SendProductsUpdated]: SendProductsUpdatedPayload;

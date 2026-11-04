@@ -10,7 +10,6 @@ export enum InvoiceStatus {
 }
 
 export const InvoiceDiscountSchema = z.object({
-	stripe_coupon_id: z.string(), // Stripe ID
 	coupon_name: z.string(),
 	amount_off: z.number(),
 	amount_used: z.number(),
@@ -18,7 +17,7 @@ export const InvoiceDiscountSchema = z.object({
 
 export const InvoiceItemSchema = z.object({
 	price_id: z.string().nullish(),
-	stripe_id: z.string(),
+	processor_id: z.string(),
 	internal_feature_id: z.string().nullable(),
 	description: z.string(),
 	period_start: z.number(),
@@ -35,9 +34,9 @@ export const InvoiceSchema = z.object({
 	/** Read-time only: current public plan ids from internal_product_ids. */
 	resolved_product_ids: z.array(z.string()).nullish(),
 
-	// Stripe fields
-	stripe_id: z.string(),
-	processor_type: z.enum(ProcessorType).default(ProcessorType.Stripe),
+	// Processor fields
+	processor_invoice_id: z.string(),
+	processor_type: z.enum(ProcessorType).default(ProcessorType.PayPal),
 	status: z.nativeEnum(InvoiceStatus).nullable().optional(),
 	hosted_invoice_url: z.string().nullable(),
 

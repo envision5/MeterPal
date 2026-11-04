@@ -158,7 +158,7 @@ export function AttachAdvancedSection() {
 		isEndOfCycleSelected,
 		isNoChargesAllowed,
 		canChooseBillingCycle,
-		createsNewStripeSubscription,
+		createsNewSubscription,
 		handleScheduleChange,
 		handleBillingCycleChange,
 		handleProrationBehaviorChange,
@@ -169,7 +169,7 @@ export function AttachAdvancedSection() {
 		!isFreeProductV2({ items: product.items }) &&
 		!isOneOffProductV2({ items: product.items });
 
-	const allowBackdatedStartDate = createsNewStripeSubscription;
+	const allowBackdatedStartDate = createsNewSubscription;
 	let startDateDescription = "Schedule the plan to start on a future date";
 	if (allowBackdatedStartDate) {
 		startDateDescription =
@@ -195,7 +195,7 @@ export function AttachAdvancedSection() {
 				isPaidRecurringProduct &&
 				!trialEnabled &&
 				effectivePlanSchedule !== "end_of_cycle" &&
-				(!isMultiPlan || createsNewStripeSubscription),
+				(!isMultiPlan || createsNewSubscription),
 			showEndDate: !!product && !isFreeProductV2({ items: product.items }),
 		},
 	});
@@ -428,7 +428,7 @@ export function AttachAdvancedSection() {
 			{rules.skipBilling.visible && (
 				<ConfigRow
 					title="Skip Billing"
-					description="Attach the plan without making changes in Stripe"
+					description="Attach the plan without making billing changes"
 					action={
 						<Switch
 							checked={noBillingChanges}

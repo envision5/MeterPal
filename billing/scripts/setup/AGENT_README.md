@@ -38,12 +38,6 @@ Set these in the process environment before running `bun dev:agent` and they wil
 
 | Variable | Description |
 |---|---|
-| `STRIPE_SANDBOX_SECRET_KEY` | Stripe test-mode secret key |
-| `STRIPE_SANDBOX_WEBHOOK_SECRET` | Stripe test-mode webhook signing secret |
-| `STRIPE_SANDBOX_CLIENT_ID` | Stripe Connect test platform client ID |
-| `STRIPE_LIVE_SECRET_KEY` | Stripe live secret key |
-| `STRIPE_LIVE_WEBHOOK_SECRET` | Stripe live webhook signing secret |
-| `STRIPE_LIVE_CLIENT_ID` | Stripe Connect live platform client ID |
 | `ANTHROPIC_API_KEY` | Anthropic API key |
 | `RESEND_API_KEY` | Resend email API key |
 | `RESEND_DOMAIN` | Resend sending domain |
@@ -71,7 +65,7 @@ Each agent instance gets its own local ElasticMQ. `SQS_QUEUE_URL_V2` is always h
 
 - **EventBridge lock-receipt scheduler**: `createSchedule` and `deleteSchedule` are no-ops when running against a local (non-amazonaws.com) queue URL. Lock-receipt expiry will not fire automatically in local dev.
 - **Supabase logo upload**: Storage is not configured locally. Logo upload endpoints return 400 — expected.
-- **Stripe webhooks**: `AUTUMN_PUBLIC_API_URL=http://localhost:8080`. Configure a Stripe CLI webhook forwarder separately if you need live webhook testing.
+- **Webhooks**: `AUTUMN_PUBLIC_API_URL=http://localhost:8080`. Configure a webhook forwarder separately if you need live webhook testing.
 
 ## Reset
 

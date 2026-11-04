@@ -88,8 +88,5 @@ export const initVariantPlanParams = ({
 			: {}),
 		metadata: baseFullProduct.metadata,
 		...(licenses.length > 0 ? { licenses } : {}),
-		...(variant.processors !== undefined
-			? { processors: variant.processors }
-			: {}),
 	};
 };

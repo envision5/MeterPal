@@ -59,14 +59,14 @@ r"""Billing interval (e.g. 'month', 'year')."""
 
 class MultiAttachAdditionalCurrencyTypedDict(TypedDict):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
 
 
 class MultiAttachAdditionalCurrency(BaseModel):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
 
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
@@ -176,14 +176,14 @@ class MultiAttachReset(BaseModel):
 
 class MultiAttachItemAdditionalCurrencyTypedDict(TypedDict):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
 
 
 class MultiAttachItemAdditionalCurrency(BaseModel):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
 
     amount: float
     r"""Price amount in this currency. Set explicitly per currency, not converted from the base amount."""
@@ -199,7 +199,7 @@ MultiAttachPriceTo = TypeAliasType("MultiAttachPriceTo", Union[float, str])
 
 class MultiAttachTierAdditionalCurrencyTypedDict(TypedDict):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
     amount: NotRequired[float]
     r"""Per-unit amount for this tier in this currency."""
     flat_amount: NotRequired[float]
@@ -208,7 +208,7 @@ class MultiAttachTierAdditionalCurrencyTypedDict(TypedDict):
 
 class MultiAttachTierAdditionalCurrency(BaseModel):
     currency: str
-    r"""Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp')."""
+    r"""Three-letter currency code (e.g. 'eur', 'gbp')."""
 
     amount: Optional[float] = None
     r"""Per-unit amount for this tier in this currency."""
@@ -1438,7 +1438,7 @@ class MultiAttachInvoiceModeTypedDict(TypedDict):
     r"""Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately."""
 
     enabled: bool
-    r"""When true, creates an invoice and sends it to the customer instead of charging their card immediately. Uses Stripe's send_invoice collection method."""
+    r"""When true, creates an invoice and sends it to the customer instead of charging their card immediately."""
     enable_plan_immediately: NotRequired[bool]
     r"""If true, enables the plan immediately even though the invoice is not paid yet."""
     finalize: NotRequired[bool]
@@ -1446,14 +1446,14 @@ class MultiAttachInvoiceModeTypedDict(TypedDict):
     invoice_template_id: NotRequired[str]
     r"""ID of an invoice template (configured in billing settings) whose footer (e.g. bank details) is applied to the invoice."""
     net_terms_days: NotRequired[int]
-    r"""Number of days the customer has to pay the invoice before it is due (Stripe days_until_due)."""
+    r"""Number of days the customer has to pay the invoice before it is due."""
 
 
 class MultiAttachInvoiceMode(BaseModel):
     r"""Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately."""
 
     enabled: bool
-    r"""When true, creates an invoice and sends it to the customer instead of charging their card immediately. Uses Stripe's send_invoice collection method."""
+    r"""When true, creates an invoice and sends it to the customer instead of charging their card immediately."""
 
     enable_plan_immediately: Optional[bool] = False
     r"""If true, enables the plan immediately even though the invoice is not paid yet."""
@@ -1465,7 +1465,7 @@ class MultiAttachInvoiceMode(BaseModel):
     r"""ID of an invoice template (configured in billing settings) whose footer (e.g. bank details) is applied to the invoice."""
 
     net_terms_days: Optional[int] = None
-    r"""Number of days the customer has to pay the invoice before it is due (Stripe days_until_due)."""
+    r"""Number of days the customer has to pay the invoice before it is due."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -1558,7 +1558,7 @@ class MultiAttachSpendLimitTypedDict(TypedDict):
     overage_limit: NotRequired[float]
     r"""Overage cap for the feature: absolute units, or a percent (e.g. 120) when limit_type is usage_percentage."""
     skip_overage_billing: NotRequired[bool]
-    r"""When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally."""
+    r"""When true, overage for this feature is not billed to the processor. Usage tracking and balance resets still behave normally."""
 
 
 class MultiAttachSpendLimit(BaseModel):
@@ -1575,7 +1575,7 @@ class MultiAttachSpendLimit(BaseModel):
     r"""Overage cap for the feature: absolute units, or a percent (e.g. 120) when limit_type is usage_percentage."""
 
     skip_overage_billing: Optional[bool] = None
-    r"""When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally."""
+    r"""When true, overage for this feature is not billed to the processor. Usage tracking and balance resets still behave normally."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -1921,7 +1921,7 @@ class MultiAttachParamsTypedDict(TypedDict):
     invoice_mode: NotRequired[MultiAttachInvoiceModeTypedDict]
     r"""Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately."""
     discounts: NotRequired[List[MultiAttachAttachDiscountTypedDict]]
-    r"""List of discounts to apply. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code."""
+    r"""List of discounts to apply. Each discount can be an Autumn reward ID, coupon ID, or promotion code."""
     billing_behavior: NotRequired[MultiAttachBillingBehavior]
     r"""How to handle billing. 'prorate_immediately' charges/credits prorated amounts now, 'none' does not charge/credit anything."""
     billing_cycle_anchor: Literal["now"]
@@ -1929,13 +1929,13 @@ class MultiAttachParamsTypedDict(TypedDict):
     success_url: NotRequired[str]
     r"""URL to redirect to after successful checkout."""
     checkout_session_params: NotRequired[Dict[str, Any]]
-    r"""Additional parameters to pass into the creation of the Stripe checkout session."""
+    r"""Additional parameters to pass into the creation of the checkout session."""
     redirect_mode: NotRequired[MultiAttachRedirectMode]
     r"""Controls when to return a checkout URL. 'always' returns a URL even if payment succeeds, 'if_required' only when payment action is needed, 'never' disables redirects."""
     new_billing_subscription: NotRequired[bool]
-    r"""Only applicable when the customer has an existing Stripe subscription. If true, creates a new separate subscription instead of merging into the existing one."""
+    r"""Only applicable when the customer has an existing subscription. If true, creates a new separate subscription instead of merging into the existing one."""
     enable_plan_immediately: NotRequired[bool]
-    r"""If true, the cusProducts are activated immediately even when payment is pending via Stripe checkout."""
+    r"""If true, the cusProducts are activated immediately even when payment is pending via hosted checkout."""
     customer_data: NotRequired[CustomerDataTypedDict]
     r"""Customer details to set when creating a customer"""
     entity_data: NotRequired[MultiAttachEntityDataTypedDict]
@@ -1964,7 +1964,7 @@ class MultiAttachParams(BaseModel):
     r"""Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately."""
 
     discounts: Optional[List[MultiAttachAttachDiscount]] = None
-    r"""List of discounts to apply. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code."""
+    r"""List of discounts to apply. Each discount can be an Autumn reward ID, coupon ID, or promotion code."""
 
     billing_behavior: Optional[MultiAttachBillingBehavior] = None
     r"""How to handle billing. 'prorate_immediately' charges/credits prorated amounts now, 'none' does not charge/credit anything."""
@@ -1979,16 +1979,16 @@ class MultiAttachParams(BaseModel):
     r"""URL to redirect to after successful checkout."""
 
     checkout_session_params: Optional[Dict[str, Any]] = None
-    r"""Additional parameters to pass into the creation of the Stripe checkout session."""
+    r"""Additional parameters to pass into the creation of the checkout session."""
 
     redirect_mode: Optional[MultiAttachRedirectMode] = "if_required"
     r"""Controls when to return a checkout URL. 'always' returns a URL even if payment succeeds, 'if_required' only when payment action is needed, 'never' disables redirects."""
 
     new_billing_subscription: Optional[bool] = None
-    r"""Only applicable when the customer has an existing Stripe subscription. If true, creates a new separate subscription instead of merging into the existing one."""
+    r"""Only applicable when the customer has an existing subscription. If true, creates a new separate subscription instead of merging into the existing one."""
 
     enable_plan_immediately: Optional[bool] = None
-    r"""If true, the cusProducts are activated immediately even when payment is pending via Stripe checkout."""
+    r"""If true, the cusProducts are activated immediately even when payment is pending via hosted checkout."""
 
     customer_data: Optional[CustomerData] = None
     r"""Customer details to set when creating a customer"""
@@ -2044,8 +2044,8 @@ class MultiAttachInvoiceTypedDict(TypedDict):
 
     status: Nullable[str]
     r"""The status of the invoice (e.g., 'paid', 'open', 'draft')."""
-    stripe_id: str
-    r"""The Stripe invoice ID."""
+    processor_invoice_id: str
+    r"""The processor's stable invoice ID."""
     total: float
     r"""The total amount of the invoice in cents."""
     currency: str
@@ -2060,8 +2060,8 @@ class MultiAttachInvoice(BaseModel):
     status: Nullable[str]
     r"""The status of the invoice (e.g., 'paid', 'open', 'draft')."""
 
-    stripe_id: str
-    r"""The Stripe invoice ID."""
+    processor_invoice_id: str
+    r"""The processor's stable invoice ID."""
 
     total: float
     r"""The total amount of the invoice in cents."""

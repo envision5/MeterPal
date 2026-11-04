@@ -133,10 +133,5 @@ export const getAdminEdgeConfigSources = () => ({
 			label: "Async Track",
 			key: ADMIN_ASYNC_TRACK_CONFIG_KEY,
 		},
-		{
-			id: "stripe-sync",
-			label: "Stripe Sync",
-			key: "admin/stripe-sync-config.json",
-		},
 	],
 });

@@ -8,6 +8,5 @@ export * from "./endpoints/isLocalWebhookUrl.js";
 export * from "./endpoints/webhookAppKind.js";
 export * from "./endpoints/webhookModels.js";
 export * from "./invoice/invoiceFinalized.js";
-export * from "./vercel/index.js";
 export * from "./webhookEventType.js";
 export * from "./webhookRegistry.js";

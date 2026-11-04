@@ -40,6 +40,17 @@ const findSuccessorsBySlot = ({
 };
 
 /**
+ * A retired customer product that a schedule phase must point at its
+ * successor instead (or drop, when there is no successor).
+ */
+export type SchedulePhaseCustomerProductReplacement = {
+	oldCustomerProductId: string;
+	newCustomerProductId: string | null;
+	internalCustomerId: string;
+	internalEntityId: string | null;
+};
+
+/**
  * Schedule phases store raw customer product ids, so any plan that replaces a
  * product has to hand its phases the successor. Expiring without a successor is
  * left alone — the row still resolves, so the phase keeps its history; a deleted
@@ -49,9 +60,7 @@ export const computeSchedulePhaseReplacements = ({
 	autumnBillingPlan,
 }: {
 	autumnBillingPlan: AutumnBillingPlan;
-}): NonNullable<
-	AutumnBillingPlan["schedulePhaseCustomerProductReplacements"]
-> => {
+}): SchedulePhaseCustomerProductReplacement[] => {
 	const expiredCustomerProducts = getExpiredUpdatedCustomerProducts({
 		autumnBillingPlan,
 	});
@@ -64,9 +73,7 @@ export const computeSchedulePhaseReplacements = ({
 	const successorsBySlot = findSuccessorsBySlot({ autumnBillingPlan });
 
 	const seenCustomerProductIds = new Set<string>();
-	const replacements: NonNullable<
-		AutumnBillingPlan["schedulePhaseCustomerProductReplacements"]
-	> = [];
+	const replacements: SchedulePhaseCustomerProductReplacement[] = [];
 
 	const addReplacement = ({
 		retired,
@@ -84,7 +91,7 @@ export const computeSchedulePhaseReplacements = ({
 			oldCustomerProductId: retired.id,
 			newCustomerProductId: successor?.id ?? null,
 			internalCustomerId: retired.internal_customer_id,
-			internalEntityId: retired.internal_entity_id,
+			internalEntityId: retired.internal_entity_id ?? null,
 		});
 	};
 

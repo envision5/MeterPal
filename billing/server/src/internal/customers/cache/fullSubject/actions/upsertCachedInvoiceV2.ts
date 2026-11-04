@@ -32,7 +32,7 @@ export const upsertCachedInvoiceV2 = async ({
 }): Promise<UpsertCachedInvoiceV2Result | null> => {
 	if (!customerId) {
 		ctx.logger.warn(
-			`[upsertCachedInvoiceV2] Skipping cache update for invoice ${invoice.stripe_id} because customerId is missing`,
+			`[upsertCachedInvoiceV2] Skipping cache update for invoice ${invoice.processor_invoice_id} because customerId is missing`,
 		);
 		return null;
 	}
@@ -72,14 +72,14 @@ export const upsertCachedInvoiceV2 = async ({
 				duration_ms: durationMilliseconds,
 				threshold_ms: FULL_SUBJECT_INVOICE_UPSERT_SLOW_THRESHOLD_MS,
 				redis_command: "upsertInvoiceInFullSubjectV2",
-				invoice_stripe_id: invoice.stripe_id ?? null,
+				invoice_processor_invoice_id: invoice.processor_invoice_id ?? null,
 			},
 		});
 	}
 
 	if (result === null) {
 		logger.warn(
-			`[upsertCachedInvoiceV2] Redis write failed for customer ${customerId}, invoice ${invoice.stripe_id}`,
+			`[upsertCachedInvoiceV2] Redis write failed for customer ${customerId}, invoice ${invoice.processor_invoice_id}`,
 		);
 		return null;
 	}

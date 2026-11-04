@@ -41,83 +41,71 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "name",
 				type: "string",
 				required: false,
-				description: "Customer's name",
 			},
 			{
 				name: "email",
 				type: "string",
 				required: false,
-				description: "Customer's email address",
 			},
 			{
 				name: "fingerprint",
 				type: "string",
 				required: false,
-				description:
-					"Unique identifier (eg, serial number) to detect duplicate customers and prevent free trial abuse",
 			},
 			{
 				name: "metadata",
 				type: "json",
 				required: false,
-				description: "Additional metadata for the customer",
-			},
-			{
-				name: "stripe_id",
-				type: "string",
-				required: false,
-				description: "Stripe customer ID if you already have one",
-			},
-			{
-				name: "create_in_stripe",
-				type: "boolean",
-				required: false,
-				description: "Whether to create the customer in Stripe",
 			},
 			{
 				name: "auto_enable_plan_id",
 				type: "string",
 				required: false,
-				description: "The ID of the free plan to auto-enable for the customer",
 			},
 			{
 				name: "send_email_receipts",
 				type: "boolean",
 				required: false,
-				description: "Whether to send email receipts to this customer",
 			},
 			{
 				name: "currency",
 				type: "string",
 				required: false,
-				description:
-					"Currency to bill this customer in (e.g. usd, eur). Defaults to the organization's default currency.",
 			},
 			{
 				name: "billing_controls",
 				type: "json",
 				required: false,
-				description: "Billing controls for the customer (auto top-ups, etc.)",
 			},
 			{
 				name: "config",
 				type: "json",
 				required: false,
-				description: "Miscellaneous configurations for the customer.",
 			},
 			{
-				name: "billing_details",
+				name: "internal_options",
 				type: "json",
 				required: false,
-				description:
-					"Billing details to set on the Stripe customer. Creates the Stripe customer if needed.",
 			},
 			{
 				name: "expand",
 				type: "json",
 				required: false,
-				description:
-					"Fields to expand in the returned customer response, such as subscriptions.plan, purchases.plan, balances.feature, or flags.feature.",
+			},
+			{
+				name: "entity_id",
+				type: "string",
+				required: false,
+			},
+			{
+				name: "entity_data",
+				type: "json",
+				required: false,
+			},
+			{
+				name: "with_autumn_id",
+				type: "boolean",
+				required: false,
 			},
 		],
 	},
@@ -133,14 +121,21 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "customer_id",
 				type: "string",
 				required: true,
-				description: "ID of the customer to fetch",
 			},
 			{
 				name: "expand",
 				type: "json",
 				required: false,
-				description:
-					"Expand related customer data like invoices or entities, or expand nested objects like balances.feature, flags.feature, subscriptions.plan, and purchases.plan.",
+			},
+			{
+				name: "skip_cache",
+				type: "boolean",
+				required: false,
+			},
+			{
+				name: "with_autumn_id",
+				type: "boolean",
+				required: false,
 			},
 		],
 	},
@@ -156,56 +151,41 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "start_cursor",
 				type: "string",
 				required: false,
-				description:
-					"Opaque pagination cursor. Empty string (default) requests the first page; use next_cursor from a prior response for subsequent pages.",
 			},
 			{
 				name: "limit",
 				type: "number",
 				required: false,
-				description:
-					"Number of items to return. Default 50, hard ceiling 5000.",
 			},
 			{
 				name: "plans",
 				type: "json",
 				required: false,
-				description:
-					"Filter by plan ID and version. Returns customers with active subscriptions to this plan.",
 			},
 			{
 				name: "subscription_status",
 				type: "string",
 				required: false,
-				description:
-					"Filter by customer product status. Defaults to active and scheduled.",
 			},
 			{
 				name: "search",
 				type: "string",
 				required: false,
-				description: "Search customers by id, name, or email.",
 			},
 			{
 				name: "processors",
 				type: "json",
 				required: false,
-				description:
-					"Filter by customer processor type (stripe, revenuecat, vercel).",
 			},
 			{
 				name: "sort_order",
 				type: "string",
 				required: false,
-				description:
-					"Sort by customer creation time. Defaults to desc (newest first).",
 			},
 			{
 				name: "created_at_range",
 				type: "json",
 				required: false,
-				description:
-					"Filter by customer creation time (epoch milliseconds, inclusive bounds).",
 			},
 		],
 	},
@@ -220,51 +200,36 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "customer_id",
 				type: "string",
 				required: true,
-				description: "ID of the customer to update",
 			},
 			{
 				name: "name",
 				type: "string",
 				required: false,
-				description: "Customer's name",
 			},
 			{
 				name: "email",
 				type: "string",
 				required: false,
-				description: "Customer's email address",
 			},
 			{
 				name: "fingerprint",
 				type: "string",
 				required: false,
-				description:
-					"Unique identifier (eg, serial number) to detect duplicate customers and prevent free trial abuse",
 			},
 			{
 				name: "metadata",
 				type: "json",
 				required: false,
-				description: "Additional metadata for the customer",
-			},
-			{
-				name: "stripe_id",
-				type: "string",
-				required: false,
-				description: "Stripe customer ID if you already have one",
 			},
 			{
 				name: "send_email_receipts",
 				type: "boolean",
 				required: false,
-				description: "Whether to send email receipts to this customer",
 			},
 			{
 				name: "currency",
 				type: "string",
 				required: false,
-				description:
-					"Currency to bill this customer in (e.g. usd, eur). Defaults to the organization's default currency.",
 			},
 			{
 				name: "billing_controls",
@@ -275,20 +240,16 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "config",
 				type: "json",
 				required: false,
-				description: "Miscellaneous configurations for the customer.",
 			},
 			{
-				name: "billing_details",
+				name: "internal_options",
 				type: "json",
 				required: false,
-				description:
-					"Billing details stored on the linked Stripe customer. Requires a Stripe customer.",
 			},
 			{
 				name: "new_customer_id",
 				type: "string",
 				required: false,
-				description: "New ID for the customer",
 			},
 		],
 	},
@@ -303,37 +264,6 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "customer_id",
 				type: "string",
 				required: true,
-				description: "ID of the customer to delete",
-			},
-			{
-				name: "delete_in_stripe",
-				type: "boolean",
-				required: false,
-				description: "Whether to also delete the customer in Stripe",
-			},
-		],
-	},
-	{
-		group: "customers",
-		method: "advance_test_clock",
-		path: "/v1/customers.advance_test_clock",
-		description:
-			"Advance a customer's Stripe test clock to a future time in milliseconds. Only Stripe test-mode customers with a test clock are supported. Advancement is asynchronous; Stripe enforces clock status and advancement limits.",
-		body: "object",
-		fields: [
-			{
-				name: "customer_id",
-				type: "string",
-				required: true,
-				description:
-					"The ID of the customer whose Stripe test clock to advance.",
-			},
-			{
-				name: "frozen_time",
-				type: "number",
-				required: true,
-				description:
-					"Target time as a Unix timestamp in milliseconds. Rounded down to whole seconds; must be later than the current clock time.",
 			},
 		],
 	},
@@ -349,90 +279,69 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "plan_id",
 				type: "string",
 				required: true,
-				description: "The ID of the plan to create.",
 			},
 			{
 				name: "group",
 				type: "string",
 				required: false,
-				description:
-					"Group identifier for organizing related plans. Plans in the same group are mutually exclusive.",
 			},
 			{
 				name: "name",
 				type: "string",
 				required: true,
-				description: "Display name of the plan.",
 			},
 			{
 				name: "description",
 				type: "string",
 				required: false,
-				description: "Optional description of the plan.",
 			},
 			{
 				name: "add_on",
 				type: "boolean",
 				required: false,
-				description:
-					"If true, this plan can be attached alongside other plans. Otherwise, attaching replaces existing plans in the same group.",
 			},
 			{
 				name: "auto_enable",
 				type: "boolean",
 				required: false,
-				description:
-					"If true, plan is automatically attached when a customer is created. Use for free tiers.",
 			},
 			{
 				name: "price",
 				type: "json",
 				required: false,
-				description:
-					"Base recurring price for the plan. Omit for free or usage-only plans.",
 			},
 			{
 				name: "items",
 				type: "json",
 				required: false,
-				description:
-					"Feature configurations for this plan. Each item defines included units, pricing, and reset behavior.",
 			},
 			{
 				name: "licenses",
 				type: "json",
 				required: false,
-				description:
-					"Plans offered as assignable licenses under this plan. The full set replaces existing links.",
 			},
 			{
 				name: "free_trial",
 				type: "json",
 				required: false,
-				description:
-					"Free trial configuration. Customers can try this plan before being charged.",
 			},
 			{
 				name: "config",
 				type: "json",
 				required: false,
-				description: "Miscellaneous plan-level configuration flags.",
 			},
 			{
 				name: "billing_controls",
 				type: "json",
 				required: false,
-				description: "Plan-level billing controls used as customer defaults.",
 			},
 			{
 				name: "metadata",
 				type: "json",
 				required: false,
-				description:
-					"Arbitrary key-value metadata defined by you for your own use (e.g. UI copy, feature highlights). Values can be any JSON-serializable value. Shared across all versions of the plan.",
 			},
 			{
-				name: "create_in_stripe",
+				name: "create_in_processor",
 				type: "boolean",
 				required: false,
 			},
@@ -449,14 +358,11 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "plan_id",
 				type: "string",
 				required: true,
-				description: "The ID of the plan to retrieve.",
 			},
 			{
 				name: "version",
 				type: "number",
 				required: false,
-				description:
-					"The version of the plan to get. Defaults to the latest version.",
 			},
 		],
 	},
@@ -471,26 +377,21 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "customer_id",
 				type: "string",
 				required: false,
-				description:
-					"Customer ID to include eligibility info (trial availability, attach scenario).",
 			},
 			{
 				name: "entity_id",
 				type: "string",
 				required: false,
-				description: "Entity ID for entity-scoped plans.",
 			},
 			{
 				name: "include_archived",
 				type: "boolean",
 				required: false,
-				description: "If true, includes archived plans in the response.",
 			},
 			{
 				name: "all_versions",
 				type: "boolean",
 				required: false,
-				description: "If true, includes all plan versions.",
 			},
 		],
 	},
@@ -506,7 +407,6 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "plan_id",
 				type: "string",
 				required: true,
-				description: "The ID of the plan to update.",
 			},
 			{
 				name: "group",
@@ -517,7 +417,6 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "name",
 				type: "string",
 				required: false,
-				description: "Display name of the plan.",
 			},
 			{
 				name: "description",
@@ -528,63 +427,49 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "add_on",
 				type: "boolean",
 				required: false,
-				description: "Whether the plan is an add-on.",
 			},
 			{
 				name: "auto_enable",
 				type: "boolean",
 				required: false,
-				description: "Whether the plan is automatically enabled.",
 			},
 			{
 				name: "price",
 				type: "json",
 				required: false,
-				description:
-					"The price of the plan. Set to null to remove the base price.",
 			},
 			{
 				name: "items",
 				type: "json",
 				required: false,
-				description:
-					"Feature configurations for this plan. Each item defines included units, pricing, and reset behavior.",
 			},
 			{
 				name: "licenses",
 				type: "json",
 				required: false,
-				description:
-					"Plans offered as assignable licenses under this plan. The full set replaces existing links.",
 			},
 			{
 				name: "free_trial",
 				type: "json",
 				required: false,
-				description:
-					"The free trial of the plan. Set to null to remove the free trial.",
 			},
 			{
 				name: "config",
 				type: "json",
 				required: false,
-				description: "Miscellaneous plan-level configuration flags.",
 			},
 			{
 				name: "billing_controls",
 				type: "json",
 				required: false,
-				description: "Plan-level billing controls used as customer defaults.",
 			},
 			{
 				name: "metadata",
 				type: "json",
 				required: false,
-				description:
-					"Arbitrary key-value metadata defined by you for your own use (e.g. UI copy, feature highlights). Values can be any JSON-serializable value. Shared across all versions of the plan.",
 			},
 			{
-				name: "create_in_stripe",
+				name: "create_in_processor",
 				type: "boolean",
 				required: false,
 			},
@@ -602,15 +487,11 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "base_plan_id",
 				type: "string",
 				required: false,
-				description:
-					"The base plan this plan should be linked to as a variant. Set to null to detach it from its base plan.",
 			},
 			{
 				name: "new_plan_id",
 				type: "string",
 				required: false,
-				description:
-					"The new ID to use for the plan. Can only be updated if the plan has not been used by any customers.",
 			},
 			{
 				name: "disable_version",
@@ -621,8 +502,6 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "all_versions",
 				type: "boolean",
 				required: false,
-				description:
-					"Apply the update diff to all versions of this plan. Mutually exclusive with disable_version.",
 			},
 			{
 				name: "migration",
@@ -633,36 +512,26 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "force_version",
 				type: "boolean",
 				required: false,
-				description:
-					"Force versioning even when no customers exist. Mutually exclusive with disable_version.",
 			},
 			{
 				name: "update_variant_ids",
 				type: "json",
 				required: false,
-				description:
-					"Variant plan IDs to apply this update to. Empty or omitted means no propagation.",
 			},
 			{
 				name: "update_license_parents",
 				type: "json",
 				required: false,
-				description:
-					"Parent plan versions that should receive this license-plan update.",
 			},
 			{
 				name: "variants",
 				type: "json",
 				required: false,
-				description:
-					"Additive variant updates for this base plan. Missing variants are created when name is provided.",
 			},
 			{
 				name: "is_default",
 				type: "boolean",
 				required: false,
-				description:
-					"Whether this is the org's default plan. Cannot be true on a variant.",
 			},
 		],
 	},
@@ -677,14 +546,11 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "plan_id",
 				type: "string",
 				required: true,
-				description: "The ID of the plan to delete.",
 			},
 			{
 				name: "all_versions",
 				type: "boolean",
 				required: false,
-				description:
-					"If true, deletes all versions of the plan. Otherwise, only deletes the latest version.",
 			},
 		],
 	},
@@ -699,56 +565,41 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "name",
 				type: "string",
 				required: true,
-				description: "The name of the feature.",
 			},
 			{
 				name: "type",
 				type: "string",
 				required: true,
-				description:
-					"The type of the feature. 'single_use' features are consumed, like API calls, tokens, or messages. 'continuous_use' features are allocated, like seats, workspaces, or projects. 'credit_system' features are schemas that unify multiple 'single_use' features into a single credit system.",
 			},
 			{
 				name: "consumable",
 				type: "boolean",
 				required: false,
-				description:
-					"Whether this feature is consumable. A consumable feature is one that periodically resets and is consumed rather than allocated (like credits, API requests, etc.). Applicable only for 'metered' features.",
 			},
 			{
 				name: "display",
 				type: "json",
 				required: false,
-				description:
-					"Singular and plural display names for the feature in your user interface.",
 			},
 			{
 				name: "credit_schema",
 				type: "json",
 				required: false,
-				description:
-					"A schema that maps metered feature IDs to flat or graduated credit costs. For classic credit systems only — AI credit systems use model_markups instead.",
 			},
 			{
 				name: "model_markups",
 				type: "json",
 				required: false,
-				description:
-					"Per-model markup overrides for AI credit systems. Maps model IDs to their markup configuration.",
 			},
 			{
 				name: "default_markup",
 				type: "number",
 				required: false,
-				description:
-					"Default percentage markup for this AI credit system. Used when no model or provider markup applies. Use -100 to make usage free.",
 			},
 			{
 				name: "provider_markups",
 				type: "json",
 				required: false,
-				description:
-					"Per-provider default markup percentages for AI credit systems. Provider keys match the first segment of model_id.",
 			},
 			{
 				name: "event_names",
@@ -759,7 +610,6 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "feature_id",
 				type: "string",
 				required: true,
-				description: "The ID of the feature to create.",
 			},
 		],
 	},
@@ -774,7 +624,6 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "feature_id",
 				type: "string",
 				required: true,
-				description: "The ID of the feature.",
 			},
 		],
 	},
@@ -797,56 +646,41 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "name",
 				type: "string",
 				required: false,
-				description: "The name of the feature.",
 			},
 			{
 				name: "type",
 				type: "string",
 				required: false,
-				description:
-					"The type of the feature. 'single_use' features are consumed, like API calls, tokens, or messages. 'continuous_use' features are allocated, like seats, workspaces, or projects. 'credit_system' features are schemas that unify multiple 'single_use' features into a single credit system.",
 			},
 			{
 				name: "consumable",
 				type: "boolean",
 				required: false,
-				description:
-					"Whether this feature is consumable. A consumable feature is one that periodically resets and is consumed rather than allocated (like credits, API requests, etc.). Applicable only for 'metered' features.",
 			},
 			{
 				name: "display",
 				type: "json",
 				required: false,
-				description:
-					"Singular and plural display names for the feature in your user interface.",
 			},
 			{
 				name: "credit_schema",
 				type: "json",
 				required: false,
-				description:
-					"A schema that maps metered feature IDs to flat or graduated credit costs. For classic credit systems only — AI credit systems use model_markups instead.",
 			},
 			{
 				name: "model_markups",
 				type: "json",
 				required: false,
-				description:
-					"Per-model markup overrides for AI credit systems. Maps model IDs to their markup configuration.",
 			},
 			{
 				name: "default_markup",
 				type: "number",
 				required: false,
-				description:
-					"Default percentage markup for this AI credit system. Used when no model or provider markup applies. Use -100 to make usage free.",
 			},
 			{
 				name: "provider_markups",
 				type: "json",
 				required: false,
-				description:
-					"Per-provider default markup percentages for AI credit systems. Provider keys match the first segment of model_id.",
 			},
 			{
 				name: "event_names",
@@ -857,21 +691,16 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "archived",
 				type: "boolean",
 				required: false,
-				description:
-					"Whether the feature is archived. Archived features are hidden from the dashboard.",
 			},
 			{
 				name: "feature_id",
 				type: "string",
 				required: true,
-				description: "The ID of the feature to update.",
 			},
 			{
 				name: "new_feature_id",
 				type: "string",
 				required: false,
-				description:
-					"The new ID of the feature. Feature ID can only be updated if it's not being used by any customers.",
 			},
 		],
 	},
@@ -886,7 +715,6 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "feature_id",
 				type: "string",
 				required: true,
-				description: "The ID of the feature to delete.",
 			},
 		],
 	},
@@ -902,335 +730,176 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "customer_id",
 				type: "string",
 				required: true,
-				description: "The ID of the customer to attach the plan to.",
 			},
 			{
 				name: "entity_id",
 				type: "string",
 				required: false,
-				description: "The ID of the entity to attach the plan to.",
 			},
 			{
 				name: "plan_id",
 				type: "string",
 				required: true,
-				description: "The ID of the plan.",
 			},
 			{
 				name: "feature_quantities",
 				type: "json",
 				required: false,
-				description:
-					"If this plan contains prepaid features, use this field to specify the quantity of each prepaid feature. This quantity includes the included amount and billing units defined when setting up the plan.",
 			},
 			{
 				name: "version",
 				type: "number",
 				required: false,
-				description: "The version of the plan to attach.",
 			},
 			{
 				name: "free_trial",
 				type: "json",
 				required: false,
-				description:
-					"Free trial for this plan. A shorthand for customize.free_trial, which takes precedence when both are given.",
 			},
 			{
 				name: "customize",
 				type: "json",
 				required: false,
-				description:
-					"Customize the plan to attach. Can override the price, items, licenses, free trial, or a combination.",
 			},
 			{
 				name: "invoice_mode",
 				type: "json",
 				required: false,
-				description:
-					"Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses Stripe's send_invoice collection method.",
 			},
 			{
 				name: "proration_behavior",
 				type: "string",
 				required: false,
-				description:
-					"How to handle proration when updating an existing subscription. 'prorate_immediately' charges/credits prorated amounts now, 'none' skips creating any charges.",
+			},
+			{
+				name: "transition_rules",
+				type: "json",
+				required: false,
 			},
 			{
 				name: "redirect_mode",
 				type: "string",
 				required: false,
-				description:
-					"Controls when to return a checkout URL. 'always' returns a URL even if payment succeeds, 'if_required' only when payment action is needed, 'never' disables redirects.",
 			},
 			{
 				name: "subscription_id",
 				type: "string",
 				required: false,
-				description:
-					"A unique ID to identify this subscription. Can be used to target specific subscriptions in update operations when a customer has multiple products with the same plan.",
+			},
+			{
+				name: "customer_data",
+				type: "json",
+				required: false,
+			},
+			{
+				name: "entity_data",
+				type: "json",
+				required: false,
 			},
 			{
 				name: "discounts",
 				type: "json",
 				required: false,
-				description:
-					"List of discounts to apply. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code.",
 			},
 			{
 				name: "success_url",
 				type: "string",
 				required: false,
-				description: "URL to redirect to after successful checkout.",
 			},
 			{
 				name: "new_billing_subscription",
 				type: "boolean",
 				required: false,
-				description:
-					"Only applicable when the customer has an existing Stripe subscription. If true, creates a new separate subscription instead of merging into the existing one.",
 			},
 			{
 				name: "billing_cycle_anchor",
 				type: "json",
 				required: false,
-				description:
-					"Reset the billing cycle immediately with 'now', or schedule a reset at a future Unix timestamp in milliseconds.",
 			},
 			{
 				name: "plan_schedule",
 				type: "string",
 				required: false,
-				description:
-					"When the plan change should take effect. 'immediate' applies now, 'end_of_cycle' schedules for the end of the current billing cycle. By default, upgrades are immediate and downgrades are scheduled.",
 			},
 			{
 				name: "starts_at",
 				type: "number",
 				required: false,
-				description:
-					"Unix timestamp in milliseconds for when the attached plan should start. Future dates create a scheduled subscription.",
 			},
 			{
 				name: "ends_at",
 				type: "number",
 				required: false,
-				description:
-					"Unix timestamp in milliseconds for when the attached plan should end.",
 			},
 			{
 				name: "checkout_session_params",
 				type: "json",
 				required: false,
-				description:
-					"Additional parameters to pass into the creation of the Stripe checkout session.",
 			},
 			{
 				name: "long_lived_checkout",
 				type: "boolean",
 				required: false,
-				description:
-					"If true, returns an Autumn-hosted checkout link that can create a fresh Stripe checkout session when opened.",
 			},
 			{
 				name: "custom_line_items",
 				type: "json",
 				required: false,
-				description:
-					"Custom line items that override the auto-generated proration invoice. Only valid for immediate plan changes (eg. upgrades or one off plans).",
 			},
 			{
 				name: "processor_subscription_id",
 				type: "string",
 				required: false,
-				description:
-					"The processor subscription ID to link. Use this to attach an existing Stripe subscription instead of creating a new one.",
 			},
 			{
 				name: "carry_over_balances",
 				type: "json",
 				required: false,
-				description: "Whether to carry over balances from the previous plan.",
 			},
 			{
 				name: "carry_over_usages",
 				type: "json",
 				required: false,
-				description: "Whether to carry over usages from the previous plan.",
 			},
 			{
 				name: "license_quantities",
 				type: "json",
 				required: false,
-				description:
-					"Seat quantities for the plan's licenses, keyed by license plan.",
 			},
 			{
 				name: "metadata",
 				type: "json",
 				required: false,
-				description:
-					"Key-value metadata to attach to the Stripe subscription, invoice, and checkout session created during this attach flow. Keys prefixed with 'autumn_' are reserved and will be stripped.",
 			},
 			{
 				name: "no_billing_changes",
 				type: "boolean",
 				required: false,
-				description:
-					"If true, skips any billing changes for the attach operation.",
 			},
 			{
 				name: "enable_plan_immediately",
 				type: "boolean",
 				required: false,
-				description:
-					"If true, the customer's plan is activated immediately even when payment is deferred (invoice mode) or pending (Stripe checkout). For Stripe checkout, the customer_product is inserted before the customer completes the hosted form. Set it here rather than on `invoice_mode`, which only covers the invoice-unpaid case.",
 			},
 			{
 				name: "tax_rate_id",
 				type: "string",
 				required: false,
-				description:
-					"Stripe tax rate ID (txr_...) to apply as the default tax rate on the created subscription, invoice, or checkout session line items.",
 			},
 			{
 				name: "currency",
 				type: "string",
 				required: false,
-				description:
-					"Currency to bill this attach in (e.g. usd, eur). Must match the customer's currency if they are already locked to one, and the plan must offer a paid price in it. Defaults to the customer's currency, then the org default.",
 			},
 			{
 				name: "remove_plan_ids",
 				type: "json",
 				required: false,
-				description:
-					"Plan IDs to expire on the customer as part of this attach. Each must be an active plan billed on the same subscription as the attach (or a free plan); plans on a separate subscription are rejected.",
 			},
 			{
 				name: "remove_discounts",
 				type: "json",
 				required: false,
-				description:
-					"Discounts to remove from the subscription, by reward ID. Discounts not listed are left unchanged.",
-			},
-		],
-	},
-	{
-		group: "billing",
-		method: "create_schedule",
-		path: "/v1/billing.create_schedule",
-		description:
-			"Creates a multi-phase subscription schedule for a customer. The first phase starts immediately and subsequent phases automatically transition at their scheduled start times.",
-		body: "object",
-		fields: [
-			{
-				name: "customer_id",
-				type: "string",
-				required: true,
-				description: "The ID of the customer to create the schedule for.",
-			},
-			{
-				name: "entity_id",
-				type: "string",
-				required: false,
-				description: "Optional entity ID for an entity-scoped schedule.",
-			},
-			{
-				name: "free_trial",
-				type: "json",
-				required: false,
-				description:
-					"Free trial configuration applied to every plan in the immediate phase.",
-			},
-			{
-				name: "currency",
-				type: "string",
-				required: false,
-				description:
-					"Three-letter Stripe-supported currency code used to bill the immediate phase (for example, 'usd').",
-			},
-			{
-				name: "invoice_mode",
-				type: "json",
-				required: false,
-				description:
-					"Invoice mode creates and sends an invoice instead of charging the customer's payment method immediately for the first phase.",
-			},
-			{
-				name: "discounts",
-				type: "json",
-				required: false,
-				description:
-					"List of discounts to apply to the immediate phase. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code.",
-			},
-			{
-				name: "success_url",
-				type: "string",
-				required: false,
-				description: "URL to redirect to after successful checkout.",
-			},
-			{
-				name: "checkout_session_params",
-				type: "json",
-				required: false,
-				description:
-					"Additional parameters to pass into the creation of the Stripe checkout session.",
-			},
-			{
-				name: "redirect_mode",
-				type: "string",
-				required: false,
-				description:
-					"Controls when to return a checkout URL for the immediate phase. 'always' forces a confirmation or checkout flow, 'if_required' only redirects when needed, and 'never' disables redirects.",
-			},
-			{
-				name: "billing_behavior",
-				type: "string",
-				required: false,
-				description:
-					"Whether to prorate the immediate phase. 'none' skips proration charges and credits.",
-			},
-			{
-				name: "no_billing_changes",
-				type: "boolean",
-				required: false,
-				description: "If true, skips any billing changes for the schedule.",
-			},
-			{
-				name: "billing_cycle_anchor",
-				type: "json",
-				required: false,
-				description:
-					"Pass 'now' to reset the billing cycle anchor of the immediate phase to the current time.",
-			},
-			{
-				name: "enable_plan_immediately",
-				type: "boolean",
-				required: false,
-				description:
-					"If true, the immediate-phase cusProducts are activated immediately (and scheduled-phase cusProducts pre-inserted) even when payment is pending via Stripe checkout. The Autumn schedule rows are persisted on checkout.session.completed.",
-			},
-			{
-				name: "preserve_add_ons",
-				type: "boolean",
-				required: false,
-				description:
-					"Deprecated and ignored. Active plans the schedule does not declare are always retained.",
-			},
-			{
-				name: "unscheduled_plans",
-				type: "json",
-				required: false,
-				description:
-					"Plans billed with the immediate phase that the schedule never expires or replaces. No phase may declare a plan in the same group and scope.",
-			},
-			{
-				name: "phases",
-				type: "json",
-				required: true,
-				description: "Ordered phase definitions for the schedule.",
 			},
 		],
 	},
@@ -1239,109 +908,83 @@ export const API_ROUTES: readonly ApiRoute[] = [
 		method: "multi_attach",
 		path: "/v1/billing.multi_attach",
 		description:
-			"Attaches multiple plans to a customer in a single request. Creates a single Stripe subscription with all plans consolidated.",
+			"Attaches multiple plans to a customer in a single request. Creates a single subscription with all plans consolidated.",
 		body: "object",
 		fields: [
 			{
 				name: "customer_id",
 				type: "string",
 				required: true,
-				description: "The ID of the customer to attach the plans to.",
 			},
 			{
 				name: "entity_id",
 				type: "string",
 				required: false,
-				description: "The ID of the entity to attach the plans to.",
 			},
 			{
 				name: "plans",
 				type: "json",
 				required: true,
-				description: "The list of plans to attach to the customer.",
 			},
 			{
 				name: "free_trial",
 				type: "json",
 				required: false,
-				description:
-					"Free trial configuration applied to all plans. Pass an object to set a custom trial, or null to remove any trial.",
 			},
 			{
 				name: "starts_at",
 				type: "number",
 				required: false,
-				description:
-					"Unix timestamp in milliseconds for backdating every plan in this multi-attach.",
 			},
 			{
 				name: "currency",
 				type: "string",
 				required: false,
-				description:
-					"Currency to bill this multi-attach in (e.g. usd, eur). Must match the customer's currency if they are already locked to one, and every plan must offer a paid price in it. Defaults to the customer's currency, then the org default.",
 			},
 			{
 				name: "invoice_mode",
 				type: "json",
 				required: false,
-				description:
-					"Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately.",
 			},
 			{
 				name: "discounts",
 				type: "json",
 				required: false,
-				description:
-					"List of discounts to apply. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code.",
 			},
 			{
 				name: "billing_behavior",
 				type: "string",
 				required: false,
-				description:
-					"How to handle billing. 'prorate_immediately' charges/credits prorated amounts now, 'none' does not charge/credit anything.",
 			},
 			{
 				name: "billing_cycle_anchor",
 				type: "json",
 				required: false,
-				description:
-					"Pass 'now' to reset the billing cycle of every plan on the subscription to the time of this request.",
 			},
 			{
 				name: "success_url",
 				type: "string",
 				required: false,
-				description: "URL to redirect to after successful checkout.",
 			},
 			{
 				name: "checkout_session_params",
 				type: "json",
 				required: false,
-				description:
-					"Additional parameters to pass into the creation of the Stripe checkout session.",
 			},
 			{
 				name: "redirect_mode",
 				type: "string",
 				required: false,
-				description:
-					"Controls when to return a checkout URL. 'always' returns a URL even if payment succeeds, 'if_required' only when payment action is needed, 'never' disables redirects.",
 			},
 			{
 				name: "new_billing_subscription",
 				type: "boolean",
 				required: false,
-				description:
-					"Only applicable when the customer has an existing Stripe subscription. If true, creates a new separate subscription instead of merging into the existing one.",
 			},
 			{
 				name: "enable_plan_immediately",
 				type: "boolean",
 				required: false,
-				description:
-					"If true, the cusProducts are activated immediately even when payment is pending via Stripe checkout.",
 			},
 			{
 				name: "customer_data",
@@ -1367,218 +1010,176 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "customer_id",
 				type: "string",
 				required: true,
-				description: "The ID of the customer to attach the plan to.",
 			},
 			{
 				name: "entity_id",
 				type: "string",
 				required: false,
-				description: "The ID of the entity to attach the plan to.",
 			},
 			{
 				name: "plan_id",
 				type: "string",
 				required: true,
-				description: "The ID of the plan.",
 			},
 			{
 				name: "feature_quantities",
 				type: "json",
 				required: false,
-				description:
-					"If this plan contains prepaid features, use this field to specify the quantity of each prepaid feature. This quantity includes the included amount and billing units defined when setting up the plan.",
 			},
 			{
 				name: "version",
 				type: "number",
 				required: false,
-				description: "The version of the plan to attach.",
 			},
 			{
 				name: "free_trial",
 				type: "json",
 				required: false,
-				description:
-					"Free trial for this plan. A shorthand for customize.free_trial, which takes precedence when both are given.",
 			},
 			{
 				name: "customize",
 				type: "json",
 				required: false,
-				description:
-					"Customize the plan to attach. Can override the price, items, licenses, free trial, or a combination.",
 			},
 			{
 				name: "invoice_mode",
 				type: "json",
 				required: false,
-				description:
-					"Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses Stripe's send_invoice collection method.",
 			},
 			{
 				name: "proration_behavior",
 				type: "string",
 				required: false,
-				description:
-					"How to handle proration when updating an existing subscription. 'prorate_immediately' charges/credits prorated amounts now, 'none' skips creating any charges.",
+			},
+			{
+				name: "transition_rules",
+				type: "json",
+				required: false,
 			},
 			{
 				name: "redirect_mode",
 				type: "string",
 				required: false,
-				description:
-					"Controls when to return a checkout URL. 'always' returns a URL even if payment succeeds, 'if_required' only when payment action is needed, 'never' disables redirects.",
 			},
 			{
 				name: "subscription_id",
 				type: "string",
 				required: false,
-				description:
-					"A unique ID to identify this subscription. Can be used to target specific subscriptions in update operations when a customer has multiple products with the same plan.",
+			},
+			{
+				name: "customer_data",
+				type: "json",
+				required: false,
+			},
+			{
+				name: "entity_data",
+				type: "json",
+				required: false,
 			},
 			{
 				name: "discounts",
 				type: "json",
 				required: false,
-				description:
-					"List of discounts to apply. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code.",
 			},
 			{
 				name: "success_url",
 				type: "string",
 				required: false,
-				description: "URL to redirect to after successful checkout.",
 			},
 			{
 				name: "new_billing_subscription",
 				type: "boolean",
 				required: false,
-				description:
-					"Only applicable when the customer has an existing Stripe subscription. If true, creates a new separate subscription instead of merging into the existing one.",
 			},
 			{
 				name: "billing_cycle_anchor",
 				type: "json",
 				required: false,
-				description:
-					"Reset the billing cycle immediately with 'now', or schedule a reset at a future Unix timestamp in milliseconds.",
 			},
 			{
 				name: "plan_schedule",
 				type: "string",
 				required: false,
-				description:
-					"When the plan change should take effect. 'immediate' applies now, 'end_of_cycle' schedules for the end of the current billing cycle. By default, upgrades are immediate and downgrades are scheduled.",
 			},
 			{
 				name: "starts_at",
 				type: "number",
 				required: false,
-				description:
-					"Unix timestamp in milliseconds for when the attached plan should start. Future dates create a scheduled subscription.",
 			},
 			{
 				name: "ends_at",
 				type: "number",
 				required: false,
-				description:
-					"Unix timestamp in milliseconds for when the attached plan should end.",
 			},
 			{
 				name: "checkout_session_params",
 				type: "json",
 				required: false,
-				description:
-					"Additional parameters to pass into the creation of the Stripe checkout session.",
 			},
 			{
 				name: "long_lived_checkout",
 				type: "boolean",
 				required: false,
-				description:
-					"If true, returns an Autumn-hosted checkout link that can create a fresh Stripe checkout session when opened.",
 			},
 			{
 				name: "custom_line_items",
 				type: "json",
 				required: false,
-				description:
-					"Custom line items that override the auto-generated proration invoice. Only valid for immediate plan changes (eg. upgrades or one off plans).",
 			},
 			{
 				name: "processor_subscription_id",
 				type: "string",
 				required: false,
-				description:
-					"The processor subscription ID to link. Use this to attach an existing Stripe subscription instead of creating a new one.",
 			},
 			{
 				name: "carry_over_balances",
 				type: "json",
 				required: false,
-				description: "Whether to carry over balances from the previous plan.",
 			},
 			{
 				name: "carry_over_usages",
 				type: "json",
 				required: false,
-				description: "Whether to carry over usages from the previous plan.",
 			},
 			{
 				name: "license_quantities",
 				type: "json",
 				required: false,
-				description:
-					"Seat quantities for the plan's licenses, keyed by license plan.",
 			},
 			{
 				name: "metadata",
 				type: "json",
 				required: false,
-				description:
-					"Key-value metadata to attach to the Stripe subscription, invoice, and checkout session created during this attach flow. Keys prefixed with 'autumn_' are reserved and will be stripped.",
 			},
 			{
 				name: "no_billing_changes",
 				type: "boolean",
 				required: false,
-				description:
-					"If true, skips any billing changes for the attach operation.",
 			},
 			{
 				name: "enable_plan_immediately",
 				type: "boolean",
 				required: false,
-				description:
-					"If true, the customer's plan is activated immediately even when payment is deferred (invoice mode) or pending (Stripe checkout). For Stripe checkout, the customer_product is inserted before the customer completes the hosted form. Set it here rather than on `invoice_mode`, which only covers the invoice-unpaid case.",
 			},
 			{
 				name: "tax_rate_id",
 				type: "string",
 				required: false,
-				description:
-					"Stripe tax rate ID (txr_...) to apply as the default tax rate on the created subscription, invoice, or checkout session line items.",
 			},
 			{
 				name: "currency",
 				type: "string",
 				required: false,
-				description:
-					"Currency to bill this attach in (e.g. usd, eur). Must match the customer's currency if they are already locked to one, and the plan must offer a paid price in it. Defaults to the customer's currency, then the org default.",
 			},
 			{
 				name: "remove_plan_ids",
 				type: "json",
 				required: false,
-				description:
-					"Plan IDs to expire on the customer as part of this attach. Each must be an active plan billed on the same subscription as the attach (or a free plan); plans on a separate subscription are rejected.",
 			},
 			{
 				name: "remove_discounts",
 				type: "json",
 				required: false,
-				description:
-					"Discounts to remove from the subscription, by reward ID. Discounts not listed are left unchanged.",
 			},
 		],
 	},
@@ -1594,102 +1195,76 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "customer_id",
 				type: "string",
 				required: true,
-				description: "The ID of the customer to attach the plans to.",
 			},
 			{
 				name: "entity_id",
 				type: "string",
 				required: false,
-				description: "The ID of the entity to attach the plans to.",
 			},
 			{
 				name: "plans",
 				type: "json",
 				required: true,
-				description: "The list of plans to attach to the customer.",
 			},
 			{
 				name: "free_trial",
 				type: "json",
 				required: false,
-				description:
-					"Free trial configuration applied to all plans. Pass an object to set a custom trial, or null to remove any trial.",
 			},
 			{
 				name: "starts_at",
 				type: "number",
 				required: false,
-				description:
-					"Unix timestamp in milliseconds for backdating every plan in this multi-attach.",
 			},
 			{
 				name: "currency",
 				type: "string",
 				required: false,
-				description:
-					"Currency to bill this multi-attach in (e.g. usd, eur). Must match the customer's currency if they are already locked to one, and every plan must offer a paid price in it. Defaults to the customer's currency, then the org default.",
 			},
 			{
 				name: "invoice_mode",
 				type: "json",
 				required: false,
-				description:
-					"Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately.",
 			},
 			{
 				name: "discounts",
 				type: "json",
 				required: false,
-				description:
-					"List of discounts to apply. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code.",
 			},
 			{
 				name: "billing_behavior",
 				type: "string",
 				required: false,
-				description:
-					"How to handle billing. 'prorate_immediately' charges/credits prorated amounts now, 'none' does not charge/credit anything.",
 			},
 			{
 				name: "billing_cycle_anchor",
 				type: "json",
 				required: false,
-				description:
-					"Pass 'now' to reset the billing cycle of every plan on the subscription to the time of this request.",
 			},
 			{
 				name: "success_url",
 				type: "string",
 				required: false,
-				description: "URL to redirect to after successful checkout.",
 			},
 			{
 				name: "checkout_session_params",
 				type: "json",
 				required: false,
-				description:
-					"Additional parameters to pass into the creation of the Stripe checkout session.",
 			},
 			{
 				name: "redirect_mode",
 				type: "string",
 				required: false,
-				description:
-					"Controls when to return a checkout URL. 'always' returns a URL even if payment succeeds, 'if_required' only when payment action is needed, 'never' disables redirects.",
 			},
 			{
 				name: "new_billing_subscription",
 				type: "boolean",
 				required: false,
-				description:
-					"Only applicable when the customer has an existing Stripe subscription. If true, creates a new separate subscription instead of merging into the existing one.",
 			},
 			{
 				name: "enable_plan_immediately",
 				type: "boolean",
 				required: false,
-				description:
-					"If true, the cusProducts are activated immediately even when payment is pending via Stripe checkout.",
 			},
 			{
 				name: "customer_data",
@@ -1715,151 +1290,136 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "customer_id",
 				type: "string",
 				required: true,
-				description: "The ID of the customer to attach the plan to.",
 			},
 			{
 				name: "entity_id",
 				type: "string",
 				required: false,
-				description: "The ID of the entity to attach the plan to.",
 			},
 			{
 				name: "plan_id",
 				type: "string",
 				required: false,
-				description:
-					"The ID of the plan to update. Optional if subscription_id is provided, or if the customer has only one product.",
 			},
 			{
 				name: "feature_quantities",
 				type: "json",
 				required: false,
-				description:
-					"If this plan contains prepaid features, use this field to specify the quantity of each prepaid feature. This quantity includes the included amount and billing units defined when setting up the plan.",
 			},
 			{
 				name: "version",
 				type: "number",
 				required: false,
-				description: "The version of the plan to attach.",
 			},
 			{
 				name: "free_trial",
 				type: "json",
 				required: false,
-				description:
-					"Free trial for this plan. A shorthand for customize.free_trial, which takes precedence when both are given.",
 			},
 			{
 				name: "customize",
 				type: "json",
 				required: false,
-				description:
-					"Customize the plan to attach. Can override the price, items, licenses, free trial, or a combination.",
 			},
 			{
 				name: "invoice_mode",
 				type: "json",
 				required: false,
-				description:
-					"Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses Stripe's send_invoice collection method.",
 			},
 			{
 				name: "proration_behavior",
 				type: "string",
 				required: false,
-				description:
-					"How to handle proration when updating an existing subscription. 'prorate_immediately' charges/credits prorated amounts now, 'none' skips creating any charges.",
+			},
+			{
+				name: "transition_rules",
+				type: "json",
+				required: false,
 			},
 			{
 				name: "redirect_mode",
 				type: "string",
 				required: false,
-				description:
-					"Controls when to return a checkout URL. 'always' returns a URL even if payment succeeds, 'if_required' only when payment action is needed, 'never' disables redirects.",
 			},
 			{
 				name: "subscription_id",
 				type: "string",
 				required: false,
-				description:
-					"A unique ID to identify this subscription. Can be used to target specific subscriptions in update operations when a customer has multiple products with the same plan.",
+			},
+			{
+				name: "customer_data",
+				type: "json",
+				required: false,
+			},
+			{
+				name: "entity_data",
+				type: "json",
+				required: false,
 			},
 			{
 				name: "discounts",
 				type: "json",
 				required: false,
-				description:
-					"List of discounts to apply. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code.",
 			},
 			{
 				name: "remove_discounts",
 				type: "json",
 				required: false,
-				description:
-					"Discounts to remove from the subscription, by reward ID. Discounts not listed are left unchanged.",
 			},
 			{
 				name: "custom_line_items",
 				type: "json",
 				required: false,
-				description:
-					"Custom line items that replace the auto-generated proration invoice, or bill a standalone invoice when nothing else changes. Only valid on an existing recurring subscription.",
 			},
 			{
 				name: "cancel_action",
 				type: "string",
 				required: false,
-				description:
-					"Action to perform for cancellation. 'cancel_immediately' cancels now with prorated refund, 'cancel_end_of_cycle' cancels at period end, 'uncancel' reverses a pending cancellation.",
 			},
 			{
 				name: "billing_cycle_anchor",
 				type: "json",
 				required: false,
-				description:
-					"Reset the billing cycle immediately with 'now', or schedule a reset at a future Unix timestamp in milliseconds.",
+			},
+			{
+				name: "processor_subscription_id",
+				type: "string",
+				required: false,
 			},
 			{
 				name: "no_billing_changes",
 				type: "boolean",
 				required: false,
-				description:
-					"If true, the subscription is updated internally without applying billing changes in Stripe.",
 			},
 			{
 				name: "refund_last_payment",
 				type: "string",
 				required: false,
-				description:
-					"Controls how the last payment is refunded on immediate cancellation. 'prorated' refunds the unused portion, 'full' refunds the entire last payment.",
 			},
 			{
 				name: "subscription_params",
 				type: "json",
 				required: false,
-				description:
-					"Additional parameters to pass into the Stripe subscription update or cancel call.",
 			},
 			{
 				name: "recalculate_balances",
 				type: "json",
 				required: false,
-				description:
-					"Controls whether balances should be recalculated during the subscription update.",
 			},
 			{
 				name: "carry_over_usages",
 				type: "json",
 				required: false,
-				description: "Whether to carry over usages from the previous plan.",
 			},
 			{
 				name: "license_quantities",
 				type: "json",
 				required: false,
-				description:
-					"Total seat quantities (inclusive of the license's included count) per license plan offered by this plan. Licenses not listed keep their current paid quantity.",
+			},
+			{
+				name: "status",
+				type: "string",
+				required: false,
 			},
 		],
 	},
@@ -1875,151 +1435,136 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "customer_id",
 				type: "string",
 				required: true,
-				description: "The ID of the customer to attach the plan to.",
 			},
 			{
 				name: "entity_id",
 				type: "string",
 				required: false,
-				description: "The ID of the entity to attach the plan to.",
 			},
 			{
 				name: "plan_id",
 				type: "string",
 				required: false,
-				description:
-					"The ID of the plan to update. Optional if subscription_id is provided, or if the customer has only one product.",
 			},
 			{
 				name: "feature_quantities",
 				type: "json",
 				required: false,
-				description:
-					"If this plan contains prepaid features, use this field to specify the quantity of each prepaid feature. This quantity includes the included amount and billing units defined when setting up the plan.",
 			},
 			{
 				name: "version",
 				type: "number",
 				required: false,
-				description: "The version of the plan to attach.",
 			},
 			{
 				name: "free_trial",
 				type: "json",
 				required: false,
-				description:
-					"Free trial for this plan. A shorthand for customize.free_trial, which takes precedence when both are given.",
 			},
 			{
 				name: "customize",
 				type: "json",
 				required: false,
-				description:
-					"Customize the plan to attach. Can override the price, items, licenses, free trial, or a combination.",
 			},
 			{
 				name: "invoice_mode",
 				type: "json",
 				required: false,
-				description:
-					"Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses Stripe's send_invoice collection method.",
 			},
 			{
 				name: "proration_behavior",
 				type: "string",
 				required: false,
-				description:
-					"How to handle proration when updating an existing subscription. 'prorate_immediately' charges/credits prorated amounts now, 'none' skips creating any charges.",
+			},
+			{
+				name: "transition_rules",
+				type: "json",
+				required: false,
 			},
 			{
 				name: "redirect_mode",
 				type: "string",
 				required: false,
-				description:
-					"Controls when to return a checkout URL. 'always' returns a URL even if payment succeeds, 'if_required' only when payment action is needed, 'never' disables redirects.",
 			},
 			{
 				name: "subscription_id",
 				type: "string",
 				required: false,
-				description:
-					"A unique ID to identify this subscription. Can be used to target specific subscriptions in update operations when a customer has multiple products with the same plan.",
+			},
+			{
+				name: "customer_data",
+				type: "json",
+				required: false,
+			},
+			{
+				name: "entity_data",
+				type: "json",
+				required: false,
 			},
 			{
 				name: "discounts",
 				type: "json",
 				required: false,
-				description:
-					"List of discounts to apply. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code.",
 			},
 			{
 				name: "remove_discounts",
 				type: "json",
 				required: false,
-				description:
-					"Discounts to remove from the subscription, by reward ID. Discounts not listed are left unchanged.",
 			},
 			{
 				name: "custom_line_items",
 				type: "json",
 				required: false,
-				description:
-					"Custom line items that replace the auto-generated proration invoice, or bill a standalone invoice when nothing else changes. Only valid on an existing recurring subscription.",
 			},
 			{
 				name: "cancel_action",
 				type: "string",
 				required: false,
-				description:
-					"Action to perform for cancellation. 'cancel_immediately' cancels now with prorated refund, 'cancel_end_of_cycle' cancels at period end, 'uncancel' reverses a pending cancellation.",
 			},
 			{
 				name: "billing_cycle_anchor",
 				type: "json",
 				required: false,
-				description:
-					"Reset the billing cycle immediately with 'now', or schedule a reset at a future Unix timestamp in milliseconds.",
+			},
+			{
+				name: "processor_subscription_id",
+				type: "string",
+				required: false,
 			},
 			{
 				name: "no_billing_changes",
 				type: "boolean",
 				required: false,
-				description:
-					"If true, the subscription is updated internally without applying billing changes in Stripe.",
 			},
 			{
 				name: "refund_last_payment",
 				type: "string",
 				required: false,
-				description:
-					"Controls how the last payment is refunded on immediate cancellation. 'prorated' refunds the unused portion, 'full' refunds the entire last payment.",
 			},
 			{
 				name: "subscription_params",
 				type: "json",
 				required: false,
-				description:
-					"Additional parameters to pass into the Stripe subscription update or cancel call.",
 			},
 			{
 				name: "recalculate_balances",
 				type: "json",
 				required: false,
-				description:
-					"Controls whether balances should be recalculated during the subscription update.",
 			},
 			{
 				name: "carry_over_usages",
 				type: "json",
 				required: false,
-				description: "Whether to carry over usages from the previous plan.",
 			},
 			{
 				name: "license_quantities",
 				type: "json",
 				required: false,
-				description:
-					"Total seat quantities (inclusive of the license's included count) per license plan offered by this plan. Licenses not listed keep their current paid quantity.",
+			},
+			{
+				name: "status",
+				type: "string",
+				required: false,
 			},
 		],
 	},
@@ -2035,34 +1580,26 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "customer_id",
 				type: "string",
 				required: true,
-				description: "The ID of the customer to update plans for.",
 			},
 			{
 				name: "entity_id",
 				type: "string",
 				required: false,
-				description:
-					"The ID of the entity to update plans for. Individual updates can override this with their own entity_id.",
 			},
 			{
 				name: "refund_last_payment",
 				type: "string",
 				required: false,
-				description:
-					"Controls how the last payment is refunded on immediate cancellation. 'prorated' refunds the unused portion, 'full' refunds the entire last payment.",
 			},
 			{
 				name: "subscription_params",
 				type: "json",
 				required: false,
-				description:
-					"Additional parameters to pass into the Stripe subscription update or cancel call.",
 			},
 			{
 				name: "updates",
 				type: "json",
 				required: true,
-				description: "The list of plan updates to apply to the customer.",
 			},
 		],
 	},
@@ -2078,34 +1615,26 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "customer_id",
 				type: "string",
 				required: true,
-				description: "The ID of the customer to update plans for.",
 			},
 			{
 				name: "entity_id",
 				type: "string",
 				required: false,
-				description:
-					"The ID of the entity to update plans for. Individual updates can override this with their own entity_id.",
 			},
 			{
 				name: "refund_last_payment",
 				type: "string",
 				required: false,
-				description:
-					"Controls how the last payment is refunded on immediate cancellation. 'prorated' refunds the unused portion, 'full' refunds the entire last payment.",
 			},
 			{
 				name: "subscription_params",
 				type: "json",
 				required: false,
-				description:
-					"Additional parameters to pass into the Stripe subscription update or cancel call.",
 			},
 			{
 				name: "updates",
 				type: "json",
 				required: true,
-				description: "The list of plan updates to apply to the customer.",
 			},
 		],
 	},
@@ -2121,258 +1650,16 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "customer_id",
 				type: "string",
 				required: true,
-				description: "The ID of the customer to open the billing portal for.",
 			},
 			{
 				name: "configuration_id",
 				type: "string",
 				required: false,
-				description:
-					"Stripe billing portal configuration ID. Create configurations in your Stripe dashboard.",
 			},
 			{
 				name: "return_url",
 				type: "string",
 				required: false,
-				description:
-					"URL to redirect to when back button is clicked in the billing portal",
-			},
-		],
-	},
-	{
-		group: "billing",
-		method: "setup_payment",
-		path: "/v1/billing.setup_payment",
-		description:
-			"Create a payment setup session for a customer to add or update their payment method.",
-		body: "object",
-		fields: [
-			{
-				name: "customer_id",
-				type: "string",
-				required: true,
-				description: "The ID of the customer to attach the plan to.",
-			},
-			{
-				name: "entity_id",
-				type: "string",
-				required: false,
-				description: "The ID of the entity to attach the plan to.",
-			},
-			{
-				name: "plan_id",
-				type: "string",
-				required: false,
-				description:
-					"If specified, the plan will be attached to the customer after setup.",
-			},
-			{
-				name: "feature_quantities",
-				type: "json",
-				required: false,
-				description:
-					"If this plan contains prepaid features, use this field to specify the quantity of each prepaid feature. This quantity includes the included amount and billing units defined when setting up the plan.",
-			},
-			{
-				name: "version",
-				type: "number",
-				required: false,
-				description: "The version of the plan to attach.",
-			},
-			{
-				name: "free_trial",
-				type: "json",
-				required: false,
-				description:
-					"Free trial for this plan. A shorthand for customize.free_trial, which takes precedence when both are given.",
-			},
-			{
-				name: "customize",
-				type: "json",
-				required: false,
-				description:
-					"Customize the plan to attach. Can override the price, items, licenses, free trial, or a combination.",
-			},
-			{
-				name: "proration_behavior",
-				type: "string",
-				required: false,
-				description:
-					"How to handle proration when updating an existing subscription. 'prorate_immediately' charges/credits prorated amounts now, 'none' skips creating any charges.",
-			},
-			{
-				name: "subscription_id",
-				type: "string",
-				required: false,
-				description:
-					"A unique ID to identify this subscription. Can be used to target specific subscriptions in update operations when a customer has multiple products with the same plan.",
-			},
-			{
-				name: "discounts",
-				type: "json",
-				required: false,
-				description:
-					"List of discounts to apply. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code.",
-			},
-			{
-				name: "success_url",
-				type: "string",
-				required: false,
-				description: "URL to redirect to after successful checkout.",
-			},
-			{
-				name: "billing_cycle_anchor",
-				type: "json",
-				required: false,
-				description:
-					"Reset the billing cycle immediately with 'now', or schedule a reset at a future Unix timestamp in milliseconds.",
-			},
-			{
-				name: "starts_at",
-				type: "number",
-				required: false,
-				description:
-					"Unix timestamp in milliseconds for when the attached plan should start. Future dates create a scheduled subscription.",
-			},
-			{
-				name: "ends_at",
-				type: "number",
-				required: false,
-				description:
-					"Unix timestamp in milliseconds for when the attached plan should end.",
-			},
-			{
-				name: "checkout_session_params",
-				type: "json",
-				required: false,
-				description:
-					"Additional parameters to pass into the creation of the Stripe checkout session.",
-			},
-			{
-				name: "custom_line_items",
-				type: "json",
-				required: false,
-				description:
-					"Custom line items that override the auto-generated proration invoice. Only valid for immediate plan changes (eg. upgrades or one off plans).",
-			},
-			{
-				name: "processor_subscription_id",
-				type: "string",
-				required: false,
-				description:
-					"The processor subscription ID to link. Use this to attach an existing Stripe subscription instead of creating a new one.",
-			},
-			{
-				name: "carry_over_balances",
-				type: "json",
-				required: false,
-				description: "Whether to carry over balances from the previous plan.",
-			},
-			{
-				name: "carry_over_usages",
-				type: "json",
-				required: false,
-				description: "Whether to carry over usages from the previous plan.",
-			},
-			{
-				name: "license_quantities",
-				type: "json",
-				required: false,
-				description:
-					"Seat quantities for the plan's licenses, keyed by license plan.",
-			},
-			{
-				name: "metadata",
-				type: "json",
-				required: false,
-				description:
-					"Key-value metadata to attach to the Stripe subscription, invoice, and checkout session created during this attach flow. Keys prefixed with 'autumn_' are reserved and will be stripped.",
-			},
-			{
-				name: "no_billing_changes",
-				type: "boolean",
-				required: false,
-				description:
-					"If true, skips any billing changes for the attach operation.",
-			},
-			{
-				name: "enable_plan_immediately",
-				type: "boolean",
-				required: false,
-				description:
-					"If true, the customer's plan is activated immediately even when payment is deferred (invoice mode) or pending (Stripe checkout). For Stripe checkout, the customer_product is inserted before the customer completes the hosted form. Set it here rather than on `invoice_mode`, which only covers the invoice-unpaid case.",
-			},
-			{
-				name: "tax_rate_id",
-				type: "string",
-				required: false,
-				description:
-					"Stripe tax rate ID (txr_...) to apply as the default tax rate on the created subscription, invoice, or checkout session line items.",
-			},
-			{
-				name: "currency",
-				type: "string",
-				required: false,
-				description:
-					"Currency to bill this attach in (e.g. usd, eur). Must match the customer's currency if they are already locked to one, and the plan must offer a paid price in it. Defaults to the customer's currency, then the org default.",
-			},
-			{
-				name: "remove_plan_ids",
-				type: "json",
-				required: false,
-				description:
-					"Plan IDs to expire on the customer as part of this attach. Each must be an active plan billed on the same subscription as the attach (or a free plan); plans on a separate subscription are rejected.",
-			},
-			{
-				name: "remove_discounts",
-				type: "json",
-				required: false,
-				description:
-					"Discounts to remove from the subscription, by reward ID. Discounts not listed are left unchanged.",
-			},
-		],
-	},
-	{
-		group: "billing",
-		method: "import",
-		path: "/v1/billing.import",
-		description:
-			"Image a customer into Autumn for live migration. Read-only against processors.",
-		body: "object",
-		fields: [
-			{
-				name: "customer_id",
-				type: "string",
-				required: true,
-				description: "Autumn customer to image into.",
-			},
-			{
-				name: "customer_data",
-				type: "json",
-				required: false,
-				description:
-					"Optional identity fields upserted onto the customer (applied to existing customers too).",
-			},
-			{
-				name: "processors",
-				type: "json",
-				required: false,
-				description:
-					"The customer's processor identities (e.g. Stripe customer id, RevenueCat app_user_id). Omit for customers with no processor, e.g. those only ever on a free plan.",
-			},
-			{
-				name: "billables",
-				type: "json",
-				required: true,
-				description:
-					"The billing objects (subscriptions, one-offs) to image, each carrying its plan.",
-			},
-			{
-				name: "dry_run",
-				type: "boolean",
-				required: false,
-				description:
-					"If true, validate and compute without persisting; returns what would be flashed.",
 			},
 		],
 	},
@@ -2387,68 +1674,56 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "customer_id",
 				type: "string",
 				required: true,
-				description: "The ID of the customer.",
 			},
 			{
 				name: "feature_id",
 				type: "string",
 				required: true,
-				description: "The ID of the feature.",
 			},
 			{
 				name: "entity_id",
 				type: "string",
 				required: false,
-				description:
-					"The ID of the entity for entity-scoped balances (e.g., per-seat limits).",
 			},
 			{
 				name: "included_grant",
 				type: "number",
 				required: false,
-				description:
-					"The initial balance amount to grant. For metered features, this is the number of units the customer can use.",
 			},
 			{
 				name: "unlimited",
 				type: "boolean",
 				required: false,
-				description:
-					"If true, the balance has unlimited usage. Cannot be combined with 'included_grant'.",
 			},
 			{
 				name: "reset",
 				type: "json",
 				required: false,
-				description:
-					"Reset configuration for the balance. If not provided, the balance is a one-time grant that never resets.",
 			},
 			{
 				name: "rollover",
 				type: "json",
 				required: false,
-				description: "Rollover configuration for the balance.",
 			},
 			{
 				name: "expires_at",
 				type: "number",
 				required: false,
-				description:
-					"Unix timestamp (milliseconds) when the balance expires. Mutually exclusive with reset.",
 			},
 			{
 				name: "next_reset_at",
 				type: "number",
 				required: false,
-				description:
-					"Unix timestamp (milliseconds) for the first reset boundary, allowing a custom (e.g. shorter) first period. Requires 'reset', and must occur before 'expires_at' if both are provided. Subsequent resets advance by one reset interval from this boundary.",
 			},
 			{
 				name: "balance_id",
 				type: "string",
 				required: false,
-				description:
-					"A unique identifier for this balance. Use this to target the balance in future update / delete calls.",
+			},
+			{
+				name: "granted_balance",
+				type: "number",
+				required: false,
 			},
 		],
 	},
@@ -2463,75 +1738,66 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "customer_id",
 				type: "string",
 				required: true,
-				description: "The ID of the customer.",
 			},
 			{
 				name: "feature_id",
 				type: "string",
 				required: true,
-				description: "The ID of the feature.",
 			},
 			{
 				name: "entity_id",
 				type: "string",
 				required: false,
-				description:
-					"The ID of the entity for entity-scoped balances (e.g., per-seat limits).",
 			},
 			{
 				name: "remaining",
 				type: "number",
 				required: false,
-				description:
-					"Set the remaining balance to this exact value. Cannot be combined with add_to_balance.",
 			},
 			{
 				name: "add_to_balance",
 				type: "number",
 				required: false,
-				description:
-					"Add this amount to the current balance. Use negative values to subtract. Cannot be combined with current_balance.",
 			},
 			{
 				name: "usage",
 				type: "number",
 				required: false,
-				description:
-					"The usage amount to update. Cannot be combined with remaining or add_to_balance.",
 			},
 			{
 				name: "interval",
 				type: "string",
 				required: false,
-				description:
-					"Target a specific balance by its reset interval. Use when the customer has multiple balances for the same feature with different reset intervals.",
 			},
 			{
 				name: "included_grant",
 				type: "number",
 				required: false,
-				description: "Set the granted balance to this exact value.",
 			},
 			{
 				name: "balance_id",
 				type: "string",
 				required: false,
-				description:
-					"Target a specific balance by its ID (set on create). Use when the customer has multiple balances for the same feature.",
 			},
 			{
 				name: "next_reset_at",
 				type: "number",
 				required: false,
-				description:
-					"The next reset time for the balance. If there are multiple breakdowns, this will update the breakdown with the next reset time.",
 			},
 			{
 				name: "expires_at",
 				type: "number",
 				required: false,
-				description:
-					"Unix timestamp (milliseconds) when the balance expires. Targets a specific balance via balance_id / interval when the customer has multiple balances for the same feature.",
+			},
+			{
+				name: "current_balance",
+				type: "number",
+				required: false,
+			},
+			{
+				name: "customer_entitlement_id",
+				type: "string",
+				required: false,
 			},
 		],
 	},
@@ -2547,39 +1813,31 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "customer_id",
 				type: "string",
 				required: true,
-				description: "The ID of the customer.",
 			},
 			{
 				name: "entity_id",
 				type: "string",
 				required: false,
-				description: "The ID of the entity.",
 			},
 			{
 				name: "feature_id",
 				type: "string",
 				required: false,
-				description: "The ID of the feature.",
 			},
 			{
 				name: "balance_id",
 				type: "string",
 				required: false,
-				description: "The ID of the balance to delete.",
 			},
 			{
 				name: "recalculate_balances",
 				type: "boolean",
 				required: false,
-				description:
-					"If true, deduct the deleted balance's remaining amount from the customer's other balances for the same feature after deletion.",
 			},
 			{
 				name: "interval",
 				type: "string",
 				required: false,
-				description:
-					"Target a specific balance by its reset interval. Use when the customer has multiple balances for the same feature with different reset intervals.",
 			},
 		],
 	},
@@ -2595,29 +1853,21 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "lock_id",
 				type: "string",
 				required: true,
-				description:
-					"The lock ID that was passed into the previous check call.",
 			},
 			{
 				name: "action",
 				type: "string",
 				required: true,
-				description:
-					"Use 'confirm' to commit the deduction, or 'release' to return the held balance.",
 			},
 			{
 				name: "override_value",
 				type: "number",
 				required: false,
-				description:
-					"Additional properties to attach to this finalize lock event.",
 			},
 			{
 				name: "properties",
 				type: "json",
 				required: false,
-				description:
-					"Additional properties to attach to this finalize lock event.",
 			},
 		],
 	},
@@ -2633,55 +1883,66 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "customer_id",
 				type: "string",
 				required: true,
-				description: "The ID of the customer.",
 			},
 			{
 				name: "feature_id",
 				type: "string",
 				required: true,
-				description: "The ID of the feature.",
 			},
 			{
 				name: "entity_id",
 				type: "string",
 				required: false,
-				description:
-					"The ID of the entity for entity-scoped balances (e.g., per-seat limits).",
 			},
 			{
 				name: "required_balance",
 				type: "number",
 				required: false,
-				description:
-					"Minimum balance required for access. Returns allowed: false if the customer's balance is below this value. Defaults to 1.",
 			},
 			{
 				name: "properties",
 				type: "json",
 				required: false,
-				description:
-					"Additional properties to attach to the usage event if send_event is true.",
 			},
 			{
 				name: "send_event",
 				type: "boolean",
 				required: false,
-				description:
-					"If true, atomically records a usage event while checking access. The required_balance value is used as the usage amount. Combines check + track in one call.",
 			},
 			{
 				name: "lock",
 				type: "json",
 				required: false,
-				description:
-					"Reserve units of a feature upfront by passing a lock_id, then call balances.finalize to confirm or release the hold.",
 			},
 			{
 				name: "with_preview",
 				type: "boolean",
 				required: false,
-				description:
-					"If true, includes upgrade/upsell information in the response when access is denied. Useful for displaying paywalls.",
+			},
+			{
+				name: "model_id",
+				type: "string",
+				required: false,
+			},
+			{
+				name: "input_tokens",
+				type: "number",
+				required: false,
+			},
+			{
+				name: "output_tokens",
+				type: "number",
+				required: false,
+			},
+			{
+				name: "customer_data",
+				type: "json",
+				required: false,
+			},
+			{
+				name: "entity_data",
+				type: "json",
+				required: false,
 			},
 		],
 	},
@@ -2697,62 +1958,66 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "customer_id",
 				type: "string",
 				required: true,
-				description: "The ID of the customer.",
 			},
 			{
 				name: "feature_id",
 				type: "string",
 				required: false,
-				description:
-					"The ID of the feature to track usage for. Required if event_name is not provided.",
 			},
 			{
 				name: "entity_id",
 				type: "string",
 				required: false,
-				description:
-					"The ID of the entity for entity-scoped balances (e.g., per-seat limits).",
 			},
 			{
 				name: "event_name",
 				type: "string",
 				required: false,
-				description:
-					"Event name to track usage for. Use instead of feature_id when multiple features should be tracked from a single event.",
 			},
 			{
 				name: "value",
 				type: "number",
 				required: false,
-				description:
-					"The amount of usage to record. Defaults to 1. Use negative values to credit balance (e.g., when removing a seat).",
 			},
 			{
 				name: "properties",
 				type: "json",
 				required: false,
-				description: "Additional properties to attach to this usage event.",
+			},
+			{
+				name: "idempotency_key",
+				type: "string",
+				required: false,
 			},
 			{
 				name: "timestamp",
 				type: "number",
 				required: false,
-				description:
-					"Unix timestamp in milliseconds to use for the usage event. Defaults to the current time.",
 			},
 			{
 				name: "overage_behavior",
-				type: "string",
+				type: "json",
 				required: false,
-				description:
-					'How to handle usage that exceeds the available balance. "cap" (default) deducts only what fits, stopping at zero. "overflow" deducts the full value: the balance can go negative and usage limits do not clamp the deduction, though spend limits still apply.',
+			},
+			{
+				name: "customer_data",
+				type: "json",
+				required: false,
+			},
+			{
+				name: "entity_data",
+				type: "json",
+				required: false,
+			},
+			{
+				name: "skip_event",
+				type: "boolean",
+				required: false,
 			},
 			{
 				name: "async",
 				type: "boolean",
 				required: false,
-				description:
-					"If true, enqueue the event for asynchronous processing and return 204 immediately. The response will not include balance information.",
 			},
 			{
 				name: "lock",
@@ -2773,98 +2038,101 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "customer_id",
 				type: "string",
 				required: true,
-				description: "The ID of the customer.",
 			},
 			{
 				name: "entity_id",
 				type: "string",
 				required: false,
-				description: "The ID of the entity for entity-scoped balances.",
 			},
 			{
 				name: "feature_id",
 				type: "string",
 				required: false,
-				description:
-					"The ID of the AI credit system feature. Auto-detected from the customer's entitlements if omitted — only required when a customer has multiple AI credit systems.",
 			},
 			{
 				name: "model_id",
 				type: "string",
 				required: true,
-				description:
-					"The AI model as '[provider]/[model]' (e.g. 'anthropic/claude-opus-4-8', 'openrouter/openai/gpt-4o'). The provider is the first path segment and must match a provider + model key in models.dev.",
 			},
 			{
 				name: "input_tokens",
 				type: "number",
 				required: true,
-				description:
-					"Number of non-cached text input tokens consumed. Exclusive of cache and audio token pools.",
 			},
 			{
 				name: "output_tokens",
 				type: "number",
 				required: true,
-				description:
-					"Number of text output tokens consumed. Exclusive of the reasoning and audio output pools.",
 			},
 			{
 				name: "cache_read_tokens",
 				type: "number",
 				required: false,
-				description: "Number of cached input tokens read.",
 			},
 			{
 				name: "cache_write_tokens",
 				type: "number",
 				required: false,
-				description: "Number of input tokens written to the cache.",
 			},
 			{
 				name: "audio_input_tokens",
 				type: "number",
 				required: false,
-				description: "Number of audio input tokens consumed.",
 			},
 			{
 				name: "audio_output_tokens",
 				type: "number",
 				required: false,
-				description: "Number of audio output tokens generated.",
 			},
 			{
 				name: "reasoning_tokens",
 				type: "number",
 				required: false,
-				description: "Number of reasoning tokens generated.",
 			},
 			{
 				name: "properties",
 				type: "json",
 				required: false,
-				description: "Additional properties to attach to this usage event.",
+			},
+			{
+				name: "idempotency_key",
+				type: "string",
+				required: false,
 			},
 			{
 				name: "timestamp",
 				type: "number",
 				required: false,
-				description:
-					"Unix timestamp in milliseconds to use for the usage event. Defaults to the current time.",
 			},
 			{
 				name: "overage_behavior",
-				type: "string",
+				type: "json",
 				required: false,
-				description:
-					'How to handle usage that exceeds the available balance. "cap" (default) deducts only what fits, stopping at zero. "overflow" deducts the full value: the balance can go negative and usage limits do not clamp the deduction, though spend limits still apply.',
+			},
+			{
+				name: "customer_data",
+				type: "json",
+				required: false,
+			},
+			{
+				name: "entity_data",
+				type: "json",
+				required: false,
+			},
+			{
+				name: "skip_event",
+				type: "boolean",
+				required: false,
 			},
 			{
 				name: "async",
 				type: "boolean",
 				required: false,
-				description:
-					"If true, enqueue the event for asynchronous processing and return 204 immediately. The response will not include balance information.",
+			},
+			{
+				name: "pinned_rates",
+				type: "json",
+				required: false,
 			},
 		],
 	},
@@ -2889,40 +2157,41 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "start_cursor",
 				type: "string",
 				required: false,
-				description:
-					"Opaque pagination cursor. Empty string (default) requests the first page; use next_cursor from a prior response for subsequent pages.",
 			},
 			{
 				name: "limit",
 				type: "number",
 				required: false,
-				description:
-					"Number of items to return. Default 50, hard ceiling 5000.",
 			},
 			{
 				name: "customer_id",
 				type: "string",
 				required: false,
-				description: "Filter events by customer ID",
 			},
 			{
 				name: "entity_id",
 				type: "string",
 				required: false,
-				description:
-					"Filter events by entity ID (e.g., per-seat or per-resource)",
 			},
 			{
 				name: "feature_id",
 				type: "json",
 				required: false,
-				description: "Filter by specific feature ID(s)",
 			},
 			{
 				name: "custom_range",
 				type: "json",
 				required: false,
-				description: "Filter events by time range",
+			},
+			{
+				name: "range",
+				type: "string",
+				required: false,
+			},
+			{
+				name: "filter_by",
+				type: "json",
+				required: false,
 			},
 		],
 	},
@@ -2938,69 +2207,56 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "customer_id",
 				type: "string",
 				required: false,
-				description: "Customer ID to aggregate events for",
 			},
 			{
 				name: "entity_id",
 				type: "string",
 				required: false,
-				description:
-					"Entity ID to filter aggregated events for (e.g., per-seat or per-resource limits)",
 			},
 			{
 				name: "feature_id",
 				type: "json",
 				required: true,
-				description: "Feature ID(s) to aggregate events for",
 			},
 			{
 				name: "group_by",
 				type: "string",
 				required: false,
-				description:
-					'Property to group events by (e.g. "properties.region"), or "$customer_id" / "$entity_id" / "$plan_id" to group by those columns. When aggregate_on is "deducted", "$feature_id" groups deductions by the tracked feature that consumed each balance.',
 			},
 			{
 				name: "range",
 				type: "string",
 				required: false,
-				description:
-					"Time range to aggregate events for. Either range or custom_range must be provided",
 			},
 			{
 				name: "bin_size",
 				type: "string",
 				required: false,
-				description:
-					"Size of the time bins to aggregate events for. Defaults to hour if range is 24h, otherwise day",
 			},
 			{
 				name: "custom_range",
 				type: "json",
 				required: false,
-				description:
-					"Custom time range to aggregate events for. If provided, range must not be provided",
+			},
+			{
+				name: "timezone",
+				type: "string",
+				required: false,
 			},
 			{
 				name: "filter_by",
 				type: "json",
 				required: false,
-				description:
-					'Filter events by property values, e.g. {"model": "gpt-4", "region": "us"}. Maximum 5 filters.',
 			},
 			{
 				name: "max_groups",
 				type: "number",
 				required: false,
-				description:
-					"Maximum number of distinct group values to return per time bin when using group_by. Remaining values are bundled into an 'Other' bucket. Defaults to 9",
 			},
 			{
 				name: "aggregate_on",
 				type: "string",
 				required: false,
-				description:
-					'Set to "deducted" to additionally return a per-balance breakdown of what each event consumed, under `deductions`. Purely additive: `list` and `total` are unchanged. Requires customer_id.',
 			},
 		],
 	},
@@ -3009,29 +2265,23 @@ export const API_ROUTES: readonly ApiRoute[] = [
 		method: "search",
 		path: "/v1/logs.search",
 		description:
-			"Search API requests and incoming Stripe webhooks for your organization and environment.",
+			"Search API requests and incoming processor webhooks for your organization and environment.",
 		body: "object",
 		fields: [
 			{
 				name: "query",
 				type: "string",
 				required: false,
-				description:
-					"Filter and sort logs using where, order by, and limit, joined with |. Omit to return recent logs.",
 			},
 			{
 				name: "range",
 				type: "json",
 				required: false,
-				description:
-					"Time window to search. Defaults to the last 30 minutes. Maximum 7 days.",
 			},
 			{
 				name: "limit",
 				type: "number",
 				required: false,
-				description:
-					"Maximum number of logs to return, from 1 to 200. Defaults to 100.",
 			},
 		],
 	},
@@ -3040,14 +2290,13 @@ export const API_ROUTES: readonly ApiRoute[] = [
 		method: "create",
 		path: "/v1/invoices.create",
 		description:
-			"Creates a standalone send-invoice Stripe invoice from catalog pricing and custom charges. Quantities are billable units, exclusive of any included usage; Autumn applies billing units and tiers. Nothing about the customer's plans, balances or subscriptions changes. Pass preview: true to get the calculated lines and totals without creating an invoice.",
+			"Creates a standalone send-invoice processor invoice from catalog pricing and custom charges. Quantities are billable units, exclusive of any included usage; Autumn applies billing units and tiers. Nothing about the customer's plans, balances or subscriptions changes. Pass preview: true to get the calculated lines and totals without creating an invoice.",
 		body: "object",
 		fields: [
 			{
 				name: "customer_id",
 				type: "string",
 				required: true,
-				description: "The customer to invoice.",
 			},
 			{
 				name: "plans",
@@ -3058,67 +2307,51 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "custom_line_items",
 				type: "json",
 				required: false,
-				description: "Charges that are not tied to any plan or feature.",
 			},
 			{
 				name: "discounts",
 				type: "json",
 				required: false,
-				description: "Discounts applied to the whole invoice.",
 			},
 			{
 				name: "invoice_template_id",
 				type: "string",
 				required: false,
-				description:
-					"ID of an invoice template whose footer, memo and default payment terms are applied.",
 			},
 			{
 				name: "net_terms_days",
 				type: "number",
 				required: false,
-				description:
-					"Days until the invoice is due. Defaults to the template's terms, then the org default.",
 			},
 			{
 				name: "issue_date",
 				type: "number",
 				required: false,
-				description:
-					"Date of issue printed on the invoice, in milliseconds. Defaults to now; cannot be in the future.",
 			},
 			{
 				name: "due_date",
 				type: "number",
 				required: false,
-				description:
-					"When payment is due, in milliseconds. Must be in the future; takes precedence over net_terms_days.",
 			},
 			{
 				name: "tax_rate_id",
 				type: "string",
 				required: false,
-				description: "Stripe tax rate ID (txr_...) applied to every line.",
 			},
 			{
 				name: "period_start",
 				type: "number",
 				required: false,
-				description:
-					"Start of the period being invoiced, in milliseconds. Prorated lines are charged for period_start → period_end against one price interval starting at period_start.",
 			},
 			{
 				name: "period_end",
 				type: "number",
 				required: false,
-				description: "End of the period being invoiced, in milliseconds.",
 			},
 			{
 				name: "preview",
 				type: "boolean",
 				required: false,
-				description:
-					"If true, returns the calculated lines and totals without creating an invoice.",
 			},
 		],
 	},
@@ -3134,7 +2367,6 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "invoices",
 				type: "json",
 				required: true,
-				description: "Invoices to insert or update, in response order.",
 			},
 		],
 	},
@@ -3150,42 +2382,31 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "start_cursor",
 				type: "string",
 				required: false,
-				description:
-					"Opaque pagination cursor. Empty string (default) requests the first page; use next_cursor from a prior response for subsequent pages.",
 			},
 			{
 				name: "limit",
 				type: "number",
 				required: false,
-				description:
-					"Number of items to return. Default 50, hard ceiling 5000.",
 			},
 			{
 				name: "customer_id",
 				type: "string",
 				required: false,
-				description: "Filter invoices to a single customer by ID.",
 			},
 			{
 				name: "entity_id",
 				type: "string",
 				required: false,
-				description:
-					"Filter invoices to a single entity by ID. Must be provided together with customer_id, since entity IDs are only unique per customer.",
 			},
 			{
 				name: "status",
 				type: "json",
 				required: false,
-				description:
-					"Filter by invoice status (draft, open, paid, void, uncollectible).",
 			},
 			{
 				name: "processor_types",
 				type: "json",
 				required: false,
-				description:
-					"Filter by billing processor (stripe, revenuecat). Invoices recorded before processor tracking count as stripe.",
 			},
 		],
 	},
@@ -3194,14 +2415,13 @@ export const API_ROUTES: readonly ApiRoute[] = [
 		method: "pay",
 		path: "/v1/invoices.pay",
 		description:
-			"Marks an open Stripe invoice as paid out of band. No charge is attempted; use this when payment was collected elsewhere (e.g. a marketplace). Already-paid invoices are returned unchanged.",
+			"Marks an open processor invoice as paid out of band. No charge is attempted; use this when payment was collected elsewhere (e.g. a marketplace). Already-paid invoices are returned unchanged.",
 		body: "object",
 		fields: [
 			{
 				name: "invoice_id",
 				type: "string",
 				required: true,
-				description: "The Autumn invoice ID to mark as paid.",
 			},
 		],
 	},
@@ -3210,61 +2430,48 @@ export const API_ROUTES: readonly ApiRoute[] = [
 		method: "reissue",
 		path: "/v1/invoices.reissue",
 		description:
-			"Voids an open send-invoice Stripe invoice and issues a replacement with the same line items. An invoice template can supply the replacement's footer (e.g. bank details) and memo. The replacement keeps the original due date unless net_terms_days is passed, which is required once the original is past due. Pass update_customer_email to change the customer's billing email first so the replacement is sent there. The replacement stays linked to the same subscription and fulfils the same pending plan when paid.",
+			"Voids an open send-invoice processor invoice and issues a replacement with the same line items. An invoice template can supply the replacement's footer (e.g. bank details) and memo. The replacement keeps the original due date unless net_terms_days is passed, which is required once the original is past due. Pass update_customer_email to change the customer's billing email first so the replacement is sent there. The replacement stays linked to the same subscription and fulfils the same pending plan when paid.",
 		body: "object",
 		fields: [
 			{
 				name: "invoice_id",
 				type: "string",
 				required: true,
-				description: "The Autumn invoice ID to void and replace.",
 			},
 			{
 				name: "invoice_template_id",
 				type: "string",
 				required: false,
-				description:
-					"ID of an invoice template (configured in billing settings) whose footer and memo are applied to the replacement invoice.",
 			},
 			{
 				name: "net_terms_days",
 				type: "number",
 				required: false,
-				description:
-					"Number of days the customer has to pay the replacement invoice. Defaults to the original invoice's due date; required when that date has already passed. A card-charged invoice has no due date and its replacement is charged immediately; setting this makes the replacement a send-invoice one instead.",
 			},
 			{
 				name: "preview",
 				type: "boolean",
 				required: false,
-				description:
-					"If true, returns the replacement invoice's lines and totals without voiding anything or issuing it.",
 			},
 			{
 				name: "update_customer_email",
 				type: "string",
 				required: false,
-				description:
-					"Updates the customer's billing email before the replacement is issued, so Stripe sends the new invoice to this address.",
 			},
 			{
 				name: "invoice",
 				type: "json",
 				required: false,
-				description: "Changes that apply to the replacement invoice only.",
 			},
 			{
 				name: "customer",
 				type: "json",
 				required: false,
-				description:
-					"Changes written to the customer, which the replacement snapshots and later invoices inherit.",
 			},
 			{
 				name: "lines",
 				type: "json",
 				required: false,
-				description: "Add, change or drop lines relative to the original.",
 			},
 		],
 	},
@@ -3273,14 +2480,13 @@ export const API_ROUTES: readonly ApiRoute[] = [
 		method: "void",
 		path: "/v1/invoices.void",
 		description:
-			"Voids an open or uncollectible Stripe invoice. Any plan still waiting on the invoice to be paid expires. Voiding an unpaid subscription invoice lets Stripe re-derive the subscription status from its remaining invoices, which can move a past-due subscription back to active. Already-void invoices are returned unchanged.",
+			"Voids an open or uncollectible processor invoice. Any plan still waiting on the invoice to be paid expires. Voiding an unpaid subscription invoice releases the pending plan. Already-void invoices are returned unchanged.",
 		body: "object",
 		fields: [
 			{
 				name: "invoice_id",
 				type: "string",
 				required: true,
-				description: "The Autumn invoice ID to void.",
 			},
 		],
 	},
@@ -3324,8 +2530,6 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "license_plan_id",
 				type: "string",
 				required: false,
-				description:
-					"Scopes the release when an entity holds licenses of multiple plans.",
 			},
 			{
 				name: "entity_ids",
@@ -3394,38 +2598,31 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "name",
 				type: "string",
 				required: false,
-				description: "The name of the entity",
 			},
 			{
 				name: "feature_id",
 				type: "string",
 				required: true,
-				description: "The ID of the feature this entity is associated with",
 			},
 			{
 				name: "billing_controls",
 				type: "json",
 				required: false,
-				description: "Billing controls for the entity.",
 			},
 			{
 				name: "customer_data",
 				type: "json",
 				required: false,
-				description:
-					"Customer attributes used to resolve the customer when customer_id is not provided.",
 			},
 			{
 				name: "customer_id",
 				type: "string",
 				required: true,
-				description: "The ID of the customer to create the entity for.",
 			},
 			{
 				name: "entity_id",
 				type: "string",
 				required: true,
-				description: "The ID of the entity.",
 			},
 		],
 	},
@@ -3440,13 +2637,11 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "customer_id",
 				type: "string",
 				required: false,
-				description: "The ID of the customer to create the entity for.",
 			},
 			{
 				name: "entity_id",
 				type: "string",
 				required: true,
-				description: "The ID of the entity.",
 			},
 		],
 	},
@@ -3462,49 +2657,36 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "start_cursor",
 				type: "string",
 				required: false,
-				description:
-					"Opaque pagination cursor. Empty string (default) requests the first page; use next_cursor from a prior response for subsequent pages.",
 			},
 			{
 				name: "limit",
 				type: "number",
 				required: false,
-				description:
-					"Number of items to return. Default 50, hard ceiling 5000.",
 			},
 			{
 				name: "plans",
 				type: "json",
 				required: false,
-				description:
-					"Filter by plan ID and version. Returns entities with active subscriptions to this plan, including plans inherited from the parent customer.",
 			},
 			{
 				name: "subscription_status",
 				type: "string",
 				required: false,
-				description:
-					"Filter customer products used for entity hydration and plan matching. Defaults to active and scheduled.",
 			},
 			{
 				name: "search",
 				type: "string",
 				required: false,
-				description: "Search entities by id or name.",
 			},
 			{
 				name: "processors",
 				type: "json",
 				required: false,
-				description:
-					"Filter by parent customer processor type (stripe, revenuecat, vercel).",
 			},
 			{
 				name: "customer_id",
 				type: "string",
 				required: false,
-				description:
-					"Restrict the response to entities owned by this customer id. Use to bulk-fetch all entities for one customer in a single paginated call instead of iterating entities.get.",
 			},
 		],
 	},
@@ -3520,19 +2702,16 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "customer_id",
 				type: "string",
 				required: false,
-				description: "The ID of the customer that owns the entity.",
 			},
 			{
 				name: "entity_id",
 				type: "string",
 				required: true,
-				description: "The ID of the entity.",
 			},
 			{
 				name: "billing_controls",
 				type: "json",
 				required: false,
-				description: "Billing controls to replace on the entity.",
 			},
 		],
 	},
@@ -3547,13 +2726,11 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "customer_id",
 				type: "string",
 				required: false,
-				description: "The ID of the customer.",
 			},
 			{
 				name: "entity_id",
 				type: "string",
 				required: true,
-				description: "The ID of the entity.",
 			},
 		],
 	},
@@ -3569,13 +2746,11 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "customer_id",
 				type: "string",
 				required: true,
-				description: "The unique identifier of the customer",
 			},
 			{
 				name: "program_id",
 				type: "string",
 				required: true,
-				description: "ID of your referral program",
 			},
 		],
 	},
@@ -3590,13 +2765,11 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "code",
 				type: "string",
 				required: true,
-				description: "The referral code to redeem",
 			},
 			{
 				name: "customer_id",
 				type: "string",
 				required: true,
-				description: "The unique identifier of the customer redeeming the code",
 			},
 		],
 	},
@@ -3621,43 +2794,31 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "redeem_on",
 				type: "string",
 				required: true,
-				description:
-					"When the reward is granted: on redemption, or when the redeemer checks out.",
 			},
 			{
 				name: "received_by",
 				type: "string",
 				required: true,
-				description:
-					"Who receives the reward: the referrer only, or both parties.",
 			},
 			{
 				name: "max_redemptions",
 				type: "number",
 				required: false,
-				description:
-					"A positive redemption limit, or null for unlimited redemptions.",
 			},
 			{
 				name: "plan_ids",
 				type: "json",
 				required: false,
-				description:
-					"Required when redeem_on is checkout. Plan IDs must be unique.",
 			},
 			{
 				name: "exclude_trial",
 				type: "boolean",
 				required: false,
-				description:
-					"Whether checkouts that start a trial should skip granting the reward.",
 			},
 			{
 				name: "internal_id",
 				type: "string",
 				required: false,
-				description:
-					"Address an existing referral program by its stable id. Omit when creating — the server generates one.",
 			},
 		],
 	},
@@ -3680,7 +2841,6 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "referral_program_id",
 				type: "string",
 				required: true,
-				description: "The ID of the referral program.",
 			},
 		],
 	},
@@ -3696,47 +2856,36 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "referral_program_id",
 				type: "string",
 				required: true,
-				description: "The ID of the referral program.",
 			},
 			{
 				name: "reward_id",
 				type: "string",
 				required: false,
-				description: "The ID of the reward granted when a code is redeemed.",
 			},
 			{
 				name: "redeem_on",
 				type: "string",
 				required: false,
-				description:
-					"When the reward is granted: on redemption, or when the redeemer checks out.",
 			},
 			{
 				name: "received_by",
 				type: "string",
 				required: false,
-				description:
-					"Who receives the reward: the referrer only, or both parties.",
 			},
 			{
 				name: "max_redemptions",
 				type: "number",
 				required: false,
-				description:
-					"A positive redemption limit. Omit to leave unchanged; null removes it.",
 			},
 			{
 				name: "plan_ids",
 				type: "json",
 				required: false,
-				description:
-					"Required when redeem_on is checkout. Plan IDs must be unique. Omit to leave unchanged; null removes them.",
 			},
 			{
 				name: "exclude_trial",
 				type: "boolean",
 				required: false,
-				description: "Omit to leave unchanged; null removes it.",
 			},
 		],
 	},
@@ -3751,7 +2900,6 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "referral_program_id",
 				type: "string",
 				required: true,
-				description: "The ID of the referral program.",
 			},
 		],
 	},
@@ -3766,15 +2914,11 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "coupon",
 				type: "json",
 				required: false,
-				description:
-					"Provide exactly one of coupon or feature_grant, not both.",
 			},
 			{
 				name: "feature_grant",
 				type: "json",
 				required: false,
-				description:
-					"Provide exactly one of coupon or feature_grant, not both.",
 			},
 		],
 	},
@@ -3797,7 +2941,6 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "reward_id",
 				type: "string",
 				required: true,
-				description: "The ID of the coupon or feature grant.",
 			},
 		],
 	},
@@ -3813,7 +2956,6 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "reward_id",
 				type: "string",
 				required: true,
-				description: "The ID of the coupon or feature grant.",
 			},
 			{
 				name: "coupon",
@@ -3838,7 +2980,6 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "reward_id",
 				type: "string",
 				required: true,
-				description: "The ID of the coupon or feature grant.",
 			},
 		],
 	},
@@ -3853,137 +2994,11 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "code",
 				type: "string",
 				required: true,
-				description: "The reward promo code to redeem",
 			},
 			{
 				name: "customer_id",
 				type: "string",
 				required: true,
-				description: "The unique identifier of the customer redeeming the code",
-			},
-		],
-	},
-	{
-		group: "platform",
-		method: "get_stripe_connection",
-		path: "/v1/platform.get_stripe_connection",
-		description:
-			"Read a managed organization's Stripe OAuth connection, account ID, and authorization time in the selected environment.",
-		body: "object",
-		fields: [
-			{
-				name: "organization_slug",
-				type: "string",
-				required: true,
-				description:
-					"Public tenant organization slug, without the master organization suffix.",
-			},
-			{
-				name: "env",
-				type: "string",
-				required: true,
-				description: "Stripe connection environment to inspect or disconnect.",
-			},
-		],
-	},
-	{
-		group: "platform",
-		method: "disconnect_stripe",
-		path: "/v1/platform.disconnect_stripe",
-		description:
-			"Revoke Autumn's Stripe OAuth access for a managed organization in the selected environment. Does not delete the Stripe account or cancel subscriptions.",
-		body: "object",
-		fields: [
-			{
-				name: "organization_slug",
-				type: "string",
-				required: true,
-				description:
-					"Public tenant organization slug, without the master organization suffix.",
-			},
-			{
-				name: "env",
-				type: "string",
-				required: true,
-				description: "Stripe connection environment to inspect or disconnect.",
-			},
-		],
-	},
-	{
-		group: "platform",
-		method: "link_revenuecat",
-		path: "/v1/platform.link_revenuecat",
-		description:
-			"Generate a RevenueCat OAuth URL for linking a project to an organization.",
-		body: "object",
-		fields: [
-			{
-				name: "organization_slug",
-				type: "string",
-				required: true,
-			},
-			{
-				name: "env",
-				type: "string",
-				required: true,
-			},
-			{
-				name: "project_name",
-				type: "string",
-				required: true,
-			},
-			{
-				name: "redirect_url",
-				type: "string",
-				required: true,
-			},
-		],
-	},
-	{
-		group: "platform",
-		method: "sync_revenuecat",
-		path: "/v1/platform.sync_revenuecat",
-		description:
-			"Push an organization's plans into RevenueCat as products (creating or renaming them across the project's apps) and set test-store prices from each plan's price. Requires the org to have linked RevenueCat via OAuth.",
-		body: "object",
-		fields: [
-			{
-				name: "organization_slug",
-				type: "string",
-				required: true,
-			},
-			{
-				name: "env",
-				type: "string",
-				required: true,
-				description: '"test" and "sandbox" both target the sandbox environment',
-			},
-			{
-				name: "product_ids",
-				type: "json",
-				required: false,
-				description: "Plans to push. Omit to sync every plan in the org/env.",
-			},
-		],
-	},
-	{
-		group: "platform",
-		method: "get_revenuecat_keys",
-		path: "/v1/platform.get_revenuecat_keys",
-		description:
-			"Retrieve a managed organization's RevenueCat public (SDK) API keys, grouped by app — for the test store, App Store, and Google Play Store. Use these to configure the RevenueCat SDK in the org's mobile app.",
-		body: "object",
-		fields: [
-			{
-				name: "organization_slug",
-				type: "string",
-				required: true,
-			},
-			{
-				name: "env",
-				type: "string",
-				required: true,
-				description: '"test" and "sandbox" both target the sandbox environment',
 			},
 		],
 	},
@@ -3999,14 +3014,11 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "customer_id",
 				type: "string",
 				required: true,
-				description: "The customer to mint a token for.",
 			},
 			{
 				name: "indefinite",
 				type: "boolean",
 				required: false,
-				description:
-					"If true, mint a non-expiring access token (no refresh token). Revoke via keys.revoke.",
 			},
 		],
 	},
@@ -4031,8 +3043,6 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "customer_id",
 				type: "string",
 				required: true,
-				description:
-					"The customer whose tokens (every outstanding access + refresh token) should be revoked.",
 			},
 		],
 	},
@@ -4048,22 +3058,16 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "name",
 				type: "string",
 				required: true,
-				description:
-					"A name for the sandbox, unique within your organization. No spaces, and it can't be `live` or `sandbox`.",
 			},
 			{
 				name: "color",
 				type: "string",
 				required: false,
-				description:
-					"Colour the dashboard uses to label the sandbox. Defaults to `gray`.",
 			},
 			{
 				name: "icon",
 				type: "string",
 				required: false,
-				description:
-					"Icon the dashboard uses to label the sandbox. Defaults to `Flask`.",
 			},
 		],
 	},
@@ -4088,7 +3092,6 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "id",
 				type: "string",
 				required: true,
-				description: "The ID of the sandbox to delete.",
 			},
 		],
 	},
@@ -4113,34 +3116,26 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "id",
 				type: "string",
 				required: true,
-				description:
-					"Your ID for the webhook: letters, digits, `-` and `_`. It can't be changed after creation.",
 			},
 			{
 				name: "url",
 				type: "string",
 				required: true,
-				description:
-					"The https URL Autumn sends events to. Localhost and private-network addresses are rejected; tunnels such as ngrok work.",
 			},
 			{
 				name: "events",
 				type: "json",
 				required: true,
-				description:
-					"The events sent to this webhook. At least one. `vercel.*` events can't be mixed with other events.",
 			},
 			{
 				name: "description",
 				type: "string",
 				required: false,
-				description: "A note for your own reference.",
 			},
 			{
 				name: "disabled",
 				type: "boolean",
 				required: false,
-				description: "When true, no events are sent to the webhook.",
 			},
 		],
 	},
@@ -4156,8 +3151,6 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "id",
 				type: "string",
 				required: true,
-				description:
-					"The webhook's ID. Webhooks made in the dashboard use the `ep_…` ID shown by `webhooks.list`.",
 			},
 		],
 	},
@@ -4182,34 +3175,26 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "id",
 				type: "string",
 				required: true,
-				description:
-					"The webhook's ID. Webhooks made in the dashboard use the `ep_…` ID shown by `webhooks.list`.",
 			},
 			{
 				name: "url",
 				type: "string",
 				required: false,
-				description:
-					"The https URL Autumn sends events to. Localhost and private-network addresses are rejected; tunnels such as ngrok work.",
 			},
 			{
 				name: "events",
 				type: "json",
 				required: false,
-				description:
-					"The events sent to this webhook. At least one. `vercel.*` events can't be mixed with other events.",
 			},
 			{
 				name: "description",
 				type: "string",
 				required: false,
-				description: "A note for your own reference.",
 			},
 			{
 				name: "disabled",
 				type: "boolean",
 				required: false,
-				description: "When true, no events are sent to the webhook.",
 			},
 		],
 	},
@@ -4225,8 +3210,6 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "id",
 				type: "string",
 				required: true,
-				description:
-					"The webhook's ID. Webhooks made in the dashboard use the `ep_…` ID shown by `webhooks.list`.",
 			},
 		],
 	},
@@ -4242,8 +3225,6 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "webhooks",
 				type: "json",
 				required: true,
-				description:
-					"The webhooks to create or update. Webhooks not listed are left alone; nothing is deleted.",
 			},
 		],
 	},
@@ -4259,8 +3240,6 @@ export const API_ROUTES: readonly ApiRoute[] = [
 				name: "webhooks",
 				type: "json",
 				required: true,
-				description:
-					"The webhooks to create or update. Webhooks not listed are left alone; nothing is deleted.",
 			},
 		],
 	},

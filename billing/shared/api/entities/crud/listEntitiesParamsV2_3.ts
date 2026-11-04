@@ -34,11 +34,11 @@ export const ListEntitiesV2_3ParamsSchema = z.object({
 	}),
 
 	processors: z
-		.array(z.enum(["stripe", "revenuecat", "vercel"]))
+		.array(z.enum(["paypal"]))
 		.optional()
 		.meta({
 			description:
-				"Filter by parent customer processor type (stripe, revenuecat, vercel).",
+				"Filter by parent customer processor type (paypal).",
 		}),
 
 	customer_id: z.string().trim().min(1).optional().meta({

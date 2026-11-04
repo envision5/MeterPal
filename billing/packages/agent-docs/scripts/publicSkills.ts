@@ -62,7 +62,10 @@ const readReferenceFiles = ({
 		}
 		return [
 			{
-				path: relative(rootDirectory, entryPath),
+				// Forward slashes: reference paths are matched against
+				// `references/…` and embedded in SKILL.md text, so they must not
+				// carry the platform separator (Windows path.relative yields `\`).
+				path: relative(rootDirectory, entryPath).split(sep).join("/"),
 				contents: readFileSync(entryPath, "utf8"),
 			},
 		];
@@ -151,7 +154,9 @@ export const writePublicSkills = ({
 		);
 		for (const reference of skill.references) {
 			const outputPath = resolve(skillDirectory, reference.path);
-			const relativeOutputPath = relative(skillDirectory, outputPath);
+			const relativeOutputPath = relative(skillDirectory, outputPath)
+				.split(sep)
+				.join("/");
 			assertRelativeSkillPath({
 				path: relativeOutputPath,
 				skillName: skill.name,

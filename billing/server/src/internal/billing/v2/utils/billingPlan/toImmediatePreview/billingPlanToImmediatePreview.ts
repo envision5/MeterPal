@@ -38,7 +38,6 @@ export const billingPlanToImmediatePreview = ({
 		const customLineItemsWithDiscounts = customLineItemsToLineItems({
 			customLineItems,
 			currency,
-			stripeDiscounts: billingContext.stripeDiscounts ?? [],
 		});
 		const previewLineItems = customLineItems.map((item, index) =>
 			customLineItemToPreviewLineItem(

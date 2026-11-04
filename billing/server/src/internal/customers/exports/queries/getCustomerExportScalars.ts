@@ -21,7 +21,6 @@ export type CustomerExportScalarRow = {
 	id: string | null;
 	name: string | null;
 	email: string | null;
-	processor: { id?: string } | null;
 };
 
 export const getCustomerExportUpperBound = async ({
@@ -159,7 +158,6 @@ export const buildCustomerExportScalarsQuery = ({
 			id: customers.id,
 			name: customers.name,
 			email: customers.email,
-			processor: customers.processor,
 		})
 		.from(customers)
 		.where(

@@ -171,7 +171,6 @@ export const buildRealisticCustomerSeed = ({
 		email: `billing+${id}@${domain}`,
 		entityCount,
 		entities,
-		createInStripe: false,
 		internalOptions: { disable_defaults: true },
 		skipWebhooks: true,
 		metadata: {

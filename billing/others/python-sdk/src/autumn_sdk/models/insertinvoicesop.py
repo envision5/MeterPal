@@ -45,8 +45,7 @@ class InsertInvoicesGlobals(BaseModel):
 
 
 InsertInvoicesProcessorTypeRequestBody = Literal[
-    "stripe",
-    "revenuecat",
+    "paypal",
 ]
 r"""The billing processor that owns this invoice."""
 
@@ -64,7 +63,7 @@ r"""The invoice status."""
 class InsertInvoicesInvoiceRequestBodyTypedDict(TypedDict):
     customer_id: str
     r"""The customer this invoice belongs to."""
-    stripe_id: str
+    processor_invoice_id: str
     r"""The processor's stable invoice ID."""
     status: InsertInvoicesStatus
     r"""The invoice status."""
@@ -90,7 +89,7 @@ class InsertInvoicesInvoiceRequestBody(BaseModel):
     customer_id: str
     r"""The customer this invoice belongs to."""
 
-    stripe_id: str
+    processor_invoice_id: str
     r"""The processor's stable invoice ID."""
 
     status: InsertInvoicesStatus
@@ -105,7 +104,7 @@ class InsertInvoicesInvoiceRequestBody(BaseModel):
     plan_ids: Optional[List[str]] = None
     r"""Plan IDs represented by this invoice."""
 
-    processor_type: Optional[InsertInvoicesProcessorTypeRequestBody] = "stripe"
+    processor_type: Optional[InsertInvoicesProcessorTypeRequestBody] = "paypal"
     r"""The billing processor that owns this invoice."""
 
     amount_paid: OptionalNullable[float] = UNSET
@@ -167,8 +166,7 @@ class InsertInvoicesParams(BaseModel):
 
 InsertInvoicesProcessorTypeResponse = Union[
     Literal[
-        "stripe",
-        "revenuecat",
+        "paypal",
     ],
     UnrecognizedStr,
 ]
@@ -178,8 +176,8 @@ r"""The billing processor that owns this invoice."""
 class InsertInvoicesInvoiceResponseTypedDict(TypedDict):
     plan_ids: List[str]
     r"""Array of plan IDs included in this invoice"""
-    stripe_id: str
-    r"""The Stripe invoice ID"""
+    processor_invoice_id: str
+    r"""The processor's stable invoice ID."""
     status: str
     r"""The status of the invoice"""
     total: float
@@ -199,15 +197,15 @@ class InsertInvoicesInvoiceResponseTypedDict(TypedDict):
     processor_type: NotRequired[InsertInvoicesProcessorTypeResponse]
     r"""The billing processor that owns this invoice."""
     hosted_invoice_url: NotRequired[Nullable[str]]
-    r"""URL to the Stripe-hosted invoice page"""
+    r"""The hosted invoice URL, when available."""
 
 
 class InsertInvoicesInvoiceResponse(BaseModel):
     plan_ids: List[str]
     r"""Array of plan IDs included in this invoice"""
 
-    stripe_id: str
-    r"""The Stripe invoice ID"""
+    processor_invoice_id: str
+    r"""The processor's stable invoice ID."""
 
     status: str
     r"""The status of the invoice"""
@@ -233,11 +231,11 @@ class InsertInvoicesInvoiceResponse(BaseModel):
     refunded_amount: float
     r"""The refunded amount in major currency units."""
 
-    processor_type: Optional[InsertInvoicesProcessorTypeResponse] = "stripe"
+    processor_type: Optional[InsertInvoicesProcessorTypeResponse] = "paypal"
     r"""The billing processor that owns this invoice."""
 
     hosted_invoice_url: OptionalNullable[str] = UNSET
-    r"""URL to the Stripe-hosted invoice page"""
+    r"""The hosted invoice URL, when available."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):

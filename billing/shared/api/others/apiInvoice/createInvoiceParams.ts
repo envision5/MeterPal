@@ -5,7 +5,6 @@ import { UnixMsTimestampSchema } from "@api/billing/common/unixMsTimestamp.js";
 import { ApiFeatureOverrideSchema } from "@api/features/apiFeatureOverride.js";
 import { BasePriceParamsSchema } from "@api/products/components/basePrice/basePrice.js";
 import { BillingMethod } from "@api/products/components/billingMethod.js";
-import { ApiPriceProcessorsSchema } from "@api/products/components/processors.js";
 import { PlanItemPriceParamsSchema } from "@api/products/items/crud/createPlanItemParamsV1.js";
 import { z } from "zod/v4";
 import { ApiListInvoiceV1Schema } from "./apiListInvoiceV1.js";
@@ -17,10 +16,6 @@ export const InvoiceBasePriceParamsSchema = BasePriceParamsSchema.pick({
 	interval_count: true,
 })
 	.extend({
-		processors: ApiPriceProcessorsSchema.optional().meta({
-			description:
-				"Bill this line under an existing Stripe price instead of an inline one.",
-		}),
 	})
 	.strict();
 
@@ -35,10 +30,6 @@ export const InvoiceItemPriceParamsSchema = PlanItemPriceParamsSchema.pick({
 	billing_method: true,
 })
 	.extend({
-		processors: ApiPriceProcessorsSchema.optional().meta({
-			description:
-				"Bill this line under an existing Stripe price instead of an inline one.",
-		}),
 	})
 	.strict();
 
@@ -199,7 +190,7 @@ export const CreateInvoiceParamsSchema = z
 				"When payment is due, in milliseconds. Must be in the future; takes precedence over net_terms_days.",
 		}),
 		tax_rate_id: z.string().optional().meta({
-			description: "Stripe tax rate ID (txr_...) applied to every line.",
+			description: "Tax rate ID applied to every line.",
 		}),
 		period_start: UnixMsTimestampSchema.optional().meta({
 			description:
@@ -262,7 +253,7 @@ export const CreateInvoicePreviewSchema = z.object({
 	total: z.number(),
 	invoice_credits: PreviewInvoiceCreditsSchema.optional().meta({
 		description:
-			"The customer's Stripe credit balance and how much of it this invoice consumes.",
+			"The customer's credit balance and how much of it this invoice consumes.",
 	}),
 	amount_due: z.number().meta({
 		description: "What the customer pays: the total less any credit applied.",

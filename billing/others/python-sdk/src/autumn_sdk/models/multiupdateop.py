@@ -117,7 +117,7 @@ class MultiUpdateParamsTypedDict(TypedDict):
     refund_last_payment: NotRequired[MultiUpdateRefundLastPayment]
     r"""Controls how the last payment is refunded on immediate cancellation. 'prorated' refunds the unused portion, 'full' refunds the entire last payment."""
     subscription_params: NotRequired[Dict[str, Any]]
-    r"""Additional parameters to pass into the Stripe subscription update or cancel call."""
+    r"""Additional parameters to pass into the subscription update or cancel call."""
 
 
 class MultiUpdateParams(BaseModel):
@@ -134,7 +134,7 @@ class MultiUpdateParams(BaseModel):
     r"""Controls how the last payment is refunded on immediate cancellation. 'prorated' refunds the unused portion, 'full' refunds the entire last payment."""
 
     subscription_params: Optional[Dict[str, Any]] = None
-    r"""Additional parameters to pass into the Stripe subscription update or cancel call."""
+    r"""Additional parameters to pass into the subscription update or cancel call."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -160,8 +160,8 @@ class MultiUpdateInvoiceTypedDict(TypedDict):
 
     status: Nullable[str]
     r"""The status of the invoice (e.g., 'paid', 'open', 'draft')."""
-    stripe_id: str
-    r"""The Stripe invoice ID."""
+    processor_invoice_id: str
+    r"""The processor's stable invoice ID."""
     total: float
     r"""The total amount of the invoice in cents."""
     currency: str
@@ -176,8 +176,8 @@ class MultiUpdateInvoice(BaseModel):
     status: Nullable[str]
     r"""The status of the invoice (e.g., 'paid', 'open', 'draft')."""
 
-    stripe_id: str
-    r"""The Stripe invoice ID."""
+    processor_invoice_id: str
+    r"""The processor's stable invoice ID."""
 
     total: float
     r"""The total amount of the invoice in cents."""

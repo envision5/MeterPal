@@ -27,7 +27,7 @@ import { setCustomerOverageAllowed } from "../../../integration/balances/utils/o
  */
 
 /**
- * Fresh product fixture per test. `initProductsV0` mutates the product's `id`
+ * Fresh product fixture per test. `initTestProducts` mutates the product's `id`
  * in-place to add a prefix (see tests/utils/testProductUtils/testProductUtils.ts:21),
  * so sharing a module-level product across `test.concurrent` branches produces
  * a race where each test over-prefixes the others and attach lookups miss.

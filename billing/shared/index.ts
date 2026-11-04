@@ -1,4 +1,4 @@
-// Schemas
+﻿// Schemas
 import * as schemas from "./db/schema";
 
 export * from "./api/apiUtils";
@@ -13,8 +13,6 @@ export * from "./api/billing/common/customizePlan/customizePlanV1";
 export * from "./api/billing/common/customLineItem";
 export * from "./api/billing/common/mappers/resolveFreeTrialParam";
 export * from "./api/billing/common/subscriptionParams";
-export * from "./api/billing/createSchedule/createScheduleParamsV0";
-export * from "./api/billing/createSchedule/createScheduleResponse";
 export * from "./api/billing/openBillingPortal/openBillingPortalParamsV1";
 export * from "./api/billing/openBillingPortal/openBillingPortalResponse";
 export * from "./api/billing/updateSubscription/previewUpdateSubscriptionResponse";
@@ -23,7 +21,6 @@ export * from "./api/catalogV2/planUpdate/params/catalogPlanItemIdentity";
 // Cursor pagination utilities
 export * from "./api/common/cursorPaginationSchemas";
 export * from "./api/common/paginationConfigs";
-export * from "./api/customers/advanceTestClock/advanceTestClock";
 export * from "./api/customers/components/customerExpand/customerExpand";
 export * from "./api/entities/crud/createEntityParams";
 export * from "./api/entities/crud/getEntityParams";
@@ -97,8 +94,7 @@ export * from "./models/pooledBalanceModels/pooledBalanceIdentity";
 export * from "./models/pooledBalanceModels/pooledBalanceTable";
 // Processor Models
 export * from "./models/processorModels/processorModels";
-// Durable webhook-event dedupe (shared by the Stripe and PayPal integrations)
-export * from "./models/processorModels/stripeModels/stripeWebhookEventsTable";
+export * from "./models/processorModels/webhookEventsTable";
 export * from "./utils/chatState";
 export { schemas };
 
@@ -170,7 +166,6 @@ export * from "./models/cusProductModels/cusPriceModels/customerPriceWithCustome
 export * from "./models/featureModels/featureTable";
 // Gen Models
 export * from "./models/genModels/genEnums";
-export * from "./models/genModels/processorSchemas";
 export * from "./models/genModels/routeGroups";
 export * from "./models/invoiceTemplateModels/invoiceTemplate";
 export * from "./models/invoiceTemplateModels/invoiceTemplateTable";

@@ -46,7 +46,7 @@ const CASES: { label: string; query: Record<string, unknown> }[] = [
 	},
 	{
 		label: "plans + processors",
-		query: { plans: [{ id: PLAN_ID, versions: null }], processors: ["stripe"] },
+		query: { plans: [{ id: PLAN_ID, versions: null }], processors: ["paypal"] },
 	},
 ];
 

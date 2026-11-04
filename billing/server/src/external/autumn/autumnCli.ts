@@ -13,7 +13,6 @@ import {
 	type AttachBodyV0,
 	type AttachLicenseParamsV0,
 	type AttachParamsV0Input,
-	type BillingDetailsParams,
 	type CancelBody,
 	type CatalogPreviewUpdateResponse,
 	type CatalogUpdateParamsInput,
@@ -29,8 +28,6 @@ import {
 	type CreatedAtRange,
 	type CreateEntityParams,
 	type CreateRewardProgram,
-	type CreateScheduleParamsV0Input,
-	type CreateScheduleResponse,
 	type CustomerBillingControlsParams,
 	type CustomerData,
 	CustomerExpand,
@@ -58,11 +55,8 @@ import {
 	type RecalculateBalanceParamsV0,
 	type RecalculateBalancePreview,
 	type ReleaseLicenseParamsV0,
-	type RestoreParamsV1,
-	type RestoreResponse,
 	type RewardRedemption,
 	type SetUsageParams,
-	type SetupPaymentParamsV1,
 	type TrackParams,
 	type UpdateBalanceParamsV0,
 	type UpdateCatalogParamsInput,
@@ -72,9 +66,11 @@ import {
 	type UsageLimitUpdate,
 } from "@autumn/shared";
 import { defaultApiVersion } from "@tests/constants.js";
-import { timeout } from "@tests/utils/genUtils";
 import type { TinybirdMigrationItemEvent } from "@/external/tinybird/migrations/migrationItemEventsDataSource.js";
-import type { PrepareResponse } from "@/internal/migrations/v2/prepare/types";
+
+/** Resolves after `ms` milliseconds. */
+const timeout = (ms: number) =>
+	new Promise((resolve) => setTimeout(resolve, ms));
 
 export type MigrationListItem = Migration & {
 	status: MigrationStatus;
@@ -327,21 +323,11 @@ export class AutumnInt {
 		return response.json();
 	}
 
-	async delete(
-		path: string,
-		{
-			deleteInStripe = false,
-		}: {
-			deleteInStripe?: boolean;
-		} = {},
-	) {
-		const response = await fetch(
-			`${this.baseUrl}${path}?${deleteInStripe ? "delete_in_stripe=true" : ""}`,
-			{
-				method: "DELETE",
-				headers: this.headers,
-			},
-		);
+	async delete(path: string) {
+		const response = await fetch(`${this.baseUrl}${path}`, {
+			method: "DELETE",
+			headers: this.headers,
+		});
 
 		if (response.status !== 200) {
 			let error: any;
@@ -532,7 +518,7 @@ export class AutumnInt {
 			search?: string;
 			plans?: Array<{ id: string; versions?: number[] }>;
 			subscription_status?: string[];
-			processors?: Array<"stripe" | "revenuecat" | "vercel">;
+			processors?: Array<"paypal">;
 			sort_order?: "asc" | "desc";
 			created_at_range?: CreatedAtRange;
 			keepInternalFields?: boolean;
@@ -626,17 +612,8 @@ export class AutumnInt {
 			);
 			return data;
 		},
-		delete: async (
-			customerId: string,
-			{
-				deleteInStripe = false,
-			}: {
-				deleteInStripe?: boolean;
-			} = {},
-		) => {
-			const data = await this.delete(`/customers/${customerId}`, {
-				deleteInStripe,
-			});
+		delete: async (customerId: string) => {
+			const data = await this.delete(`/customers/${customerId}`);
 			return data;
 		},
 
@@ -645,11 +622,9 @@ export class AutumnInt {
 			updates: {
 				name?: string;
 				email?: string;
-				stripe_id?: string | null;
 				send_email_receipts?: boolean;
 				metadata?: Record<string, unknown>;
 				billing_controls?: WritableBillingControls<CustomerBillingControlsParams>;
-				billing_details?: BillingDetailsParams;
 				config?: CustomerData["config"];
 			},
 		) => {
@@ -671,7 +646,6 @@ export class AutumnInt {
 				send_email_receipts?: boolean;
 				metadata?: Record<string, unknown>;
 				billing_controls?: WritableBillingControls<CustomerBillingControlsParams>;
-				billing_details?: BillingDetailsParams;
 				config?: CustomerData["config"];
 			},
 		) => {
@@ -952,7 +926,7 @@ export class AutumnInt {
 		},
 
 		create: async (reward: any) => {
-			const data = await this.post(`/rewards?legacyStripe=true`, reward);
+			const data = await this.post(`/rewards`, reward);
 			return data;
 		},
 
@@ -963,10 +937,7 @@ export class AutumnInt {
 			internalId: string;
 			reward: any;
 		}) => {
-			const data = await this.post(
-				`/rewards/${internalId}?legacyStripe=true`,
-				reward,
-			);
+			const data = await this.post(`/rewards/${internalId}`, reward);
 			return data;
 		},
 
@@ -1086,22 +1057,6 @@ export class AutumnInt {
 			feature_id?: string;
 		}) => {
 			const data = await this.post(`/query`, params);
-			return data;
-		},
-	};
-
-	stripe = {
-		connect: async (params: {
-			secret_key: string;
-			success_url: string;
-			default_currency: string;
-		}) => {
-			const data = await this.post(`/organization/stripe`, params);
-			return data;
-		},
-
-		delete: async () => {
-			const data = await this.delete(`/organization/stripe`);
 			return data;
 		},
 	};
@@ -1226,13 +1181,6 @@ export class AutumnInt {
 			} catch {}
 			const data = await this.post(`/migrations.create`, params);
 			return data as Migration;
-		},
-		prepare: async (params: {
-			id: string;
-			dry_run: boolean;
-		}): Promise<PrepareResponse> => {
-			const data = await this.post(`/migrations.prepare`, params);
-			return data as PrepareResponse;
 		},
 		run: async (params: {
 			id: string;
@@ -1485,31 +1433,6 @@ export class AutumnInt {
 			return data;
 		},
 
-		setupPayment: async (params: SetupPaymentParamsV1) => {
-			const data = await this.post(`/billing.setup_payment`, params);
-			return data;
-		},
-
-		/** Create a billing schedule through the internal RPC API. */
-		createSchedule: async <
-			TInput = CreateScheduleParamsV0Input,
-			TResponse = CreateScheduleResponse,
-		>(
-			params: TInput,
-			{ timeout }: { timeout?: number } = {},
-		): Promise<TResponse> => {
-			const data = await this.post(`/billing.create_schedule`, params);
-
-			const concurrency = Number(process.env.TEST_FILE_CONCURRENCY || "0");
-			const defaultTimeout = concurrency > 1 ? 5000 : 4000;
-			const finalTimeout = timeout ?? defaultTimeout;
-			if (finalTimeout) {
-				await new Promise((resolve) => setTimeout(resolve, finalTimeout));
-			}
-
-			return data;
-		},
-
 		multiAttach: async (
 			params: any,
 			{
@@ -1583,10 +1506,6 @@ export class AutumnInt {
 		): Promise<any> => {
 			const data = await this.post(`/billing.preview_multi_update`, params);
 			return data;
-		},
-
-		restore: async (params: RestoreParamsV1): Promise<RestoreResponse> => {
-			return await this.post(`/billing.restore`, params);
 		},
 	};
 }

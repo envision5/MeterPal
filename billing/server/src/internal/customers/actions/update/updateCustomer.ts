@@ -2,23 +2,12 @@ import {
 	type Customer,
 	CustomerAlreadyExistsError,
 	CustomerNotFoundError,
-	ErrCode,
 	notNullish,
-	ProcessorType,
 	RecaseError,
-	shouldForwardCustomerMetadata,
 	stripAutoTopupCountsForStorage,
 	type UpdateCustomerParamsV1,
 } from "@autumn/shared";
-import type Stripe from "stripe";
 import type { DrizzleCli } from "@/db/initDrizzle.js";
-import { createStripeCli } from "@/external/connect/createStripeCli";
-import { updateStripeBillingDetails } from "@/external/stripe/customers/billingDetails/operations/updateStripeBillingDetails.js";
-import { assertBillingDetailsWritable } from "@/external/stripe/customers/billingDetails/utils/assertBillingDetailsWritable.js";
-import {
-	autumnToStripeCustomerMetadata,
-	STRIPE_MAX_KEY_LENGTH,
-} from "@/external/stripe/customers/utils/autumnToStripeMetadata";
 import type { AutumnContext } from "@/honoUtils/HonoEnv";
 import { triggerAutoTopUpsOnEnabled } from "@/internal/balances/autoTopUp/triggerAutoTopUpsOnEnabled";
 import { assertCustomerUsageLimitAlertsResolvable } from "@/internal/balances/usageAlerts/validate/assertCustomerUsageLimitAlertsResolvable";
@@ -43,12 +32,11 @@ export const updateCustomer = async ({
 	oldCustomer: Customer;
 	apiCustomer: Record<string, unknown>;
 }> => {
-	const { db, org, env, logger } = ctx;
+	const { db, org, env } = ctx;
 	const {
 		customer_id: customerId,
 		new_customer_id: newCustomerId,
 		billing_controls,
-		billing_details: billingDetails,
 		config,
 		...newCusData
 	} = params;
@@ -110,86 +98,15 @@ export const updateCustomer = async ({
 			: undefined,
 	});
 
-	// Try to update stripe ID. Distinguish omitted (undefined -> leave as is)
-	// from explicitly cleared (null/"" -> unlink the Stripe customer).
-	let stripeId = originalCustomer.processor?.id;
-	const newStripeId = newCusData.stripe_id;
-	const clearStripeId = newStripeId === null || newStripeId === "";
-
-	if (clearStripeId) {
-		stripeId = undefined;
-	} else if (newStripeId && stripeId !== newStripeId) {
-		const stripeCli = createStripeCli({ org, env });
-		await stripeCli.customers.retrieve(newStripeId);
-
-		stripeId = newStripeId;
-		logger.info(
-			`Updating customer's Stripe ID from ${originalCustomer.processor?.id} to ${stripeId}`,
-		);
-	}
-
-	// Billing details go first: Stripe is most likely to reject them (e.g. a bad VAT).
-	if (billingDetails) {
-		assertBillingDetailsWritable({ ctx });
-		if (!stripeId) {
-			throw new RecaseError({
-				message: `Customer ${customerId} isn't linked to a Stripe customer, so its billing details can't be saved (they're stored in Stripe). Link one with stripe_id, or create the customer in Stripe first.`,
-				code: ErrCode.InvalidRequest,
-				statusCode: 400,
-			});
-		}
-		await updateStripeBillingDetails({
-			ctx,
-			stripeCustomerId: stripeId,
-			billingDetails,
-		});
-	}
-
 	const oldMetadata = originalCustomer.metadata || {};
 	const newMetadata = newCusData.metadata || {};
-	const deletedMetadataKeys: string[] = [];
 	for (const key in newMetadata) {
 		if (newMetadata[key] === null) {
-			deletedMetadataKeys.push(key);
 			delete newMetadata[key];
 			delete oldMetadata[key];
 		}
 	}
 	const mergedMetadata = { ...oldMetadata, ...newMetadata };
-
-	const hasMetadataChanges =
-		Object.keys(newMetadata).length > 0 || deletedMetadataKeys.length > 0;
-	const forwardMetadata =
-		shouldForwardCustomerMetadata({ org }) && hasMetadataChanges;
-
-	const stripeMetadataDeletions: Record<string, ""> = {};
-	for (const key of deletedMetadataKeys) {
-		if (!key.startsWith("autumn_"))
-			stripeMetadataDeletions[key.slice(0, STRIPE_MAX_KEY_LENGTH)] = "";
-	}
-
-	const stripeUpdate: Stripe.CustomerUpdateParams = {
-		email:
-			originalCustomer.email !== newCusData.email &&
-			notNullish(newCusData.email)
-				? newCusData.email
-				: undefined,
-		name:
-			originalCustomer.name !== newCusData.name && notNullish(newCusData.name)
-				? newCusData.name
-				: undefined,
-		...(forwardMetadata && {
-			metadata: {
-				...autumnToStripeCustomerMetadata({ metadata: mergedMetadata }),
-				...stripeMetadataDeletions,
-			},
-		}),
-	};
-
-	if (Object.keys(stripeUpdate).length > 0 && stripeId) {
-		const stripeCli = createStripeCli({ org, env });
-		await stripeCli.customers.update(stripeId, stripeUpdate);
-	}
 
 	// Prepare update data — only include defined billing control fields
 	const billingControlUpdates: Partial<Customer> = {};
@@ -230,12 +147,6 @@ export const updateCustomer = async ({
 		...billingControlUpdates,
 		...configUpdate,
 	};
-
-	if (newStripeId) {
-		updateData.processor = { id: newStripeId, type: ProcessorType.Stripe };
-	} else if (clearStripeId) {
-		updateData.processor = null;
-	}
 
 	if (!notNullish(newCustomerId) || originalCustomer.id === newCustomerId) {
 		// Remove id from update if not changing

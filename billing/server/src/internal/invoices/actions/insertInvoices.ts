@@ -40,10 +40,12 @@ export const insertInvoices = async ({
 }): Promise<InsertInvoicesResponse> => {
 	if (params.invoices.length === 0) return { invoices: [] };
 
-	const stripeIds = params.invoices.map((invoice) => invoice.stripe_id);
-	if (new Set(stripeIds).size !== stripeIds.length) {
+	const processorInvoiceIds = params.invoices.map(
+		(invoice) => invoice.processor_invoice_id,
+	);
+	if (new Set(processorInvoiceIds).size !== processorInvoiceIds.length) {
 		throw referenceError(
-			"Duplicate stripe_id values are not allowed in one batch",
+			"Duplicate processor_invoice_id values are not allowed in one batch",
 		);
 	}
 
@@ -80,7 +82,7 @@ export const insertInvoices = async ({
 			: Promise.resolve([]),
 		ctx.db
 			.select({
-				stripeId: invoices.stripe_id,
+				processorInvoiceId: invoices.processor_invoice_id,
 				customerId: customers.id,
 				orgId: customers.org_id,
 				env: customers.env,
@@ -90,7 +92,9 @@ export const insertInvoices = async ({
 				customers,
 				eq(invoices.internal_customer_id, customers.internal_id),
 			)
-			.where(inArray(invoices.stripe_id, stripeIds)),
+			.where(
+				inArray(invoices.processor_invoice_id, processorInvoiceIds),
+			),
 	]);
 
 	const customerById = new Map(customerRows.map((row) => [row.id, row]));
@@ -112,7 +116,7 @@ export const insertInvoices = async ({
 	);
 	if (foreignInvoice) {
 		throw referenceError(
-			`Invoice ${foreignInvoice.stripeId} belongs to another organization or environment`,
+			`Invoice ${foreignInvoice.processorInvoiceId} belongs to another organization or environment`,
 		);
 	}
 
@@ -177,7 +181,7 @@ export const insertInvoices = async ({
 			),
 			internal_customer_id: customer.internalId,
 			internal_entity_id: entity?.internalId ?? null,
-			stripe_id: invoice.stripe_id,
+			processor_invoice_id: invoice.processor_invoice_id,
 			processor_type: invoice.processor_type,
 			status: invoice.status,
 			hosted_invoice_url: invoice.hosted_invoice_url,
@@ -194,7 +198,7 @@ export const insertInvoices = async ({
 		.insert(invoices)
 		.values(rows)
 		.onConflictDoUpdate({
-			target: invoices.stripe_id,
+			target: invoices.processor_invoice_id,
 			set: {
 				created_at: sql`excluded.created_at`,
 				product_ids: sql`excluded.product_ids`,
@@ -211,18 +215,18 @@ export const insertInvoices = async ({
 			},
 		})
 		.returning();
-	const rowByStripeId = new Map(
-		upsertedRows.map((invoice) => [invoice.stripe_id, invoice]),
+	const rowByProcessorInvoiceId = new Map(
+		upsertedRows.map((invoice) => [invoice.processor_invoice_id, invoice]),
 	);
 
 	const responseInvoices: ApiInsertedInvoice[] = params.invoices.map(
 		(invoice) => {
-			const row = rowByStripeId.get(invoice.stripe_id)!;
+			const row = rowByProcessorInvoiceId.get(invoice.processor_invoice_id)!;
 			return {
 				id: row.id,
 				customer_id: invoice.customer_id,
 				plan_ids: row.product_ids ?? [],
-				stripe_id: row.stripe_id,
+				processor_invoice_id: row.processor_invoice_id,
 				processor_type: (row.processor_type ??
 					invoice.processor_type) as ProcessorType,
 				status: row.status,

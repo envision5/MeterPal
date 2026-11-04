@@ -30,7 +30,7 @@ Stored at `{orgId}:env:fullcustomer:2.0.0:customerId`
     "name": "Acme",
     "email": "billing@acme.com",
     "fingerprint": "fp_...",
-    "processor": { "id": "cus_stripe_123", "type": "stripe" },
+    "processor": { "id": "cus_paypal_123", "type": "paypal" },
     "processors": { ... },
     "metadata": { ... },
     "send_email_receipts": true,
@@ -48,7 +48,7 @@ Stored at `{orgId}:env:fullcustomer:2.0.0:customerId`
       "internal_customer_id": "cus_abc",
       "internal_entity_id": null,
       "status": "active",
-      "subscription_ids": ["sub_stripe_1"],
+      "subscription_ids": ["sub_paypal_1"],
       "options": [ ... ],
       "created_at": 1700000000000,
       "product": { "id": "pro_plan", "name": "Pro Plan", ... },
@@ -153,7 +153,7 @@ Stored at `{orgId}:env:fullentity:1.0.0:customerId:entityId`
 
 ### What's included
 
-- **`customer`**: subset of Customer fields needed by check/track (processor for Stripe lookup, billing controls, fingerprint for trial dedup)
+- **`customer`**: subset of Customer fields needed by check/track (processor for customer lookup, billing controls, fingerprint for trial dedup)
 - **`entity`**: the full entity record (billing controls, feature_id)
 - **`products`**: entity-scoped products (`internal_entity_id = this entity`) + inherited customer-level products (`internal_entity_id IS NULL`). Keyed by cusProductId.
 - **`entitlements`**: all entitlements from the included products. Keyed by cusEntId.

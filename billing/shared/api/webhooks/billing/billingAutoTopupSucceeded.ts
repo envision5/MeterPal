@@ -1,8 +1,9 @@
 import { z } from "zod/v4";
 
 export const BillingAutoTopupSucceededInvoiceSchema = z.object({
-	stripe_id: z.string().meta({
-		description: "The Stripe invoice ID. Use this as a stable dedupe key.",
+	processor_invoice_id: z.string().meta({
+		description:
+			"The processor invoice ID. Use this as a stable dedupe key.",
 	}),
 	status: z.string().nullish().meta({
 		description:
@@ -10,7 +11,7 @@ export const BillingAutoTopupSucceededInvoiceSchema = z.object({
 	}),
 	total: z.number().meta({
 		description:
-			"The total amount of the invoice in the smallest currency unit (e.g. cents for USD), matching Stripe's invoice.total.",
+			"The total amount of the invoice in the smallest currency unit (e.g. cents for USD).",
 	}),
 	currency: z.string().meta({
 		description: "The ISO currency code for the invoice.",
@@ -28,11 +29,11 @@ export const BILLING_AUTO_TOPUP_SUCCEEDED_EXAMPLE = {
 	balance_after: 115,
 	invoice_mode: false,
 	invoice: {
-		stripe_id: "in_1A2B3C4D5E6F7G8H",
+		processor_invoice_id: "in_1A2B3C4D5E6F7G8H",
 		status: "paid",
 		total: 1000,
 		currency: "usd",
-		hosted_invoice_url: "https://invoice.stripe.com/i/acct_123/test_456",
+		hosted_invoice_url: "https://example.com/invoice/acct_123/test_456",
 	},
 };
 

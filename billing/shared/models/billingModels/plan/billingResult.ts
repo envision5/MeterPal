@@ -1,18 +1,14 @@
 import type { Checkout, Invoice, PaymentFailureCode } from "@autumn/shared";
-import type Stripe from "stripe";
 
-export interface StripeBillingPlanResult {
+export interface ProcessorBillingResult {
 	deferred?: boolean;
 	deferredMetadataId?: string;
 	/** An earlier pending plan's open invoice was returned; this request was not applied. */
 	resumedPendingInvoice?: boolean;
-	stripeInvoice?: Stripe.Invoice;
-	stripeSubscription?: Stripe.Subscription;
-	stripeCheckoutSession?:
-		| Stripe.Checkout.Session
-		| (Pick<Stripe.Checkout.Session, "id"> & { url?: string | null });
-	stripeInvoiceItems?: Stripe.InvoiceItem[];
-	stripeRefund?: Stripe.Refund;
+	/** Processor checkout the customer must complete (PayPal approval URL). */
+	checkoutUrl?: string | null;
+	/** Processor id of the created checkout (PayPal order/subscription id). */
+	checkoutId?: string;
 	requiredAction?: {
 		code: PaymentFailureCode;
 		reason: string;
@@ -25,6 +21,6 @@ export interface AutumnBillingResult {
 }
 
 export interface BillingResult {
-	stripe: StripeBillingPlanResult;
+	processor?: ProcessorBillingResult;
 	autumn?: AutumnBillingResult;
 }

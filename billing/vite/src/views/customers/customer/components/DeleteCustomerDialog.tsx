@@ -27,7 +27,6 @@ export const DeleteCustomerDialog = ({
 	redirectToCustomersPage?: boolean;
 }) => {
 	const [loadingStates, setLoadingStates] = useState({
-		deleteStripe: false,
 		deleteCustomer: false,
 	});
 	const queryClient = useQueryClient();
@@ -35,19 +34,12 @@ export const DeleteCustomerDialog = ({
 	const axiosInstance = useAxiosInstance();
 	const env = useEnv();
 
-	const handleClicked = async ({
-		deleteStripe = false,
-	}: {
-		deleteStripe?: boolean;
-	}) => {
-		setLoadingStates({
-			deleteStripe: deleteStripe,
-			deleteCustomer: !deleteStripe,
-		});
+	const handleClicked = async () => {
+		setLoadingStates({ deleteCustomer: true });
 
 		try {
 			await axiosInstance.delete(
-				`/v1/customers/${customer.id || customer.internal_id}?delete_in_stripe=${deleteStripe}`,
+				`/v1/customers/${customer.id || customer.internal_id}`,
 			);
 
 			await Promise.all([
@@ -62,10 +54,7 @@ export const DeleteCustomerDialog = ({
 		} catch (error) {
 			toast.error("Failed to delete customer");
 		} finally {
-			setLoadingStates({
-				deleteStripe: false,
-				deleteCustomer: false,
-			});
+			setLoadingStates({ deleteCustomer: false });
 			setOpen(false);
 		}
 	};
@@ -85,30 +74,19 @@ export const DeleteCustomerDialog = ({
 				<div className="mb-2 text-sm">
 					<p className="text-muted-foreground">
 						Are you sure you want to delete this customer in MeterPal? This action
-						cannot be undone. Select whether to delete this customer in Stripe
-						as well.
+						cannot be undone.
 					</p>
 				</div>
 
 				<DialogFooter>
 					<div className="flex gap-2">
 						<Button
-							variant="secondary"
-							className="cursor-pointer"
-							onClick={() => handleClicked({ deleteStripe: false })}
-							isLoading={loadingStates.deleteCustomer}
-							disabled={loadingStates.deleteStripe}
-						>
-							Delete in MeterPal only
-						</Button>
-						<Button
 							variant="destructive"
 							className="cursor-pointer"
-							onClick={() => handleClicked({ deleteStripe: true })}
-							isLoading={loadingStates.deleteStripe}
-							disabled={loadingStates.deleteCustomer}
+							onClick={() => handleClicked()}
+							isLoading={loadingStates.deleteCustomer}
 						>
-							Delete in MeterPal and Stripe
+							Delete in MeterPal
 						</Button>
 					</div>
 				</DialogFooter>

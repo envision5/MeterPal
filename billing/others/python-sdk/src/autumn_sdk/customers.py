@@ -17,8 +17,6 @@ class Customers(BaseSDK):
         email: OptionalNullable[str] = UNSET,
         fingerprint: OptionalNullable[str] = UNSET,
         metadata: OptionalNullable[Dict[str, Any]] = UNSET,
-        stripe_id: OptionalNullable[str] = UNSET,
-        create_in_stripe: Optional[bool] = None,
         auto_enable_plan_id: Optional[str] = None,
         send_email_receipts: Optional[bool] = None,
         currency: OptionalNullable[str] = UNSET,
@@ -55,14 +53,12 @@ class Customers(BaseSDK):
         :param email: Customer's email address
         :param fingerprint: Unique identifier (eg, serial number) to detect duplicate customers and prevent free trial abuse
         :param metadata: Additional metadata for the customer
-        :param stripe_id: Stripe customer ID if you already have one
-        :param create_in_stripe: Whether to create the customer in Stripe
         :param auto_enable_plan_id: The ID of the free plan to auto-enable for the customer
         :param send_email_receipts: Whether to send email receipts to this customer
         :param currency: Currency to bill this customer in (e.g. usd, eur). Defaults to the organization's default currency.
         :param billing_controls: Billing controls for the customer (auto top-ups, etc.)
         :param config: Miscellaneous configurations for the customer.
-        :param billing_details: Billing details to set on the Stripe customer. Creates the Stripe customer if needed.
+        :param billing_details: Billing details for the customer.
         :param expand: Fields to expand in the returned customer response, such as subscriptions.plan, purchases.plan, balances.feature, or flags.feature.
         :param retries: Override the default retry configuration for this method
         :param server_url: Override the default server URL for this method
@@ -85,8 +81,6 @@ class Customers(BaseSDK):
             email=email,
             fingerprint=fingerprint,
             metadata=metadata,
-            stripe_id=stripe_id,
-            create_in_stripe=create_in_stripe,
             auto_enable_plan_id=auto_enable_plan_id,
             send_email_receipts=send_email_receipts,
             currency=currency,
@@ -169,8 +163,6 @@ class Customers(BaseSDK):
         email: OptionalNullable[str] = UNSET,
         fingerprint: OptionalNullable[str] = UNSET,
         metadata: OptionalNullable[Dict[str, Any]] = UNSET,
-        stripe_id: OptionalNullable[str] = UNSET,
-        create_in_stripe: Optional[bool] = None,
         auto_enable_plan_id: Optional[str] = None,
         send_email_receipts: Optional[bool] = None,
         currency: OptionalNullable[str] = UNSET,
@@ -207,14 +199,12 @@ class Customers(BaseSDK):
         :param email: Customer's email address
         :param fingerprint: Unique identifier (eg, serial number) to detect duplicate customers and prevent free trial abuse
         :param metadata: Additional metadata for the customer
-        :param stripe_id: Stripe customer ID if you already have one
-        :param create_in_stripe: Whether to create the customer in Stripe
         :param auto_enable_plan_id: The ID of the free plan to auto-enable for the customer
         :param send_email_receipts: Whether to send email receipts to this customer
         :param currency: Currency to bill this customer in (e.g. usd, eur). Defaults to the organization's default currency.
         :param billing_controls: Billing controls for the customer (auto top-ups, etc.)
         :param config: Miscellaneous configurations for the customer.
-        :param billing_details: Billing details to set on the Stripe customer. Creates the Stripe customer if needed.
+        :param billing_details: Billing details for the customer.
         :param expand: Fields to expand in the returned customer response, such as subscriptions.plan, purchases.plan, balances.feature, or flags.feature.
         :param retries: Override the default retry configuration for this method
         :param server_url: Override the default server URL for this method
@@ -237,8 +227,6 @@ class Customers(BaseSDK):
             email=email,
             fingerprint=fingerprint,
             metadata=metadata,
-            stripe_id=stripe_id,
-            create_in_stripe=create_in_stripe,
             auto_enable_plan_id=auto_enable_plan_id,
             send_email_receipts=send_email_receipts,
             currency=currency,
@@ -532,7 +520,7 @@ class Customers(BaseSDK):
         :param plans: Filter by plan ID and version. Returns customers with active subscriptions to this plan.
         :param subscription_status: Filter by customer product status. Defaults to active and scheduled.
         :param search: Search customers by id, name, or email.
-        :param processors: Filter by customer processor type (stripe, revenuecat, vercel).
+        :param processors: Filter by customer processor type (paypal).
         :param sort_order: Sort by customer creation time. Defaults to desc (newest first).
         :param created_at_range: Filter by customer creation time (epoch milliseconds, inclusive bounds).
         :param retries: Override the default retry configuration for this method
@@ -653,7 +641,7 @@ class Customers(BaseSDK):
         :param plans: Filter by plan ID and version. Returns customers with active subscriptions to this plan.
         :param subscription_status: Filter by customer product status. Defaults to active and scheduled.
         :param search: Search customers by id, name, or email.
-        :param processors: Filter by customer processor type (stripe, revenuecat, vercel).
+        :param processors: Filter by customer processor type (paypal).
         :param sort_order: Sort by customer creation time. Defaults to desc (newest first).
         :param created_at_range: Filter by customer creation time (epoch milliseconds, inclusive bounds).
         :param retries: Override the default retry configuration for this method
@@ -753,7 +741,6 @@ class Customers(BaseSDK):
         email: OptionalNullable[str] = UNSET,
         fingerprint: OptionalNullable[str] = UNSET,
         metadata: OptionalNullable[Dict[str, Any]] = UNSET,
-        stripe_id: OptionalNullable[str] = UNSET,
         send_email_receipts: Optional[bool] = None,
         currency: OptionalNullable[str] = UNSET,
         billing_controls: Optional[
@@ -784,12 +771,11 @@ class Customers(BaseSDK):
         :param email: Customer's email address
         :param fingerprint: Unique identifier (eg, serial number) to detect duplicate customers and prevent free trial abuse
         :param metadata: Additional metadata for the customer
-        :param stripe_id: Stripe customer ID if you already have one
         :param send_email_receipts: Whether to send email receipts to this customer
         :param currency: Currency to bill this customer in (e.g. usd, eur). Defaults to the organization's default currency.
         :param billing_controls:
         :param config: Miscellaneous configurations for the customer.
-        :param billing_details: Billing details stored on the linked Stripe customer. Requires a Stripe customer.
+        :param billing_details: Billing details for the customer.
         :param new_customer_id: Your unique identifier for the customer
         :param retries: Override the default retry configuration for this method
         :param server_url: Override the default server URL for this method
@@ -812,7 +798,6 @@ class Customers(BaseSDK):
             email=email,
             fingerprint=fingerprint,
             metadata=metadata,
-            stripe_id=stripe_id,
             send_email_receipts=send_email_receipts,
             currency=currency,
             billing_controls=utils.get_pydantic_model(
@@ -895,7 +880,6 @@ class Customers(BaseSDK):
         email: OptionalNullable[str] = UNSET,
         fingerprint: OptionalNullable[str] = UNSET,
         metadata: OptionalNullable[Dict[str, Any]] = UNSET,
-        stripe_id: OptionalNullable[str] = UNSET,
         send_email_receipts: Optional[bool] = None,
         currency: OptionalNullable[str] = UNSET,
         billing_controls: Optional[
@@ -926,12 +910,11 @@ class Customers(BaseSDK):
         :param email: Customer's email address
         :param fingerprint: Unique identifier (eg, serial number) to detect duplicate customers and prevent free trial abuse
         :param metadata: Additional metadata for the customer
-        :param stripe_id: Stripe customer ID if you already have one
         :param send_email_receipts: Whether to send email receipts to this customer
         :param currency: Currency to bill this customer in (e.g. usd, eur). Defaults to the organization's default currency.
         :param billing_controls:
         :param config: Miscellaneous configurations for the customer.
-        :param billing_details: Billing details stored on the linked Stripe customer. Requires a Stripe customer.
+        :param billing_details: Billing details for the customer.
         :param new_customer_id: Your unique identifier for the customer
         :param retries: Override the default retry configuration for this method
         :param server_url: Override the default server URL for this method
@@ -954,7 +937,6 @@ class Customers(BaseSDK):
             email=email,
             fingerprint=fingerprint,
             metadata=metadata,
-            stripe_id=stripe_id,
             send_email_receipts=send_email_receipts,
             currency=currency,
             billing_controls=utils.get_pydantic_model(
@@ -1033,7 +1015,6 @@ class Customers(BaseSDK):
         self,
         *,
         customer_id: str,
-        delete_in_stripe: Optional[bool] = False,
         retries: OptionalNullable[utils.RetryConfig] = UNSET,
         server_url: Optional[str] = None,
         timeout_ms: Optional[int] = None,
@@ -1042,7 +1023,6 @@ class Customers(BaseSDK):
         r"""Deletes a customer by ID.
 
         :param customer_id: ID of the customer to delete
-        :param delete_in_stripe: Whether to also delete the customer in Stripe
         :param retries: Override the default retry configuration for this method
         :param server_url: Override the default server URL for this method
         :param timeout_ms: Override the default request timeout configuration for this method in milliseconds
@@ -1060,7 +1040,6 @@ class Customers(BaseSDK):
 
         request = models.DeleteCustomerParams(
             customer_id=customer_id,
-            delete_in_stripe=delete_in_stripe,
         )
 
         req = self._build_request(
@@ -1126,7 +1105,6 @@ class Customers(BaseSDK):
         self,
         *,
         customer_id: str,
-        delete_in_stripe: Optional[bool] = False,
         retries: OptionalNullable[utils.RetryConfig] = UNSET,
         server_url: Optional[str] = None,
         timeout_ms: Optional[int] = None,
@@ -1135,7 +1113,6 @@ class Customers(BaseSDK):
         r"""Deletes a customer by ID.
 
         :param customer_id: ID of the customer to delete
-        :param delete_in_stripe: Whether to also delete the customer in Stripe
         :param retries: Override the default retry configuration for this method
         :param server_url: Override the default server URL for this method
         :param timeout_ms: Override the default request timeout configuration for this method in milliseconds
@@ -1153,7 +1130,6 @@ class Customers(BaseSDK):
 
         request = models.DeleteCustomerParams(
             customer_id=customer_id,
-            delete_in_stripe=delete_in_stripe,
         )
 
         req = self._build_request_async(
@@ -1213,190 +1189,4 @@ class Customers(BaseSDK):
                 "API error occurred", http_res, http_res_text
             )
 
-        raise errors.AutumnDefaultError("Unexpected response received", http_res)
-
-    def advance_test_clock(
-        self,
-        *,
-        customer_id: str,
-        frozen_time: int,
-        retries: OptionalNullable[utils.RetryConfig] = UNSET,
-        server_url: Optional[str] = None,
-        timeout_ms: Optional[int] = None,
-        http_headers: Optional[Mapping[str, str]] = None,
-    ) -> models.AdvanceTestClockResponse:
-        r"""Advance a customer's Stripe test clock to a future time in milliseconds. Only Stripe test-mode customers with a test clock are supported. Advancement is asynchronous; Stripe enforces clock status and advancement limits.
-
-        :param customer_id: The ID of the customer whose Stripe test clock to advance.
-        :param frozen_time: Target time as a Unix timestamp in milliseconds. Rounded down to whole seconds; must be later than the current clock time.
-        :param retries: Override the default retry configuration for this method
-        :param server_url: Override the default server URL for this method
-        :param timeout_ms: Override the default request timeout configuration for this method in milliseconds
-        :param http_headers: Additional headers to set or replace on requests.
-        """
-        base_url = None
-        url_variables = None
-        if timeout_ms is None:
-            timeout_ms = self.sdk_configuration.timeout_ms
-
-        if server_url is not None:
-            base_url = server_url
-        else:
-            base_url = self._get_url(base_url, url_variables)
-
-        request = models.AdvanceTestClockParams(
-            customer_id=customer_id,
-            frozen_time=frozen_time,
-        )
-
-        req = self._build_request(
-            method="POST",
-            path="/v1/customers.advance_test_clock",
-            base_url=base_url,
-            url_variables=url_variables,
-            request=request,
-            request_body_required=True,
-            request_has_path_params=False,
-            request_has_query_params=True,
-            user_agent_header="user-agent",
-            accept_header_value="application/json",
-            http_headers=http_headers,
-            _globals=models.AdvanceTestClockGlobals(
-                x_api_version=self.sdk_configuration.globals.x_api_version,
-            ),
-            security=self.sdk_configuration.security,
-            get_serialized_body=lambda: utils.serialize_request_body(
-                request, False, False, "json", models.AdvanceTestClockParams
-            ),
-            allow_empty_value=None,
-            timeout_ms=timeout_ms,
-        )
-
-        if retries == UNSET:
-            if self.sdk_configuration.retry_config is not UNSET:
-                retries = self.sdk_configuration.retry_config
-
-        retry_config = None
-        if isinstance(retries, utils.RetryConfig):
-            retry_config = (retries, ["429", "500", "502", "503", "504"])
-
-        http_res = self.do_request(
-            hook_ctx=HookContext(
-                config=self.sdk_configuration,
-                base_url=base_url or "",
-                operation_id="advanceTestClock",
-                oauth2_scopes=None,
-                security_source=self.sdk_configuration.security,
-            ),
-            request=req,
-            is_error_status_code=lambda c: utils.match_status_codes(["4XX", "5XX"], c),
-            retry_config=retry_config,
-        )
-
-        if utils.match_response(http_res, "200", "application/json"):
-            return unmarshal_json_response(models.AdvanceTestClockResponse, http_res)
-        if utils.match_response(http_res, "4XX", "*"):
-            http_res_text = utils.stream_to_text(http_res)
-            raise errors.AutumnDefaultError(
-                "API error occurred", http_res, http_res_text
-            )
-        if utils.match_response(http_res, "5XX", "*"):
-            http_res_text = utils.stream_to_text(http_res)
-            raise errors.AutumnDefaultError(
-                "API error occurred", http_res, http_res_text
-            )
-
-        raise errors.AutumnDefaultError("Unexpected response received", http_res)
-
-    async def advance_test_clock_async(
-        self,
-        *,
-        customer_id: str,
-        frozen_time: int,
-        retries: OptionalNullable[utils.RetryConfig] = UNSET,
-        server_url: Optional[str] = None,
-        timeout_ms: Optional[int] = None,
-        http_headers: Optional[Mapping[str, str]] = None,
-    ) -> models.AdvanceTestClockResponse:
-        r"""Advance a customer's Stripe test clock to a future time in milliseconds. Only Stripe test-mode customers with a test clock are supported. Advancement is asynchronous; Stripe enforces clock status and advancement limits.
-
-        :param customer_id: The ID of the customer whose Stripe test clock to advance.
-        :param frozen_time: Target time as a Unix timestamp in milliseconds. Rounded down to whole seconds; must be later than the current clock time.
-        :param retries: Override the default retry configuration for this method
-        :param server_url: Override the default server URL for this method
-        :param timeout_ms: Override the default request timeout configuration for this method in milliseconds
-        :param http_headers: Additional headers to set or replace on requests.
-        """
-        base_url = None
-        url_variables = None
-        if timeout_ms is None:
-            timeout_ms = self.sdk_configuration.timeout_ms
-
-        if server_url is not None:
-            base_url = server_url
-        else:
-            base_url = self._get_url(base_url, url_variables)
-
-        request = models.AdvanceTestClockParams(
-            customer_id=customer_id,
-            frozen_time=frozen_time,
-        )
-
-        req = self._build_request_async(
-            method="POST",
-            path="/v1/customers.advance_test_clock",
-            base_url=base_url,
-            url_variables=url_variables,
-            request=request,
-            request_body_required=True,
-            request_has_path_params=False,
-            request_has_query_params=True,
-            user_agent_header="user-agent",
-            accept_header_value="application/json",
-            http_headers=http_headers,
-            _globals=models.AdvanceTestClockGlobals(
-                x_api_version=self.sdk_configuration.globals.x_api_version,
-            ),
-            security=self.sdk_configuration.security,
-            get_serialized_body=lambda: utils.serialize_request_body(
-                request, False, False, "json", models.AdvanceTestClockParams
-            ),
-            allow_empty_value=None,
-            timeout_ms=timeout_ms,
-        )
-
-        if retries == UNSET:
-            if self.sdk_configuration.retry_config is not UNSET:
-                retries = self.sdk_configuration.retry_config
-
-        retry_config = None
-        if isinstance(retries, utils.RetryConfig):
-            retry_config = (retries, ["429", "500", "502", "503", "504"])
-
-        http_res = await self.do_request_async(
-            hook_ctx=HookContext(
-                config=self.sdk_configuration,
-                base_url=base_url or "",
-                operation_id="advanceTestClock",
-                oauth2_scopes=None,
-                security_source=self.sdk_configuration.security,
-            ),
-            request=req,
-            is_error_status_code=lambda c: utils.match_status_codes(["4XX", "5XX"], c),
-            retry_config=retry_config,
-        )
-
-        if utils.match_response(http_res, "200", "application/json"):
-            return unmarshal_json_response(models.AdvanceTestClockResponse, http_res)
-        if utils.match_response(http_res, "4XX", "*"):
-            http_res_text = await utils.stream_to_text_async(http_res)
-            raise errors.AutumnDefaultError(
-                "API error occurred", http_res, http_res_text
-            )
-        if utils.match_response(http_res, "5XX", "*"):
-            http_res_text = await utils.stream_to_text_async(http_res)
-            raise errors.AutumnDefaultError(
-                "API error occurred", http_res, http_res_text
-            )
-
-        raise errors.AutumnDefaultError("Unexpected response received", http_res)
+        raise errors.AutumnDefaultError("Unexpected response received", http_res)

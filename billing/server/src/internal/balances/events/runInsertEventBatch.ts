@@ -1,9 +1,8 @@
 import { RecaseError, tryCatch } from "@autumn/shared";
 import * as Sentry from "@sentry/bun";
-import type { Logger } from "pino";
 import type { DrizzleCli } from "@/db/initDrizzle.js";
 import { neonEventsDb } from "@/db/initNeonEvents.js";
-import { EventService } from "@/internal/api/events/EventService.js";
+import { EventService, type EventLogger } from "@/internal/api/events/EventService.js";
 import type { JobName } from "@/queue/JobName.js";
 import type { Payloads } from "@/queue/queueUtils.js";
 
@@ -20,7 +19,7 @@ export const runInsertEventBatch = async ({
 }: {
 	db: DrizzleCli;
 	payload: InsertEventBatchPayload;
-	logger: Logger;
+	logger: EventLogger;
 }) => {
 	const { events: eventInserts } = payload;
 

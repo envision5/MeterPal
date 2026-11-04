@@ -2,7 +2,6 @@ import { CustomerBillingControlsSchema } from "@models/cusModels/billingControls
 import { z } from "zod/v4";
 import { ApiPlanV1Schema } from "../../apiPlanV1.js";
 import { ApiFreeTrialV2Schema } from "../apiFreeTrialV2.js";
-import { ApiPlanProcessorsSchema } from "../processors.js";
 
 /**
  * Sparse definition scalars that changed, holding their previous values.
@@ -19,7 +18,6 @@ export const PlanPreviousAttributesV0Schema = ApiPlanV1Schema.pick({
 	active: true,
 	archived: true,
 	metadata: true,
-	processors: true,
 	base_variant_id: true,
 })
 	.partial()
@@ -39,10 +37,6 @@ export const PlanPreviousAttributesV0Schema = ApiPlanV1Schema.pick({
 		}),
 		archived: ApiPlanV1Schema.shape.archived.nullable().optional(),
 		metadata: ApiPlanV1Schema.shape.metadata.nullable().optional(),
-		processors: ApiPlanProcessorsSchema.nullable().optional().meta({
-			description:
-				"Previous payment processors when they changed. Null when the plan had none.",
-		}),
 		base_variant_id: ApiPlanV1Schema.shape.base_variant_id.optional().meta({
 			description:
 				"The base plan this variant pointed at before this update re-anchored it. Null when it was standalone.",

@@ -5,10 +5,8 @@ export USE_KERNEL_BROWSER=1
 export TEST_FILE_CONCURRENCY=2
 
 BUN_PARALLEL_V2 \
-  integration/billing/attach/checkout/stripe-checkout
   # 'integration/billing/migrations' \
   # 'integration/crud/customers' \
-  # 'integration/billing/stripe-webhooks' \
   # 'integration/billing/autumn-webhooks' \
   # 'integration/cron' \
   # 'integration/crud/plans' \

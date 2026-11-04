@@ -104,9 +104,9 @@ export const initCustomerProduct = ({
 
 		status,
 
-		// Only stamp `processor` when an explicit type was supplied (e.g. RevenueCat
-		// from external-PSP origin flows). Stripe-origin and legacy callers omit
-		// it; `cusProductToProcessorType` resolves the missing field to Stripe.
+		// Only stamp `processor` when an explicit type was supplied. Legacy
+		// callers omit it; `cusProductToProcessorType` resolves the missing
+		// field to the default processor.
 		...(processorType ? { processor: { type: processorType } } : {}),
 
 		starts_at: startsAt,
@@ -141,8 +141,6 @@ export const initCustomerProduct = ({
 
 		external_id: externalId ?? null,
 
-		stripe_checkout_session_id: null,
-
 		previous_customer_product_id: previousCustomerProductId ?? null,
 		on_trial_end: onTrialEnd ?? null,
 	};
@@ -154,7 +152,7 @@ export const initCustomerProduct = ({
 // 				: CusProductStatus.Active
 
 // {
-//   type: ProcessorType.Stripe,
+//   type: ProcessorType.PayPal,
 //   // subscription_id: subscriptionId,
 //   // subscription_schedule_id: subscriptionScheduleId,
 //   // last_invoice_id: lastInvoiceId,

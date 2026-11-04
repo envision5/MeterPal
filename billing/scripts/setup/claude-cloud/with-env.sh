@@ -36,9 +36,6 @@ set -a
 source "$0/server/.env"
 [ -f "$0/server/.env.local" ] && source "$0/server/.env.local"
 set +a
-if [ -s "$HOME/.cache/autumn-stripe-sandbox-secret-key" ]; then
-	export STRIPE_SANDBOX_SECRET_KEY="$(cat "$HOME/.cache/autumn-stripe-sandbox-secret-key")"
-fi
 export AUTUMN_EDGE_CONFIG_OVERRIDE_B64="${AUTUMN_EDGE_CONFIG_OVERRIDE_B64:-e30=}"
 case "$DATABASE_URL" in
 *localhost* | *127.0.0.1*) ;;

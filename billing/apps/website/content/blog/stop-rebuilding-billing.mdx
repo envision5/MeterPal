@@ -66,22 +66,22 @@ Now let's consider a second way to model this system. We'll store the default nu
 
 This concept extends beyond entitlements. Take usage alerts as an example. You might define a global alert that applies to every customer by default, while still allowing individual customers to configure their own alerts. Ultimately, if you're aware of this concept and model things at the appropriate level, you're far more flexible and efficient when it comes to changes to the system.
 
-### Don't design your billing around Stripe operations
+### Don't design your billing around processor operations
 
-This is something we've found tremendously helpful at MeterPal. When it comes to Stripe, most people think in terms of transitions:
+This is something we've found tremendously helpful at MeterPal. When it comes to the payment processor, most people think in terms of transitions:
 
-_"When we move a customer from Pro v1 to Pro v2, what Stripe update do we need to make?"_
+_"When we move a customer from Pro v1 to Pro v2, what processor update do we need to make?"_
 
 In code, that usually turns into something like this:
 
 ```tsx
-const subscription = await stripe.subscriptions.retrieve("sub_xxx");
+const subscription = await processor.subscriptions.retrieve("sub_xxx");
 
 const oldItem = subscription.items.data.find(
   (item) => item.price.id  == "price_pro_v1"
 );
 
-await stripe.subscriptions.update("sub_xxx", {
+await processor.subscriptions.update("sub_xxx", {
   items: [
     { id: oldItem.id, deleted: true },
     { price: "price_pro_v2", quantity: 1 },
@@ -89,23 +89,23 @@ await stripe.subscriptions.update("sub_xxx", {
 });
 ```
 
-At first this feels reasonable, Stripe's API even encourages it, but over time these transitions start to pile up. Every new pricing model, migration, or edge case requires another piece of Stripe-specific logic — each one routing through its own conditional to a different Stripe call:
+At first this feels reasonable, the processor's API even encourages it, but over time these transitions start to pile up. Every new pricing model, migration, or edge case requires another piece of processor-specific logic — each one routing through its own conditional to a different processor call:
 
-<StripeTransitionDiagram />
+<ProcessorTransitionDiagram />
 
-Before long, your billing system becomes a collection of upgrade paths and special cases. Eventually, your Stripe and application begin to drift apart and you start running into state mismatches where customers are on the wrong price in Stripe, have the wrong entitlements in your app, or fall out of sync altogether.
+Before long, your billing system becomes a collection of upgrade paths and special cases. Eventually, your processor state and application begin to drift apart and you start running into state mismatches where customers are on the wrong price in the processor, have the wrong entitlements in your app, or fall out of sync altogether.
 
-Alternatively, what we do is treat our application state as the source of truth and define a single translation layer between our application and Stripe. Rather than asking _"what Stripe operation should happen when this customer changes?"_, we ask a much simpler question: _"Given this customer's current state, what should their Stripe subscription look like?"_
+Alternatively, what we do is treat our application state as the source of truth and define a single translation layer between our application and the processor. Rather than asking _"what processor operation should happen when this customer changes?"_, we ask a much simpler question: _"Given this customer's current state, what should their processor subscription look like?"_
 
-Using the previous example, to move a customer from Pro v1 to Pro v2 all we need to do is update the customer's state in our DB, then sync that to Stripe. We no longer need to care about what plan they were originally on, or what their previous state looked like:
+Using the previous example, to move a customer from Pro v1 to Pro v2 all we need to do is update the customer's state in our DB, then sync that to the processor. We no longer need to care about what plan they were originally on, or what their previous state looked like:
 
-<StripeMappingDiagram />
+<ProcessorMappingDiagram />
 
-The important thing is that `syncToStripe` doesn't care how the customer got here. It doesn't matter whether they upgraded, downgraded, were migrated from a legacy plan, or manually edited by support. It only cares about the customer's current state and what Stripe should look like as a result.
+The important thing is that `syncToProcessor` doesn't care how the customer got here. It doesn't matter whether they upgraded, downgraded, were migrated from a legacy plan, or manually edited by support. It only cares about the customer's current state and what the processor should look like as a result.
 
-(ps. this sync function isn't magic — it's just a mapping from your billing state to a set of Stripe subscription items. Using Stripe's inline prices helps too: you don't depend on pre-created Stripe price objects, so your billing stays decoupled from Stripe state.)
+(ps. this sync function isn't magic — it's just a mapping from your billing state to a set of processor subscription items. Using the processor's inline pricing helps too: you don't depend on pre-created processor price objects, so your billing stays decoupled from processor state.)
 
-With this mapping layer, your billing system is now much more flexible, because you can make changes to a customer's state however you like, then simply re-run the mapping function to bring Stripe back in line. When you make a pricing change, you may need to edit the mapping function slightly, but it's going to be a lot cleaner than sprawling Stripe updates throughout your codebase. And perhaps the biggest benefit is that recovery is also now trivial. If a customer ever ends up out of sync, you don't need a bespoke repair script. You can simply run the same mapping function again and Stripe converges back to the correct state.
+With this mapping layer, your billing system is now much more flexible, because you can make changes to a customer's state however you like, then simply re-run the mapping function to bring the processor back in line. When you make a pricing change, you may need to edit the mapping function slightly, but it's going to be a lot cleaner than sprawling processor updates throughout your codebase. And perhaps the biggest benefit is that recovery is also now trivial. If a customer ever ends up out of sync, you don't need a bespoke repair script. You can simply run the same mapping function again and the processor converges back to the correct state.
 
 ### Concluding thoughts
 

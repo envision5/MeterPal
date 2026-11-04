@@ -1,14 +1,9 @@
-import {
-	type AutumnBillingPlan,
-	schedulePhases,
-	schedules,
-} from "@autumn/shared";
+import { schedulePhases, schedules } from "@autumn/shared";
 import { and, eq, inArray, notInArray, sql } from "drizzle-orm";
 import type { RepoContext } from "@/db/repoContext.js";
+import type { SchedulePhaseCustomerProductReplacement } from "@/internal/billing/v2/compute/computeSchedulePhaseReplacements";
 
-type Replacement = NonNullable<
-	AutumnBillingPlan["schedulePhaseCustomerProductReplacements"]
->[number];
+type Replacement = SchedulePhaseCustomerProductReplacement;
 
 const applyReplacements = ({
 	customerProductIds,
@@ -87,7 +82,7 @@ export const replaceScheduledPhaseCustomerProductIds = async ({
 	replacements,
 }: {
 	ctx: RepoContext;
-	replacements?: AutumnBillingPlan["schedulePhaseCustomerProductReplacements"];
+	replacements?: Replacement[];
 }) => {
 	if (!replacements?.length) return;
 

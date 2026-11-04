@@ -3,7 +3,7 @@ import { fetchCustomerProductFreeTrials } from "./fetchCustomerProductFreeTrials
 import { getByCustomerAndProduct } from "./getByCustomerAndProduct";
 import { getByExternalIds } from "./getByExternalIds";
 import { getByInternalProductId } from "./getByInternalProductId";
-import { getByStripeSubId } from "./getByStripeSubId";
+import { getByProcessorSubId } from "./getByProcessorSubId";
 import {
 	getVersioningUsage,
 	getVersioningUsageForProduct,
@@ -14,7 +14,7 @@ export const customerProductRepo = {
 	getByCustomerAndProduct,
 	getByExternalIds,
 	getByInternalProductId,
-	getByStripeSubId,
+	getByProcessorSubId,
 	getVersioningUsage,
 	getVersioningUsageForProduct,
 	fetchFreeTrials: fetchCustomerProductFreeTrials,

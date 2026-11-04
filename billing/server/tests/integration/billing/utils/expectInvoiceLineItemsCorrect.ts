@@ -2,34 +2,50 @@ import { expect } from "bun:test";
 import {
 	type DbInvoiceLineItem,
 	type InvoiceLineItemDiscount,
+	invoices,
 	logInvoiceLineItems,
 } from "@autumn/shared";
 import ctx from "@tests/utils/testInitUtils/createTestContext";
 import { invoiceLineItemRepo } from "@/internal/invoices/lineItems/repos";
+import { eq } from "drizzle-orm";
 
 const DEFAULT_POLL_INTERVAL_MS = 500;
 const DEFAULT_TIMEOUT_MS = 10000;
+
+/** Resolve the internal invoice id for a processor invoice id. */
+const getInvoiceIdByProcessorInvoiceId = async (
+	processorInvoiceId: string,
+): Promise<string | undefined> => {
+	const rows = await ctx.db
+		.select({ id: invoices.id })
+		.from(invoices)
+		.where(eq(invoices.processor_invoice_id, processorInvoiceId));
+	return rows[0]?.id;
+};
 
 /**
  * Waits for invoice line items to be stored in the database.
  * Polls the database until line items are found or timeout is reached.
  */
 export const waitForInvoiceLineItems = async ({
-	stripeInvoiceId,
+	processorInvoiceId,
 	timeoutMs = DEFAULT_TIMEOUT_MS,
 	pollIntervalMs = DEFAULT_POLL_INTERVAL_MS,
 }: {
-	stripeInvoiceId: string;
+	processorInvoiceId: string;
 	timeoutMs?: number;
 	pollIntervalMs?: number;
 }): Promise<DbInvoiceLineItem[]> => {
 	const startTime = Date.now();
 
 	while (Date.now() - startTime < timeoutMs) {
-		const lineItems = await invoiceLineItemRepo.getByStripeInvoiceId({
-			db: ctx.db,
-			stripeInvoiceId,
-		});
+		const invoiceId = await getInvoiceIdByProcessorInvoiceId(processorInvoiceId);
+	if (!invoiceId) {
+		throw new Error(`No invoice row found for processor invoice ${processorInvoiceId}`);
+	}
+		const lineItems = invoiceId
+			? await invoiceLineItemRepo.getByInvoiceId({ db: ctx.db, invoiceId })
+			: [];
 
 		if (lineItems.length > 0) {
 			return lineItems;
@@ -39,7 +55,7 @@ export const waitForInvoiceLineItems = async ({
 	}
 
 	throw new Error(
-		`Timed out waiting for invoice line items for ${stripeInvoiceId} after ${timeoutMs}ms`,
+		`Timed out waiting for invoice line items for ${processorInvoiceId} after ${timeoutMs}ms`,
 	);
 };
 
@@ -50,8 +66,6 @@ type DiscountExpectation = {
 	hasDiscounts?: boolean; // true = discounts array is non-empty
 	discountCount?: number; // Exact number of discount entries per item
 	discountAmountOff?: number; // Sum of amount_off across all discounts on matching items
-	couponIds?: string[]; // stripe_coupon_id values that must be present on each matching item
-	stripeDiscountable?: boolean; // Expected stripe_discountable value
 };
 
 /**
@@ -63,8 +77,7 @@ type ExpectedLineItem = {
 	featureId?: string; // Match specific feature
 	direction?: "charge" | "refund";
 	billingTiming?: "in_advance" | "in_arrear";
-	stripeId?: string; // Match specific Stripe line item ID
-	stripeSubscriptionItemId?: string; // Match items in same group
+	processorId?: string; // Match specific processor line item ID
 
 	// Expectations
 	amount?: number; // Exact amount (for single item match)
@@ -75,7 +88,7 @@ type ExpectedLineItem = {
 	productId?: string;
 
 	// Quantity expectations
-	stripeQuantity?: number; // Single item's stripe_quantity
+	rawQuantity?: number; // Single item's raw_quantity
 	totalQuantity?: number; // Sum of total_quantity across matching items
 	paidQuantity?: number; // Sum of paid_quantity across matching items
 
@@ -84,7 +97,7 @@ type ExpectedLineItem = {
 };
 
 type ExpectInvoiceLineItemsParams = {
-	stripeInvoiceId: string;
+	processorInvoiceId: string;
 	expectedTotal?: number;
 	expectedCount?: number;
 	expectedLineItems?: ExpectedLineItem[];
@@ -102,9 +115,7 @@ const buildFilterDescription = (expected: ExpectedLineItem): string => {
 	if (expected.featureId) parts.push(`feature=${expected.featureId}`);
 	if (expected.direction) parts.push(expected.direction);
 	if (expected.billingTiming) parts.push(expected.billingTiming);
-	if (expected.stripeId) parts.push(`stripe_id=${expected.stripeId}`);
-	if (expected.stripeSubscriptionItemId)
-		parts.push(`group=${expected.stripeSubscriptionItemId}`);
+	if (expected.processorId) parts.push(`processor_id=${expected.processorId}`);
 	return parts.join(", ") || "all";
 };
 
@@ -129,11 +140,7 @@ const validateExpectedLineItem = (
 		if (expected.direction && li.direction !== expected.direction) return false;
 		if (expected.billingTiming && li.billing_timing !== expected.billingTiming)
 			return false;
-		if (expected.stripeId && li.stripe_id !== expected.stripeId) return false;
-		if (
-			expected.stripeSubscriptionItemId &&
-			li.stripe_subscription_item_id !== expected.stripeSubscriptionItemId
-		)
+		if (expected.processorId && li.processor_id !== expected.processorId)
 			return false;
 		// productId filter: when specified, only match items with that product_id
 		if (
@@ -207,11 +214,11 @@ const validateExpectedLineItem = (
 			`Expected paid_quantity ${expected.paidQuantity} for [${filterDesc}], got ${actualTotal}`,
 		).toBe(expected.paidQuantity);
 	}
-	if (expected.stripeQuantity !== undefined && matching.length === 1) {
+	if (expected.rawQuantity !== undefined && matching.length === 1) {
 		expect(
-			matching[0].stripe_quantity,
-			`Expected stripe_quantity ${expected.stripeQuantity} for [${filterDesc}], got ${matching[0].stripe_quantity}`,
-		).toBe(expected.stripeQuantity);
+			matching[0].raw_quantity,
+			`Expected raw_quantity ${expected.rawQuantity} for [${filterDesc}], got ${matching[0].raw_quantity}`,
+		).toBe(expected.rawQuantity);
 	}
 
 	// Other validations
@@ -239,7 +246,7 @@ const validateExpectedLineItem = (
 			}
 			expect(
 				matching[0].amount_after_discounts,
-				`Expected amount_after_discounts $${disc.amountAfterDiscounts} for [${filterDesc}], got $${matching[0].amount_after_discounts}`,
+				`Expected amount_after_discounts $${disc.amountAfterDiscounts} for [${filterDesc}], got ${matching[0].amount_after_discounts}`,
 			).toBe(disc.amountAfterDiscounts);
 		}
 
@@ -287,41 +294,18 @@ const validateExpectedLineItem = (
 				`Expected total discount amount_off $${disc.discountAmountOff} for [${filterDesc}], got $${actual}`,
 			).toBe(disc.discountAmountOff);
 		}
-
-		if (disc.couponIds !== undefined) {
-			for (const li of matching) {
-				const actualCouponIds = getDiscounts(li)
-					.map((d) => d.stripe_coupon_id)
-					.filter(Boolean);
-				for (const expectedId of disc.couponIds) {
-					expect(
-						actualCouponIds,
-						`Expected coupon ${expectedId} in discounts for [${filterDesc}] (li ${li.id}), found: [${actualCouponIds.join(", ")}]`,
-					).toContain(expectedId);
-				}
-			}
-		}
-
-		if (disc.stripeDiscountable !== undefined) {
-			for (const li of matching) {
-				expect(
-					li.stripe_discountable,
-					`Expected stripe_discountable=${disc.stripeDiscountable} for [${filterDesc}] (li ${li.id}), got ${li.stripe_discountable}`,
-				).toBe(disc.stripeDiscountable);
-			}
-		}
 	}
 };
 
 /**
  * Verifies invoice line items match expectations.
- * Always validates core fields (id prefix, stripe_invoice_id, amounts, product/price relationships).
+ * Always validates core fields (id prefix, invoice link, amounts, product/price relationships).
  * Waits for line items to be stored (async workflow) before validating.
  *
  * @returns The fetched line items for additional custom assertions
  */
 export const expectInvoiceLineItemsCorrect = async ({
-	stripeInvoiceId,
+	processorInvoiceId,
 	expectedTotal,
 	expectedCount,
 	expectedLineItems,
@@ -330,18 +314,23 @@ export const expectInvoiceLineItemsCorrect = async ({
 	debug = true,
 }: ExpectInvoiceLineItemsParams): Promise<DbInvoiceLineItem[]> => {
 	// 1. Wait for line items to be stored (async workflow)
-	const lineItems = await waitForInvoiceLineItems({ stripeInvoiceId });
+	const lineItems = await waitForInvoiceLineItems({ processorInvoiceId });
 
 	// 2. Debug logging FIRST (before any assertions)
 	if (debug) {
-		logInvoiceLineItems({ lineItems, stripeInvoiceId });
+		logInvoiceLineItems({ lineItems, processorInvoiceId });
 	}
 
 	// 3. Basic existence check (should always pass after waitForInvoiceLineItems)
 	expect(
 		lineItems.length,
-		`Expected invoice ${stripeInvoiceId} to have line items, but found none`,
+		`Expected invoice ${processorInvoiceId} to have line items, but found none`,
 	).toBeGreaterThan(0);
+
+	const invoiceId = await getInvoiceIdByProcessorInvoiceId(processorInvoiceId);
+	if (!invoiceId) {
+		throw new Error(`No invoice row found for processor invoice ${processorInvoiceId}`);
+	}
 
 	// 4. Core field validations (always run)
 	for (const li of lineItems) {
@@ -350,9 +339,7 @@ export const expectInvoiceLineItemsCorrect = async ({
 			li.id.startsWith("invoice_li_"),
 			`Line item id should start with "invoice_li_", got: ${li.id}`,
 		).toBe(true);
-		expect(li.stripe_invoice_id, "Line item missing stripe_invoice_id").toBe(
-			stripeInvoiceId,
-		);
+		expect(li.invoice_id, "Line item missing invoice_id").toBe(invoiceId);
 		expect(
 			typeof li.amount,
 			`Line item amount should be number, got: ${typeof li.amount}`,
@@ -418,14 +405,14 @@ export const expectInvoiceLineItemsCorrect = async ({
  * Expects a base price line item exists with given criteria
  */
 export const expectBasePriceLineItem = async ({
-	stripeInvoiceId,
+	processorInvoiceId,
 	amount,
 	direction = "charge",
 	prorated,
 	productId,
 	debug = true,
 }: {
-	stripeInvoiceId: string;
+	processorInvoiceId: string;
 	amount?: number;
 	direction?: "charge" | "refund";
 	prorated?: boolean;
@@ -433,7 +420,7 @@ export const expectBasePriceLineItem = async ({
 	debug?: boolean;
 }): Promise<DbInvoiceLineItem> => {
 	const lineItems = await expectInvoiceLineItemsCorrect({
-		stripeInvoiceId,
+		processorInvoiceId,
 		expectedLineItems: [
 			{ isBasePrice: true, direction, amount, prorated, productId, count: 1 },
 		],
@@ -449,7 +436,7 @@ export const expectBasePriceLineItem = async ({
  * Expects feature line items exist and returns them
  */
 export const expectFeatureLineItems = async ({
-	stripeInvoiceId,
+	processorInvoiceId,
 	featureId,
 	totalAmount,
 	totalQuantity,
@@ -458,7 +445,7 @@ export const expectFeatureLineItems = async ({
 	minCount = 1,
 	debug = true,
 }: {
-	stripeInvoiceId: string;
+	processorInvoiceId: string;
 	featureId: string;
 	totalAmount?: number;
 	totalQuantity?: number;
@@ -468,7 +455,7 @@ export const expectFeatureLineItems = async ({
 	debug?: boolean;
 }): Promise<DbInvoiceLineItem[]> => {
 	const lineItems = await expectInvoiceLineItemsCorrect({
-		stripeInvoiceId,
+		processorInvoiceId,
 		expectedLineItems: [
 			{
 				featureId,
@@ -486,44 +473,44 @@ export const expectFeatureLineItems = async ({
 };
 
 /**
- * Expects a specific Stripe line item exists by stripe_id
+ * Expects a specific processor line item exists by processor_id
  */
-export const expectStripeLineItem = async ({
-	stripeInvoiceId,
-	stripeId,
+export const expectProcessorLineItem = async ({
+	processorInvoiceId,
+	processorId,
 	amount,
-	stripeQuantity,
+	rawQuantity,
 	totalQuantity,
 	featureId,
 	debug = true,
 }: {
-	stripeInvoiceId: string;
-	stripeId: string;
+	processorInvoiceId: string;
+	processorId: string;
 	amount?: number;
-	stripeQuantity?: number;
+	rawQuantity?: number;
 	totalQuantity?: number;
 	featureId?: string | null;
 	debug?: boolean;
 }): Promise<DbInvoiceLineItem> => {
 	const lineItems = await expectInvoiceLineItemsCorrect({
-		stripeInvoiceId,
-		expectedLineItems: [{ stripeId, amount, stripeQuantity, count: 1 }],
+		processorInvoiceId,
+		expectedLineItems: [{ processorId, amount, rawQuantity, count: 1 }],
 		debug,
 	});
 
-	const item = lineItems.find((li) => li.stripe_id === stripeId);
-	expect(item, `Stripe line item ${stripeId} not found`).toBeDefined();
+	const item = lineItems.find((li) => li.processor_id === processorId);
+	expect(item, `Processor line item ${processorId} not found`).toBeDefined();
 
 	if (featureId !== undefined) {
 		expect(
 			item!.feature_id,
-			`Expected feature_id=${featureId} for stripe_id=${stripeId}, got ${item!.feature_id}`,
+			`Expected feature_id=${featureId} for processor_id=${processorId}, got ${item!.feature_id}`,
 		).toBe(featureId);
 	}
 	if (totalQuantity !== undefined) {
 		expect(
 			item!.total_quantity,
-			`Expected total_quantity=${totalQuantity} for stripe_id=${stripeId}, got ${item!.total_quantity}`,
+			`Expected total_quantity=${totalQuantity} for processor_id=${processorId}, got ${item!.total_quantity}`,
 		).toBe(totalQuantity);
 	}
 

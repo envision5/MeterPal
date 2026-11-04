@@ -72,22 +72,18 @@ const pass1FromCustomersAndRewards = ({
 			const hasVersionableCustomers =
 				customerUsage.hasVersionableCustomerProducts;
 			const hasExpiredOnlyCustomers = hasCustomers && !hasVersionableCustomers;
-			const hasRewards =
-				(productStatesContext.rewardProgramsByPlanId[target.planId] ?? [])
-					.length > 0;
 			const isWholePlan = target.allVersions;
 			const isLiveVersion = isProjectedActiveVersion({
 				current: target.current,
 				projected,
 			});
 			const pinBlocksLive = !isWholePlan && isLiveVersion;
-			const willTombstone =
-				hasExpiredOnlyCustomers && !hasRewards && !pinBlocksLive;
+			const willTombstone = hasExpiredOnlyCustomers && !pinBlocksLive;
 			return {
 				...target,
 				hasCustomers,
 				willTombstone,
-				willArchive: !willTombstone && (hasCustomers || hasRewards),
+				willArchive: !willTombstone && hasCustomers,
 			};
 		}),
 	});

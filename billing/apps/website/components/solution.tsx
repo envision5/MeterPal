@@ -16,7 +16,7 @@ const appItems = [
 	{ text: "BUSINESS LOGIC", icon: "box-grid" },
 ];
 
-const stripeItems = [
+const processorItems = [
 	{ text: "MOVES MONEY", icon: "grid" },
 	{ text: "INVOICING", icon: "crossfade" },
 	{ text: "CARD PROCESSING", icon: "box-grid" },

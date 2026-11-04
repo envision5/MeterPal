@@ -95,11 +95,11 @@ export function useCustomerExportSheet({
 					search: restrictToFilters ? trimmedSearch : "",
 					filters: restrictToFilters ? filters : {},
 				};
-				await createExport.mutateAsync(
-					kind === CustomerExportKind.Customers
-						? { kind, fields: value.fields, ...scope }
-						: { kind, ...scope },
-				);
+				await createExport.mutateAsync({
+					kind,
+					fields: value.fields,
+					...scope,
+				});
 				toast.success("Export started");
 			} catch (error) {
 				invalidateExports();

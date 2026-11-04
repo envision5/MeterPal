@@ -1,10 +1,10 @@
-import type {
-	CreateSchedulePlanV0,
-	MultiAttachParamsV0Input,
-} from "@autumn/shared";
+import type { MultiAttachParamsV0Input } from "@autumn/shared";
 import { freeTrialParamsV1ToV0 } from "@autumn/shared";
 import type { AutumnContext } from "@/honoUtils/HonoEnv";
-import { resolveCustomizedPlan } from "@/internal/billing/v2/actions/resolveBillingRequest";
+import {
+	type ResolvedPlanSpec,
+	resolveCustomizedPlan,
+} from "@/internal/billing/v2/actions/resolveBillingRequest";
 import type { AttachGenerationParams } from "../generationSchemas";
 
 /** The composed multi-attach dialect the sheet seeds: MultiAttach params with
@@ -60,11 +60,11 @@ export const composeMultiAttachRequest = async ({
 		...(Object.keys(planCustomize).length > 0
 			? { customize: planCustomize }
 			: {}),
-	} as CreateSchedulePlanV0;
+	} as ResolvedPlanSpec;
 
 	const plans = await Promise.all(
 		[primaryPlan, ...additionalPlans].map((plan) =>
-			resolveCustomizedPlan({ ctx, plan }),
+			resolveCustomizedPlan({ ctx, plan: plan as ResolvedPlanSpec }),
 		),
 	);
 

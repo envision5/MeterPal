@@ -111,7 +111,7 @@ If customer-level products grow large (50+ add-ons), the bounded FullCustomer co
 
 ## Billing actions (NOT in scope)
 
-Billing (attach, updateSubscription) needs ALL customer products across ALL entities for Stripe subscription merging. These skip the bounded cache and query Postgres directly. After billing, invalidate all customer + entity caches.
+Billing (attach, updateSubscription) needs ALL customer products across ALL entities for processor subscription merging. These skip the bounded cache and query Postgres directly. After billing, invalidate all customer + entity caches.
 
 ## Key files
 

@@ -357,8 +357,7 @@ function writeEnvFiles(
 		TRACK_SQS_QUEUE_URL: `${sqsBase}/autumn-track.fifo`,
 		TRACK_ASYNC_SQS_QUEUE_URL: `${sqsBase}/autumn-track.fifo`,
 		TRACK_ASYNC_STANDARD_SQS_QUEUE_URL: `${sqsBase}/autumn-track-async`,
-		STRIPE_WEBHOOK_SQS_QUEUE_URL: `${sqsBase}/autumn-stripe-webhook.fifo`,
-		TRIGGER_API_URL: `http://localhost:${TRIGGER_PORT}`,
+			TRIGGER_API_URL: `http://localhost:${TRIGGER_PORT}`,
 		TRIGGER_ACCESS_TOKEN: triggerAccessToken,
 		TRIGGER_SERVER_SECRET_KEY: triggerSecretKey,
 		AWS_REGION: "us-east-1",
@@ -371,8 +370,7 @@ function writeEnvFiles(
 		EMULATE_GOOGLE_FETCH_URL: "http://127.0.0.1:4000",
 		GOOGLE_CLIENT_ID: "capy-emulate",
 		GOOGLE_CLIENT_SECRET: "capy-emulate",
-		STRIPE_WEBHOOK_SKIP_VERIFY: "true",
-		// Login flow that works without external services: dev `sendOTPEmail`
+			// Login flow that works without external services: dev `sendOTPEmail`
 		// prints the OTP to the server log. The README documents this path.
 		NODE_ENV: "development",
 		TESTS_ORG: "unit-test-org",

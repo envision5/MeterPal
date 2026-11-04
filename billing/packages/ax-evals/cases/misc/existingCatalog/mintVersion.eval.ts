@@ -27,7 +27,6 @@ export const mintVersion = defineCase({
 	scenario: {
 		primer: existingCatalogPrimer("The org has paying customers on pro."),
 		seedCatalog: proV1Config,
-		withStripe: true,
 		seedCustomers: [
 			{
 				customer: {
@@ -35,7 +34,6 @@ export const mintVersion = defineCase({
 					name: "Ada Lovelace",
 					email: "ada@example.com",
 				},
-				paymentMethod: true,
 				attach: [{ plan_id: "pro" }],
 			},
 		],

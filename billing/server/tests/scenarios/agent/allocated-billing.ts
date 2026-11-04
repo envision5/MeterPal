@@ -46,7 +46,6 @@ export const seedAllocatedBillingCatalog = async ({
 			s.products({
 				list: [legacy, arrear].map((plan) => ({ ...plan, group: GROUP })),
 				prefix: "",
-				createInStripe: false,
 			}),
 		],
 		actions: [],
@@ -66,7 +65,6 @@ export const runAllocatedBillingSeed = async () => {
 		await clearOrg({
 			orgSlug: process.env.TESTS_ORG,
 			env: AppEnv.Sandbox,
-			skipStripeReset: true,
 		});
 	}
 

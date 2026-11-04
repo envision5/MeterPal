@@ -20,10 +20,10 @@ export const ExtPreviewUpdateSubscriptionResponseSchema =
 		intent: z.enum(UpdateSubscriptionPreviewIntent),
 		tax: PreviewTaxSchema.optional().meta({
 			description:
-				"Tax preview for the immediate charge. Contact us to enable the tax flag on your organisation. Shows only with flag enabled, a Stripe customer exists and has a location.",
+				"Tax preview for the immediate charge. Contact us to enable the tax flag on your organisation.",
 		}),
 		invoice_credits: PreviewInvoiceCreditsSchema.optional().meta({
-			description: "Stripe customer invoice credits preview.",
+			description: "Customer invoice credits preview.",
 		}),
 	});
 

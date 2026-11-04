@@ -22,7 +22,7 @@ test("lists all matching customers with compound filters and cursor pagination",
 				expect(body).toMatchObject({
 					search: "acme",
 					subscription_status: "active",
-					processors: ["stripe"],
+					processors: ["paypal"],
 					plans: [{ id: "pro", versions: [2, 3] }],
 				});
 
@@ -34,7 +34,6 @@ test("lists all matching customers with compound filters and cursor pagination",
 								id: "cus_acme_us",
 								name: "Acme US",
 								email: "billing@acme.example",
-								processors: { stripe: { id: "cus_stripe_us" } },
 								subscriptions: [
 									{ planId: "pro", version: 3, status: "active" },
 								],
@@ -43,7 +42,6 @@ test("lists all matching customers with compound filters and cursor pagination",
 								id: "cus_acme_eu",
 								name: "Acme EU",
 								email: "finance@acme.example",
-								processors: { stripe: { id: "cus_stripe_eu" } },
 								subscriptions: [
 									{ planId: "pro", version: 2, status: "active" },
 								],
@@ -60,7 +58,6 @@ test("lists all matching customers with compound filters and cursor pagination",
 							id: "cus_acme_apac",
 							name: "Acme APAC",
 							email: "ops-apac@acme.example",
-							processors: { stripe: { id: "cus_stripe_apac" } },
 							subscriptions: [{ planId: "pro", version: 3, status: "active" }],
 						},
 					],
@@ -72,7 +69,7 @@ test("lists all matching customers with compound filters and cursor pagination",
 
 	const output = await generate(
 		[
-			"Can you pull every active Acme customer on pro v2 or v3 that pays through Stripe?",
+			"Can you pull every active Acme customer on pro v2 or v3 that pays through PayPal?",
 			"There may be multiple pages, so don't stop after the first batch.",
 			"Just give me the customer ids.",
 		],
@@ -95,7 +92,7 @@ test("lists all matching customers with compound filters and cursor pagination",
 	expect(cursors).toContain("cursor_acme_2");
 }, 30000);
 
-test("resolves plan attributes before listing scheduled Vercel customers", async () => {
+test("resolves plan attributes before listing scheduled PayPal customers", async () => {
 	const { api, generate, toolCalls } = initMcpEval({
 		fixtures: {
 			listPlans: {
@@ -132,7 +129,7 @@ test("resolves plan attributes before listing scheduled Vercel customers", async
 					.flatMap((plan) => plan.versions ?? []);
 				expect(body).toMatchObject({
 					subscription_status: "scheduled",
-					processors: ["vercel"],
+					processors: ["paypal"],
 					plans: [{ id: "enterprise" }],
 				});
 				expectVersions(versions, [4, 5]);
@@ -141,12 +138,6 @@ test("resolves plan attributes before listing scheduled Vercel customers", async
 						{
 							id: "cus_future_enterprise",
 							name: "Future Enterprise",
-							processors: {
-								vercel: {
-									installation_id: "icfg_future",
-									account_id: "acct_future",
-								},
-							},
 							subscriptions: [
 								{
 									planId: "enterprise",
@@ -164,7 +155,7 @@ test("resolves plan attributes before listing scheduled Vercel customers", async
 
 	const output = await generate(
 		[
-			"Which Vercel customers are queued for non-default Enterprise plans?",
+			"Which PayPal customers are queued for non-default Enterprise plans?",
 			"Return the customer ids.",
 		],
 		5,
@@ -178,7 +169,7 @@ test("resolves plan attributes before listing scheduled Vercel customers", async
 			.flatMap((plan) => plan.versions ?? []);
 		return (
 			call.body.subscription_status === "scheduled" &&
-			call.body.processors?.includes("vercel") &&
+			call.body.processors?.includes("paypal") &&
 			Array.from(new Set(versions ?? []))
 				.sort()
 				.join(",") === "4,5"
@@ -186,20 +177,20 @@ test("resolves plan attributes before listing scheduled Vercel customers", async
 	});
 	expect(
 		enterpriseCall,
-		`Expected a scheduled Enterprise Vercel query. Calls: ${JSON.stringify(api.callsFor("listCustomers"), null, 2)}`,
+		`Expected a scheduled Enterprise PayPal query. Calls: ${JSON.stringify(api.callsFor("listCustomers"), null, 2)}`,
 	).toBeDefined();
 	expectNoToolCall(toolCalls, "getCustomer");
 	expectNoApiCall(api, "getCustomer");
 	expect(output.text).toContain("cus_future_enterprise");
 }, 30000);
 
-test("infers active Stripe customer filters from vague wording", async () => {
+test("infers active PayPal customer filters from vague wording", async () => {
 	const { api, generate, toolCalls } = initMcpEval({
 		fixtures: {
 			listCustomers: (body: ToolRequest<"listCustomers">) => {
 				expect(body).toMatchObject({
 					subscription_status: "active",
-					processors: ["stripe"],
+					processors: ["paypal"],
 				});
 				expect(body.search?.toLowerCase()).toBe("acme");
 				return {
@@ -208,7 +199,6 @@ test("infers active Stripe customer filters from vague wording", async () => {
 							id: "cus_acme_live",
 							name: "Acme Live",
 							email: "billing@acme.example",
-							processors: { stripe: { id: "cus_stripe_live" } },
 							subscriptions: [{ planId: "pro", status: "active" }],
 						},
 					],
@@ -219,14 +209,14 @@ test("infers active Stripe customer filters from vague wording", async () => {
 	});
 
 	const output = await generate([
-		"Can you find live Acme customers that are paying through Stripe?",
+		"Can you find live Acme customers that are paying through PayPal?",
 		"Return the customer ids.",
 	]);
 
 	expectToolCall(toolCalls, "listCustomers");
 	expect(api.call("listCustomers")?.rawBody).toMatchObject({
 		subscription_status: "active",
-		processors: ["stripe"],
+		processors: ["paypal"],
 	});
 	expect(api.call("listCustomers")?.rawBody.search?.toLowerCase()).toBe("acme");
 	expectNoToolCall(toolCalls, "getCustomer");

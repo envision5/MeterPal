@@ -96,9 +96,7 @@ import {
 	pooledBalanceContributions,
 	pooledBalances,
 } from "../models/pooledBalanceModels/pooledBalanceTable.js";
-import { revenuecatMappings } from "../models/processorModels/revenuecatModels/revenuecatMappingsTable.js";
-import { stripeWebhookEvents } from "../models/processorModels/stripeModels/stripeWebhookEventsTable.js";
-import { vercelResources } from "../models/processorModels/vercelModels/vercelResourcesTable.js";
+import { webhookEvents } from "../models/processorModels/webhookEventsTable.js";
 // Product Relations
 import { entitlementsRelations } from "../models/productModels/entModels/entRelations.js";
 import { entitlements } from "../models/productModels/entModels/entTable.js";
@@ -158,7 +156,7 @@ export {
 	walletLedger,
 	paypalCatalogMap,
 	paypalOrderIntents,
-	stripeWebhookEvents,
+	webhookEvents,
 	customerJwtFamilies,
 	autoTopupLimitStates as autoTopupLimits,
 	chatApprovals,
@@ -246,7 +244,6 @@ export {
 	referralCodes,
 	replaceableRelations,
 	replaceables,
-	revenuecatMappings as revcatMappings,
 	rewardPrograms,
 	rewardRedemptionRelations,
 	rewardRedemptions,
@@ -267,6 +264,5 @@ export {
 	user,
 	// Auth Relations
 	userRelations,
-	vercelResources,
 	verification,
 };

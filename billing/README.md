@@ -10,7 +10,7 @@
 [![Documentation](https://img.shields.io/badge/Documentation-📕-blue)](https://docs.useautumn.com)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/useautumn/autumn)
 
-[Autumn](https://useautumn.com) is an open-source layer between Stripe and your application, allowing you to create any pricing model and embed it with a couple lines of code. On Autumn you can build:
+[Autumn](https://useautumn.com) is an open-source billing layer between your application and your payment processor, allowing you to create any pricing model and embed it with a couple lines of code. On Autumn you can build:
 - Subscriptions
 - Credit systems & top ups
 - Usage-based models & overages
@@ -65,7 +65,7 @@ First, create your products and plans on the dashboard. We support **any** prici
 
 Next, all your billing logic can be implemented through just 3 functions:
 
-1. `/attach`: One function call for all purchase flows. We return a Stripe Checkout URL, or handle an upgrade/downgrade.
+1. `/attach`: One function call for all purchase flows. We return a hosted checkout URL, or handle an upgrade/downgrade.
 
 ```tsx
 const { attach } = useAutumn();

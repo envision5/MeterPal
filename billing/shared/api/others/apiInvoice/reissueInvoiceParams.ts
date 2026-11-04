@@ -7,7 +7,7 @@ import {
 	InvoicePlanParamsSchema,
 } from "./createInvoiceParams.js";
 
-/** Name/value pairs Stripe renders on the invoice, e.g. a PO number. */
+/** Name/value pairs the processor renders on the invoice, e.g. a PO number. */
 export const InvoiceCustomFieldSchema = z
 	.object({
 		name: z.string().max(30),
@@ -20,7 +20,7 @@ export const ReissueInvoiceOverridesSchema = z
 	.object({
 		automatic_tax: z.boolean().optional().meta({
 			description:
-				"Enable or disable Stripe automatic tax on the replacement. Omit to inherit. Enabling clears inherited manual tax rates; use tax_rate_id: null to remove all tax.",
+				"Enable or disable automatic tax on the replacement. Omit to inherit. Enabling clears inherited manual tax rates; use tax_rate_id: null to remove all tax.",
 		}),
 		custom_fields: z.array(InvoiceCustomFieldSchema).max(4).optional().meta({
 			description:
@@ -28,11 +28,11 @@ export const ReissueInvoiceOverridesSchema = z
 		}),
 		tax_rate_id: z.string().nullable().optional().meta({
 			description:
-				"Stripe tax rate applied to every line. Omit to keep the original's tax, or pass null to issue the replacement with no tax.",
+				"Tax rate applied to every line. Omit to keep the original's tax, or pass null to issue the replacement with no tax.",
 		}),
 		account_tax_ids: z.array(z.string()).nullable().optional().meta({
 			description:
-				"Your own Stripe tax registrations (atx_...) shown as the seller's tax numbers. Not the customer's.",
+				"Your own tax registrations shown as the seller's tax numbers. Not the customer's.",
 		}),
 		footer: z.string().nullable().optional().meta({
 			description: "Footer text, overriding the original's and any template's.",
@@ -78,7 +78,7 @@ export const ReissueCustomerOverridesSchema = z
 			.optional()
 			.meta({
 				description:
-					"Billing address. Drives tax when the org uses Stripe Tax, and is snapshotted onto the replacement.",
+					"Billing address. Drives tax when the org uses automatic tax, and is snapshotted onto the replacement.",
 			}),
 		tax_ids: z
 			.array(
@@ -155,7 +155,7 @@ export const ReissueInvoiceParamsSchema = z.object({
 	}),
 	update_customer_email: z.email().optional().meta({
 		description:
-			"Updates the customer's billing email before the replacement is issued, so Stripe sends the new invoice to this address.",
+			"Updates the customer's billing email before the replacement is issued, so the processor sends the new invoice to this address.",
 	}),
 	invoice: ReissueInvoiceOverridesSchema.optional().meta({
 		description: "Changes that apply to the replacement invoice only.",
@@ -179,7 +179,7 @@ export const ReissueInvoiceResponseSchema = z.object({
 	}),
 	credit_note_id: z.string().nullable().meta({
 		description:
-			"The Stripe credit note issued against a paid original, whose amount lands on the customer's balance and covers the replacement. Null when the original was open and voided instead.",
+			"The processor credit note issued against a paid original, whose amount lands on the customer's balance and covers the replacement. Null when the original was open and voided instead.",
 	}),
 	preview: CreateInvoicePreviewSchema.meta({
 		description: "The replacement's lines and totals.",

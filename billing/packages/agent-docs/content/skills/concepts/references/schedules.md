@@ -9,7 +9,7 @@
 
 - Every phase needs exactly one of `starts_at` (epoch ms, or `"now"`) or `starting_after` (`{ duration_type: "month" | "year", duration_count }`).
 - `starts_at: "now"` is first-phase only; `starting_after` is never allowed on the first phase.
-- The first phase must start now. A future first `starts_at` is rejected. A past one works only for paid recurring plans on a customer with no existing Stripe subscription.
+- The first phase must start now. A future first `starts_at` is rejected. A past one works only for paid recurring plans on a customer with no existing processor subscription.
 - `starts_at` values must be strictly increasing.
 - Quirk: unless you pass `billing_cycle_anchor`, a later phase starting within 12 hours of the current billing cycle boundary is silently snapped onto that boundary.
 
@@ -25,6 +25,6 @@
 
 - `free_trial`, `currency`, `discounts`, `invoice_mode`, `billing_cycle_anchor: "now"`, and `redirect_mode` apply only to the immediate phase.
 - `free_trial` applies to every recurring plan in that phase. `on_end: "revert"` is not supported on schedules.
-- `billing_cycle_anchor: "phase_start"` on a later phase resets the Stripe billing cycle when that phase begins.
-- `enable_plan_immediately: true` grants access while Stripe checkout is still pending. The response returns `status: "pending_payment"` with a null `schedule_id`, and the schedule persists once checkout completes.
-- `no_billing_changes: true` writes the schedule in Autumn without touching Stripe.
+- `billing_cycle_anchor: "phase_start"` on a later phase resets the processor billing cycle when that phase begins.
+- `enable_plan_immediately: true` grants access while processor checkout is still pending. The response returns `status: "pending_payment"` with a null `schedule_id`, and the schedule persists once checkout completes.
+- `no_billing_changes: true` writes the schedule in Autumn without touching the processor.

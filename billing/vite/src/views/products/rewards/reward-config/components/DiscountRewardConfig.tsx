@@ -15,7 +15,6 @@ import { useOrg } from "@/hooks/common/useOrg";
 import type { FrontendReward } from "../../types/frontendReward";
 import { ProductPriceSelector } from "./ProductPriceSelector";
 import { PromoCodeField } from "./PromoCodeField";
-import { SharedStripeProductTooltip } from "./SharedStripeProductTooltip";
 
 interface DiscountRewardConfigProps {
 	reward: FrontendReward;
@@ -154,10 +153,7 @@ export function DiscountRewardConfig({
 
 				{/* Products */}
 				<div className="w-full">
-					<span className="flex items-center gap-1.5">
-						<FormLabel>Products</FormLabel>
-						<SharedStripeProductTooltip />
-					</span>
+					<FormLabel>Products</FormLabel>
 					<ProductPriceSelector reward={reward} setReward={setReward} />
 				</div>
 			</div>

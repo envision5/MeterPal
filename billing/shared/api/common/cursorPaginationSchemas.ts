@@ -145,7 +145,7 @@ const FeatureBalanceCursorFieldsSchema = z.object({
 	id: z.string().min(1),
 	/** Exact feature-balance total; fractional, negative when overage is allowed. */
 	b: z.number(),
-	/** Unlimited stripe: unlimited customers rank above all totals in desc. */
+	/** Unlimited band: unlimited customers rank above all totals in desc. */
 	u: z.boolean(),
 });
 

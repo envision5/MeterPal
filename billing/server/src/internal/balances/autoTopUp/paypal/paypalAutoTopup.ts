@@ -14,9 +14,9 @@
 // link and no redirect.
 //
 // Config, limits (windows + durable circuit breaker), and the success /
-// failure merchant webhooks are the SAME machinery the Stripe executor uses
+// failure merchant webhooks are shared machinery
 // (fullCustomerToAutoTopupObjects, preflightAutoTopupLimits,
-// recordAutoTopupAttempt) — only the charge step differs.
+// recordAutoTopupAttempt) — this is the only executor.
 
 import type { AutoTopup, DbCustomer, FullCustomer } from "@autumn/shared";
 import {
@@ -47,19 +47,15 @@ import { sendAutoTopupSucceededWebhook } from "../webhooks/sendAutoTopupSucceede
 
 /**
  * True when this customer's charging instrument is a PayPal billing
- * agreement: vaulted BA token present and no Stripe customer — the Stripe
- * executor has nothing to run against.
+ * agreement: a vaulted BA token is present.
  */
 export const isPaypalChargedCustomer = ({
 	fullCustomer,
 }: {
 	fullCustomer: {
 		paypal_billing_agreement_id?: string | null;
-		processor?: { id?: string } | null;
 	};
-}): boolean =>
-	Boolean(fullCustomer.paypal_billing_agreement_id) &&
-	!fullCustomer.processor?.id;
+}): boolean => Boolean(fullCustomer.paypal_billing_agreement_id);
 
 /** Fetch the full customer when it's charged via PayPal, else null. */
 export const maybeGetPaypalAutoTopupCustomer = async ({
@@ -146,7 +142,7 @@ export const runPaypalAutoTopup = async ({
 		`========= RUNNING PAYPAL AUTO TOPUP FOR CUSTOMER ${customerId} AND FEATURE ${featureId} ========`,
 	);
 
-	// 1. Customer + config (shared resolution — Stripe-agnostic).
+	// 1. Customer + config.
 	const fullCustomer = preloadedCustomer
 		? preloadedCustomer
 		: await maybeGetPaypalAutoTopupCustomer({ ctx, customerId });
@@ -163,7 +159,7 @@ export const runPaypalAutoTopup = async ({
 	});
 	if (!resolved?.balanceBelowThreshold) {
 		// No enabled config, no chargeable entitlement, or balance recovered
-		// before the job ran — the Stripe executor skips these silently too.
+		// before the job ran — skipped silently.
 		logger.info(
 			`[runPaypalAutoTopup] No enabled config or balance not below threshold for feature ${featureId}, skipping`,
 		);
@@ -180,8 +176,7 @@ export const runPaypalAutoTopup = async ({
 	}) => sendAutoTopupFailedWebhook({ ctx, customerId, featureId, ...failure });
 
 	// 2. Instrument — without a vaulted billing agreement there is nothing to
-	// charge, so this surfaces as a missing payment method, the same failure
-	// reason the Stripe executor reports.
+	// charge, so this surfaces as a missing payment method.
 	const billingAgreementId = fullCustomer.paypal_billing_agreement_id;
 	if (!billingAgreementId) {
 		await sendFailureWebhook({
@@ -191,8 +186,8 @@ export const runPaypalAutoTopup = async ({
 		return;
 	}
 
-	// 3. Normalize the top-up quantity to the feature's billing units, like
-	// the Stripe setup does — the charge must match how credits are priced.
+	// 3. Normalize the top-up quantity to the feature's billing units — the
+	// charge must match how credits are priced.
 	const customerPrice = cusEntToCusPrice({
 		cusEnt: customerEntitlement,
 		errorOnNotFound: true,
@@ -204,23 +199,22 @@ export const runPaypalAutoTopup = async ({
 	});
 	const normalizedConfig: AutoTopup = { ...autoTopupConfig, quantity };
 
-	// 4. Limits: same windows + durable circuit breaker as the Stripe path.
-	//    paymentMethod is null — PayPal declines carry no fingerprintable
-	//    payment method, so the breaker tracks consecutive failures only.
+	// 4. Limits: shared windows + durable circuit breaker. The billing
+	//    agreement token fingerprints the instrument, so a re-approved
+	//    agreement clears a suspension.
 	const preflight = await preflightAutoTopupLimits({
 		ctx,
 		payload,
 		fullCustomer,
 		autoTopupConfig: normalizedConfig,
-		paymentMethod: null,
+		paymentMethod: billingAgreementId,
 	});
 	if (!preflight.allowed) {
 		logger.info(
 			`[runPaypalAutoTopup] Preflight blocked for feature ${featureId}, customer ${customerId}, reason: ${preflight.reason}`,
 		);
 		// Suspension has no window to expire — one webhook a day rather than
-		// one per deduction, keyed off when the breaker tripped (same as the
-		// Stripe setup's suppression keys).
+		// one per deduction, keyed off when the breaker tripped.
 		if (
 			preflight.reason === "suspended_after_failures" &&
 			preflight.limitState.suspended_at
@@ -248,6 +242,7 @@ export const runPaypalAutoTopup = async ({
 		autoTopupConfig: normalizedConfig,
 		customerEntitlement,
 		limitState: preflight.limitState,
+		paymentMethod: billingAgreementId,
 	};
 
 	// 5. Charge the billing agreement — merchant-initiated Orders v2.  A
@@ -398,7 +393,12 @@ const settlePaypalAutoTopupCapture = async ({
 	await sendAutoTopupSucceededWebhook({
 		ctx,
 		autoTopupContext: attemptContext,
-		billingResult: { stripe: {} },
+		invoice: {
+			processor_invoice_id: paypalCaptureInvoiceId(captureId),
+			total: amount,
+			currency: "usd",
+			hosted_invoice_url: null,
+		},
 	});
 
 	logger.info({

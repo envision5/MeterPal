@@ -23,7 +23,6 @@ const UNINVERTIBLE_POOLED_FIELDS = [
 
 const ROLLBACK_INERT_FIELDS = [
 	"customerId",
-	"updateByStripeScheduleId",
 	"lineItems",
 	"customLineItems",
 	"refundPlan",

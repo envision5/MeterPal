@@ -12,7 +12,7 @@ import {
 	UsageModel,
 } from "@autumn/shared";
 import { Decimal } from "decimal.js";
-import { getProration } from "@/internal/invoices/previewItemUtils/getItemsForNewProduct.js";
+import { getProration } from "@/internal/invoices/prorationUtils.js";
 import { isFeaturePriceItem } from "@/internal/products/product-items/productItemUtils/getItemType.js";
 import { itemToPriceOrTiers } from "@/internal/products/product-items/productItemUtils.js";
 import { notNullish } from "@/utils/genUtils.js";

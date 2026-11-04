@@ -5,10 +5,6 @@ import { BillingAutoTopupFailedSchema } from "./billing/billingAutoTopupFailed.j
 import { BillingAutoTopupSucceededSchema } from "./billing/billingAutoTopupSucceeded.js";
 import { BillingUpdatedSchema } from "./billing/billingUpdated.js";
 import { InvoiceFinalizedSchema } from "./invoice/invoiceFinalized.js";
-import { VercelResourceDeletedSchema } from "./vercel/vercelResourceDeleted.js";
-import { VercelResourceProvisionedSchema } from "./vercel/vercelResourceProvisioned.js";
-import { VercelResourceRotateSecretsSchema } from "./vercel/vercelResourceRotateSecrets.js";
-import { VercelWebhookEventSchema } from "./vercel/vercelWebhookEvent.js";
 import { WebhookEventType } from "./webhookEventType.js";
 
 export interface WebhookDefinition {
@@ -97,47 +93,6 @@ export const webhookRegistry: WebhookDefinition[] = [
 		schema: InvoiceFinalizedSchema,
 		group: "Invoice",
 		description:
-			"Fired when a Stripe invoice is finalized and its line items have been reconciled. The body is the invoice as returned by `invoices.list`, with `items` populated and each item carrying a per-entity `entities` breakdown.",
-	},
-
-	// ── Vercel ────────────────────────────────────────────────────────────
-	{
-		eventType: WebhookEventType.VercelResourcesDeleted,
-		operationId: "vercelResourcesDeleted",
-		title: "Resource Deleted",
-		schema: VercelResourceDeletedSchema,
-		group: "Vercel",
-		description:
-			"When a Vercel resource is deleted, you'll need to handle de-provisioning any API keys or other non-Autumn controlled data for this user.",
-		featureFlags: ["vercel"],
-	},
-	{
-		eventType: WebhookEventType.VercelResourcesProvisioned,
-		operationId: "vercelResourcesProvisioned",
-		title: "Resource Provisioned",
-		schema: VercelResourceProvisionedSchema,
-		group: "Vercel",
-		description:
-			"When a Vercel resource is created, you'll need to provision a secret key for your service. Then you can use the provided access token to patch the resource's secrets.",
-		featureFlags: ["vercel"],
-	},
-	{
-		eventType: WebhookEventType.VercelResourcesRotateSecrets,
-		operationId: "vercelResourcesRotateSecrets",
-		title: "Rotate Secrets",
-		schema: VercelResourceRotateSecretsSchema,
-		group: "Vercel",
-		description:
-			"This event is sent when Vercel requires a resource's secrets to be rotated.",
-		featureFlags: ["vercel"],
-	},
-	{
-		eventType: WebhookEventType.VercelWebhooksEvent,
-		operationId: "vercelWebhooksEvent",
-		title: "Webhook Event",
-		schema: VercelWebhookEventSchema,
-		group: "Vercel",
-		description: "Passthrough webhook for Vercel events.",
-		featureFlags: ["vercel"],
+			"Fired when a PayPal invoice is finalized and its line items have been reconciled. The body is the invoice as returned by `invoices.list`, with `items` populated and each item carrying a per-entity `entities` breakdown.",
 	},
 ];

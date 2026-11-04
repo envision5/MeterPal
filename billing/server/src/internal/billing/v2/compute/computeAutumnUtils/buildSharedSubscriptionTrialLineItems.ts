@@ -67,15 +67,15 @@ const logSharedSubscriptionTrialLineItems = ({
 	);
 };
 
-/** Filter for sibling customer products on the same Stripe subscription. */
+/** Filter for sibling customer products on the same processor subscription. */
 const getSiblingCustomerProducts = ({
 	customerProducts,
 	autumnBillingPlan,
-	stripeSubscriptionId,
+	processorSubscriptionId,
 }: {
 	customerProducts: FullCusProduct[];
 	autumnBillingPlan: AutumnBillingPlan;
-	stripeSubscriptionId: string;
+	processorSubscriptionId: string;
 }): FullCusProduct[] => {
 	const handledIds = new Set([
 		...autumnBillingPlan.insertCustomerProducts.map((cp) => cp.id),
@@ -93,13 +93,14 @@ const getSiblingCustomerProducts = ({
 		return cp(customerProduct)
 			.paid()
 			.recurring()
-			.onStripeSubscription({ stripeSubscriptionId }).valid;
+			.onProcessorSubscription({ processorSubscriptionId }).valid;
 	});
 };
 
 /**
- * Builds line items for sibling customer products on a shared Stripe subscription
- * when trial state changes (trialing → no trial or no trial → trialing).
+ * Builds line items for sibling customer products on a shared processor
+ * subscription when trial state changes (trialing → no trial or no trial →
+ * trialing).
  */
 export const buildSharedSubscriptionTrialLineItems = ({
 	ctx,
@@ -107,13 +108,21 @@ export const buildSharedSubscriptionTrialLineItems = ({
 	autumnBillingPlan,
 }: {
 	ctx: AutumnContext;
-	billingContext: BillingContext;
+	billingContext: BillingContext & {
+		currentCustomerProduct?: FullCusProduct;
+		customerProduct?: FullCusProduct;
+	};
 	autumnBillingPlan: AutumnBillingPlan;
 }): LineItem[] => {
 	const { logger } = ctx;
-	const { fullCustomer, stripeSubscription, trialContext } = billingContext;
+	const { fullCustomer, trialContext } = billingContext;
 
-	if (!stripeSubscription) return [];
+	// The processor subscription the customer is on, from the customer product.
+	const customerProduct =
+		billingContext.currentCustomerProduct ?? billingContext.customerProduct;
+	const processorSubscriptionId = customerProduct?.subscription_ids?.[0];
+
+	if (!processorSubscriptionId) return [];
 
 	const { isTrialing, willBeTrialing } = getTrialStateTransition({
 		billingContext,
@@ -133,7 +142,7 @@ export const buildSharedSubscriptionTrialLineItems = ({
 	const siblingCustomerProducts = getSiblingCustomerProducts({
 		customerProducts: fullCustomer.customer_products,
 		autumnBillingPlan,
-		stripeSubscriptionId: stripeSubscription.id,
+		processorSubscriptionId,
 	});
 
 	if (siblingCustomerProducts.length === 0) return [];

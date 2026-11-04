@@ -25,8 +25,6 @@ test.concurrent(`${chalk.yellowBright("subscription-update: remove trial with no
 		],
 		actions: [
 			s.attach({ productId: proTrial.id }),
-			s.removePaymentMethod(),
-			s.attachPaymentMethod({ type: "success" }),
 		],
 	});
 

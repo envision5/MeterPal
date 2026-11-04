@@ -30,7 +30,8 @@ const REQUIRED_SECRETS = [
 	"ENCRYPTION_IV",
 	"ENCRYPTION_PASSWORD",
 	"BETTER_AUTH_SECRET",
-	"STRIPE_SANDBOX_SECRET_KEY",
+	"PAYPAL_CLIENT_ID",
+	"PAYPAL_CLIENT_SECRET",
 ] as const;
 
 type PreflightProblem = { what: string; fix: string };

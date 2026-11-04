@@ -54,7 +54,11 @@ export const computeImmediateMultiProductPlan = ({
 		fullCustomer: billingContext.fullCustomer,
 		outgoingCustomerProducts,
 		incomingCustomerProducts: insertCustomerProducts,
-		stripeSubscriptionId: billingContext.stripeSubscription?.id,
+		processorSubscriptionId:
+			billingContext.productContexts.find(
+				(productContext) =>
+					productContext.currentCustomerProduct?.subscription_ids?.[0],
+			)?.currentCustomerProduct?.subscription_ids?.[0],
 		now: billingContext.currentEpochMs,
 	});
 

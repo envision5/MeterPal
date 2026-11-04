@@ -17,7 +17,7 @@ export function UrlSuccessView({
 	description: string;
 	message: string;
 	buttonLabel: string;
-	url: string;
+	url?: string;
 }) {
 	return (
 		<>
@@ -37,18 +37,22 @@ export function UrlSuccessView({
 			</SheetSection>
 
 			<SheetFooter className="flex flex-col grid-cols-1 mt-0">
-				<Button
-					variant="primary"
-					className="w-full"
-					onClick={() => window.open(url, "_blank")}
-				>
-					{buttonLabel}
-				</Button>
-				<CopyButton
-					text={url}
-					className="w-full [&>span]:min-w-0 [&>span]:max-w-full"
-					innerClassName="text-xs text-tertiary-foreground font-mono min-w-0 flex-1 text-left"
-				/>
+				{url && (
+					<Button
+						variant="primary"
+						className="w-full"
+						onClick={() => window.open(url, "_blank")}
+					>
+						{buttonLabel}
+					</Button>
+				)}
+				{url && (
+					<CopyButton
+						text={url}
+						className="w-full [&>span]:min-w-0 [&>span]:max-w-full"
+						innerClassName="text-xs text-tertiary-foreground font-mono min-w-0 flex-1 text-left"
+					/>
+				)}
 			</SheetFooter>
 		</>
 	);

@@ -27,7 +27,6 @@ import {
 	hasBillingControls,
 } from "@/components/billing-controls/BillingControlsDisplay";
 import { getPendingBillingCycleAnchor } from "@/components/forms/update-subscription-v2/utils/pendingBillingCycleAnchor";
-import { OpenInStripeButton } from "@/components/v2/buttons/OpenInStripeButton";
 import { SheetHeader, SheetSection } from "@/components/v2/sheets/InlineSheet";
 import { useCustomerDisplayCurrency } from "@/hooks/common/useCustomerDisplayCurrency";
 import { useCusRewardsQuery } from "@/hooks/queries/useCusRewardsQuery";
@@ -115,13 +114,7 @@ export function SubscriptionDetailSheet() {
 		prepaidItems,
 	});
 
-	const baseCustomerPrice = cusProduct.customer_prices?.find(
-		(cp: { price: { config?: { stripe_price_id?: string } } }) =>
-			Boolean(cp.price?.config?.stripe_price_id),
-	);
 	const adminIds = {
-		stripe_price_id: baseCustomerPrice?.price?.config?.stripe_price_id ?? null,
-		stripe_product_id: cusProduct.product?.processor?.id ?? null,
 		internal_product_id: cusProduct.product?.internal_id ?? null,
 	};
 
@@ -240,20 +233,15 @@ export function SubscriptionDetailSheet() {
 						{cusProduct.subscription_ids?.length > 0 && (
 							<InfoRow
 								icon={<CreditCardIcon size={16} />}
-								label="Stripe ID"
+								label="Subscription ID"
 								className="flex-1 min-w-0"
 								value={
-									<div className="flex items-center gap-2 min-w-0 w-full">
-										<CopyButton
-											text={cusProduct.subscription_ids[0]}
-											size="mini"
-											className="text-tertiary-foreground min-w-0 shrink"
-											innerClassName="text-tiny-id truncate !font-normal min-w-0"
-										/>
-										<OpenInStripeButton
-											subscriptionId={cusProduct.subscription_ids[0]}
-										/>
-									</div>
+									<CopyButton
+										text={cusProduct.subscription_ids[0]}
+										size="mini"
+										className="text-tertiary-foreground min-w-0 shrink"
+										innerClassName="text-tiny-id truncate !font-normal min-w-0"
+									/>
 								}
 							/>
 						)}

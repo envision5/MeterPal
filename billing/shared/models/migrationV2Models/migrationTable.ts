@@ -43,8 +43,8 @@ export const migrations = pgTable(
 		prepared_state: jsonb().$type<LoosePreparedState>(),
 
 		// `null` (default) → infer from compute output.
-		// `true` → force DB-only path; throw if any Stripe-relevant mutation slips in.
-		// `false` → force Stripe path even when inference would say DB-only.
+		// `true` → force DB-only path; throw if any processor-relevant mutation slips in.
+		// `false` → force the processor path even when inference would say DB-only.
 		no_billing_changes: boolean(),
 		retry_failed: boolean().notNull().default(false),
 		archived: boolean().notNull().default(false),

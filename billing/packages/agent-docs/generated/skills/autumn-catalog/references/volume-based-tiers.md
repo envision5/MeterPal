@@ -14,6 +14,9 @@ Volume-based pricing uses tiers to determine a single flat charge based on the t
 
 ## Setting up
 
+
+
+
 Use the `tiers` array with `tierBehavior: 'volume'` on a plan item price:
 
 ```ts autumn.config.ts
@@ -55,9 +58,13 @@ export default atmn({ features: [records], plans: [pro] });
 
 Preview with `atmn push`, then apply with `atmn push --yes`.
 
+
+
+
+
 ## How volume-based pricing works
 
-Autumn:
+MeterPal:
 
 1. Looks at the total volume for the feature
 2. Finds the tier the total falls into
@@ -81,7 +88,9 @@ Each tier has the following fields:
 | `flatAmount` | number | Flat fee charged when the total volume falls in this tier (`flat_amount` over the API) |
 | `amount` | number | Optional per-unit price applied to the total volume when this tier is the matching tier |
 
+
 Tiers must be in ascending order by `to`. The final tier should use `"inf"`.
+
 
 ## Combining flat and per-unit amounts
 

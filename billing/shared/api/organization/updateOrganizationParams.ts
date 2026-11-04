@@ -16,7 +16,9 @@ const settingField = ({ key }: { key: OrgSettingKey }) => {
 	const field = OrgConfigSchema.shape[key];
 	const stated = field.removeDefault().optional();
 	// The registry entry replaces the global meta, so the description lives here too.
-	JSON_SCHEMA_REGISTRY.add(stated, {
+	JSON_SCHEMA_REGISTRY.add(
+		stated as unknown as Parameters<typeof JSON_SCHEMA_REGISTRY.add>[0],
+		{
 		description: `${ORG_SETTINGS_LABELS[key]}.`,
 		default: field.def.defaultValue,
 	});

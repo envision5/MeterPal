@@ -551,14 +551,12 @@ SELECT
   nullIf(c.email, '')                                 AS email,
   c.created_at                                        AS created_at,
   nullIf(c.fingerprint, '')                           AS fingerprint,
-  nullIf(c.stripe_id, '')                             AS stripe_id,
   c.env                                               AS env,
   c.internal_id                                       AS autumn_id,
   c.send_email_receipts                               AS send_email_receipts,
   CAST(if(empty(c.metadata), '{}', c.metadata) AS JSON)                 AS metadata,
   CAST(if(empty(c.billing_controls), '{}', c.billing_controls) AS JSON) AS billing_controls,
   CAST(if(empty(c.config), '{}', c.config) AS JSON)                     AS config,
-  CAST(if(empty(c.processors), '{}', c.processors) AS JSON)             AS processors,
 
   -- subscriptions[] — recurring customer products, from v2_3_subscriptions
   (
@@ -654,10 +652,10 @@ SELECT
   -- invoices[] — from v2_3_invoices
   (
     SELECT groupArray(CAST((
-      i.plan_ids, i.stripe_id, coalesce(nullIf(i.processor_type, ''), 'stripe'),
+      i.plan_ids, i.processor_invoice_id, coalesce(nullIf(i.processor_type, ''), 'paypal'),
       coalesce(i.status, ''), i.total, i.currency, i.created_at, nullIf(i.hosted_invoice_url, '')
     ) AS Tuple(
-      plan_ids Array(String), stripe_id String, processor_type String, status String,
+      plan_ids Array(String), processor_invoice_id String, processor_type String, status String,
       total Float64, currency String, created_at Int64, hosted_invoice_url Nullable(String))))
     FROM `<catalog>`.`<namespace>.v2_3_invoices` i
     WHERE i.customer_id = 'cus_123'

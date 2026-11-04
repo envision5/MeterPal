@@ -47,7 +47,7 @@ const freeTrialsAreSame = ({
 	);
 };
 
-export const freeTrialToStripeTimestamp = ({
+export const freeTrialToProcessorTimestamp = ({
 	freeTrial,
 	now,
 }: {

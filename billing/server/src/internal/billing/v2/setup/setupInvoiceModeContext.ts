@@ -5,7 +5,6 @@ import type {
 	MultiAttachParamsV0,
 	UpdateSubscriptionV1Params,
 } from "@autumn/shared";
-import type Stripe from "stripe";
 import type { AutumnContext } from "@/honoUtils/HonoEnv";
 import { handleInvoiceModeEmailErrors } from "@/internal/billing/v2/common/errors/handleInvoiceModeEmailErrors";
 import { InvoiceTemplateService } from "@/internal/orgs/invoiceTemplates/InvoiceTemplateService";
@@ -14,17 +13,15 @@ export const setupInvoiceModeContext = async ({
 	ctx,
 	fullCustomer,
 	params,
-	stripeCustomer,
 }: {
 	ctx: AutumnContext;
 	fullCustomer: FullCustomer;
 	params: UpdateSubscriptionV1Params | AttachParamsV1 | MultiAttachParamsV0;
-	stripeCustomer?: Stripe.Customer;
 }): Promise<InvoiceMode | undefined> => {
 	if (params?.invoice_mode?.enabled !== true) {
 		return undefined;
 	}
-	handleInvoiceModeEmailErrors({ fullCustomer, stripeCustomer });
+	handleInvoiceModeEmailErrors({ fullCustomer });
 	const { invoice_template_id, net_terms_days } = params.invoice_mode;
 	const template = invoice_template_id
 		? await InvoiceTemplateService.getById({

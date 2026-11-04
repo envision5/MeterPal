@@ -6,9 +6,9 @@ description: "Drop-in, open-source control layer for AI and SaaS monetization."
 
 ## What is MeterPal?
 
-MeterPal is your source of truth for billing and entitlements between your application and Stripe. 
+MeterPal is your source of truth for billing and entitlements between your application and your payment processor. 
 
-It manages subscription state, credit balances, feature entitlements, and usage enforcement — the logic you'd otherwise build and maintain across your codebase, database, and Stripe webhooks.
+It manages subscription state, credit balances, feature entitlements, and usage enforcement — the logic you'd otherwise build and maintain across your codebase, database, and payment processor webhooks.
 
 Your app can query MeterPal inline to determine what a customer is allowed to do (send an AI message, access SSO, add a seat) and to track usage against their balance.
 
@@ -50,7 +50,7 @@ Other billing tools are designed for post-hoc invoicing: you send usage events, 
 
 MeterPal is a real-time system of record. You can query it for the current state of any customer (plan, entitlements, balances) inline, via cache, or via webhooks. Because MeterPal owns the state (not your code or database), edge cases like proration, failed payments, and concurrency are handled automatically. Pricing changes become config, not code.
 
-MeterPal builds on top of Stripe rather than replacing it. Your subscriptions, customers, and payment details stay in your own Stripe account.
+MeterPal builds on top of your payment processor rather than replacing it. Your subscriptions, customers, and payment details stay in your own processor account.
 
 <Check>
 While MeterPal's core focus is credit-based AI monetization, it handles any SaaS pricing model. Many of our users have no usage-based features at all, and just prefer the developer experience (eg, no webhooks).
@@ -67,10 +67,10 @@ While MeterPal's core focus is credit-based AI monetization, it handles any SaaS
 
 <AccordionGroup>
 
-<Accordion title="Do I still need Stripe?">
-Yes. MeterPal works with Stripe — it handles the billing logic that Stripe doesn't. You keep your Stripe account, your customer relationships, and your payment data. MeterPal sits between your app and Stripe, managing webhooks, usage limits, and state.
+<Accordion title="Do I still need a payment processor?">
+Yes. MeterPal works with your payment processor — it handles the billing logic that the processor doesn't. You keep your processor account, your customer relationships, and your payment data. MeterPal sits between your app and the processor, managing webhooks, usage limits, and state.
 
-Your subscriptions live in Stripe. You're never locked in.
+Your subscriptions live with your payment processor. You're never locked in.
 </Accordion>
 
 <Accordion title="Do I need to call MeterPal before every action?">
@@ -92,7 +92,7 @@ MeterPal is a complete system of record: usage metering, entitlements, feature g
 </Accordion>
 
 <Accordion title="Am I locked in?">
-MeterPal is open source. You can self-host anytime, or export all your data. Your Stripe subscriptions, customers, and payment details remain yours.
+MeterPal is open source. You can self-host anytime, or export all your data. Your processor subscriptions, customers, and payment details remain yours.
 
 You can migrate gradually: replicate customer state into your own system via webhooks, then make a full transition.
 </Accordion>

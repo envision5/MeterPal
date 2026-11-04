@@ -3,7 +3,7 @@
 Auto top-ups automatically purchase additional balance for a customer when their usage drops below a configured threshold. This prevents service interruptions for customers who don't want to manually manage their balance.
 
 > **Example** <br />
-> A customer on the Standard plan gets 5,000 credits per month. When their balance drops below 500, Autumn automatically purchases 1,000 more credits at $10 using the plan's one-off prepaid price.
+> A customer on the Standard plan gets 5,000 credits per month. When their balance drops below 500, MeterPal automatically purchases 1,000 more credits at $10 using the plan's one-off prepaid price.
 
 ## Prerequisites
 
@@ -12,6 +12,9 @@ Auto top-ups require:
 2. The customer must have a saved payment method on file
 
 ## Setting up
+
+
+
 
 Auto top-ups are configured per customer, not in `autumn.config.ts`. Your plan needs a one-off prepaid item for the feature you want to auto top-up:
 
@@ -52,7 +55,11 @@ export const standard = plan({
 export default atmn({ features: [credits], plans: [standard] });
 ```
 
-The one-off prepaid item (`$10 per 1,000 credits`) is what Autumn uses to replenish the balance. Configure auto top-ups per customer via the API (see below).
+The one-off prepaid item (`$10 per 1,000 credits`) is what MeterPal uses to replenish the balance. Configure auto top-ups per customer via the API (see below).
+
+
+
+
 
 ## Configuring auto top-ups via API
 
@@ -143,13 +150,15 @@ This limits the customer to 5 auto top-ups per month. Supported intervals: `hour
 
 ## How it works
 
-1. After every usage event (via `track`), Autumn checks the customer's remaining balance
+1. After every usage event (via `track`), MeterPal checks the customer's remaining balance
 2. If the balance falls below the configured `threshold`, an auto top-up is triggered
-3. Autumn creates an invoice for the configured `quantity` using the one-off prepaid price from the customer's plan
+3. MeterPal creates an invoice for the configured `quantity` using the one-off prepaid price from the customer's plan
 4. The invoice is charged to the customer's saved payment method
 5. The balance is replenished with the purchased amount
 
+
 Auto top-ups use burst suppression to prevent duplicate purchases when multiple track events happen in quick succession. There's a 30-second cooldown between top-ups for the same feature.
+
 
 ## Notifications
 

@@ -2,7 +2,7 @@
 
 This is the technical bridge between the two repos you have locally. It is based on direct reads of the source code in `C:\Users\craig\Desktop\AI billing\autumn\` and `C:\Users\craig\Desktop\AI billing\litellm\`, not on documentation summaries.
 
-The short version: **MeterPal is a merchant-side billing backend with a merchant admin dashboard.** The `vite/` dashboard is for the SaaS owner (you) to model products, plans, and prices, view customers and analytics — *not* an end-customer account portal. End customers see the LiteLLM UI you build, which calls MeterPal over HTTP for credit checks and usage recording. MeterPal ships one customer-facing surface (`apps/checkout/`, a hosted Stripe-style checkout page); the rest of the customer UI ("you have X credits", upgrade buttons, usage history) is yours to build into LiteLLM.
+The short version: **MeterPal is a merchant-side billing backend with a merchant admin dashboard.** The `vite/` dashboard is for the SaaS owner (you) to model products, plans, and prices, view customers and analytics — *not* an end-customer account portal. End customers see the LiteLLM UI you build, which calls MeterPal over HTTP for credit checks and usage recording. MeterPal ships one customer-facing surface (`apps/checkout/`, a hosted checkout page); the rest of the customer UI ("you have X credits", upgrade buttons, usage history) is yours to build into LiteLLM.
 
 The bridge is one Python `CustomLogger` file inside LiteLLM (gates admission and forwards usage to MeterPal) and a small Hono handler inside MeterPal (provisions per-customer LiteLLM virtual keys on subscription lifecycle events). They share a stable event contract — `{customer_id, feature_id, value, idempotency_key, metadata}` for usage, and `{customer_id, model_id, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, reasoning_tokens, cost_usd, request_id}` for AI usage specifically.
 
@@ -12,7 +12,7 @@ The bridge is one Python `CustomLogger` file inside LiteLLM (gates admission and
 
 ### MeterPal — `C:\Users\craig\Desktop\AI billing\autumn`
 
-- **Stack.** TypeScript + Bun + Hono + Drizzle ORM/Postgres + Redis + Better-Auth + Zod v4 + Stripe SDK + Trigger.dev + MotherDuck + Sentry/Axiom/Logtail + Infisical (secrets) + Speakeasy (SDK generator). Two surfaces in one monorepo, managed by Turborepo.
+- **Stack.** TypeScript + Bun + Hono + Drizzle ORM/Postgres + Redis + Better-Auth + Zod v4 + PayPal REST SDKs + Trigger.dev + MotherDuck + Sentry/Axiom/Logtail + Infisical (secrets) + Speakeasy (SDK generator). Two surfaces in one monorepo, managed by Turborepo.
 - **Layout.**
   ```
   autumn/
@@ -25,7 +25,7 @@ The bridge is one Python `CustomLogger` file inside LiteLLM (gates admission and
   │   ├── routers/                  # apiRouter, publicRouter, internalRouter, rpcRouter, chatProxyRouter
   │   ├── db/                       # Drizzle init, prepared statements, replica routing, connection pools
   │   ├── external/                 # 20+ external integrations
-  │   │   ├── stripe/               # Stripe SDK wrapper, webhook handlers
+  │   │   ├── paypal/               # PayPal REST client, webhook handlers
   │   │   ├── redis/                # Redis client (org-scoped pool, fail-open)
   │   │   ├── tinybird/, motherduck/# analytics
   │   │   ├── hatchet/, trigger.dev/# workflows + SQS batchers for high-volume events
@@ -45,7 +45,7 @@ The bridge is one Python `CustomLogger` file inside LiteLLM (gates admission and
   │   └── internal/                 # business modules (28+)
   │       ├── balances/             #   core: track, track_tokens, check, finalizeLock, recalc, thresholdBilling, autoTopUp, usageAlerts
   │       ├── customers/            #   customer lifecycle: attach, cusProducts, pooledBalances, usageWindows
-  │       ├── checkouts/            #   Stripe Checkout flows
+  │       ├── checkouts/            #   processor checkout flows
   │       ├── features/             #   feature definitions; GET /features/ai/model_pricing
   │       ├── products/, plans/     #   product catalog (versions)
   │       ├── events/               #   usage event ingestion + analytics
@@ -62,13 +62,13 @@ The bridge is one Python `CustomLogger` file inside LiteLLM (gates admission and
       └── docs/                     # documentation
   ```
 - **Merchant dashboard.** `vite/` at the repo root (React/Vite SPA, port 3000). Auth via Better-Auth email-OTP/Google/SSO. Used by *you* (the SaaS owner) to model products, plans, features, prices, customers, invoices, test clocks, and view analytics.
-- **End-customer surface.** **MeterPal does not ship one.** Your app (the LiteLLM UI, or your existing apps) embeds the SDK or calls the HTTP API. The only end-customer-facing UI in the MeterPal repo is `apps/checkout/` (the hosted Stripe-style checkout page). Everything else — "you have X credits", upgrade buttons, usage history — you build.
+- **End-customer surface.** **MeterPal does not ship one.** Your app (the LiteLLM UI, or your existing apps) embeds the SDK or calls the HTTP API. The only end-customer-facing UI in the MeterPal repo is `apps/checkout/` (the hosted checkout page). Everything else — "you have X credits", upgrade buttons, usage history — you build.
 - **Public API auth.** Bearer `am_sk_...` (publishable) for merchant-issued keys, or per-customer JWT (`am_cu_...`). API keys carry **scopes** (`balances.read`, `balances.write`, `billing.write`) enforced by `createRoute({ scopes: [...] })`.
 - **API surface.** REST routes registered in `server/src/routers/apiRouter.ts` under `balancesRouter.post("/check", ...)` etc. A parallel **RPC router** exposes verb-shaped paths under `/v1/rpc/<resource.action>` — preferred for new integrations.
 - **Multi-tenant.** Every endpoint is scoped by `org_id` resolved from the `am_sk_...` key via `secretKeyMiddleware`. The same applies to customer JWTs.
 - **Reservations.** Implemented in-memory in Redis as **lock receipts** (`internal/balances/utils/lockV2/saveLockReceiptV2.ts`, `buildClaimMarkerKey.ts`). `/check` with `lock.enabled=true` reserves and returns a `lock_id`. `POST /balances/finalize` (handler `handleFinalizeLock.ts`) commits or releases. There is **no separate `reservations` Postgres table** — locks live in Redis only.
 - **Pricing model.** The merchant defines a **`credit_system` feature** with a `credit_schema` mapping each `model_id` (or downstream feature) to its credit cost. `/track_tokens` resolves the cost via `internal/balances/track/utils/getTokenTrackParams.ts` using `models.dev`-derived pricing. MeterPal is the source of truth for token → credit conversion.
-- **Stripe.** Handled in `external/stripe/`. Webhook receiver verifies signature, dispatches via `runStripeWebhookHandlers.ts`. Handled events include `checkout.session.completed`, `customer.subscription.created/updated/deleted`, `invoice.paid`, `invoice.created`, `subscription_schedule.*`. Queued for SQS replay on transient errors. `packages/stripe-sync` runs a long-running process that fans Stripe events into MeterPal's queue.
+- **PayPal.** Handled in `external/paypal/`. Webhook receiver verifies the PayPal transmission signature (CRC32 over the raw body) and dispatches via `runPaypalWebhookHandlers.ts`. Handled events include `BILLING.SUBSCRIPTION.{ACTIVATED,UPDATED,SUSPENDED,CANCELLED,EXPIRED,PAYMENT.FAILED}`, `PAYMENT.SALE.{COMPLETED,REFUNDED,REVERSED}`, `PAYMENT.CAPTURE.{COMPLETED,REFUNDED,REVERSED}`, `CHECKOUT.ORDER.APPROVED`, `INVOICING.INVOICE.PAID`. Events are deduped durably in the `webhook_events` table (ids prefixed `paypal:`).
 - **Conventions.** `createRoute({ scopes, versionedBody, handler })` wraps every handler (Zod validation, scope check, telemetry, idempotency, rate limit, response version transforms). Body / query schemas live in `shared/api/<resource>/<verb>Params.ts`. Responses are flat JSON with version transforms. Path alias `@/internal/...` resolves to `server/src/internal/...`; `@autumn/shared` for `shared/`. Logging via `ctx.logger.info(...)` (Logtail), never `console.log` in production paths. Code-based migrations (Drizzle-kit-style) in `server/src/internal/migrations/`.
 
 ### LiteLLM — `C:\Users\craig\Desktop\AI billing\litellm`
@@ -877,7 +877,7 @@ export const reconcileLitellmSpend = new Cron({
 });
 ```
 
-This is the same three-layer reconciliation pattern documented in the Stripe section of `plan.md` — same shape, applied to a different external system.
+This three-layer reconciliation pattern is documented in `docs/plan.md` — the same shape, applied to the external processor.
 
 ## 8. The setup, in order
 
@@ -990,7 +990,7 @@ For the integrator, this is the file map.
 
 ### What you do NOT touch
 
-- MeterPal's Stripe handler (`external/stripe/`) — already wired, no change.
+- MeterPal's PayPal handler (`external/paypal/`) — already wired, no change.
 - MeterPal's customer lifecycle (`internal/customers/`) — no change; you only subscribe via `trigger/`.
 - LiteLLM's proxy core (`proxy_server.py`) — no change; you only add a config line.
 - LiteLLM's existing reservation system (`budget_reservation.py`) — you opt out of it via `disable_budget_reservation: true` rather than modifying it.
@@ -1005,8 +1005,8 @@ For the integrator, this is the file map.
 | Network blip mid-write | Idempotency key replays cleanly | MeterPal returns `idempotent: true` on retry; no double-debit. |
 | LiteLLM crashes mid-request | Reservation released by `BudgetReservationReleaseMiddleware` | With `disable_budget_reservation: true`, no LiteLLM-side reservation to release. MeterPal-side, nothing was debited at admission (we set `send_event: false` on `/check`), so no release needed. |
 | Provider returns mid-stream error | LiteLLM fires `async_log_failure_event` | Bridge calls `/track_tokens` with `cost=0` and `error_type` set. MeterPal records the failed attempt for analytics. |
-| Customer upgrades plan mid-month | Stripe webhook → MeterPal `trigger/` → `provisionLitellmKey` | New `max_budget` pushed to LiteLLM via `/key/update`. Next request uses the new budget. |
-| Customer cancels subscription | Stripe webhook → MeterPal `trigger/` → `blockLitellmKey` | LiteLLM key blocked. Next request returns 401 from auth (before pre_call_hook even runs). |
+| Customer upgrades plan mid-month | PayPal webhook → MeterPal `trigger/` → `provisionLitellmKey` | New `max_budget` pushed to LiteLLM via `/key/update`. Next request uses the new budget. |
+| Customer cancels subscription | PayPal webhook → MeterPal `trigger/` → `blockLitellmKey` | LiteLLM key blocked. Next request returns 401 from auth (before pre_call_hook even runs). |
 | Bridge crashes between success and track | LiteLLM has the SpendLog; MeterPal does not | Reconciler catches the divergence within 24h. |
 
 The architecture is fault-tolerant by design: every state is independently reconstructible from the message logs on either side. The bridge is the thinnest possible layer — it does not own state, it only translates events.

@@ -1,8 +1,18 @@
 import { ErrCode, type EventInsert, events, RecaseError } from "@autumn/shared";
 import { and, desc, eq } from "drizzle-orm";
 import { StatusCodes } from "http-status-codes";
-import type { Logger } from "pino";
 import type { DrizzleCli } from "@/db/initDrizzle.js";
+
+/**
+ * Structural logger — satisfied by pino's Logger and by the dual-output
+ * logger in external/logtail, which is a narrower shape.
+ */
+export type EventLogger = {
+	debug: (...args: any[]) => void;
+	info: (...args: any[]) => void;
+	warn: (...args: any[]) => void;
+	error: (...args: any[]) => void;
+};
 
 export class EventService {
 	/** Insert event(s) into Postgres (Tinybird publishing is handled by EventBatchingManager) */
@@ -12,7 +22,7 @@ export class EventService {
 	}: {
 		db: DrizzleCli;
 		event: EventInsert | EventInsert[];
-		logger?: Logger;
+		logger?: EventLogger;
 	}) {
 		try {
 			// Delivery is at-least-once, so a replayed id must skip its own row

@@ -39,7 +39,6 @@ export const ApiCustomerV2Schema = z.object({
 	name: z.string().nullable(),
 	email: z.string().nullable(),
 	fingerprint: z.string().nullable(),
-	stripe_id: z.string().nullable().default(null),
 	env: z.enum(AppEnv),
 
 	products: z.array(ApiCusProductV2Schema),

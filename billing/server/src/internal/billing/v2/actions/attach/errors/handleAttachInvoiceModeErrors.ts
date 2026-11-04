@@ -13,10 +13,10 @@ import { isDeferredInvoiceMode } from "@/internal/billing/v2/utils/billingContex
  * Throws when:
  * - Deferred invoice-mode activation is used for a downgrade
  *   (planTiming="end_of_cycle"): there is no immediate invoice to pay, so deferral makes no sense.
- * - A no-card trial (card_required: false) is combined with invoice mode. Stripe rejects
+ * - A no-card trial (card_required: false) is combined with invoice mode. The processor rejects
  *   `trial_settings.end_behavior.missing_payment_method: "cancel"` together with
  *   `collection_method: "send_invoice"`, so we fail early with a clear message instead of
- *   surfacing the raw Stripe error at execution time (preview would otherwise pass).
+ *   surfacing the raw processor error at execution time (preview would otherwise pass).
  */
 export const handleAttachInvoiceModeErrors = ({
 	billingContext,
@@ -25,7 +25,7 @@ export const handleAttachInvoiceModeErrors = ({
 }) => {
 	const { planTiming, invoiceMode, trialContext } = billingContext;
 
-	// Check: Invoice mode + no-card trial (revert trials never touch Stripe, so they're fine)
+	// Check: Invoice mode + no-card trial (revert trials never reach the processor, so they're fine)
 	const isNoCardTrial =
 		trialContext?.cardRequired === false &&
 		!isRevertTrialContext({ trialContext });

@@ -8,7 +8,6 @@ const IMAGE_SOURCES = [
 	"/images/issues/Frame%202147243134.svg",
 	"/images/issues/Slack-2.svg",
 	"/images/issues/Frame%202147243146.svg",
-	"/images/issues/Stripe.svg",
 ];
 
 const ITEM_COUNT = IMAGE_SOURCES.length;

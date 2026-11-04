@@ -15,7 +15,7 @@ import { unwrapAsync } from "../types/fp.js";
 
 export class Invoices extends ClientSDK {
   /**
-   * Creates a standalone send-invoice Stripe invoice from catalog pricing and custom charges. Quantities are billable units, exclusive of any included usage; Autumn applies billing units and tiers. Nothing about the customer's plans, balances or subscriptions changes. Pass preview: true to get the calculated lines and totals without creating an invoice.
+   * Creates a standalone send-invoice processor invoice from catalog pricing and custom charges. Quantities are billable units, exclusive of any included usage; Autumn applies billing units and tiers. Nothing about the customer's plans, balances or subscriptions changes. Pass preview: true to get the calculated lines and totals without creating an invoice.
    */
   async create(
     request: models.CreateInvoiceParams,
@@ -71,7 +71,7 @@ export class Invoices extends ClientSDK {
   }
 
   /**
-   * Marks an open Stripe invoice as paid out of band. No charge is attempted; use this when payment was collected elsewhere (e.g. a marketplace). Already-paid invoices are returned unchanged.
+   * Marks an open processor invoice as paid out of band. No charge is attempted; use this when payment was collected elsewhere (e.g. a marketplace). Already-paid invoices are returned unchanged.
    */
   async pay(
     request: models.PayInvoiceParams,
@@ -85,7 +85,7 @@ export class Invoices extends ClientSDK {
   }
 
   /**
-   * Voids an open send-invoice Stripe invoice and issues a replacement with the same line items. An invoice template can supply the replacement's footer (e.g. bank details) and memo. The replacement keeps the original due date unless net_terms_days is passed, which is required once the original is past due. Pass update_customer_email to change the customer's billing email first so the replacement is sent there. The replacement stays linked to the same subscription and fulfils the same pending plan when paid.
+   * Voids an open send-invoice processor invoice and issues a replacement with the same line items. An invoice template can supply the replacement's footer (e.g. bank details) and memo. The replacement keeps the original due date unless net_terms_days is passed, which is required once the original is past due. Pass update_customer_email to change the customer's billing email first so the replacement is sent there. The replacement stays linked to the same subscription and fulfils the same pending plan when paid.
    */
   async reissue(
     request: models.ReissueInvoiceParams,
@@ -99,7 +99,7 @@ export class Invoices extends ClientSDK {
   }
 
   /**
-   * Voids an open or uncollectible Stripe invoice. Any plan still waiting on the invoice to be paid expires. Voiding an unpaid subscription invoice lets Stripe re-derive the subscription status from its remaining invoices, which can move a past-due subscription back to active. Already-void invoices are returned unchanged.
+   * Voids an open or uncollectible processor invoice. Any plan still waiting on the invoice to be paid expires. Voiding an unpaid subscription invoice releases the pending plan. Already-void invoices are returned unchanged.
    */
   async void(
     request: models.VoidInvoiceParams,

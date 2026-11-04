@@ -110,14 +110,14 @@ function outputCustomerList(
 
 	if (format === "csv") {
 		// CSV header
-		console.log("id,name,email,created_at,env,stripe_id");
+		console.log("id,name,email,created_at,env,processor_id");
 		// CSV rows
 		for (const c of customers) {
 			const name = escapeCsv(c.name ?? "");
 			const email = escapeCsv(c.email ?? "");
 			const created = new Date(c.created_at * 1000).toISOString();
-			const stripeId = c.stripe_id ?? "";
-			console.log(`${c.id},${name},${email},${created},${c.env},${stripeId}`);
+			const processorId = c.processor_id ?? "";
+			console.log(`${c.id},${name},${email},${created},${c.env},${processorId}`);
 		}
 		return;
 	}
@@ -174,12 +174,12 @@ function outputSingleCustomer(
 
 	if (format === "csv") {
 		// For single customer, just output basic fields as CSV
-		console.log("id,name,email,created_at,env,stripe_id");
+		console.log("id,name,email,created_at,env,processor_id");
 		const name = escapeCsv(customer.name ?? "");
 		const email = escapeCsv(customer.email ?? "");
 		const created = new Date(customer.created_at * 1000).toISOString();
-		const stripeId = customer.stripe_id ?? "";
-		console.log(`${customer.id},${name},${email},${created},${customer.env},${stripeId}`);
+		const processorId = customer.processor_id ?? "";
+		console.log(`${customer.id},${name},${email},${created},${customer.env},${processorId}`);
 		return;
 	}
 
@@ -193,8 +193,8 @@ function outputSingleCustomer(
 	console.log(`  Email:      ${customer.email ?? "-"}`);
 	console.log(`  Environment: ${customer.env}`);
 	console.log(`  Created:    ${formatDate(customer.created_at)}`);
-	if (customer.stripe_id) {
-		console.log(`  Stripe ID:  ${customer.stripe_id}`);
+	if (customer.processor_id) {
+		console.log(`  Processor ID:  ${customer.processor_id}`);
 	}
 
 	// Subscriptions

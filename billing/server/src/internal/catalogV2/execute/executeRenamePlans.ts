@@ -19,8 +19,6 @@ const buildPlanRenameSql = ({
 	renamePlan: RenameProductPlan;
 }): SQL => {
 	const { planId, toId } = renamePlan;
-	const vercelAllowlistKey =
-		env === "live" ? "allowed_product_ids_live" : "allowed_product_ids_sandbox";
 
 	return sql`
 		WITH upd_products AS (
@@ -62,31 +60,6 @@ const buildPlanRenameSql = ({
 					free_product_id = ${planId}
 					OR discount_config -> 'product_ids' ? ${planId}
 				)
-			RETURNING 1
-		),
-		upd_revenuecat_mappings AS (
-			UPDATE revenuecat_mappings
-			SET autumn_product_id = ${toId}
-			WHERE org_id = ${orgId} AND env = ${env}
-				AND autumn_product_id = ${planId}
-			RETURNING 1
-		),
-		upd_vercel_allowlists AS (
-			UPDATE organizations
-			SET processor_configs = jsonb_set(
-				processor_configs,
-				ARRAY['vercel', ${vercelAllowlistKey}]::text[],
-				(
-					SELECT to_jsonb(array_agg(
-						CASE WHEN elem = ${planId} THEN ${toId} ELSE elem END
-					))
-					FROM jsonb_array_elements_text(
-						processor_configs -> 'vercel' -> ${vercelAllowlistKey}
-					) AS elem
-				)
-			)
-			WHERE id = ${orgId}
-				AND processor_configs -> 'vercel' -> ${vercelAllowlistKey} ? ${planId}
 			RETURNING 1
 		),
 		del_aliases AS (

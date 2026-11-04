@@ -1,7 +1,6 @@
 import {
 	buildLineItem,
 	cusEntToCusPrice,
-	cusEntToStripeIds,
 	type FullCusEntWithFullCusProduct,
 	type LineItem,
 	type LineItemContext,
@@ -41,7 +40,6 @@ export const topUpQuantityToLineItem = ({
 			usage: quantity,
 			context: lineItemContext,
 		}),
-		...cusEntToStripeIds({ cusEnt, currency: context.currency }),
 		shouldProrate: false,
 		chargeImmediately: true,
 		usage: quantity,

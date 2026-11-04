@@ -11,7 +11,6 @@ import { useSession } from "./lib/auth-client";
 import { SSO_CALLBACK_PATH } from "./lib/sso/ssoCallback";
 import { identifyUser } from "./utils/posthogTracking";
 import LoadingScreen from "./views/general/LoadingScreen";
-import { MIGRATIONS_ENABLED } from "./views/migrations/migrationsEnabled";
 
 const AdminView = React.lazy(() =>
 	import("./views/admin/AdminView").then(({ AdminView }) => ({
@@ -89,21 +88,6 @@ const DefaultView = React.lazy(() =>
 	})),
 );
 const DevScreen = React.lazy(() => import("./views/developer/DevView"));
-const CloseScreen = React.lazy(() =>
-	import("./views/general/CloseScreen").then(({ CloseScreen }) => ({
-		default: CloseScreen,
-	})),
-);
-const MigrationsView = React.lazy(() =>
-	import("./views/migrations/MigrationsView").then(({ MigrationsView }) => ({
-		default: MigrationsView,
-	})),
-);
-const MigrationView = React.lazy(() =>
-	import("./views/migrations/migration/MigrationView").then(
-		({ MigrationView }) => ({ default: MigrationView }),
-	),
-);
 const OnboardingView = React.lazy(
 	() => import("./views/onboarding/OnboardingView"),
 );
@@ -188,7 +172,6 @@ export default function App() {
 					<Route path="/claim" element={<ClaimOrg />} />
 					<Route path="/portal" element={<PortalView />} />
 					<Route path={SSO_CALLBACK_PATH} element={<SsoCallback />} />
-					<Route path="/close" element={<CloseScreen />} />
 
 					<Route
 						path="/sandbox/:sandboxSlug"
@@ -215,10 +198,6 @@ export default function App() {
 								<ProductsView env={AppEnv.Live} />,
 								<ProductsView env={AppEnv.Sandbox} />,
 							)}
-							{MIGRATIONS_ENABLED &&
-								envRoutes("migrations", <MigrationsView />)}
-							{MIGRATIONS_ENABLED &&
-								envRoutes("migrations/:migration_id", <MigrationView />)}
 							{envRoutes(
 								"products/:product_id",
 								<SquircleProvider>

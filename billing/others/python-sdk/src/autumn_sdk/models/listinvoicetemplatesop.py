@@ -80,7 +80,7 @@ class ListInvoiceTemplatesListTypedDict(TypedDict):
     footer: NotRequired[str]
     r"""Footer text rendered on the invoice, typically bank details so customers can pay directly."""
     memo: NotRequired[str]
-    r"""Memo shown near the top of the invoice (Stripe invoice description), e.g. a contact line for payment questions."""
+    r"""Memo shown near the top of the invoice, e.g. a contact line for payment questions."""
     net_terms_days: NotRequired[int]
     r"""Default number of days the customer has to pay before the invoice is due. Overridable when sending."""
     created_at: NotRequired[float]
@@ -98,7 +98,7 @@ class ListInvoiceTemplatesList(BaseModel):
     r"""Footer text rendered on the invoice, typically bank details so customers can pay directly."""
 
     memo: Optional[str] = None
-    r"""Memo shown near the top of the invoice (Stripe invoice description), e.g. a contact line for payment questions."""
+    r"""Memo shown near the top of the invoice, e.g. a contact line for payment questions."""
 
     net_terms_days: Optional[int] = None
     r"""Default number of days the customer has to pay before the invoice is due. Overridable when sending."""

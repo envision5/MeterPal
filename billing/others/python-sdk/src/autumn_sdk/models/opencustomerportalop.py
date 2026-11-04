@@ -41,7 +41,7 @@ class OpenCustomerPortalParamsTypedDict(TypedDict):
     customer_id: str
     r"""The ID of the customer to open the billing portal for."""
     configuration_id: NotRequired[str]
-    r"""Stripe billing portal configuration ID. Create configurations in your Stripe dashboard."""
+    r"""Billing portal configuration ID. Create configurations in your billing processor's dashboard."""
     return_url: NotRequired[str]
     r"""URL to redirect to when back button is clicked in the billing portal"""
 
@@ -51,7 +51,7 @@ class OpenCustomerPortalParams(BaseModel):
     r"""The ID of the customer to open the billing portal for."""
 
     configuration_id: Optional[str] = None
-    r"""Stripe billing portal configuration ID. Create configurations in your Stripe dashboard."""
+    r"""Billing portal configuration ID. Create configurations in your billing processor's dashboard."""
 
     return_url: Optional[str] = None
     r"""URL to redirect to when back button is clicked in the billing portal"""

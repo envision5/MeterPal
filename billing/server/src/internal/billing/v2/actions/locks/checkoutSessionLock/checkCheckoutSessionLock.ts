@@ -1,5 +1,4 @@
 import type { BillingContext, BillingPlan } from "@autumn/shared";
-import { ErrCode, RecaseError } from "@autumn/shared";
 import {
 	type CheckoutSessionLockData,
 	checkoutSessionLock,
@@ -8,8 +7,8 @@ import type { AutumnContext } from "@/honoUtils/HonoEnv";
 import type { CreateAutumnCheckoutResult } from "@/internal/billing/v2/common/createAutumnCheckout";
 import { hashJson } from "@/utils/hash/hashJson";
 
-/** Same params → reuse the pending session. Different params → expire it via Stripe
- * and proceed, or 423 when the session already won the race (paid/completing). */
+/** Same params → reuse the pending session. Different params → release the
+ * reservation so the caller can create a fresh processor checkout. */
 export const checkCheckoutSessionLock = async <T extends BillingContext>({
 	ctx,
 	params,
@@ -40,37 +39,25 @@ export const checkCheckoutSessionLock = async <T extends BillingContext>({
 			billingContext,
 			billingPlan,
 			billingResult: {
-				stripe: {
+				processor: {
 					deferred: true,
-					stripeCheckoutSession: {
-						id: lock.checkoutSessionId,
-						url: lock.checkoutSessionUrl,
-					},
+					checkoutUrl: lock.checkoutSessionUrl,
+					checkoutId: lock.checkoutSessionId,
 				},
 			},
 		};
 	}
 
-	const cleared = await checkoutSessionLock.expireAndClearIfOwned({
+	// The params changed, so the reservation belongs to a superseded checkout.
+	// Releasing it lets the caller create a fresh processor checkout.
+	await checkoutSessionLock.clearIfOwned({
 		ctx,
 		customerId,
 		checkoutSessionId: lock.checkoutSessionId,
 	});
 
-	if (cleared) {
-		ctx.logger.info(
-			`Expired checkout session ${lock.checkoutSessionId} for customer ${customerId} (params changed)`,
-		);
-		return null;
-	}
-
 	ctx.logger.info(
-		`Blocking billing action for customer ${customerId} — checkout session ${lock.checkoutSessionId} completed and is materializing`,
+		`Released checkout session ${lock.checkoutSessionId} for customer ${customerId} (params changed)`,
 	);
-	throw new RecaseError({
-		message:
-			"A checkout session for this customer was just completed and is still being processed",
-		code: ErrCode.LockAlreadyExists,
-		statusCode: 423,
-	});
+	return null;
 };

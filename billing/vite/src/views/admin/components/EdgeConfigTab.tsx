@@ -18,7 +18,6 @@ import { RateLimitOverridesDialog } from "./RateLimitOverridesDialog";
 import { RateLimitRedisAllowlistDialog } from "./RateLimitRedisAllowlistDialog";
 import { RawEdgeConfigDialog } from "./RawEdgeConfigDialog";
 import { RedisV2CacheDialog } from "./RedisV2CacheDialog";
-import { StripeSyncDialog } from "./StripeSyncDialog";
 
 type EdgeConfigSource = {
 	bucket: string;
@@ -151,11 +150,6 @@ export function EdgeConfigTab() {
 
 			<AgentProvisionRateLimitDialog
 				open={openConfig === "agent-provision-rate-limit"}
-				onOpenChange={closeDialog}
-			/>
-
-			<StripeSyncDialog
-				open={openConfig === "stripe-sync"}
 				onOpenChange={closeDialog}
 			/>
 

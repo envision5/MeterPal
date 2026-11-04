@@ -45,10 +45,8 @@ import {
 	SheetHeader,
 	SheetSection,
 } from "@/components/v2/sheets/SharedSheetComponents";
-import { useOrgStripeQuery } from "@/hooks/queries/useOrgStripeQuery";
 import { useSheetStore } from "@/hooks/stores/useSheetStore";
 import { useSheetScopeEntityId } from "@/hooks/useSheetScopeEntityId";
-import { useEnv } from "@/utils/envUtils";
 import { useSettleApprovalOnApply } from "@/views/approvals/hooks/useSettleApprovalOnApply";
 import { approvalSeedFromSheetData } from "@/views/approvals/utils/approvalSheetIntegration";
 import { useCusQuery } from "@/views/customers/customer/hooks/useCusQuery";
@@ -315,8 +313,6 @@ function SendInvoiceContent() {
 		handleInvoiceAttach,
 		additionalPlans,
 	} = useAttachFormContext();
-	const { stripeAccount } = useOrgStripeQuery();
-	const env = useEnv();
 	const { setSheet } = useSheetStore();
 	const itemId = useSheetStore((s) => s.itemId);
 	const startDate = useStore(form.store, (state) => state.values.startDate);
@@ -331,8 +327,6 @@ function SendInvoiceContent() {
 			previewQuery={previewQuery}
 			isPending={isPending}
 			onSubmit={handleInvoiceAttach}
-			stripeAccount={stripeAccount ?? undefined}
-			env={env}
 			onBack={() => setSheet({ type: "attach-review", itemId })}
 			scheduledStartDate={scheduledStartDate}
 		/>

@@ -5,8 +5,6 @@ import {
 	type Checkout,
 	type CheckoutAction,
 	CheckoutStatus,
-	type CreateScheduleBillingContext,
-	type CreateScheduleParamsV0,
 	checkoutToUrl,
 	type UpdateSubscriptionBillingContext,
 	type UpdateSubscriptionV1Params,
@@ -35,11 +33,8 @@ export async function billingPlanToAutumnCheckout({
 }: {
 	ctx: AutumnContext;
 	action: CheckoutAction;
-	params: AttachParamsV1 | CreateScheduleParamsV0 | UpdateSubscriptionV1Params;
-	billingContext:
-		| AttachBillingContext
-		| CreateScheduleBillingContext
-		| UpdateSubscriptionBillingContext;
+	params: AttachParamsV1 | UpdateSubscriptionV1Params;
+	billingContext: AttachBillingContext | UpdateSubscriptionBillingContext;
 	billingPlan: BillingPlan;
 	expiresInMs?: number;
 }): Promise<{ checkout: Checkout; checkoutUrl: string }> {
@@ -60,7 +55,6 @@ export async function billingPlanToAutumnCheckout({
 		params_version: CHECKOUT_PARAMS_VERSION,
 		status: CheckoutStatus.Pending,
 		response: null,
-		stripe_invoice_id: null,
 		created_at: now,
 		expires_at: expiresAt,
 		completed_at: null,

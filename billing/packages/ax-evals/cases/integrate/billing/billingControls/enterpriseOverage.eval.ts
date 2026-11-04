@@ -108,7 +108,6 @@ export const enterpriseOverage: IntegrationCase = {
 			name: "Ada Lovelace",
 			email: fixtureUser.email,
 		},
-		paymentMethod: true,
 		attach: [{ plan_id: "scale" }],
 	},
 	existingFiles: {

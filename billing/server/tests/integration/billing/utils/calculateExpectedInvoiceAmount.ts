@@ -1,7 +1,7 @@
 /**
  * Utility for calculating expected invoice amounts in tests.
  *
- * Uses ProductItem[] directly (no DB/Stripe calls needed) and the shared
+ * Uses ProductItem[] directly (no DB/processor calls needed) and the shared
  * billing utilities from @autumn/shared.
  */
 

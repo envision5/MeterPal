@@ -22,7 +22,7 @@ When a business-model shift like this happens in a company's lifecycle, a lot un
 
 The problem was that there were two separate systems being held together by people:
 
-1. Billing: a signed contract flowed from Salesforce to Stripe, from where invoices would get sent to customers
+1. Billing: a signed contract flowed from Salesforce to PayPal, from where invoices would get sent to customers
 2. Enablement: provisioning the plan, custom entitlements and credit quotas.
 
 These systems fell out of sync with each other frequently because these deals were often complex. The system they had built for self-service signups also had to handle custom plans, multiple deployments, enterprise pilot periods and ramp schedules. A sales or ops person needed to understand how everything worked together.
@@ -36,11 +36,11 @@ These systems fell out of sync with each other frequently because these deals we
 
 The process for sales was very, very disjointed; they basically had to have the billing completely separate from actually enabling a customer.
 
-So there were times where enablement was missed, where a customer paid and they were like, 'hey, it's been a week, why don't I have my features?' And very frequently people would not have overage prices assigned in Stripe, so they just wouldn't get charged for them.
+So there were times where enablement was missed, where a customer paid and they were like, 'hey, it's been a week, why don't I have my features?' And very frequently people would not have overage prices assigned in the billing processor, so they just wouldn't get charged for them.
 
 </TestimonialQuote>
 
-As Mintlify moved upmarket, pricing changes came with it: new credit models and expansion options. But with each customer's state living partly in Stripe and partly spread across internal systems, making updates was slow and painful. They had a team of 2-4 engineers working on billing almost full-time.
+As Mintlify moved upmarket, pricing changes came with it: new credit models and expansion options. But with each customer's state living partly in the payment processor and partly spread across internal systems, making updates was slow and painful. They had a team of 2-4 engineers working on billing almost full-time.
 
 ### One source of truth
 

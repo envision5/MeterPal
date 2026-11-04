@@ -37,9 +37,9 @@ Plan prices are in your organization's default currency. To sell the same plan i
 
 Each amount is set explicitly per currency - MeterPal does not apply exchange rates. Tier boundaries stay the same across currencies; only the amounts differ.
 
-Each customer is billed in a single currency. You can set it when creating the customer, pass it on their first `attach`, or let it default to your organization's currency. Once a customer has paid in a currency, they're locked to it (Stripe requires this), and attaching a plan that doesn't offer a price in their currency fails with a `currency_mismatch` error.
+Each customer is billed in a single currency. You can set it when creating the customer, pass it on their first `attach`, or let it default to your organization's currency. Once a customer has paid in a currency, they're locked to it (the payment processor requires this), and attaching a plan that doesn't offer a price in their currency fails with a `currency_mismatch` error.
 
-Under the hood, MeterPal creates a separate Stripe price per currency under the same Stripe product, on demand when a customer first attaches in that currency.
+Under the hood, MeterPal creates a separate price per currency with the payment processor, on demand when a customer first attaches in that currency.
 
 ## Plan Features
 

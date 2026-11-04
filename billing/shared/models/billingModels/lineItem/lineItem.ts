@@ -4,7 +4,7 @@ import { LineItemContextSchema } from "./lineItemContext";
 export const LineItemDiscountSchema = z.object({
 	amountOff: z.number(),
 	percentOff: z.number().optional(),
-	stripeCouponId: z.string().optional(),
+	processorCouponId: z.string().optional(),
 	couponName: z.string().optional(),
 });
 
@@ -25,9 +25,6 @@ export const LineItemSchema = z
 		description: z.string(),
 
 		context: LineItemContextSchema,
-
-		stripePriceId: z.string().optional(),
-		stripeProductId: z.string().optional(),
 
 		// Quantity tracking
 		totalQuantity: z.number().optional(), // Total usage (e.g., 500 messages used)

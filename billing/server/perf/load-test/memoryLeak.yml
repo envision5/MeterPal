@@ -53,7 +53,7 @@ scenarios:
       - get:
           url: "/v1/customers/{{ customerId }}"
 
-  # ~10% of VUs: attach (upgrade/downgrade through Stripe)
+  # ~10% of VUs: attach (upgrade/downgrade)
   - name: "Attach flow"
     weight: 1
     beforeScenario: "setAttachContext"

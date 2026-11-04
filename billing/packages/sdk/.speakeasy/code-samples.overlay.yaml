@@ -266,52 +266,6 @@ actions:
             }
 
             run();
-  - target: $["paths"]["/v1/billing.import"]["post"]
-    update:
-      x-codeSamples:
-        - lang: typescript
-          label: Typescript (SDK)
-          source: |-
-            import { Autumn } from "@useautumn/sdk";
-
-            const autumn = new Autumn({
-              xApiVersion: "2.4.0",
-              secretKey: process.env["AUTUMN_SECRET_KEY"] ?? "",
-            });
-
-            async function run() {
-              const result = await autumn.billing.import({
-                customerId: "cus_123",
-                processors: [
-                  {
-                    type: "stripe",
-                    id: "cus_stripe_123",
-                  },
-                ],
-                billables: [
-                  {
-                    processor: "stripe",
-                    link: {
-                      subscriptionId: "sub_123",
-                    },
-                    plan: {
-                      planId: "pro",
-                      status: "active",
-                      balances: [
-                        {
-                          featureId: "messages",
-                          usage: 10,
-                        },
-                      ],
-                    },
-                  },
-                ],
-              });
-
-              console.log(result);
-            }
-
-            run();
   - target: $["paths"]["/v1/billing.multi_attach"]["post"]
     update:
       x-codeSamples:
@@ -1066,7 +1020,7 @@ actions:
                     planIds: [
                       "pro",
                     ],
-                    stripeId: "in_legacy_123",
+                    processorInvoiceId: "in_legacy_123",
                     status: "paid",
                     total: 29.99,
                     amountPaid: 29.99,
@@ -1455,127 +1409,6 @@ actions:
                   amount: 15,
                   interval: "month",
                 },
-              });
-
-              console.log(result);
-            }
-
-            run();
-  - target: $["paths"]["/v1/platform.disconnect_stripe"]["post"]
-    update:
-      x-codeSamples:
-        - lang: typescript
-          label: Typescript (SDK)
-          source: |-
-            import { Autumn } from "@useautumn/sdk";
-
-            const autumn = new Autumn({
-              xApiVersion: "2.4.0",
-              secretKey: process.env["AUTUMN_SECRET_KEY"] ?? "",
-            });
-
-            async function run() {
-              const result = await autumn.platform.disconnectStripe({
-                organizationSlug: "my-app",
-                env: "test",
-              });
-
-              console.log(result);
-            }
-
-            run();
-  - target: $["paths"]["/v1/platform.get_revenuecat_keys"]["post"]
-    update:
-      x-codeSamples:
-        - lang: typescript
-          label: Typescript (SDK)
-          source: |-
-            import { Autumn } from "@useautumn/sdk";
-
-            const autumn = new Autumn({
-              xApiVersion: "2.4.0",
-              secretKey: process.env["AUTUMN_SECRET_KEY"] ?? "",
-            });
-
-            async function run() {
-              const result = await autumn.platform.getRevenueCatKeys({
-                organizationSlug: "acme",
-                env: "test",
-              });
-
-              console.log(result);
-            }
-
-            run();
-  - target: $["paths"]["/v1/platform.get_stripe_connection"]["post"]
-    update:
-      x-codeSamples:
-        - lang: typescript
-          label: Typescript (SDK)
-          source: |-
-            import { Autumn } from "@useautumn/sdk";
-
-            const autumn = new Autumn({
-              xApiVersion: "2.4.0",
-              secretKey: process.env["AUTUMN_SECRET_KEY"] ?? "",
-            });
-
-            async function run() {
-              const result = await autumn.platform.getStripeConnection({
-                organizationSlug: "my-app",
-                env: "test",
-              });
-
-              console.log(result);
-            }
-
-            run();
-  - target: $["paths"]["/v1/platform.link_revenuecat"]["post"]
-    update:
-      x-codeSamples:
-        - lang: typescript
-          label: Typescript (SDK)
-          source: |-
-            import { Autumn } from "@useautumn/sdk";
-
-            const autumn = new Autumn({
-              xApiVersion: "2.4.0",
-              secretKey: process.env["AUTUMN_SECRET_KEY"] ?? "",
-            });
-
-            async function run() {
-              const result = await autumn.platform.linkRevenueCat({
-                organizationSlug: "acme",
-                env: "test",
-                projectName: "acme-mobile",
-                redirectUrl: "https://dashboard.useautumn.com/dev?tab=revenuecat",
-              });
-
-              console.log(result);
-            }
-
-            run();
-  - target: $["paths"]["/v1/platform.sync_revenuecat"]["post"]
-    update:
-      x-codeSamples:
-        - lang: typescript
-          label: Typescript (SDK)
-          source: |-
-            import { Autumn } from "@useautumn/sdk";
-
-            const autumn = new Autumn({
-              xApiVersion: "2.4.0",
-              secretKey: process.env["AUTUMN_SECRET_KEY"] ?? "",
-            });
-
-            async function run() {
-              const result = await autumn.platform.syncRevenueCat({
-                organizationSlug: "acme",
-                env: "test",
-                productIds: [
-                  "pro",
-                  "premium",
-                ],
               });
 
               console.log(result);

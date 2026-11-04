@@ -118,7 +118,7 @@ export const parseDashboardProcessorFilter = (
 ): ListCustomersV2Params["processors"] =>
 	(raw ?? []).filter(
 		(p): p is DashboardProcessorFilter =>
-			p === "stripe" || p === "revenuecat" || p === "vercel",
+			p === "paypal",
 	);
 
 export type DashboardProductVersionFilter =
@@ -385,16 +385,16 @@ const buildSubscriptionsCTE = (
 
 	return sql`
     customer_subscriptions AS (
-      SELECT 
+      SELECT
         COALESCE(
-          json_agg(row_to_json(s)) FILTER (WHERE s.stripe_id IS NOT NULL),
+          json_agg(row_to_json(s)) FILTER (WHERE s.processor_id IS NOT NULL),
           '[]'::json
         ) AS subscriptions
       FROM (
         SELECT DISTINCT s.*
         FROM customer_products_with_prices cpwp
-        JOIN LATERAL unnest(cpwp.subscription_ids) AS cpwp_sub(stripe_id) ON true
-        JOIN subscriptions s ON s.stripe_id = cpwp_sub.stripe_id
+        JOIN LATERAL unnest(cpwp.subscription_ids) AS cpwp_sub(processor_id) ON true
+        JOIN subscriptions s ON s.processor_id = cpwp_sub.processor_id
       ) s
     )
   `;
@@ -940,10 +940,10 @@ export const getPaginatedFullCusQuery = ({
     ${
 			withSubs
 				? sql`, customer_subscriptions AS (
-      SELECT 
+      SELECT
         s.internal_customer_id,
         COALESCE(
-          json_agg(row_to_json(s)) FILTER (WHERE s.stripe_id IS NOT NULL),
+          json_agg(row_to_json(s)) FILTER (WHERE s.processor_id IS NOT NULL),
           '[]'::json
         ) AS subscriptions
       FROM (
@@ -951,8 +951,8 @@ export const getPaginatedFullCusQuery = ({
           cpwp.internal_customer_id,
           s.*
         FROM customer_products_with_prices cpwp
-        JOIN LATERAL unnest(cpwp.subscription_ids) AS cpwp_sub(stripe_id) ON true
-        JOIN subscriptions s ON s.stripe_id = cpwp_sub.stripe_id
+        JOIN LATERAL unnest(cpwp.subscription_ids) AS cpwp_sub(processor_id) ON true
+        JOIN subscriptions s ON s.processor_id = cpwp_sub.processor_id
       ) s
       GROUP BY s.internal_customer_id
     )`
@@ -1181,27 +1181,8 @@ export const getCustomerListFilterSql = ({
 		)`);
 	}
 
-	if (processors && processors.length > 0) {
-		const processorConditions = processors
-			.map((proc) => {
-				if (proc === "stripe") return sql`(c.processor->>'id' IS NOT NULL)`;
-				if (proc === "revenuecat")
-					return sql`EXISTS (
-						SELECT 1
-						FROM customer_products cp_processor
-						WHERE cp_processor.internal_customer_id = c.internal_id
-							AND cp_processor.processor->>'type' = 'revenuecat'
-					)`;
-				if (proc === "vercel")
-					return sql`(c.processors->>'vercel' IS NOT NULL)`;
-				return null;
-			})
-			.filter((c): c is SQL => c !== null);
-
-		if (processorConditions.length > 0) {
-			filters.push(sql`AND (${sql.join(processorConditions, sql` OR `)})`);
-		}
-	}
+	// PayPal is the only processor, so the legacy `processors` filter has no
+	// column to match on and does not narrow the result set.
 
 	if (noneFilter) {
 		filters.push(sql`AND NOT EXISTS (

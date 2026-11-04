@@ -18,15 +18,6 @@ import { expect, test } from "bun:test";
 import { initScenario } from "@tests/utils/testInitUtils/initScenario.js";
 import chalk from "chalk";
 import { uniqueTestId } from "../../../utils/uniqueTestId.js";
-import { seedVersionableCustomer } from "../../migrations/utils/seedVersionableCustomer.js";
-import {
-	childItemOp,
-	collapsedPlanFilter,
-	dashboardAddCustomize,
-	expectLicenseDraftCase,
-	orPlanFilter,
-	parentLicenseOp,
-} from "../../migrations/licenses/utils/expectLicenseMigrationDrafts.js";
 import {
 	expectPlanPreviewRowCorrect,
 	parsePlanPreview,
@@ -181,72 +172,6 @@ test.concurrent(
 					childV2InternalId: childV2.internal_id,
 					teamV1LicenseId,
 					teamV2LicenseId,
-				});
-			},
-		});
-	},
-);
-
-test.concurrent(
-	`${chalk.yellowBright("catalogV2 license-drafts: atmn PUT of four directs collapses one Dashboard draft")}`,
-	async () => {
-		const { autumnV2_3, ctx } = await initScenario({ setup: [], actions: [] });
-		const childId = uniqueTestId("cv2_lic_atmn_dr_c");
-		const parentId = uniqueTestId("cv2_lic_atmn_dr_p");
-		await withCatalogPlans({
-			ctx,
-			planIds: [childId, parentId],
-			run: async () => {
-				await seedDivergedChildAnchors({
-					autumn: autumnV2_3,
-					childId,
-					parentId,
-				});
-				await seedVersionableCustomer({ ctx, planId: childId, version: 1 });
-				await seedVersionableCustomer({ ctx, planId: childId, version: 2 });
-				await seedVersionableCustomer({ ctx, planId: parentId, version: 1 });
-				await seedVersionableCustomer({ ctx, planId: parentId, version: 2 });
-
-				const childFilter = collapsedPlanFilter({ planId: childId });
-				const parentFilter = collapsedPlanFilter({ planId: parentId });
-				await expectLicenseDraftCase({
-					autumn: autumnV2_3,
-					ctx,
-					plans: atmnDirectPut({ childId, parentId, draft: true }),
-					preview: true,
-					responsePlans: [
-						[
-							{ plan_id: childId, versions: [1, 2] },
-							{ plan_id: parentId, versions: [1, 2] },
-						],
-					],
-					expected: [
-						{
-							planIds: [childId, parentId],
-							noBillingChanges: true,
-							filter: {
-								customer: {
-									plan: orPlanFilter({
-										branches: [
-											{ plan_id: childId },
-											{ plan_id: parentId },
-										],
-									}),
-								},
-							},
-							operations: [
-								childItemOp({
-									planFilter: childFilter,
-									customize: dashboardAddCustomize,
-								}),
-								parentLicenseOp({
-									planFilter: parentFilter,
-									childId,
-									customize: dashboardAddCustomize,
-								}),
-							],
-						},
-					],
 				});
 			},
 		});

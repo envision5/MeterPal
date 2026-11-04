@@ -24,7 +24,6 @@ import {
 } from "@/internal/billing/v2/actions/generateRequest/compute/decodeGeneratedValue";
 import {
 	attachGenerationSchema,
-	createScheduleGenerationSchema,
 	updateSubscriptionGenerationSchema,
 } from "@/internal/billing/v2/actions/generateRequest/generationSchemas";
 
@@ -92,45 +91,6 @@ describe("updateSubscriptionGenerationSchema", () => {
 		]) {
 			const parsed = updateSubscriptionGenerationSchema.safeParse({
 				cancel_action: "cancel_immediately",
-				...extra,
-			});
-			expect(parsed.success).toBe(false);
-		}
-	});
-});
-
-describe("createScheduleGenerationSchema", () => {
-	test("inherits the V0 check: starting_after invalid on the first phase", () => {
-		const parsed = createScheduleGenerationSchema.safeParse({
-			phases: [
-				{
-					starting_after: { duration_type: "month", duration_count: 1 },
-					plans: [{ plan_id: "premium" }],
-				},
-			],
-		});
-		expect(parsed.success).toBe(false);
-	});
-
-	test("accepts starts_at phases", () => {
-		const parsed = createScheduleGenerationSchema.safeParse({
-			phases: [{ starts_at: 1750000000000, plans: [{ plan_id: "premium" }] }],
-		});
-		expect(parsed.success).toBe(true);
-	});
-
-	test("rejects stage-scoped keys", () => {
-		for (const extra of [
-			{ invoice_mode: { enabled: true } },
-			{ redirect_mode: "always" },
-			{ checkout_session_params: {} },
-			{ enable_plan_immediately: true },
-			{ currency: "usd" },
-			{ discounts: [] },
-			{ free_trial: { duration_length: 7, duration_type: "day" } },
-		]) {
-			const parsed = createScheduleGenerationSchema.safeParse({
-				phases: [{ starts_at: 1750000000000, plans: [{ plan_id: "premium" }] }],
 				...extra,
 			});
 			expect(parsed.success).toBe(false);

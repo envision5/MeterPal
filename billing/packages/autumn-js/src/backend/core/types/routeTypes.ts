@@ -20,7 +20,6 @@ export const ROUTE_NAMES = {
 	aggregateEvents: "aggregateEvents",
 	multiAttach: "multiAttach",
 	previewMultiAttach: "previewMultiAttach",
-	setupPayment: "setupPayment",
 } as const;
 
 /** Union of all route names */

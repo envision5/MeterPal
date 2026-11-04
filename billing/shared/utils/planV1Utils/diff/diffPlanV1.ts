@@ -89,11 +89,6 @@ export const toBasePriceParams = (
 	...(includeInternalIds && price.price_id !== undefined
 		? { price_id: price.price_id }
 		: {}),
-	...(includeInternalIds &&
-	"stripe_price_id" in price &&
-	price.stripe_price_id !== undefined
-		? { stripe_price_id: price.stripe_price_id }
-		: {}),
 });
 
 export const toCreatePlanItemParams = (

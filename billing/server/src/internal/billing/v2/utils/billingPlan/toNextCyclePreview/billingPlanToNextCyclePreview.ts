@@ -198,7 +198,7 @@ export const billingPlanToNextCyclePreview = ({
 		};
 
 		// A reset starts a fresh full cycle, so we don't credit the old plan's
-		// leftover time — mirrors proration_behavior "none" on the Stripe phase.
+		// leftover time — mirrors proration_behavior "none" on the processor phase.
 		const keepsOldPlanCredit =
 			!event.resetsBillingCycle &&
 			!outgoingPlansRunToBoundary({

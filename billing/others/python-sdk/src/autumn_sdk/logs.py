@@ -22,7 +22,7 @@ class Logs(BaseSDK):
         timeout_ms: Optional[int] = None,
         http_headers: Optional[Mapping[str, str]] = None,
     ) -> models.SearchRequestLogsResponse:
-        r"""Search API requests and incoming Stripe webhooks for your organization and environment.
+        r"""Search API requests and incoming processor webhooks for your organization and environment.
 
         :param query: Filter and sort logs using where, order by, and limit, joined with |. Omit to return recent logs.
         :param range: Time window to search. Defaults to the last 30 minutes. Maximum 7 days.
@@ -120,7 +120,7 @@ class Logs(BaseSDK):
         timeout_ms: Optional[int] = None,
         http_headers: Optional[Mapping[str, str]] = None,
     ) -> models.SearchRequestLogsResponse:
-        r"""Search API requests and incoming Stripe webhooks for your organization and environment.
+        r"""Search API requests and incoming processor webhooks for your organization and environment.
 
         :param query: Filter and sort logs using where, order by, and limit, joined with |. Omit to return recent logs.
         :param range: Time window to search. Defaults to the last 30 minutes. Maximum 7 days.

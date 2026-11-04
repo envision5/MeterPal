@@ -7,7 +7,7 @@ import type { TestGroup } from "../types";
 export const coreCatalog: TestGroup = {
 	name: "core-catalog",
 	description:
-		"Essential catalogV2 coverage: create/update, Stripe reuse, versions, licenses, variants, migrations",
+		"Essential catalogV2 coverage: create/update, versions, licenses, variants",
 	tier: "core",
 	paths: [
 		// ── Features ──
@@ -23,14 +23,6 @@ export const coreCatalog: TestGroup = {
 		"integration/catalog-v2/plans/update/update-plan-rows.test.ts",
 		"integration/catalog-v2/plans/update/update-plan-items.test.ts",
 		"integration/catalog-v2/plans/update/update-plan-free-trial.test.ts",
-
-		// ── Stripe resources ──
-		"integration/catalog-v2/plans/create/stripe-init.test.ts",
-		"integration/catalog-v2/plans/update/stripe-reuse.test.ts",
-		"integration/catalog-v2/plans/update/stripe-reuse-mint.test.ts",
-		"integration/catalog-v2/plans/update/stripe-price-immutability.test.ts",
-		"integration/catalog-v2/plans/variants/stripe-carry.test.ts",
-		"integration/catalog-v2/plans/licenses/stripe-carry.test.ts",
 
 		// ── Versions ──
 		"integration/catalog-v2/plans/versions/new-version-mint.test.ts",
@@ -50,10 +42,6 @@ export const coreCatalog: TestGroup = {
 		"integration/catalog-v2/plans/preview/preview-actions.test.ts",
 		"integration/catalog-v2/plans/preview/changes/changes-mixed.test.ts",
 		"integration/catalog-v2/plans/preview/preview-state-versioning.test.ts",
-
-		// ── Migration drafts ──
-		"integration/catalog-v2/plans/migrations/versioning-drafts.test.ts",
-		"integration/catalog-v2/plans/migrations/licenses/run/run-license-drafts.test.ts",
 
 		// ── Licenses ──
 		"integration/catalog-v2/plans/licenses/declared/create-and-update.test.ts",

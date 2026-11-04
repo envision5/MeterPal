@@ -1,16 +1,15 @@
 import { cp, type FullCustomer } from "@autumn/shared";
-import type Stripe from "stripe";
 
 export const getSiblingCusProductIds = ({
 	fullCustomer,
-	stripeSubscription,
+	processorSubscriptionId,
 	excludeIds = [],
 }: {
 	fullCustomer: FullCustomer;
-	stripeSubscription?: Stripe.Subscription;
+	processorSubscriptionId?: string;
 	excludeIds?: string[];
 }): string[] => {
-	if (!stripeSubscription) return [];
+	if (!processorSubscriptionId) return [];
 
 	const excluded = new Set(excludeIds);
 
@@ -18,8 +17,8 @@ export const getSiblingCusProductIds = ({
 		.filter(
 			(cusProduct) =>
 				!excluded.has(cusProduct.id) &&
-				cp(cusProduct).paid().recurring().onStripeSubscription({
-					stripeSubscriptionId: stripeSubscription.id,
+				cp(cusProduct).paid().recurring().onProcessorSubscription({
+					processorSubscriptionId,
 				}).valid,
 		)
 		.map((cusProduct) => cusProduct.id);

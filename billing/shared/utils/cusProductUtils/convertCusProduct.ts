@@ -202,5 +202,5 @@ export const cusProductToCusEnts = ({
 };
 
 export const cusProductToProcessorType = (cusProduct: CusProduct) => {
-	return cusProduct.processor?.type ?? ProcessorType.Stripe;
+	return cusProduct.processor?.type ?? ProcessorType.PayPal;
 };

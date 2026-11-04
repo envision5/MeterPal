@@ -46,4 +46,4 @@ export type FlatCustomerPrice = {
 };
 export type FlatEntitlement = { id: string; [k: string]: unknown };
 export type FlatFreeTrial = { id: string; [k: string]: unknown };
-export type FlatSubscription = { stripe_id: string; [k: string]: unknown };
+export type FlatSubscription = { processor_id: string; [k: string]: unknown };

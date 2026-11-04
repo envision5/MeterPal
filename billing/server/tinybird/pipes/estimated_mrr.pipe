@@ -2,7 +2,7 @@ DESCRIPTION >
     Estimated MRR via customer_prices → prices chain, with invoice-based override.
     For each active customer_product with a recurring base price:
     - If customer has non-zero paid invoices → they're paying, use the base price
-    - If customer has invoices but ALL are $0 → given for free (Stripe credits), $0
+    - If customer has invoices but ALL are $0 → given for free (processor credits), $0
     - If customer has NO invoices → new customer, use base price as estimate
     Normalizes all amounts to monthly by billing interval.
 

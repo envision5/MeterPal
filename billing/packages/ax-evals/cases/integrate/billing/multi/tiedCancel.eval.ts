@@ -65,7 +65,6 @@ console.log(\`acme-notes-api listening on :\${port}\`);
 			name: "Ada Lovelace",
 			email: fixtureUser.email,
 		},
-		paymentMethod: true,
 		attach: [{ plan_id: "pro" }, { plan_id: "support_addon" }],
 	},
 	prompt: [

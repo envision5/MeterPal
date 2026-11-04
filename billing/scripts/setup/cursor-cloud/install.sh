@@ -7,7 +7,6 @@
 set -euo pipefail
 cd "$(dirname "$0")/../../.."
 log() { echo "[cursor-cloud-install] $*"; }
-. scripts/setup/install-stripe-cli.sh
 
 export CLOUD_AGENT=1
 export DW_HEADLESS=1
@@ -60,9 +59,6 @@ bash scripts/setup/agent-bootstrap.sh
 
 log "workspace install"
 "$BUN" install --frozen-lockfile
-
-log "installing Stripe CLI (stripe listen → localhost webhooks)"
-install_stripe_cli "[cursor-cloud-install]"
 
 if [ ! -x /usr/local/bin/cloudflared ]; then
 	log "installing cloudflared (per-service public hosts)"

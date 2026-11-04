@@ -1,9 +1,9 @@
 {
   "generatedAt": "2026-04-24T17:11:56.348Z",
-  "totalRoutes": 257,
-  "totalRoutesNeedingScopes": 240,
+  "totalRoutes": 235,
+  "totalRoutesNeedingScopes": 221,
   "totalPlainRoutes": 16,
-  "totalWebhookExempt": 20,
+  "totalWebhookExempt": 17,
   "totalOrphans": 0,
   "totalErrorFiles": 197,
   "routes": [
@@ -103,23 +103,6 @@
         "",
         "admin",
         "/invoice-line-items"
-      ],
-      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
-      "routeKind": "createRoute",
-      "needsScopes": true,
-      "isWebhookExempt": false
-    },
-    {
-      "handlerName": "handleGetMasterStripeAccount",
-      "handlerFile": "src/internal/admin/handleGetMasterStripeAccount.ts",
-      "method": "GET",
-      "path": "/admin/master-stripe-account",
-      "style": "REST",
-      "group": "admin",
-      "mountChain": [
-        "",
-        "admin",
-        "/master-stripe-account"
       ],
       "sourceRouterFile": "src/internal/admin/adminRouter.ts",
       "routeKind": "createRoute",
@@ -392,40 +375,6 @@
         "",
         "admin",
         "/rollouts/:rollout_id/orgs/:org_id"
-      ],
-      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
-      "routeKind": "createRoute",
-      "needsScopes": true,
-      "isWebhookExempt": false
-    },
-    {
-      "handlerName": "handleGetAdminStripeSyncConfig",
-      "handlerFile": "src/internal/admin/handleGetAdminStripeSyncConfig.ts",
-      "method": "GET",
-      "path": "/admin/stripe-sync-config",
-      "style": "REST",
-      "group": "admin",
-      "mountChain": [
-        "",
-        "admin",
-        "/stripe-sync-config"
-      ],
-      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
-      "routeKind": "createRoute",
-      "needsScopes": true,
-      "isWebhookExempt": false
-    },
-    {
-      "handlerName": "handleUpsertAdminStripeSyncConfig",
-      "handlerFile": "src/internal/admin/handleUpsertAdminStripeSyncConfig.ts",
-      "method": "PUT",
-      "path": "/admin/stripe-sync-config",
-      "style": "REST",
-      "group": "admin",
-      "mountChain": [
-        "",
-        "admin",
-        "/stripe-sync-config"
       ],
       "sourceRouterFile": "src/internal/admin/adminRouter.ts",
       "routeKind": "createRoute",
@@ -1105,23 +1054,6 @@
         "",
         "/products",
         "/rewards"
-      ],
-      "sourceRouterFile": "src/internal/products/internalProductRouter.ts",
-      "routeKind": "createRoute",
-      "needsScopes": true,
-      "isWebhookExempt": false
-    },
-    {
-      "handlerName": "handleGetStripeCoupons",
-      "handlerFile": "src/internal/products/internalHandlers/handleGetStripeCoupons.ts",
-      "method": "GET",
-      "path": "/products/stripe_coupons",
-      "style": "REST",
-      "group": "products",
-      "mountChain": [
-        "",
-        "/products",
-        "/stripe_coupons"
       ],
       "sourceRouterFile": "src/internal/products/internalProductRouter.ts",
       "routeKind": "createRoute",
@@ -2256,23 +2188,6 @@
       "isWebhookExempt": false
     },
     {
-      "handlerName": "handleRefundInvoice",
-      "handlerFile": "src/internal/customers/handlers/handleRefundInvoice/handleRefundInvoice.ts",
-      "method": "POST",
-      "path": "/v1/customers/:customer_id/invoices/:stripe_invoice_id/refund",
-      "style": "REST",
-      "group": "v1/customers",
-      "mountChain": [
-        "/v1",
-        "/customers",
-        "/:customer_id/invoices/:stripe_invoice_id/refund"
-      ],
-      "sourceRouterFile": "src/internal/customers/cusRouter.ts",
-      "routeKind": "createRoute",
-      "needsScopes": true,
-      "isWebhookExempt": false
-    },
-    {
       "handlerName": "handleTransferProductV2",
       "handlerFile": "src/internal/customers/handlers/handleTransferProductV2.ts",
       "method": "POST",
@@ -2788,23 +2703,6 @@
       "isWebhookExempt": false
     },
     {
-      "handlerName": "handleGetStripeInvoice",
-      "handlerFile": "src/internal/invoices/handlers/handleGetStripeInvoice.ts",
-      "method": "GET",
-      "path": "/v1/invoices/:stripe_invoice_id/stripe",
-      "style": "REST",
-      "group": "v1/invoices",
-      "mountChain": [
-        "/v1",
-        "/invoices",
-        "/:stripe_invoice_id/stripe"
-      ],
-      "sourceRouterFile": "src/internal/invoices/invoiceRouter.ts",
-      "routeKind": "createRoute",
-      "needsScopes": true,
-      "isWebhookExempt": false
-    },
-    {
       "handlerName": "handleGetOrg",
       "handlerFile": "src/internal/orgs/handlers/crudHandlers/handleGetOrg.ts",
       "method": "GET",
@@ -2883,159 +2781,6 @@
         "/v1",
         "/organization",
         "/reset_default_account"
-      ],
-      "sourceRouterFile": "src/internal/orgs/orgRouter.ts",
-      "routeKind": "createRoute",
-      "needsScopes": true,
-      "isWebhookExempt": false
-    },
-    {
-      "handlerName": "handleGetRevenueCatConfig",
-      "handlerFile": "src/internal/orgs/handlers/handleRevenueCatConfig.ts",
-      "method": "GET",
-      "path": "/v1/organization/revenuecat",
-      "style": "REST",
-      "group": "v1/organization",
-      "mountChain": [
-        "/v1",
-        "/organization",
-        "/revenuecat"
-      ],
-      "sourceRouterFile": "src/internal/orgs/orgRouter.ts",
-      "routeKind": "createRoute",
-      "needsScopes": true,
-      "isWebhookExempt": false
-    },
-    {
-      "handlerName": "handleUpsertRevenueCatConfig",
-      "handlerFile": "src/internal/orgs/handlers/handleRevenueCatConfig.ts",
-      "method": "PATCH",
-      "path": "/v1/organization/revenuecat",
-      "style": "REST",
-      "group": "v1/organization",
-      "mountChain": [
-        "/v1",
-        "/organization",
-        "/revenuecat"
-      ],
-      "sourceRouterFile": "src/internal/orgs/orgRouter.ts",
-      "routeKind": "createRoute",
-      "needsScopes": true,
-      "isWebhookExempt": false
-    },
-    {
-      "handlerName": "handleGetRCMappings",
-      "handlerFile": "src/external/revenueCat/handlers/handleGetRevenuecatMappings.ts",
-      "method": "GET",
-      "path": "/v1/organization/revenuecat/mappings",
-      "style": "REST",
-      "group": "v1/organization",
-      "mountChain": [
-        "/v1",
-        "/organization",
-        "/revenuecat/mappings"
-      ],
-      "sourceRouterFile": "src/internal/orgs/orgRouter.ts",
-      "routeKind": "createRoute",
-      "needsScopes": true,
-      "isWebhookExempt": false
-    },
-    {
-      "handlerName": "handleSaveRCMappings",
-      "handlerFile": "src/external/revenueCat/handlers/handleSaveRevenuecatMappings.ts",
-      "method": "POST",
-      "path": "/v1/organization/revenuecat/mappings",
-      "style": "REST",
-      "group": "v1/organization",
-      "mountChain": [
-        "/v1",
-        "/organization",
-        "/revenuecat/mappings"
-      ],
-      "sourceRouterFile": "src/internal/orgs/orgRouter.ts",
-      "routeKind": "createRoute",
-      "needsScopes": true,
-      "isWebhookExempt": false
-    },
-    {
-      "handlerName": "handleGetRevenueCatProducts",
-      "handlerFile": "src/external/revenueCat/handlers/handleGetRevenuecatProducts.ts",
-      "method": "POST",
-      "path": "/v1/organization/revenuecat/products",
-      "style": "REST",
-      "group": "v1/organization",
-      "mountChain": [
-        "/v1",
-        "/organization",
-        "/revenuecat/products"
-      ],
-      "sourceRouterFile": "src/internal/orgs/orgRouter.ts",
-      "routeKind": "createRoute",
-      "needsScopes": true,
-      "isWebhookExempt": false
-    },
-    {
-      "handlerName": "handleDeleteStripe",
-      "handlerFile": "src/internal/orgs/handlers/stripeHandlers/handleDeleteStripe.ts",
-      "method": "DELETE",
-      "path": "/v1/organization/stripe",
-      "style": "REST",
-      "group": "v1/organization",
-      "mountChain": [
-        "/v1",
-        "/organization",
-        "/stripe"
-      ],
-      "sourceRouterFile": "src/internal/orgs/orgRouter.ts",
-      "routeKind": "createRoute",
-      "needsScopes": true,
-      "isWebhookExempt": false
-    },
-    {
-      "handlerName": "handleGetStripeAccount",
-      "handlerFile": "src/internal/orgs/handlers/stripeHandlers/handleGetStripeAccount.ts",
-      "method": "GET",
-      "path": "/v1/organization/stripe",
-      "style": "REST",
-      "group": "v1/organization",
-      "mountChain": [
-        "/v1",
-        "/organization",
-        "/stripe"
-      ],
-      "sourceRouterFile": "src/internal/orgs/orgRouter.ts",
-      "routeKind": "createRoute",
-      "needsScopes": true,
-      "isWebhookExempt": false
-    },
-    {
-      "handlerName": "handleConnectStripe",
-      "handlerFile": "src/internal/orgs/handlers/stripeHandlers/handleConnectStripe.ts",
-      "method": "POST",
-      "path": "/v1/organization/stripe",
-      "style": "REST",
-      "group": "v1/organization",
-      "mountChain": [
-        "/v1",
-        "/organization",
-        "/stripe"
-      ],
-      "sourceRouterFile": "src/internal/orgs/orgRouter.ts",
-      "routeKind": "createRoute",
-      "needsScopes": true,
-      "isWebhookExempt": false
-    },
-    {
-      "handlerName": "handleGetOAuthUrl",
-      "handlerFile": "src/internal/orgs/handlers/stripeHandlers/handleGetOAuthUrl.ts",
-      "method": "GET",
-      "path": "/v1/organization/stripe/oauth_url",
-      "style": "REST",
-      "group": "v1/organization",
-      "mountChain": [
-        "/v1",
-        "/organization",
-        "/stripe/oauth_url"
       ],
       "sourceRouterFile": "src/internal/orgs/orgRouter.ts",
       "routeKind": "createRoute",
@@ -3371,23 +3116,6 @@
       "isWebhookExempt": false
     },
     {
-      "handlerName": "handleUpdateOrganizationStripe",
-      "handlerFile": "src/internal/platform/platformBeta/handlers/handleUpdateOrganizationStripe.ts",
-      "method": "POST",
-      "path": "/v1/platform/beta/organization/stripe",
-      "style": "REST",
-      "group": "v1/platform",
-      "mountChain": [
-        "/v1",
-        "/platform/beta",
-        "/organization/stripe"
-      ],
-      "sourceRouterFile": "src/internal/platform/platformBeta/platformBetaRouter.ts",
-      "routeKind": "createRoute",
-      "needsScopes": true,
-      "isWebhookExempt": false
-    },
-    {
       "handlerName": "handleDeletePlatformOrg",
       "handlerFile": "src/internal/platform/platformBeta/handlers/handleDeletePlatformOrg.ts",
       "method": "DELETE",
@@ -3432,23 +3160,6 @@
         "/v1",
         "/platform/beta",
         "/organizations"
-      ],
-      "sourceRouterFile": "src/internal/platform/platformBeta/platformBetaRouter.ts",
-      "routeKind": "createRoute",
-      "needsScopes": true,
-      "isWebhookExempt": false
-    },
-    {
-      "handlerName": "handleUpdateOrganizationStripe",
-      "handlerFile": "src/internal/platform/platformBeta/handlers/handleUpdateOrganizationStripe.ts",
-      "method": "POST",
-      "path": "/v1/platform/beta/organizations/stripe",
-      "style": "REST",
-      "group": "v1/platform",
-      "mountChain": [
-        "/v1",
-        "/platform/beta",
-        "/organizations/stripe"
       ],
       "sourceRouterFile": "src/internal/platform/platformBeta/platformBetaRouter.ts",
       "routeKind": "createRoute",
@@ -3507,23 +3218,6 @@
       "isWebhookExempt": false
     },
     {
-      "handlerName": "handleUpdateOrganizationStripe",
-      "handlerFile": "src/internal/platform/platformBeta/handlers/handleUpdateOrganizationStripe.ts",
-      "method": "POST",
-      "path": "/v1/platform/organization/stripe",
-      "style": "REST",
-      "group": "v1/platform",
-      "mountChain": [
-        "/v1",
-        "/platform",
-        "/organization/stripe"
-      ],
-      "sourceRouterFile": "src/internal/platform/platformBeta/platformBetaRouter.ts",
-      "routeKind": "createRoute",
-      "needsScopes": true,
-      "isWebhookExempt": false
-    },
-    {
       "handlerName": "handleDeletePlatformOrg",
       "handlerFile": "src/internal/platform/platformBeta/handlers/handleDeletePlatformOrg.ts",
       "method": "DELETE",
@@ -3568,23 +3262,6 @@
         "/v1",
         "/platform",
         "/organizations"
-      ],
-      "sourceRouterFile": "src/internal/platform/platformBeta/platformBetaRouter.ts",
-      "routeKind": "createRoute",
-      "needsScopes": true,
-      "isWebhookExempt": false
-    },
-    {
-      "handlerName": "handleUpdateOrganizationStripe",
-      "handlerFile": "src/internal/platform/platformBeta/handlers/handleUpdateOrganizationStripe.ts",
-      "method": "POST",
-      "path": "/v1/platform/organizations/stripe",
-      "style": "REST",
-      "group": "v1/platform",
-      "mountChain": [
-        "/v1",
-        "/platform",
-        "/organizations/stripe"
       ],
       "sourceRouterFile": "src/internal/platform/platformBeta/platformBetaRouter.ts",
       "routeKind": "createRoute",
@@ -4081,54 +3758,6 @@
         ""
       ],
       "sourceRouterFile": "src/external/autumn/autumnWebhookRouter.ts",
-      "routeKind": "plain",
-      "needsScopes": false,
-      "isWebhookExempt": true
-    },
-    {
-      "handlerName": "handleStripeWebhookEvent",
-      "handlerFile": null,
-      "method": "POST",
-      "path": "/webhooks/connect/:env",
-      "style": "REST",
-      "group": "webhooks",
-      "mountChain": [
-        "",
-        "/webhooks/connect/:env"
-      ],
-      "sourceRouterFile": "src/external/stripe/stripeWebhookRouter.ts",
-      "routeKind": "plain",
-      "needsScopes": false,
-      "isWebhookExempt": true
-    },
-    {
-      "handlerName": "RevenueCatWebhookHonoEnv",
-      "handlerFile": null,
-      "method": "POST",
-      "path": "/webhooks/revenuecat/:orgId/:env",
-      "style": "REST",
-      "group": "webhooks",
-      "mountChain": [
-        "/webhooks/revenuecat",
-        "/:orgId/:env"
-      ],
-      "sourceRouterFile": "src/external/revenueCat/revenuecatWebhookRouter.ts",
-      "routeKind": "plain",
-      "needsScopes": false,
-      "isWebhookExempt": true
-    },
-    {
-      "handlerName": "handleStripeWebhookEvent",
-      "handlerFile": null,
-      "method": "POST",
-      "path": "/webhooks/stripe/:orgId/:env",
-      "style": "REST",
-      "group": "webhooks",
-      "mountChain": [
-        "",
-        "/webhooks/stripe/:orgId/:env"
-      ],
-      "sourceRouterFile": "src/external/stripe/stripeWebhookRouter.ts",
       "routeKind": "plain",
       "needsScopes": false,
       "isWebhookExempt": true

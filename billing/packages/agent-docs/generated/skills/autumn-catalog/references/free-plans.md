@@ -7,6 +7,9 @@ Free plans let you give every new customer access to a limited set of features a
 
 ## Setting up
 
+
+
+
 Create a plan with no `price` and set `autoEnable: true`:
 
 ```ts autumn.config.ts
@@ -51,11 +54,17 @@ export default atmn({ features: [apiRequests, workspaces], plans: [free] });
 
 Preview with `atmn push`, then apply with `atmn push --yes`.
 
+
+
+
+
 ## How it works
 
 When `autoEnable` is set, every new customer created via the API or SDK is automatically assigned this plan. This flag can only be set if there are no prices on the plan. Since there are no prices, no payment is required.
 
+
 If a customer cancels their paid plan and you have an auto-enabled free plan in the same group, the free plan will be re-activated automatically.
+
 
 ## Gating features
 

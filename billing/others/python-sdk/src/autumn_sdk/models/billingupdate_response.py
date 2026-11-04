@@ -1120,10 +1120,10 @@ class BillingUpdateCustomize(BaseModel):
 
 
 class BillingUpdateInvoiceModeTypedDict(TypedDict):
-    r"""Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses Stripe's send_invoice collection method."""
+    r"""Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately."""
 
     enabled: bool
-    r"""When true, creates an invoice and sends it to the customer instead of charging their card immediately. Uses Stripe's send_invoice collection method."""
+    r"""When true, creates an invoice and sends it to the customer instead of charging their card immediately."""
     enable_plan_immediately: NotRequired[bool]
     r"""If true, enables the plan immediately even though the invoice is not paid yet."""
     finalize: NotRequired[bool]
@@ -1131,14 +1131,14 @@ class BillingUpdateInvoiceModeTypedDict(TypedDict):
     invoice_template_id: NotRequired[str]
     r"""ID of an invoice template (configured in billing settings) whose footer (e.g. bank details) is applied to the invoice."""
     net_terms_days: NotRequired[int]
-    r"""Number of days the customer has to pay the invoice before it is due (Stripe days_until_due)."""
+    r"""Number of days the customer has to pay the invoice before it is due."""
 
 
 class BillingUpdateInvoiceMode(BaseModel):
-    r"""Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses Stripe's send_invoice collection method."""
+    r"""Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately."""
 
     enabled: bool
-    r"""When true, creates an invoice and sends it to the customer instead of charging their card immediately. Uses Stripe's send_invoice collection method."""
+    r"""When true, creates an invoice and sends it to the customer instead of charging their card immediately."""
 
     enable_plan_immediately: Optional[bool] = False
     r"""If true, enables the plan immediately even though the invoice is not paid yet."""
@@ -1150,7 +1150,7 @@ class BillingUpdateInvoiceMode(BaseModel):
     r"""ID of an invoice template (configured in billing settings) whose footer (e.g. bank details) is applied to the invoice."""
 
     net_terms_days: Optional[int] = None
-    r"""Number of days the customer has to pay the invoice before it is due (Stripe days_until_due)."""
+    r"""Number of days the customer has to pay the invoice before it is due."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -1230,14 +1230,14 @@ class BillingUpdateRemoveDiscountTypedDict(TypedDict):
     r"""A discount to remove from the subscription. Discounts that are no longer applied are ignored."""
 
     reward_id: str
-    r"""The ID of the reward (or Stripe coupon) to remove."""
+    r"""The ID of the reward to remove."""
 
 
 class BillingUpdateRemoveDiscount(BaseModel):
     r"""A discount to remove from the subscription. Discounts that are no longer applied are ignored."""
 
     reward_id: str
-    r"""The ID of the reward (or Stripe coupon) to remove."""
+    r"""The ID of the reward to remove."""
 
 
 class BillingUpdateCustomLineItemTypedDict(TypedDict):
@@ -1362,7 +1362,7 @@ class UpdateSubscriptionParamsTypedDict(TypedDict):
     customize: NotRequired[BillingUpdateCustomizeTypedDict]
     r"""Customize the plan to attach. Can override the price, items, licenses, free trial, or a combination."""
     invoice_mode: NotRequired[BillingUpdateInvoiceModeTypedDict]
-    r"""Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses Stripe's send_invoice collection method."""
+    r"""Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately."""
     proration_behavior: NotRequired[BillingUpdateProrationBehavior]
     r"""How to handle proration when updating an existing subscription. 'prorate_immediately' charges/credits prorated amounts now, 'none' skips creating any charges."""
     redirect_mode: NotRequired[BillingUpdateRedirectMode]
@@ -1370,7 +1370,7 @@ class UpdateSubscriptionParamsTypedDict(TypedDict):
     subscription_id: NotRequired[str]
     r"""A unique ID to identify this subscription. Can be used to target specific subscriptions in update operations when a customer has multiple products with the same plan."""
     discounts: NotRequired[List[BillingUpdateAttachDiscountTypedDict]]
-    r"""List of discounts to apply. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code."""
+    r"""List of discounts to apply. Each discount can be an Autumn reward ID, coupon ID, or promotion code."""
     remove_discounts: NotRequired[List[BillingUpdateRemoveDiscountTypedDict]]
     r"""Discounts to remove from the subscription, by reward ID. Discounts not listed are left unchanged."""
     custom_line_items: NotRequired[List[BillingUpdateCustomLineItemTypedDict]]
@@ -1380,11 +1380,11 @@ class UpdateSubscriptionParamsTypedDict(TypedDict):
     billing_cycle_anchor: NotRequired[BillingUpdateBillingCycleAnchorTypedDict]
     r"""Reset the billing cycle immediately with 'now', or schedule a reset at a future Unix timestamp in milliseconds."""
     no_billing_changes: NotRequired[bool]
-    r"""If true, the subscription is updated internally without applying billing changes in Stripe."""
+    r"""If true, the subscription is updated internally without applying billing changes in the processor."""
     refund_last_payment: NotRequired[BillingUpdateRefundLastPayment]
     r"""Controls how the last payment is refunded on immediate cancellation. 'prorated' refunds the unused portion, 'full' refunds the entire last payment."""
     subscription_params: NotRequired[Dict[str, Any]]
-    r"""Additional parameters to pass into the Stripe subscription update or cancel call."""
+    r"""Additional parameters to pass into the subscription update or cancel call."""
     recalculate_balances: NotRequired[BillingUpdateRecalculateBalancesTypedDict]
     r"""Controls whether balances should be recalculated during the subscription update."""
     carry_over_usages: NotRequired[BillingUpdateCarryOverUsagesTypedDict]
@@ -1416,7 +1416,7 @@ class UpdateSubscriptionParams(BaseModel):
     r"""Customize the plan to attach. Can override the price, items, licenses, free trial, or a combination."""
 
     invoice_mode: Optional[BillingUpdateInvoiceMode] = None
-    r"""Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses Stripe's send_invoice collection method."""
+    r"""Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately."""
 
     proration_behavior: Optional[BillingUpdateProrationBehavior] = None
     r"""How to handle proration when updating an existing subscription. 'prorate_immediately' charges/credits prorated amounts now, 'none' skips creating any charges."""
@@ -1428,7 +1428,7 @@ class UpdateSubscriptionParams(BaseModel):
     r"""A unique ID to identify this subscription. Can be used to target specific subscriptions in update operations when a customer has multiple products with the same plan."""
 
     discounts: Optional[List[BillingUpdateAttachDiscount]] = None
-    r"""List of discounts to apply. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code."""
+    r"""List of discounts to apply. Each discount can be an Autumn reward ID, coupon ID, or promotion code."""
 
     remove_discounts: Optional[List[BillingUpdateRemoveDiscount]] = None
     r"""Discounts to remove from the subscription, by reward ID. Discounts not listed are left unchanged."""
@@ -1443,13 +1443,13 @@ class UpdateSubscriptionParams(BaseModel):
     r"""Reset the billing cycle immediately with 'now', or schedule a reset at a future Unix timestamp in milliseconds."""
 
     no_billing_changes: Optional[bool] = None
-    r"""If true, the subscription is updated internally without applying billing changes in Stripe."""
+    r"""If true, the subscription is updated internally without applying billing changes in the processor."""
 
     refund_last_payment: Optional[BillingUpdateRefundLastPayment] = None
     r"""Controls how the last payment is refunded on immediate cancellation. 'prorated' refunds the unused portion, 'full' refunds the entire last payment."""
 
     subscription_params: Optional[Dict[str, Any]] = None
-    r"""Additional parameters to pass into the Stripe subscription update or cancel call."""
+    r"""Additional parameters to pass into the subscription update or cancel call."""
 
     recalculate_balances: Optional[BillingUpdateRecalculateBalances] = None
     r"""Controls whether balances should be recalculated during the subscription update."""
@@ -1515,8 +1515,8 @@ class BillingUpdateInvoiceTypedDict(TypedDict):
 
     status: Nullable[str]
     r"""The status of the invoice (e.g., 'paid', 'open', 'draft')."""
-    stripe_id: str
-    r"""The Stripe invoice ID."""
+    processor_invoice_id: str
+    r"""The processor's stable invoice ID."""
     total: float
     r"""The total amount of the invoice in cents."""
     currency: str
@@ -1531,8 +1531,8 @@ class BillingUpdateInvoice(BaseModel):
     status: Nullable[str]
     r"""The status of the invoice (e.g., 'paid', 'open', 'draft')."""
 
-    stripe_id: str
-    r"""The Stripe invoice ID."""
+    processor_invoice_id: str
+    r"""The processor's stable invoice ID."""
 
     total: float
     r"""The total amount of the invoice in cents."""

@@ -1121,10 +1121,10 @@ class PreviewUpdateCustomize(BaseModel):
 
 
 class PreviewUpdateInvoiceModeTypedDict(TypedDict):
-    r"""Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses Stripe's send_invoice collection method."""
+    r"""Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately."""
 
     enabled: bool
-    r"""When true, creates an invoice and sends it to the customer instead of charging their card immediately. Uses Stripe's send_invoice collection method."""
+    r"""When true, creates an invoice and sends it to the customer instead of charging their card immediately."""
     enable_plan_immediately: NotRequired[bool]
     r"""If true, enables the plan immediately even though the invoice is not paid yet."""
     finalize: NotRequired[bool]
@@ -1132,14 +1132,14 @@ class PreviewUpdateInvoiceModeTypedDict(TypedDict):
     invoice_template_id: NotRequired[str]
     r"""ID of an invoice template (configured in billing settings) whose footer (e.g. bank details) is applied to the invoice."""
     net_terms_days: NotRequired[int]
-    r"""Number of days the customer has to pay the invoice before it is due (Stripe days_until_due)."""
+    r"""Number of days the customer has to pay the invoice before it is due."""
 
 
 class PreviewUpdateInvoiceMode(BaseModel):
-    r"""Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses Stripe's send_invoice collection method."""
+    r"""Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately."""
 
     enabled: bool
-    r"""When true, creates an invoice and sends it to the customer instead of charging their card immediately. Uses Stripe's send_invoice collection method."""
+    r"""When true, creates an invoice and sends it to the customer instead of charging their card immediately."""
 
     enable_plan_immediately: Optional[bool] = False
     r"""If true, enables the plan immediately even though the invoice is not paid yet."""
@@ -1151,7 +1151,7 @@ class PreviewUpdateInvoiceMode(BaseModel):
     r"""ID of an invoice template (configured in billing settings) whose footer (e.g. bank details) is applied to the invoice."""
 
     net_terms_days: Optional[int] = None
-    r"""Number of days the customer has to pay the invoice before it is due (Stripe days_until_due)."""
+    r"""Number of days the customer has to pay the invoice before it is due."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -1231,14 +1231,14 @@ class PreviewUpdateRemoveDiscountTypedDict(TypedDict):
     r"""A discount to remove from the subscription. Discounts that are no longer applied are ignored."""
 
     reward_id: str
-    r"""The ID of the reward (or Stripe coupon) to remove."""
+    r"""The ID of the reward to remove."""
 
 
 class PreviewUpdateRemoveDiscount(BaseModel):
     r"""A discount to remove from the subscription. Discounts that are no longer applied are ignored."""
 
     reward_id: str
-    r"""The ID of the reward (or Stripe coupon) to remove."""
+    r"""The ID of the reward to remove."""
 
 
 class PreviewUpdateCustomLineItemTypedDict(TypedDict):
@@ -1365,7 +1365,7 @@ class PreviewUpdateParamsTypedDict(TypedDict):
     customize: NotRequired[PreviewUpdateCustomizeTypedDict]
     r"""Customize the plan to attach. Can override the price, items, licenses, free trial, or a combination."""
     invoice_mode: NotRequired[PreviewUpdateInvoiceModeTypedDict]
-    r"""Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses Stripe's send_invoice collection method."""
+    r"""Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately."""
     proration_behavior: NotRequired[PreviewUpdateProrationBehavior]
     r"""How to handle proration when updating an existing subscription. 'prorate_immediately' charges/credits prorated amounts now, 'none' skips creating any charges."""
     redirect_mode: NotRequired[PreviewUpdateRedirectMode]
@@ -1373,7 +1373,7 @@ class PreviewUpdateParamsTypedDict(TypedDict):
     subscription_id: NotRequired[str]
     r"""A unique ID to identify this subscription. Can be used to target specific subscriptions in update operations when a customer has multiple products with the same plan."""
     discounts: NotRequired[List[PreviewUpdateAttachDiscountTypedDict]]
-    r"""List of discounts to apply. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code."""
+    r"""List of discounts to apply. Each discount can be an Autumn reward ID, coupon ID, or promotion code."""
     remove_discounts: NotRequired[List[PreviewUpdateRemoveDiscountTypedDict]]
     r"""Discounts to remove from the subscription, by reward ID. Discounts not listed are left unchanged."""
     custom_line_items: NotRequired[List[PreviewUpdateCustomLineItemTypedDict]]
@@ -1383,11 +1383,11 @@ class PreviewUpdateParamsTypedDict(TypedDict):
     billing_cycle_anchor: NotRequired[PreviewUpdateBillingCycleAnchorTypedDict]
     r"""Reset the billing cycle immediately with 'now', or schedule a reset at a future Unix timestamp in milliseconds."""
     no_billing_changes: NotRequired[bool]
-    r"""If true, the subscription is updated internally without applying billing changes in Stripe."""
+    r"""If true, the subscription is updated internally without applying billing changes in the processor."""
     refund_last_payment: NotRequired[PreviewUpdateRefundLastPayment]
     r"""Controls how the last payment is refunded on immediate cancellation. 'prorated' refunds the unused portion, 'full' refunds the entire last payment."""
     subscription_params: NotRequired[Dict[str, Any]]
-    r"""Additional parameters to pass into the Stripe subscription update or cancel call."""
+    r"""Additional parameters to pass into the subscription update or cancel call."""
     recalculate_balances: NotRequired[PreviewUpdateRecalculateBalancesTypedDict]
     r"""Controls whether balances should be recalculated during the subscription update."""
     carry_over_usages: NotRequired[PreviewUpdateCarryOverUsagesTypedDict]
@@ -1419,7 +1419,7 @@ class PreviewUpdateParams(BaseModel):
     r"""Customize the plan to attach. Can override the price, items, licenses, free trial, or a combination."""
 
     invoice_mode: Optional[PreviewUpdateInvoiceMode] = None
-    r"""Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses Stripe's send_invoice collection method."""
+    r"""Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately."""
 
     proration_behavior: Optional[PreviewUpdateProrationBehavior] = None
     r"""How to handle proration when updating an existing subscription. 'prorate_immediately' charges/credits prorated amounts now, 'none' skips creating any charges."""
@@ -1431,7 +1431,7 @@ class PreviewUpdateParams(BaseModel):
     r"""A unique ID to identify this subscription. Can be used to target specific subscriptions in update operations when a customer has multiple products with the same plan."""
 
     discounts: Optional[List[PreviewUpdateAttachDiscount]] = None
-    r"""List of discounts to apply. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code."""
+    r"""List of discounts to apply. Each discount can be an Autumn reward ID, coupon ID, or promotion code."""
 
     remove_discounts: Optional[List[PreviewUpdateRemoveDiscount]] = None
     r"""Discounts to remove from the subscription, by reward ID. Discounts not listed are left unchanged."""
@@ -1446,13 +1446,13 @@ class PreviewUpdateParams(BaseModel):
     r"""Reset the billing cycle immediately with 'now', or schedule a reset at a future Unix timestamp in milliseconds."""
 
     no_billing_changes: Optional[bool] = None
-    r"""If true, the subscription is updated internally without applying billing changes in Stripe."""
+    r"""If true, the subscription is updated internally without applying billing changes in the processor."""
 
     refund_last_payment: Optional[PreviewUpdateRefundLastPayment] = None
     r"""Controls how the last payment is refunded on immediate cancellation. 'prorated' refunds the unused portion, 'full' refunds the entire last payment."""
 
     subscription_params: Optional[Dict[str, Any]] = None
-    r"""Additional parameters to pass into the Stripe subscription update or cancel call."""
+    r"""Additional parameters to pass into the subscription update or cancel call."""
 
     recalculate_balances: Optional[PreviewUpdateRecalculateBalances] = None
     r"""Controls whether balances should be recalculated during the subscription update."""
@@ -2036,11 +2036,11 @@ PreviewUpdateStatus = Union[
     ],
     UnrecognizedStr,
 ]
-r"""Calculation status ('complete' when Stripe Tax succeeds or 'incomplete' when Stripe Tax returned 0 or errored)."""
+r"""Calculation status ('complete' when tax calculation succeeds or 'incomplete' when it errored)."""
 
 
 class PreviewUpdateTaxTypedDict(TypedDict):
-    r"""Tax preview for the immediate charge. Contact us to enable the tax flag on your organisation. Shows only with flag enabled, a Stripe customer exists and has a location."""
+    r"""Tax preview for the immediate charge. Contact us to enable the tax flag on your organisation."""
 
     total: float
     r"""Total tax amount in major currency units."""
@@ -2051,11 +2051,11 @@ class PreviewUpdateTaxTypedDict(TypedDict):
     currency: str
     r"""Three-letter currency code."""
     status: PreviewUpdateStatus
-    r"""Calculation status ('complete' when Stripe Tax succeeds or 'incomplete' when Stripe Tax returned 0 or errored)."""
+    r"""Calculation status ('complete' when tax calculation succeeds or 'incomplete' when it errored)."""
 
 
 class PreviewUpdateTax(BaseModel):
-    r"""Tax preview for the immediate charge. Contact us to enable the tax flag on your organisation. Shows only with flag enabled, a Stripe customer exists and has a location."""
+    r"""Tax preview for the immediate charge. Contact us to enable the tax flag on your organisation."""
 
     total: float
     r"""Total tax amount in major currency units."""
@@ -2070,14 +2070,14 @@ class PreviewUpdateTax(BaseModel):
     r"""Three-letter currency code."""
 
     status: PreviewUpdateStatus
-    r"""Calculation status ('complete' when Stripe Tax succeeds or 'incomplete' when Stripe Tax returned 0 or errored)."""
+    r"""Calculation status ('complete' when tax calculation succeeds or 'incomplete' when it errored)."""
 
 
 class PreviewUpdateInvoiceCreditsTypedDict(TypedDict):
-    r"""Stripe customer invoice credits preview."""
+    r"""Customer invoice credits preview."""
 
     balance: float
-    r"""Stripe customer credit balance available, expressed as a positive number in major currency units."""
+    r"""Customer credit balance available, expressed as a positive number in major currency units."""
     currency: str
     r"""Three-letter currency code."""
     applied: NotRequired[float]
@@ -2085,10 +2085,10 @@ class PreviewUpdateInvoiceCreditsTypedDict(TypedDict):
 
 
 class PreviewUpdateInvoiceCredits(BaseModel):
-    r"""Stripe customer invoice credits preview."""
+    r"""Customer invoice credits preview."""
 
     balance: float
-    r"""Stripe customer credit balance available, expressed as a positive number in major currency units."""
+    r"""Customer credit balance available, expressed as a positive number in major currency units."""
 
     currency: str
     r"""Three-letter currency code."""
@@ -2138,9 +2138,9 @@ class PreviewUpdateResponseTypedDict(TypedDict):
     expand: NotRequired[List[str]]
     r"""Expand the response with additional data."""
     tax: NotRequired[PreviewUpdateTaxTypedDict]
-    r"""Tax preview for the immediate charge. Contact us to enable the tax flag on your organisation. Shows only with flag enabled, a Stripe customer exists and has a location."""
+    r"""Tax preview for the immediate charge. Contact us to enable the tax flag on your organisation."""
     invoice_credits: NotRequired[PreviewUpdateInvoiceCreditsTypedDict]
-    r"""Stripe customer invoice credits preview."""
+    r"""Customer invoice credits preview."""
 
 
 class PreviewUpdateResponse(BaseModel):
@@ -2179,10 +2179,10 @@ class PreviewUpdateResponse(BaseModel):
     r"""Expand the response with additional data."""
 
     tax: Optional[PreviewUpdateTax] = None
-    r"""Tax preview for the immediate charge. Contact us to enable the tax flag on your organisation. Shows only with flag enabled, a Stripe customer exists and has a location."""
+    r"""Tax preview for the immediate charge. Contact us to enable the tax flag on your organisation."""
 
     invoice_credits: Optional[PreviewUpdateInvoiceCredits] = None
-    r"""Stripe customer invoice credits preview."""
+    r"""Customer invoice credits preview."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):

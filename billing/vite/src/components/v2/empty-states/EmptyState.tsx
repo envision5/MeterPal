@@ -17,8 +17,7 @@ export const EmptyState = ({
 		| "rewards"
 		| "archived-plans"
 		| "no-customers-found"
-		| "analytics"
-		| "migrations";
+		| "analytics";
 	actionButton?: React.ReactNode;
 }) => {
 	const getEmptyStateContent = () => {
@@ -76,14 +75,6 @@ export const EmptyState = ({
 					description:
 						"Create an API key to authenticate requests to the MeterPal API",
 					svg: apiKeysSvg,
-				};
-			case "migrations":
-				return {
-					title: "Migrations",
-					description:
-						"Define filters and operations to migrate sets of customers in bulk",
-					// Reuses plans illustration for now — replace once we have a dedicated svg.
-					svg: plansSvg,
 				};
 		}
 	};

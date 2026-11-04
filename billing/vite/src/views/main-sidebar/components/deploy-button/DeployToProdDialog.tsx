@@ -11,7 +11,7 @@ import {
 	TooltipTrigger,
 } from "@autumn/ui";
 import { ArrowRightIcon } from "@phosphor-icons/react";
-import { Step1ConnectStripe } from "../../deploy-dialog/Step1ConnectStripe";
+import { Step1ConnectPaypal } from "../../deploy-dialog/Step1ConnectPaypal";
 import { Step2CopyProducts } from "../../deploy-dialog/Step2CopyProducts";
 import { Step3CreateApiKey } from "../../deploy-dialog/Step3CreateApiKey";
 import { useGoToProduction } from "../../deploy-dialog/useDeployActions";
@@ -38,7 +38,7 @@ export const DeployToProdDialog = ({
 				</DialogHeader>
 
 				<div className="flex flex-col gap-10 mt-4 [>&_.atmn-sep]:ml-[32px]">
-					<Step1ConnectStripe isDialogOpen={open} />
+					<Step1ConnectPaypal />
 					<Step2CopyProducts />
 					<Step3CreateApiKey />
 				</div>

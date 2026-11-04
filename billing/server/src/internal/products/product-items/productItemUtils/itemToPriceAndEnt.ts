@@ -27,7 +27,6 @@ import {
 	type ProductItem,
 	pricesAreSame,
 	shouldProrate,
-	stripePriceIdForInitializedPrice,
 	TierInfinite,
 	UsageModel,
 	type UsagePriceConfig,
@@ -84,8 +83,6 @@ const toPrice = ({
 		interval: itemToBillingInterval({ item }) as BillingInterval,
 		interval_count: itemToBillingIntervalCount({ item }),
 
-		stripe_product_id: null,
-		stripe_price_id: undefined,
 		feature_id: null,
 		internal_feature_id: null,
 	};
@@ -114,12 +111,6 @@ const toPrice = ({
 			created_at: Date.now(),
 		};
 	}
-
-	config.stripe_price_id = stripePriceIdForInitializedPrice({
-		requestedStripePriceId: item.stripe_price_id,
-		currentPrice: curPrice,
-		newPrice: price,
-	});
 
 	return { price, ent: null };
 };
@@ -296,7 +287,6 @@ const toFeatureAndPrice = ({
 				})) as UsageTier[]),
 		interval: itemToBillingInterval({ item }) as BillingInterval,
 		interval_count: itemToBillingIntervalCount({ item }),
-		stripe_price_id: undefined,
 	};
 
 	const currencies = buildUsagePriceCurrencies({
@@ -363,11 +353,7 @@ const toFeatureAndPrice = ({
 		(curEnt && !entsAreSame(curEnt, ent));
 
 	if (curPrice && (priceOrEntDifferent || newVersion)) {
-		const newConfig = price.config as UsagePriceConfig;
-		const curConfig = curPrice.config as UsagePriceConfig;
-		newConfig.stripe_meter_id = curConfig.stripe_meter_id;
-		newConfig.stripe_product_id = curConfig.stripe_product_id;
-		price.config = newConfig;
+		price.config = { ...price.config };
 	}
 
 	if (isCustom || newVersion) {
@@ -377,12 +363,6 @@ const toFeatureAndPrice = ({
 			created_at: Date.now(),
 		};
 	}
-
-	config.stripe_price_id = stripePriceIdForInitializedPrice({
-		requestedStripePriceId: item.stripe_price_id,
-		currentPrice: curPrice,
-		newPrice: price,
-	});
 
 	return { price, ent };
 };

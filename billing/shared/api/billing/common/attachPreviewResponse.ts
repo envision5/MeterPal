@@ -13,7 +13,7 @@ export const AttachPreviewResponseSchema = BillingPreviewResponseSchema.extend({
 	}),
 
 	checkout_type: z
-		.enum(["stripe_checkout", "autumn_checkout"])
+		.enum(["processor_checkout", "autumn_checkout"])
 		.nullable()
 		.meta({
 			description:
@@ -22,13 +22,13 @@ export const AttachPreviewResponseSchema = BillingPreviewResponseSchema.extend({
 
 	tax: PreviewTaxSchema.optional().meta({
 		description:
-			"Tax preview for the immediate charge. Contact us to enable the tax flag on your organisation. Shows only with flag enabled, a Stripe customer exists and has a location.",
+			"Tax preview for the immediate charge. Contact us to enable the tax flag on your organisation.",
 	}),
 
 	invoice_credits: PreviewInvoiceCreditsSchema.optional().meta({
-		description: "Stripe customer invoice credits preview.",
+		description: "Customer invoice credits preview.",
 	}),
-	// redirect_type: z.enum(["stripe_checkout", "autumn_checkout", "none"]),
+	// redirect_type: z.enum(["processor_checkout", "autumn_checkout", "none"]),
 });
 
 export const ExtAttachPreviewResponseSchema = AttachPreviewResponseSchema;

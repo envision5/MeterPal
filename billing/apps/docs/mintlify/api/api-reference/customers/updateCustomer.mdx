@@ -37,13 +37,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
   Additional metadata for the customer
 </DynamicParamField>
 
-<DynamicParamField body="stripe_id" type="string | null">
-  Stripe customer ID if you already have one
-</DynamicParamField>
 
-<DynamicParamField body="create_in_stripe" type="boolean">
-  Whether to create the customer in Stripe
-</DynamicParamField>
 
 <DynamicParamField body="auto_enable_plan_id" type="string">
   The ID of the free plan to auto-enable for the customer
@@ -78,9 +72,6 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
   A unique identifier (eg. serial number) to de-duplicate customers across devices or browsers. For example: apple device ID.
 </DynamicResponseField>
 
-<DynamicResponseField name="stripe_id" type="string | null">
-  Stripe customer ID.
-</DynamicResponseField>
 
 <DynamicResponseField name="env" type="'sandbox' | 'live'">
   The environment this customer was created in.
@@ -526,8 +517,8 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
       Array of plan IDs included in this invoice
     </DynamicResponseField>
 
-    <DynamicResponseField name="stripe_id" type="string">
-      The Stripe invoice ID
+    <DynamicResponseField name="processor_invoice_id" type="string">
+      The processor invoice ID
     </DynamicResponseField>
 
     <DynamicResponseField name="status" type="string">
@@ -547,7 +538,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
     </DynamicResponseField>
 
     <DynamicResponseField name="hosted_invoice_url" type="string | null">
-      URL to the Stripe-hosted invoice page
+      URL to the processor-hosted invoice page
     </DynamicResponseField>
 
   </Expandable>
@@ -637,7 +628,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
         </DynamicResponseField>
 
         <DynamicResponseField name="subscription_id" type="string | null">
-          The Stripe subscription ID this discount is applied to
+          The processor subscription ID this discount is applied to
         </DynamicResponseField>
 
         <DynamicResponseField name="total_discount_amount" type="number | null">
@@ -683,7 +674,6 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
   "name": "John Doe",
   "email": "john@example.com",
   "fingerprint": "1234567890",
-  "stripe_id": "cus_123",
   "env": "sandbox",
   "metadata": {},
   "subscriptions": [

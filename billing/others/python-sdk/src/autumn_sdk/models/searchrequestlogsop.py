@@ -118,11 +118,11 @@ class SearchRequestLogsParams(BaseModel):
 SearchRequestLogsSource = Union[
     Literal[
         "api_request",
-        "stripe_webhook",
+        "processor_webhook",
     ],
     UnrecognizedStr,
 ]
-r"""Whether this was an API request or an incoming Stripe webhook."""
+r"""Whether this was an API request or an incoming processor webhook."""
 
 
 class RequestTypedDict(TypedDict):
@@ -216,57 +216,17 @@ class Context(BaseModel):
         return m
 
 
-class SearchRequestLogsStripeTypedDict(TypedDict):
-    r"""Stripe webhook details. Fields are null for API requests."""
-
-    event_id: Nullable[str]
-    r"""Stripe event ID, if this was a Stripe webhook."""
-    event_type: Nullable[str]
-    r"""Stripe event type, such as customer.subscription.updated."""
-    object_id: Nullable[str]
-    r"""ID of the Stripe object the event refers to."""
-
-
-class SearchRequestLogsStripe(BaseModel):
-    r"""Stripe webhook details. Fields are null for API requests."""
-
-    event_id: Nullable[str]
-    r"""Stripe event ID, if this was a Stripe webhook."""
-
-    event_type: Nullable[str]
-    r"""Stripe event type, such as customer.subscription.updated."""
-
-    object_id: Nullable[str]
-    r"""ID of the Stripe object the event refers to."""
-
-    @model_serializer(mode="wrap")
-    def serialize_model(self, handler):
-        serialized = handler(self)
-        m = {}
-
-        for n, f in type(self).model_fields.items():
-            k = f.alias or n
-            val = serialized.get(k, serialized.get(n))
-
-            if val != UNSET_SENTINEL:
-                m[k] = val
-
-        return m
-
-
 class SearchRequestLogsListTypedDict(TypedDict):
     timestamp: str
     r"""When the log was recorded, in ISO 8601 format."""
     source: SearchRequestLogsSource
-    r"""Whether this was an API request or an incoming Stripe webhook."""
+    r"""Whether this was an API request or an incoming processor webhook."""
     status_code: float
     r"""HTTP response status code."""
     request: RequestTypedDict
     r"""HTTP request details."""
     context: ContextTypedDict
     r"""Organization, customer, and user associated with the request."""
-    stripe: SearchRequestLogsStripeTypedDict
-    r"""Stripe webhook details. Fields are null for API requests."""
     request_body: NotRequired[Nullable[Any]]
     r"""Recorded request body, or null if unavailable."""
     response_body: NotRequired[Nullable[Any]]
@@ -278,7 +238,7 @@ class SearchRequestLogsList(BaseModel):
     r"""When the log was recorded, in ISO 8601 format."""
 
     source: SearchRequestLogsSource
-    r"""Whether this was an API request or an incoming Stripe webhook."""
+    r"""Whether this was an API request or an incoming processor webhook."""
 
     status_code: float
     r"""HTTP response status code."""
@@ -288,9 +248,6 @@ class SearchRequestLogsList(BaseModel):
 
     context: Context
     r"""Organization, customer, and user associated with the request."""
-
-    stripe: SearchRequestLogsStripe
-    r"""Stripe webhook details. Fields are null for API requests."""
 
     request_body: OptionalNullable[Any] = UNSET
     r"""Recorded request body, or null if unavailable."""

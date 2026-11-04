@@ -23,7 +23,7 @@ export const handlePreviewUpdateSubscription = createRoute({
 		const ctx = c.get("ctx");
 		const body = c.req.valid("json");
 
-		// PayPal-billed customers: the v2 preview runs the Stripe pipeline, so
+		// PayPal-billed customers: the v2 preview runs the processor pipeline, so
 		// cancels / uncancels get a zero-charge preview here instead.  PayPal
 		// cancels stop future charges immediately and never prorate, and a
 		// reactivation charges nothing.

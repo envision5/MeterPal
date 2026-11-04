@@ -12,8 +12,8 @@ import {
 	invalidateCachedFullSubject,
 } from "@/internal/customers/cache/fullSubject/index.js";
 import { constructRawProduct } from "@/utils/scriptUtils/createTestProducts.js";
-import { initCustomerV3 } from "@/utils/scriptUtils/testUtils/initCustomerV3.js";
-import { initProductsV0 } from "@/utils/scriptUtils/testUtils/initProductsV0.js";
+import { initTestCustomer } from "@tests/utils/testInitUtils/initTestCustomer.js";
+import { initTestProducts } from "@tests/utils/testInitUtils/initTestProducts.js";
 import { constructPrepaidItem } from "../../../../src/utils/scriptUtils/constructItem.js";
 import { timeout } from "../../../utils/genUtils";
 
@@ -63,14 +63,12 @@ describe(`${chalk.yellowBright("track-race-condition2: sync should not wipe out 
 	beforeAll(async () => {
 		await waitForRedisReady(ctx.redisV2, "customer-redis", 5000);
 
-		await initCustomerV3({
+		await initTestCustomer({
 			ctx,
 			customerId,
-			withTestClock: true,
-			attachPm: "success",
 		});
 
-		await initProductsV0({
+		await initTestProducts({
 			ctx,
 			products: [oneOffCredits],
 			prefix: testCase,

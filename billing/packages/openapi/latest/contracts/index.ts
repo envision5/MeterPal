@@ -11,7 +11,6 @@ import {
 } from "./balancesContract.js";
 import {
 	billingAttachContract,
-	billingCreateScheduleContract,
 	billingMultiAttachContract,
 	billingMultiUpdateContract,
 	billingOpenCustomerPortalContract,
@@ -19,9 +18,7 @@ import {
 	billingPreviewMultiAttachContract,
 	billingPreviewMultiUpdateContract,
 	billingPreviewUpdateContract,
-	billingSetupPaymentContract,
 	billingUpdateContract,
-	legacyBillingAdvanceTestClockContract,
 } from "./billingContract.js";
 import {
 	catalogV2DiffContract,
@@ -30,14 +27,12 @@ import {
 	catalogV2UpdateContract,
 } from "./catalogContract.js";
 import {
-	advanceTestClockContract,
 	deleteCustomerContract,
 	getCustomerContract,
 	getOrCreateCustomerContract,
 	listCustomersContract,
 	updateCustomerContract,
 } from "./customersContract.js";
-import { dfuFlashContract } from "./dfuContract.js";
 import {
 	createEntityContract,
 	deleteEntityContract,
@@ -89,13 +84,6 @@ import {
 	updatePlanContract,
 } from "./plansContract.js";
 import {
-	platformDisconnectStripeContract,
-	platformGetRevenueCatKeysContract,
-	platformGetStripeConnectionContract,
-	platformLinkRevenueCatContract,
-	platformSyncRevenueCatContract,
-} from "./platformContract.js";
-import {
 	referralProgramsCreateContract,
 	referralProgramsDeleteContract,
 	referralProgramsGetContract,
@@ -134,7 +122,6 @@ export const v2_3ContractRouter = oc.router({
 	listCustomers: listCustomersContract,
 	updateCustomer: updateCustomerContract,
 	deleteCustomer: deleteCustomerContract,
-	advanceTestClock: advanceTestClockContract,
 
 	// Plans
 	plansCreate: createPlanContract,
@@ -152,8 +139,6 @@ export const v2_3ContractRouter = oc.router({
 
 	// Billing
 	billingAttach: billingAttachContract,
-	billingAdvanceTestClock: legacyBillingAdvanceTestClockContract,
-	billingCreateSchedule: billingCreateScheduleContract,
 	billingMultiAttach: billingMultiAttachContract,
 	billingPreviewAttach: billingPreviewAttachContract,
 	billingPreviewMultiAttach: billingPreviewMultiAttachContract,
@@ -162,10 +147,6 @@ export const v2_3ContractRouter = oc.router({
 	billingMultiUpdate: billingMultiUpdateContract,
 	billingPreviewMultiUpdate: billingPreviewMultiUpdateContract,
 	billingOpenCustomerPortal: billingOpenCustomerPortalContract,
-	billingSetupPayment: billingSetupPaymentContract,
-
-	// DFU (customer imaging / live migration)
-	dfuFlash: dfuFlashContract,
 
 	// Balances
 	balancesCreate: balancesCreateContract,
@@ -220,13 +201,6 @@ export const v2_3ContractRouter = oc.router({
 	rewardsUpdate: rewardsUpdateContract,
 	rewardsDelete: rewardsDeleteContract,
 	rewardsRedeemCode: rewardsRedeemCodeContract,
-
-	// Platform
-	platformGetStripeConnection: platformGetStripeConnectionContract,
-	platformDisconnectStripe: platformDisconnectStripeContract,
-	platformLinkRevenueCat: platformLinkRevenueCatContract,
-	platformSyncRevenueCat: platformSyncRevenueCatContract,
-	platformGetRevenueCatKeys: platformGetRevenueCatKeysContract,
 
 	// Customer Keys (per-customer JWTs)
 	keysMint: keysMintContract,

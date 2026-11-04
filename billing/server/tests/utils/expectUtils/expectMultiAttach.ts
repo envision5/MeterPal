@@ -21,7 +21,6 @@ type CustomerLike =
 
 import { timeout } from "@/utils/genUtils.js";
 import { completeInvoiceCheckoutV2 as completeInvoiceCheckout } from "../browserPool/completeInvoiceCheckoutV2";
-import { completeStripeCheckoutFormV2 as completeStripeCheckoutForm } from "../browserPool/completeStripeCheckoutFormV2";
 
 export const expectMultiAttachCorrect = async ({
 	autumn,
@@ -76,7 +75,6 @@ export const expectMultiAttachCorrect = async ({
 				url: attachRes.checkout_url,
 			});
 		}
-		await completeStripeCheckoutForm({ url: attachRes.checkout_url });
 		await timeout(5000);
 	}
 

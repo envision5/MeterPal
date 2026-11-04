@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { EDGE_CONFIG_OVERRIDE_B64 } from "../constants";
 
-test("TW workers consume webhook replay without enabling unrelated recovery queues", async () => {
+test("TW workers consume the primary queue without enabling unrelated recovery queues", async () => {
 	const child = Bun.spawn(
 		[
 			process.execPath,
@@ -9,7 +9,6 @@ test("TW workers consume webhook replay without enabling unrelated recovery queu
 			`
 		const { isJobQueueEnabled, JOB_QUEUE_IDS } = await import("./src/internal/misc/jobQueues/jobQueueStore.ts");
 		console.log(JSON.stringify({
-			replay: isJobQueueEnabled({ queue: JOB_QUEUE_IDS.stripeWebhookReplay, defaultEnabled: false }),
 			customerRecovery: isJobQueueEnabled({ queue: JOB_QUEUE_IDS.customerCreationRecovery, defaultEnabled: false }),
 			primary: isJobQueueEnabled({ queue: JOB_QUEUE_IDS.primary }),
 		}));
@@ -32,7 +31,6 @@ test("TW workers consume webhook replay without enabling unrelated recovery queu
 	]);
 	expect({ exitCode, stderr }).toEqual({ exitCode: 0, stderr: "" });
 	expect(JSON.parse(stdout.trim())).toEqual({
-		replay: true,
 		customerRecovery: false,
 		primary: true,
 	});

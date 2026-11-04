@@ -6,7 +6,7 @@ First read the `autumn-concepts` knowledge — it defines Autumn's data model �
 
 - Answer "what happened and why" using three sources: current account state (customer, plan, balance lookup tools), the usage-event store (`aggregateEvents` — usage totals, last usage, usage over time), and the request-log interface (`searchRequestLogs`, `queryRequestLogs`).
 - End with a conclusion the user can act on: a timeline of what happened, the cause when the logs show it, and a clear statement of what the logs cannot show when they don't.
-- Logs record API requests and Stripe webhook deliveries — each entry is one request with its payload and response. They do not expose Autumn's internal processing, so conclusions must come from observable requests, responses, and state.
+- Logs record API requests and processor webhook deliveries — each entry is one request with its payload and response. They do not expose Autumn's internal processing, so conclusions must come from observable requests, responses, and state.
 
 ## Workflow
 
@@ -62,9 +62,9 @@ Queryable fields:
 - `timestamp`, `source`, `status_code`
 - `request_method`, `request_url`, `request_path`, `request_body`, `response_body`
 - `org_id`, `customer_id`, `entity_id`
-- `stripe_event_id`, `stripe_event_type`, `stripe_object_id`
+- `processor_event_id`, `processor_event_type`, `processor_object_id`
 
-`source` is `api_request` (paths under `/v1`) or `stripe_webhook` (Stripe webhook deliveries). Filtering `request_body contains '...'` or `response_body contains '...'` matches against the JSON text of the whole payload — useful when the exact field path is unknown.
+`source` is `api_request` (paths under `/v1`) or `processor_webhook` (processor webhook deliveries). Filtering `request_body contains '...'` or `response_body contains '...'` matches against the JSON text of the whole payload — useful when the exact field path is unknown.
 
 Do not reference fields outside this list. If a fact is not in these fields, say the log interface does not expose it.
 
@@ -78,7 +78,7 @@ Frequent mistakes the endpoint rejects:
 ## Rules
 
 - Always pass an explicit `range` — the search default of 30 minutes silently misses almost everything.
-- Prefer structured filters (`customer_id`, `request_path`, `stripe_event_type`, `status_code`) over payload `contains` scans; use `contains` only to discover where a value appears, then switch to a precise filter.
+- Prefer structured filters (`customer_id`, `request_path`, `processor_event_type`, `status_code`) over payload `contains` scans; use `contains` only to discover where a value appears, then switch to a precise filter.
 - One filter change at a time. When a query returns nothing, loosen exactly one constraint (range, then path, then predicate) so you know which one hid the records.
 - Distinguish *no matching records* from *proof of absence*: say which range and filters returned nothing, and offer to widen.
 - Never present an internal-processing guess as a finding. The logs show requests, responses, and webhook deliveries — if the explanation requires Autumn's internal state (background jobs, cache, processing errors), say so and suggest the user contact Autumn support with the customer ID and time window.
@@ -88,12 +88,13 @@ Frequent mistakes the endpoint rejects:
 
 # Billing Investigations
 
-Read this when investigating: unexpected or duplicate charges, plan changes (attach, upgrade, downgrade), cancellations, checkout, trials, invoices, or Autumn/Stripe subscription state drift.
+Read this when investigating: unexpected or duplicate charges, plan changes (attach, upgrade, downgrade), cancellations, checkout, trials, invoices, processor webhook deliveries, or Autumn/processor subscription state drift.
 
 ## Contents
 
 - Billing request paths
 - Payload fields that matter
+- Processor webhook records
 - The plan-change timeline recipe
 - Classifying billing events
 - Scenario recipes: duplicate charge, payment changed, cancel didn't happen, state drift
@@ -107,11 +108,11 @@ Billing activity is on RPC-style dotted routes; older orgs may also have REST-st
 | Attach (new plan, upgrade, downgrade) | `/v1/billing.attach` | `/v1/billing/attach`, `/v1/attach` |
 | Update (cancel, uncancel, quantity, custom terms) | `/v1/billing.update` | — |
 | Multi-attach | `/v1/billing.multi_attach` | — |
-| Setup payment method | `/v1/billing.setup_payment` | `/v1/billing/setup_payment` |
 | Customer portal | `/v1/billing.open_customer_portal` | — |
-| Schedules | `/v1/billing.create_schedule`, `/v1/billing.preview_create_schedule` | — |
 
 Filter with `request_path contains 'billing'` to cover all of them — plus `request_path == '/v1/attach'` for older orgs still on the bare legacy path, which `contains 'billing'` misses. A specific segment like `request_path contains 'billing.attach'` also works.
+
+Processor webhook deliveries are not under `/v1` — they arrive on `/webhooks/paypal/...` and carry `source == 'processor_webhook'`.
 
 ## Payload fields that matter
 
@@ -122,23 +123,64 @@ On billing records, inspect:
 
 Two response signals change how you read an attach:
 
-- `response_body.payment_url` present → the customer was redirected to Stripe Checkout. The attach did **not** execute yet; look for a later `checkout.session.completed` webhook that completed it.
+- `response_body.payment_url` present → the customer was redirected to processor checkout. The attach did **not** execute yet; it completes on the processor side — look for a later `PAYMENT.CAPTURE.COMPLETED` (one-off charge) or `BILLING.SUBSCRIPTION.ACTIVATED` (subscription) webhook. The browser return path (`/paypal/return`) can complete the same attach, and it is not in these logs — its absence is not proof the attach failed.
 - A returned invoice with its status shows whether the charge succeeded immediately, was left draft, or required action.
+
+## Processor webhook records
+
+Processor webhook deliveries are log records with `source == 'processor_webhook'`:
+
+| Field | Meaning |
+|-------|---------|
+| `processor_event_id` | The processor event — one per delivery |
+| `processor_event_type` | e.g. `BILLING.SUBSCRIPTION.UPDATED` |
+| `processor_object_id` | The object the event is about: subscription, capture, sale, or invoice id |
+| `status_code` | Autumn's processing response — `>= 400` means Autumn received the event but failed to process it |
+| `request_body` | The delivered processor event payload |
+
+### Event types and what they imply
+
+| Event | Implication for the customer |
+|-------|------------------------------|
+| `BILLING.SUBSCRIPTION.CREATED` / `BILLING.SUBSCRIPTION.ACTIVATED` / `BILLING.SUBSCRIPTION.RE-ACTIVATED` | New subscription started at the processor; a pending plan attach executed here |
+| `BILLING.SUBSCRIPTION.UPDATED` | Subscription changed at the processor — Autumn re-activates and re-links it, so plan access is (re)granted |
+| `BILLING.SUBSCRIPTION.SUSPENDED` | Subscription suspended — a failed payment exhausted the processor's retries; access ends |
+| `BILLING.SUBSCRIPTION.PAYMENT.FAILED` | A payment on the processor subscription failed — the customer is in a grace state while the processor retries |
+| `BILLING.SUBSCRIPTION.CANCELLED` / `BILLING.SUBSCRIPTION.EXPIRED` | Subscription fully ended — plan access ends |
+| `PAYMENT.CAPTURE.COMPLETED` | One-off payment succeeded |
+| `PAYMENT.SALE.COMPLETED` | Recurring subscription payment succeeded |
+| `PAYMENT.CAPTURE.REFUNDED` / `PAYMENT.SALE.REFUNDED` | Payment refunded |
+| `PAYMENT.CAPTURE.REVERSED` / `PAYMENT.SALE.REVERSED` | Payment reversed — the funds movement is negative |
+| `INVOICING.INVOICE.PAID` | Overage invoice paid |
+| `CUSTOMER.DISPUTE.CREATED` / `CUSTOMER.DISPUTE.UPDATED` / `CUSTOMER.DISPUTE.RESOLVED` | Chargeback opened, updated, or resolved — the funds reversal arrives separately as a reversed payment event |
+| `CHECKOUT.ORDER.APPROVED` | Customer approved the checkout order — an early signal only; the money event is `PAYMENT.CAPTURE.COMPLETED` |
+
+Only these event types are subscribed to, so anything else is never delivered to Autumn.
+
+### Delivery vs processing
+
+These logs record deliveries that **reached Autumn**. Three distinct failure surfaces:
+
+1. **Delivered and processed** — record with status 200. Normal.
+2. **Delivered, processing failed** — record with `status_code >= 400`. Autumn's handling failed; report the event id, type, and time, and escalate to Autumn support.
+3. **Never delivered** — no record at all. If an expected event is absent over the right range, the failure is upstream of Autumn: the user should check webhook delivery attempts in their processor dashboard.
+
+Say which of the three the evidence shows; they have different owners.
 
 ## Plan-change timeline recipe
 
-Build the timeline from both API-initiated changes and Stripe-side events, oldest first:
+Build the timeline from both API-initiated changes and processor-side events, oldest first:
 
 Pass A — find when billing activity happened:
 
 ```
-where customer_id == 'cus_123' and (request_path contains 'billing' or source == 'stripe_webhook') | summarize events = count(), failed = countif(status_code >= 400) by bin(timestamp, 1d) | order by timestamp asc
+where customer_id == 'cus_123' and (request_path contains 'billing' or source == 'processor_webhook') | summarize events = count(), failed = countif(status_code >= 400) by bin(timestamp, 1d) | order by timestamp asc
 ```
 
 Pass B — list the events in the active window(s):
 
 ```
-where customer_id == 'cus_123' and (request_path contains 'billing' or source == 'stripe_webhook') | order by timestamp asc | limit 100
+where customer_id == 'cus_123' and (request_path contains 'billing' or source == 'processor_webhook') | order by timestamp asc | limit 100
 ```
 
 ## Classifying billing events
@@ -146,15 +188,17 @@ where customer_id == 'cus_123' and (request_path contains 'billing' or source ==
 | Record | Meaning |
 |--------|---------|
 | `billing.attach`, status 200, no `payment_url` | Plan change executed via API (new plan, upgrade, or downgrade) |
-| `billing.attach`, status 200, with `payment_url` | Redirected to checkout — not executed; match with a later `checkout.session.completed` |
+| `billing.attach`, status 200, with `payment_url` | Redirected to checkout — not executed; match with a later `PAYMENT.CAPTURE.COMPLETED` or `BILLING.SUBSCRIPTION.ACTIVATED` |
 | `billing.update`, status 200 | Cancel/uncancel, quantity change, or custom-terms change — read `request_body` for intent |
-| `stripe_event_type == 'checkout.session.completed'` | Checkout finished; a deferred attach executed here |
-| `stripe_event_type == 'customer.subscription.updated'` | Renewal, payment failure/recovery, scheduled phase change, or cancel-at-period-end |
-| `stripe_event_type == 'customer.subscription.deleted'` | Subscription fully ended |
-| `stripe_event_type startswith 'invoice.'` | Invoice lifecycle — creation, finalization, payment |
+| `processor_event_type == 'BILLING.SUBSCRIPTION.ACTIVATED'` | Subscription went active — a pending attach executed here |
+| `processor_event_type == 'BILLING.SUBSCRIPTION.UPDATED'` | Subscription changed at the processor — Autumn re-activates it, so plan access is (re)granted |
+| `processor_event_type == 'BILLING.SUBSCRIPTION.SUSPENDED'` | Subscription suspended — a failed payment exhausted the processor's retries; access ends |
+| `processor_event_type == 'BILLING.SUBSCRIPTION.CANCELLED'` or `'BILLING.SUBSCRIPTION.EXPIRED'` | Subscription fully ended |
+| `processor_event_type == 'PAYMENT.CAPTURE.COMPLETED'` or `'PAYMENT.SALE.COMPLETED'` | Payment succeeded |
+| `processor_event_type == 'INVOICING.INVOICE.PAID'` | Overage invoice paid |
 | Billing call with `status_code >= 400` | Failed action — read `response_body` for the error; 402 means payment required/failed |
 
-Changes made directly in the Stripe dashboard or billing portal never appear as Autumn API calls — only as the webhook deliveries they trigger. A timeline with subscription webhooks but no billing API calls means the change originated on the Stripe side.
+Changes made directly in the processor dashboard or billing portal never appear as Autumn API calls — only as the webhook deliveries they trigger. A timeline with subscription webhooks but no billing API calls means the change originated on the processor side.
 
 ## Scenario recipes
 
@@ -163,30 +207,30 @@ Changes made directly in the Stripe dashboard or billing portal never appear as 
 1. List billing calls and invoice webhooks around the charge time:
 
 ```
-where customer_id == 'cus_123' and (request_path contains 'billing' or stripe_event_type startswith 'invoice.') | order by timestamp asc | limit 100
+where customer_id == 'cus_123' and (request_path contains 'billing' or processor_event_type startswith 'PAYMENT.') | order by timestamp asc | limit 100
 ```
 
 2. Repeated `billing.attach` calls with near-identical `request_body` close together suggest client-side retries; compare their `response_body` invoice ids to see which created charges.
-3. Multiple `invoice.paid` webhooks for different invoice ids on the same day are separate charges — trace each `stripe_object_id` to what created it.
+3. Multiple `PAYMENT.CAPTURE.COMPLETED` (or `PAYMENT.SALE.COMPLETED`) webhooks for different invoice ids on the same day are separate charges — trace each `processor_object_id` to what created it.
 
 ### "Why did their payment change this month?"
 
 1. Run the plan-change timeline over the current and previous cycle.
-2. Look for: an attach/update with different plan or quantities, a `checkout.session.completed`, a scheduled phase change in `customer.subscription.updated`, or a trial ending.
+2. Look for: an attach/update with different plan or quantities, a `PAYMENT.CAPTURE.COMPLETED`, a `BILLING.SUBSCRIPTION.UPDATED` (a scheduled change at the processor), or a trial ending.
 3. Compare `request_body.feature_quantities` and `customize` across attaches — custom terms and quantity changes are the usual silent causes.
 
 ### "They canceled but are still active" (or the reverse)
 
-1. Find the cancel: `billing.update` with a cancel intent in `request_body`, or a portal cancellation arriving as `customer.subscription.updated`.
+1. Find the cancel: `billing.update` with a cancel intent in `request_body`, or a portal cancellation arriving as `BILLING.SUBSCRIPTION.CANCELLED`.
 2. Cancel-at-period-end keeps the subscription active until the cycle ends — check current state for a scheduled cancelation before treating it as a bug.
 3. If a `billing.update` cancel returned an error status, that is the cause — report the response error.
 
-### "Autumn and Stripe are out of sync"
+### "Autumn and the processor are out of sync"
 
 1. Fetch current Autumn state (`getCustomer`) and note the subscription/plan it shows.
-2. Build the webhook timeline for the customer (see the Stripe webhooks reference). Find the last event that should have produced the expected state.
+2. Build the webhook timeline for the customer (see Processor webhook records). Find the last event that should have produced the expected state.
 3. If that event's delivery shows `status_code >= 400`, Autumn received but failed to process it — report the failing delivery with its timestamp and event id, and escalate to Autumn support.
-4. If the expected event never appears, Stripe may not have delivered it — the user should check the webhook attempts in their Stripe dashboard.
+4. If the expected event never appears, the processor may not have delivered it — the user should check the webhook delivery attempts in their processor dashboard.
 
 # Balance and Usage Investigations
 
@@ -285,7 +329,7 @@ where customer_id == 'cus_123' and request_path contains 'track' | project times
 where customer_id == 'cus_123' and (request_path contains 'balances.check' or request_path contains 'check') | order by timestamp asc | limit 100
 ```
 
-2. If `remaining` never returned to `granted` after `next_reset_at` passed, the reset observably did not apply — correlate with the renewal webhook (`customer.subscription.updated` / `invoice.paid`) around the boundary.
+2. If `remaining` never returned to `granted` after `next_reset_at` passed, the reset observably did not apply — correlate with the renewal webhook (`BILLING.SUBSCRIPTION.UPDATED` / `PAYMENT.SALE.COMPLETED`) around the boundary.
 3. Resets are internal processing: the logs can show *that* balances didn't reset, not *why*. If state confirms it, report the evidence (timestamps, before/after balances) and escalate to Autumn support.
 
 ### Balance timeline
@@ -305,96 +349,6 @@ where customer_id == 'cus_123' and request_path contains 'track' | project times
 ### "Their rollovers disappeared"
 
 Compare `response_body.balance.rollovers` and `breakdown` across checks over time. Rollover drops usually coincide with a plan change — cross-reference the billing timeline reference for attaches or subscription updates at the same timestamp.
-
-# Stripe Webhook Investigations
-
-Read this when investigating: subscription lifecycle (created, updated, deleted, past_due), invoice payment or failure, checkout completion, schedule changes, or building a customer timeline from Stripe's perspective.
-
-## Contents
-
-- Webhook records and fields
-- Event types and what they imply
-- Delivery vs processing
-- Scenario recipes: past_due, object timeline, missing webhook, full customer timeline
-
-## Webhook records and fields
-
-Stripe webhook deliveries are log records with `source == 'stripe_webhook'`:
-
-| Field | Meaning |
-|-------|---------|
-| `stripe_event_id` | The Stripe event (`evt_...`) — one per delivery |
-| `stripe_event_type` | e.g. `customer.subscription.updated` |
-| `stripe_object_id` | The object the event is about: subscription (`sub_...`), invoice (`in_...`), checkout session (`cs_...`), or schedule id |
-| `status_code` | Autumn's processing response — `>= 400` means Autumn received the event but failed to process it |
-| `request_body` | The delivered Stripe event payload |
-
-## Event types and what they imply
-
-| Event | Implication for the customer |
-|-------|------------------------------|
-| `customer.subscription.created` | New subscription started in Stripe |
-| `customer.subscription.updated` | Status change: renewal, payment failure (`past_due`), recovery, cancel-at-period-end, or a scheduled phase activating |
-| `customer.subscription.deleted` | Subscription fully canceled or expired — plan access ends |
-| `invoice.created` / `invoice.finalized` | Upcoming charge being prepared (renewal or proration) |
-| `invoice.paid` | Payment succeeded |
-| `invoice.updated` | Invoice status or metadata changed — includes payment failures surfacing |
-| `checkout.session.completed` | Customer finished Stripe Checkout; a pending plan attach executed here |
-| `subscription_schedule.canceled` | A scheduled plan change was called off |
-| `customer.discount.deleted` | A discount was removed |
-
-Other event types are accepted with a 200 and have no effect.
-
-## Delivery vs processing
-
-These logs record deliveries that **reached Autumn**. Three distinct failure surfaces:
-
-1. **Delivered and processed** — record with status 200. Normal.
-2. **Delivered, processing failed** — record with `status_code >= 400`. Autumn's handling failed; report the event id, type, and time, and escalate to Autumn support.
-3. **Never delivered** — no record at all. If an expected event is absent over the right range, the failure is upstream of Autumn: the user should check webhook attempts in their Stripe dashboard.
-
-Say which of the three the evidence shows; they have different owners.
-
-## Scenario recipes
-
-### "Why did this subscription go past_due?"
-
-Stripe fires invoice events before flipping subscription status. Pull both around the transition:
-
-```
-where customer_id == 'cus_123' and source == 'stripe_webhook' and (stripe_event_type startswith 'invoice.' or stripe_event_type startswith 'customer.subscription.') | order by timestamp asc | limit 100
-```
-
-An `invoice.created` / `invoice.finalized` without a following `invoice.paid`, then a `customer.subscription.updated`, is the payment-failure signature. The invoice payload in `request_body` carries the amount and attempt details.
-
-### Timeline for one Stripe object
-
-Everything that happened to a specific subscription, invoice, or checkout session:
-
-```
-where stripe_object_id == 'sub_123' | order by timestamp asc | limit 100
-```
-
-### "Autumn never reacted to something that happened in Stripe"
-
-1. Establish the expected event type and rough time from what the user describes.
-2. Check whether it arrived:
-
-```
-where customer_id == 'cus_123' and source == 'stripe_webhook' | summarize deliveries = count(), failed = countif(status_code >= 400) by stripe_event_type | order by deliveries desc | limit 20
-```
-
-3. Present: arrived and processed / arrived but failed processing / never arrived — with next steps per the Delivery vs processing section.
-
-### Full customer timeline (API + webhooks)
-
-The complete "what happened to this customer" view — every API call and webhook delivery in one ordered list:
-
-```
-where customer_id == 'cus_123' | order by timestamp asc | limit 100
-```
-
-Use `source` on each row to distinguish the customer's own API activity from Stripe-side events. Run Pass A first (`summarize ... by bin(timestamp, 1d)`) when the period of interest is longer than a search window.
 
 ## Analytics
 

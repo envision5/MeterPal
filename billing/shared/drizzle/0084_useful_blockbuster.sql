@@ -1,1 +1,0 @@
-ALTER TABLE "chat_installations" ADD COLUMN "reply_mode" text DEFAULT 'all_messages' NOT NULL;

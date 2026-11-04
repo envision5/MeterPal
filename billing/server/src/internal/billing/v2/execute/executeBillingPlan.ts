@@ -2,61 +2,36 @@ import type {
 	BillingContext,
 	BillingPlan,
 	BillingResult,
-	StripeBillingPlanResult,
+	ProcessorBillingResult,
 } from "@autumn/shared";
 import { checkoutSessionLock } from "@/external/redis/actions/checkoutSessionLock/checkoutSessionLock.js";
 import type { AutumnContext } from "@/honoUtils/HonoEnv";
 import { executeAutumnBillingPlan } from "@/internal/billing/v2/execute/executeAutumnBillingPlan";
-import { insertPendingCustomerProducts } from "@/internal/billing/v2/execute/pendingCustomerProducts/insertPendingCustomerProducts";
-import { executeStripeBillingPlan } from "@/internal/billing/v2/providers/stripe/execute/executeStripeBillingPlan";
 import { sendBillingUpdatedWebhook } from "@/internal/billing/v2/workflows/sendBillingUpdatedWebhook/sendBillingUpdatedWebhook";
 import { billingPlanToSendProductsUpdated } from "@/internal/billing/v2/workflows/sendProductsUpdated/billingPlanToSendProductsUpdated";
-import { workflows } from "@/queue/workflows";
 
+/**
+ * Executes a billing plan. PayPal checkouts are branched out earlier in the
+ * actions (they return a ProcessorBillingResult directly); this runs the
+ * DB-only autumn stage, with an optional deferred processor checkout result
+ * attached by the caller.
+ */
 export const executeBillingPlan = async ({
 	ctx,
 	billingContext,
 	billingPlan,
+	processorResult,
 	checkoutLockParamsHash,
 }: {
 	ctx: AutumnContext;
 	billingContext: BillingContext;
 	billingPlan: BillingPlan;
+	/** Processor-side result (e.g. a PayPal checkout the customer must approve). */
+	processorResult?: ProcessorBillingResult;
 	checkoutLockParamsHash?: string;
 }): Promise<BillingResult> => {
-	const stripeBillingResult: StripeBillingPlanResult =
-		billingContext.skipBillingChanges
-			? {}
-			: await executeStripeBillingPlan({
-					ctx,
-					billingPlan,
-					billingContext,
-				});
-
-	if (stripeBillingResult.deferred) {
-		// Store line items even when deferred — invoice already exists in DB
-		if (
-			stripeBillingResult.autumnInvoice &&
-			stripeBillingResult.stripeInvoice
-		) {
-			await workflows.triggerStoreInvoiceLineItems({
-				orgId: ctx.org.id,
-				env: ctx.env,
-				stripeInvoiceId: stripeBillingResult.stripeInvoice.id,
-				autumnInvoiceId: stripeBillingResult.autumnInvoice.id,
-				billingLineItems: billingPlan.autumn.lineItems,
-			});
-		}
-
-		if (stripeBillingResult.deferredMetadataId) {
-			await insertPendingCustomerProducts({
-				ctx,
-				autumnBillingPlan: billingPlan.autumn,
-				metadataId: stripeBillingResult.deferredMetadataId,
-			});
-		}
-
-		if (checkoutLockParamsHash && stripeBillingResult.stripeCheckoutSession) {
+	if (processorResult?.deferred) {
+		if (checkoutLockParamsHash && processorResult.checkoutId) {
 			await checkoutSessionLock.set({
 				ctx,
 				customerId:
@@ -64,28 +39,21 @@ export const executeBillingPlan = async ({
 					billingContext.fullCustomer.internal_id,
 				data: {
 					paramsHash: checkoutLockParamsHash,
-					checkoutSessionUrl:
-						stripeBillingResult.stripeCheckoutSession.url ?? "",
-					checkoutSessionId: stripeBillingResult.stripeCheckoutSession.id ?? "",
-					expiresAt:
-						"expires_at" in stripeBillingResult.stripeCheckoutSession
-							? stripeBillingResult.stripeCheckoutSession.expires_at * 1000
-							: undefined,
+					checkoutSessionUrl: processorResult.checkoutUrl ?? "",
+					checkoutSessionId: processorResult.checkoutId,
 				},
 			});
 		}
 
 		return {
-			stripe: stripeBillingResult,
+			processor: processorResult,
 		};
 	}
 
 	await executeAutumnBillingPlan({
 		ctx,
 		autumnBillingPlan: billingPlan.autumn,
-		stripeInvoice: stripeBillingResult.stripeInvoice,
-		stripeInvoiceItems: stripeBillingResult.stripeInvoiceItems,
-		autumnInvoice: stripeBillingResult.autumnInvoice,
+		autumnInvoice: processorResult?.autumnInvoice,
 	});
 
 	// Queue webhooks after Autumn billing plan is executed
@@ -102,5 +70,5 @@ export const executeBillingPlan = async ({
 		originalFullCustomer: billingContext.fullCustomer,
 	});
 
-	return { stripe: stripeBillingResult };
+	return { processor: processorResult };
 };

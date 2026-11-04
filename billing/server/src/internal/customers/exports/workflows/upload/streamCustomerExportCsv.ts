@@ -1,4 +1,5 @@
 import type { DbCustomerExport } from "@autumn/shared";
+import { ErrCode, RecaseError } from "@autumn/shared";
 import type { CustomerExportDestination } from "@/external/aws/s3/customerExportsS3Config.js";
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
 import type { CustomerExportPopulation } from "../../queries/getCustomerExportScalars.js";
@@ -22,8 +23,15 @@ export const streamCustomerExportCsv = async ({
 	onCustomersProcessed?: (customerCount: number) => Promise<void> | void;
 }): Promise<{ rowCount: number; byteCount: number }> => {
 	const { kind, fields, snapshot } = customerExport;
-	const { createRowStream, createStringifier } =
-		CUSTOMER_EXPORT_PRODUCERS[kind];
+	const producer = CUSTOMER_EXPORT_PRODUCERS[kind];
+	if (!producer) {
+		throw new RecaseError({
+			message: `Unsupported customer export kind: ${kind}`,
+			code: ErrCode.InvalidRequest,
+			statusCode: 400,
+		});
+	}
+	const { createRowStream, createStringifier } = producer;
 	let rowCount = 0;
 
 	const rows = createRowStream({

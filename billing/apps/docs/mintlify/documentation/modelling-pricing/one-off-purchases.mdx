@@ -65,12 +65,12 @@ Preview with `atmn push`, then apply with `atmn push --yes`.
 
 When a customer purchases a one-off plan:
 
-- MeterPal creates a Stripe invoice (not a subscription) and charges it immediately
+- MeterPal creates a processor invoice (not a subscription) and charges it immediately
 - The feature balance is provisioned with the purchased quantity
 - The balance has a `one_off` interval — it never resets or expires
 
 <Note>
-One-off purchases don't create Stripe subscriptions. They generate a one-time invoice instead.
+One-off purchases don't create processor subscriptions. They generate a one-time invoice instead.
 </Note>
 
 ## Purchasing a one-off plan
@@ -129,7 +129,7 @@ curl -X POST "https://api.useautumn.com/v1/checkout" \
 
 A subscription plan can include both recurring and one-off prices. When it does, MeterPal splits them at checkout:
 
-- **Recurring prices** bill every cycle as part of the Stripe subscription
+- **Recurring prices** bill every cycle as part of the processor subscription
 - **One-off prices** are charged once on the first invoice only
 
 This is useful for setup fees, one-time credit grants, or any charge that should happen once when the customer subscribes.

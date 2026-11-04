@@ -160,18 +160,6 @@ export const planItemV0ToProductItem = ({
 
 	const resetUsageWhenEnabled = featureUtils.isConsumable(feature);
 
-	// One stated id, two slots: prepaid bills from v2, everything else from v1.
-	// Presence is the signal: an omitted `stripe` states nothing and leaves the
-	// current mapping alone, while an explicit null unlinks it.
-	const statedStripe = planItem.price?.processors?.stripe;
-	const statedStripePriceId =
-		statedStripe === undefined ? undefined : (statedStripe?.price_id ?? null);
-	const billsFromPrepaidSlot =
-		planItem.price?.usage_model === UsageModel.Prepaid;
-	const statedForV1Slot = billsFromPrepaidSlot
-		? undefined
-		: statedStripePriceId;
-
 	return ProductItemSchema.parse({
 		type,
 
@@ -191,13 +179,6 @@ export const planItemV0ToProductItem = ({
 		price_interval_count: priceIntervalCount,
 
 		price: planItem.price?.amount,
-		stripe_price_id:
-			statedForV1Slot === undefined
-				? planItem.price?.stripe_price_id
-				: statedForV1Slot,
-		stripe_prepaid_price_v2_id: billsFromPrepaidSlot
-			? statedStripePriceId
-			: undefined,
 
 		tiers: planItem.price?.tiers?.map((tier) => ({
 			amount: tier.amount,

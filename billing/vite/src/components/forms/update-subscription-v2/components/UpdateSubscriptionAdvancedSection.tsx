@@ -94,7 +94,7 @@ export function UpdateSubscriptionAdvancedSection() {
 					/>
 					<ConfigRow
 						title="No Billing Changes"
-						description="Update subscription state without applying Stripe billing changes"
+						description="Update subscription state without applying billing changes"
 						action={
 							<Switch
 								checked={noBillingChanges}

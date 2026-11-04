@@ -3,14 +3,11 @@ import {
 	BillingInterval,
 	BillingType,
 	type FullCusProduct,
-	OnDecrease,
-	OnIncrease,
 	type Price,
 	type UsagePriceConfig,
 } from "@autumn/shared";
 import { notNullish } from "@server/utils/genUtils";
 import { Decimal } from "decimal.js";
-import type Stripe from "stripe";
 import { getBillingType } from "../../priceUtils";
 
 export const isArrearPrice = ({ price }: { price?: Price }) => {
@@ -53,37 +50,6 @@ export const isV4Usage = ({
 		(cusProduct.api_semver === ApiVersion.V1_Beta ||
 			notNullish(cusProduct.internal_entity_id))
 	);
-};
-
-// export const
-const onIncreaseToStripeProration = ({
-	onIncrease,
-}: {
-	onIncrease: OnIncrease;
-}) => {
-	let behavior = "none";
-	if (onIncrease === OnIncrease.ProrateImmediately) {
-		behavior = "always_invoice";
-	} else if (onIncrease === OnIncrease.ProrateNextCycle) {
-		behavior = "create_prorations";
-	}
-
-	return behavior as Stripe.SubscriptionItemUpdateParams.ProrationBehavior;
-};
-
-const onDecreaseToStripeProration = ({
-	onDecrease,
-}: {
-	onDecrease: OnDecrease;
-}) => {
-	let behavior = "none";
-	if (onDecrease === OnDecrease.ProrateImmediately) {
-		behavior = "always_invoice";
-	} else if (onDecrease === OnDecrease.ProrateNextCycle) {
-		behavior = "create_prorations";
-	}
-
-	return behavior as Stripe.SubscriptionItemUpdateParams.ProrationBehavior;
 };
 
 export const roundUsage = ({

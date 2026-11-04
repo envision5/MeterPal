@@ -24,14 +24,14 @@ export const getCusProductHoverTexts = (cusProduct: FullCusProduct) => {
 		},
 		...(cusProduct.subscription_ids
 			? cusProduct.subscription_ids.map((id: string) => ({
-					key: "Stripe Subscription ID",
+					key: "Subscription ID",
 					value: id,
 				}))
 			: []),
 		...(cusProduct.scheduled_ids
 			? [
 					{
-						key: "Stripe Scheduled IDs",
+						key: "Scheduled IDs",
 						value: cusProduct.scheduled_ids.join(", "),
 					},
 				]
@@ -222,27 +222,6 @@ export const getProductItemHoverTexts = ({
 		? { key: "Entitlement ID", value: item.entitlement_id }
 		: undefined,
 	item?.price_id ? { key: "Price ID", value: item.price_id } : undefined,
-	item?.price_config?.stripe_price_id
-		? { key: "Stripe Price ID", value: item.price_config.stripe_price_id }
-		: undefined,
-	item?.price_config?.stripe_empty_price_id
-		? {
-				key: "Stripe Empty Price ID",
-				value: item.price_config.stripe_empty_price_id,
-			}
-		: undefined,
-	item?.price_config?.stripe_product_id
-		? {
-				key: "Stripe Product ID",
-				value: item.price_config.stripe_product_id,
-			}
-		: undefined,
-	item?.price_config?.stripe_prepaid_price_v2_id
-		? {
-				key: "Stripe Prepaid Price V2 ID",
-				value: item.price_config.stripe_prepaid_price_v2_id,
-			}
-		: undefined,
 ];
 
 export const getPlanHoverTexts = ({ plan }: { plan: Product | ProductV2 }) => {
@@ -270,8 +249,8 @@ export const getInvoiceHoverTexts = ({ invoice }: { invoice: Invoice }) => {
 			value: invoice.id,
 		},
 		{
-			key: "Stripe ID",
-			value: invoice.stripe_id,
+			key: "Processor ID",
+			value: invoice.processor_invoice_id,
 		},
 	];
 

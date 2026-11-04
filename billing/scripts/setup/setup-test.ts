@@ -7,7 +7,6 @@ import { PROJECT_ROOT } from "../dw/constants.js";
 import { mergeEnvFile } from "../dw/helpers/env-files.js";
 import {
 	createTestOrg,
-	ensureTestOrgStripeAccount,
 	TEST_ORG_CONFIG,
 	TEST_ORG_PUBLISHABLE_KEY,
 } from "../setupTestUtils/createTestOrg.js";
@@ -147,7 +146,6 @@ async function runEnsure(): Promise<void> {
 		await runFullSetup({ yes: true });
 		return;
 	}
-	await ensureTestOrgStripeAccount({ org: existing });
 	await runEnsureKey();
 }
 

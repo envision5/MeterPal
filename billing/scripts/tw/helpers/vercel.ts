@@ -193,7 +193,7 @@ export const forkWorker = async (opts: ForkWorkerOptions): Promise<Sandbox> => {
 
 /**
  * Resolve the per-port public HTTPS URL for a sandbox (plan §6a / §10): the
- * inbound Stripe webhook target. The port must have been declared in `ports`
+ * worker's public entry point. The port must have been declared in `ports`
  * at create/fork time or `domain()` throws.
  */
 export const getPublicUrl = (
@@ -204,7 +204,7 @@ export const getPublicUrl = (
 /**
  * The `@vercel/sandbox` stream-error code raised when a sandbox's command log
  * stream is closed out from under a still-iterating reader — exactly what
- * happens when teardown deletes a sandbox while its detached boot/ingress logs
+ * happens when teardown deletes a sandbox while its detached boot logs
  * are still streaming. It is a benign end-of-stream, NOT a command failure.
  */
 const SANDBOX_STREAM_CLOSED_CODE = "sandbox_stream_closed";
@@ -226,7 +226,7 @@ export const isSandboxStreamClosed = (error: unknown): boolean => {
 	// Vercel's `cmd.logs()` paginator occasionally fails to decompress a log
 	// chunk (`BrotliDecompressionError`) — a transient hiccup on the LOG fetch,
 	// not the command itself. Treat it like a closed stream so the opted-in
-	// forward streams (boot/warmup/ingress) swallow it instead of spewing it.
+	// forward streams (boot/warmup) swallow it instead of spewing it.
 	if (code === "BrotliDecompressionError") {
 		return true;
 	}
@@ -482,8 +482,8 @@ const isAlreadyGone = (error: unknown): boolean => {
 // Provider adapter — conforms the wrappers above to the `ProviderImpl` seam
 // (helpers/provider.ts) so the orchestrator can swap Vercel ↔ Modal. The
 // `ProviderSandbox.handle` is the `@vercel/sandbox` `Sandbox`; this layer only
-// wraps/unwraps it and routes the two direct-SDK spots (ingress create, detached
-// boot) through the same surface.
+// wraps/unwraps it and routes the direct-SDK spot (detached boot) through the
+// same surface.
 // ---------------------------------------------------------------------------
 const wrap = (s: Sandbox): ProviderSandbox => ({ name: s.name, handle: s });
 const unwrap = (s: ProviderSandbox): Sandbox => s.handle as Sandbox;
@@ -526,25 +526,8 @@ export const vercelProvider: ProviderImpl = {
 	listSandboxesByOwner,
 	isSandboxStreamClosed,
 
-	// The ingress sandbox: a fresh node24 sandbox (no build-base), persistent:false.
-	createIngressSandbox: async (o: CreateSandboxOptions) =>
-		wrap(
-			await Sandbox.create({
-				name: o.name,
-				runtime: VERCEL_RUNTIME,
-				source: gitSourceOf(o.source),
-				ports: o.ports ?? [SERVER_PORT],
-				timeout: o.timeout ?? WORKER_TIMEOUT_MS,
-				resources: { vcpus: o.vcpus ?? 1 },
-				tags: o.tags,
-				env: o.env,
-				persistent: false,
-				signal: o.signal,
-			}),
-		),
-
-	// Detached long-lived command (worker boot / ingress server): start it and
-	// return a handle whose wait() resolves on exit. Output streams to onChunk.
+	// Detached long-lived command (worker boot): start it and return a handle
+	// whose wait() resolves on exit. Output streams to onChunk.
 	runDetached: async (
 		s: ProviderSandbox,
 		argv: string[],

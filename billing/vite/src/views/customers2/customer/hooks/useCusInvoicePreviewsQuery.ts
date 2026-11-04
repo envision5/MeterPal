@@ -6,8 +6,8 @@ import { useAxiosInstance } from "@/services/useAxiosInstance";
 const INVOICE_PREVIEWS_STALE_TIME = 5 * 60 * 1000;
 
 /**
- * Upcoming invoice per Stripe subscription. Kept out of the customer-object
- * prefetch because it hits Stripe once per subscription — fetch it only when
+ * Upcoming invoice per subscription. Kept out of the customer-object
+ * prefetch because it hits the processor once per subscription — fetch it only when
  * something is about to render it.
  */
 export function useCusInvoicePreviewsQuery({

@@ -1,0 +1,6537 @@
+{
+  "generatedAt": "2026-11-04",
+  "totalRoutes": 381,
+  "totalRoutesNeedingScopes": 325,
+  "totalPlainRoutes": 56,
+  "totalWebhookExempt": 4,
+  "totalOrphans": 0,
+  "totalErrorFiles": 0,
+  "routes": [
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "GET",
+      "path": "/",
+      "style": "REST",
+      "group": "/",
+      "mountChain": [
+        "/"
+      ],
+      "sourceRouterFile": "src/initHono.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "ALL",
+      "path": "/.well-known/*",
+      "style": "RPC",
+      "group": ".well-known",
+      "mountChain": [
+        "/.well-known/*"
+      ],
+      "sourceRouterFile": "src/initHono.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "GET",
+      "path": "/.well-known/oauth-authorization-server",
+      "style": "RPC",
+      "group": ".well-known",
+      "mountChain": [
+        "",
+        "/.well-known/oauth-authorization-server"
+      ],
+      "sourceRouterFile": "src/internal/auth/oauth/oauthRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "GET",
+      "path": "/.well-known/oauth-authorization-server/api/auth",
+      "style": "RPC",
+      "group": ".well-known",
+      "mountChain": [
+        "",
+        "/.well-known/oauth-authorization-server/api/auth"
+      ],
+      "sourceRouterFile": "src/internal/auth/oauth/oauthRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "GET",
+      "path": "/.well-known/oauth-protected-resource",
+      "style": "RPC",
+      "group": ".well-known",
+      "mountChain": [
+        "",
+        "/.well-known/oauth-protected-resource"
+      ],
+      "sourceRouterFile": "src/internal/auth/oauth/oauthRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "GET",
+      "path": "/.well-known/oauth-protected-resource/mcp",
+      "style": "RPC",
+      "group": ".well-known",
+      "mountChain": [
+        "",
+        "/.well-known/oauth-protected-resource/mcp"
+      ],
+      "sourceRouterFile": "src/routers/chatProxyRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetAdminAgentProvisionRateLimitConfig",
+      "handlerFile": "src/internal/admin/handleGetAdminAgentProvisionRateLimitConfig.ts",
+      "method": "GET",
+      "path": "/admin/agent-provision-rate-limit-config",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/agent-provision-rate-limit-config"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpsertAdminAgentProvisionRateLimitConfig",
+      "handlerFile": "src/internal/admin/handleUpsertAdminAgentProvisionRateLimitConfig.ts",
+      "method": "PUT",
+      "path": "/admin/agent-provision-rate-limit-config",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/agent-provision-rate-limit-config"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetAdminAsyncBalanceUpdateConfig",
+      "handlerFile": "src/internal/admin/handleGetAdminAsyncBalanceUpdateConfig.ts",
+      "method": "GET",
+      "path": "/admin/async-balance-update-config",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/async-balance-update-config"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpsertAdminAsyncBalanceUpdateConfig",
+      "handlerFile": "src/internal/admin/handleUpsertAdminAsyncBalanceUpdateConfig.ts",
+      "method": "PUT",
+      "path": "/admin/async-balance-update-config",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/async-balance-update-config"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetAdminAsyncTrackConfig",
+      "handlerFile": "src/internal/admin/handleGetAdminAsyncTrackConfig.ts",
+      "method": "GET",
+      "path": "/admin/async-track-config",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/async-track-config"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpsertAdminAsyncTrackConfig",
+      "handlerFile": "src/internal/admin/handleUpsertAdminAsyncTrackConfig.ts",
+      "method": "PUT",
+      "path": "/admin/async-track-config",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/async-track-config"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetAdminBatchResetConfig",
+      "handlerFile": "src/internal/admin/handleGetAdminBatchResetConfig.ts",
+      "method": "GET",
+      "path": "/admin/batch-reset-config",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/batch-reset-config"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpsertAdminBatchResetConfig",
+      "handlerFile": "src/internal/admin/handleUpsertAdminBatchResetConfig.ts",
+      "method": "PUT",
+      "path": "/admin/batch-reset-config",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/batch-reset-config"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleDeleteAdminCacheV2Ramp",
+      "handlerFile": "src/internal/admin/handleAdminCacheV2Ramp.ts",
+      "method": "DELETE",
+      "path": "/admin/cache-v2-ramp",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/cache-v2-ramp"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetAdminCacheV2Ramp",
+      "handlerFile": "src/internal/admin/handleAdminCacheV2Ramp.ts",
+      "method": "GET",
+      "path": "/admin/cache-v2-ramp",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/cache-v2-ramp"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpsertAdminCacheV2Ramp",
+      "handlerFile": "src/internal/admin/handleAdminCacheV2Ramp.ts",
+      "method": "PATCH",
+      "path": "/admin/cache-v2-ramp",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/cache-v2-ramp"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpdateAdminCacheV2RampMigration",
+      "handlerFile": "src/internal/admin/handleAdminCacheV2Ramp.ts",
+      "method": "PATCH",
+      "path": "/admin/cache-v2-ramp/migration",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/cache-v2-ramp/migration"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleDeleteSlackAdminInstall",
+      "handlerFile": "src/internal/admin/handleSlackAdminChat.ts",
+      "method": "DELETE",
+      "path": "/admin/chat/slack-admin",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/chat/slack-admin"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetSlackAdminInstall",
+      "handlerFile": "src/internal/admin/handleSlackAdminChat.ts",
+      "method": "GET",
+      "path": "/admin/chat/slack-admin",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/chat/slack-admin"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleCreateSlackAdminInstall",
+      "handlerFile": "src/internal/admin/handleSlackAdminChat.ts",
+      "method": "POST",
+      "path": "/admin/chat/slack-admin/install",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/chat/slack-admin/install"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpdateSlackAdminTarget",
+      "handlerFile": "src/internal/admin/handleSlackAdminChat.ts",
+      "method": "PATCH",
+      "path": "/admin/chat/slack-admin/target",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/chat/slack-admin/target"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetAdminCustomerBlockConfig",
+      "handlerFile": "src/internal/admin/handleGetAdminCustomerBlockConfig.ts",
+      "method": "GET",
+      "path": "/admin/customer-block-config",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/customer-block-config"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpsertAdminCustomerBlockConfig",
+      "handlerFile": "src/internal/admin/handleUpsertAdminCustomerBlockConfig.ts",
+      "method": "PUT",
+      "path": "/admin/customer-block-config",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/customer-block-config"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetAdminEdgeConfigSources",
+      "handlerFile": "src/internal/admin/handleGetAdminEdgeConfigSources.ts",
+      "method": "GET",
+      "path": "/admin/edge-config-sources",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/edge-config-sources"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetAdminFeatureFlagsConfig",
+      "handlerFile": "src/internal/admin/handleGetAdminFeatureFlagsConfig.ts",
+      "method": "GET",
+      "path": "/admin/feature-flags-config",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/feature-flags-config"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpsertAdminFeatureFlagsConfig",
+      "handlerFile": "src/internal/admin/handleUpsertAdminFeatureFlagsConfig.ts",
+      "method": "PUT",
+      "path": "/admin/feature-flags-config",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/feature-flags-config"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetAdminFullSubjectGateConfig",
+      "handlerFile": "src/internal/admin/handleGetAdminFullSubjectGateConfig.ts",
+      "method": "GET",
+      "path": "/admin/full-subject-gate-config",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/full-subject-gate-config"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpsertAdminFullSubjectGateConfig",
+      "handlerFile": "src/internal/admin/handleUpsertAdminFullSubjectGateConfig.ts",
+      "method": "PUT",
+      "path": "/admin/full-subject-gate-config",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/full-subject-gate-config"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleCreateImpersonationCliTokens",
+      "handlerFile": "src/internal/admin/impersonation/handleCreateImpersonationCliTokens.ts",
+      "method": "POST",
+      "path": "/admin/impersonation/cli-tokens",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/impersonation/cli-tokens"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetInvoiceLineItems",
+      "handlerFile": "src/internal/admin/handleGetInvoiceLineItems.ts",
+      "method": "POST",
+      "path": "/admin/invoice-line-items",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/invoice-line-items"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetAdminJobQueueConfig",
+      "handlerFile": "src/internal/admin/handleGetAdminJobQueueConfig.ts",
+      "method": "GET",
+      "path": "/admin/job-queue-config",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/job-queue-config"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpsertAdminJobQueueConfig",
+      "handlerFile": "src/internal/admin/handleUpsertAdminJobQueueConfig.ts",
+      "method": "PUT",
+      "path": "/admin/job-queue-config",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/job-queue-config"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetAdminMainRedisCacheConfig",
+      "handlerFile": "src/internal/admin/handleGetAdminMainRedisCacheConfig.ts",
+      "method": "GET",
+      "path": "/admin/main-redis-cache-config",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/main-redis-cache-config"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpsertAdminMainRedisCacheConfig",
+      "handlerFile": "src/internal/admin/handleUpsertAdminMainRedisCacheConfig.ts",
+      "method": "PUT",
+      "path": "/admin/main-redis-cache-config",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/main-redis-cache-config"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetAdminMiscRedisConfig",
+      "handlerFile": "src/internal/admin/handleAdminMiscRedisConfig.ts",
+      "method": "GET",
+      "path": "/admin/misc-redis-config",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/misc-redis-config"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleDeleteAdminMiscRedisBackup",
+      "handlerFile": "src/internal/admin/handleAdminMiscRedisConfig.ts",
+      "method": "DELETE",
+      "path": "/admin/misc-redis-config/backup",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/misc-redis-config/backup"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpsertAdminMiscRedisBackup",
+      "handlerFile": "src/internal/admin/handleAdminMiscRedisConfig.ts",
+      "method": "PATCH",
+      "path": "/admin/misc-redis-config/backup",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/misc-redis-config/backup"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleClearAdminMiscRedisRamp",
+      "handlerFile": "src/internal/admin/handleAdminMiscRedisConfig.ts",
+      "method": "DELETE",
+      "path": "/admin/misc-redis-config/ramp",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/misc-redis-config/ramp"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleSetAdminMiscRedisRamp",
+      "handlerFile": "src/internal/admin/handleAdminMiscRedisConfig.ts",
+      "method": "POST",
+      "path": "/admin/misc-redis-config/ramp",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/misc-redis-config/ramp"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetAdminMiscellaneousEdgeConfig",
+      "handlerFile": "src/internal/admin/handleGetAdminMiscellaneousEdgeConfig.ts",
+      "method": "GET",
+      "path": "/admin/miscellaneous-edge-config",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/miscellaneous-edge-config"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpsertAdminMiscellaneousEdgeConfig",
+      "handlerFile": "src/internal/admin/handleUpsertAdminMiscellaneousEdgeConfig.ts",
+      "method": "PUT",
+      "path": "/admin/miscellaneous-edge-config",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/miscellaneous-edge-config"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleClearAdminModelPricingCache",
+      "handlerFile": "src/internal/admin/handleAdminModelPricingCache.ts",
+      "method": "DELETE",
+      "path": "/admin/model-pricing-cache",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/model-pricing-cache"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetAdminModelPricingCache",
+      "handlerFile": "src/internal/admin/handleAdminModelPricingCache.ts",
+      "method": "GET",
+      "path": "/admin/model-pricing-cache",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/model-pricing-cache"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleListOAuthClients",
+      "handlerFile": "src/internal/admin/handleListOAuthClients.ts",
+      "method": "GET",
+      "path": "/admin/oauth-clients",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/oauth-clients"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpsertSlackMcpOAuthClient",
+      "handlerFile": "src/internal/admin/handleUpsertSlackMcpOAuthClient.ts",
+      "method": "POST",
+      "path": "/admin/oauth-clients/slack-mcp",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/oauth-clients/slack-mcp"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetAdminOrgLimitsConfig",
+      "handlerFile": "src/internal/admin/handleGetAdminOrgLimitsConfig.ts",
+      "method": "GET",
+      "path": "/admin/org-limits-config",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/org-limits-config"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpsertAdminOrgLimitsConfig",
+      "handlerFile": "src/internal/admin/handleUpsertAdminOrgLimitsConfig.ts",
+      "method": "PUT",
+      "path": "/admin/org-limits-config",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/org-limits-config"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetOrgMember",
+      "handlerFile": "src/internal/admin/handleGetOrgMember.ts",
+      "method": "GET",
+      "path": "/admin/org-member",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/org-member"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleListAdminOrgs",
+      "handlerFile": "src/internal/admin/handleListAdminOrgs.ts",
+      "method": "GET",
+      "path": "/admin/orgs",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/orgs"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleDeleteAdminOrgRedisConfig",
+      "handlerFile": "src/internal/admin/handleAdminOrgRedisConfig.ts",
+      "method": "DELETE",
+      "path": "/admin/orgs/:org_id/redis",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/orgs/:org_id/redis"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetAdminOrgRedisConfig",
+      "handlerFile": "src/internal/admin/handleAdminOrgRedisConfig.ts",
+      "method": "GET",
+      "path": "/admin/orgs/:org_id/redis",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/orgs/:org_id/redis"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpsertAdminOrgRedisConfig",
+      "handlerFile": "src/internal/admin/handleAdminOrgRedisConfig.ts",
+      "method": "PATCH",
+      "path": "/admin/orgs/:org_id/redis",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/orgs/:org_id/redis"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpdateAdminOrgRedisMigration",
+      "handlerFile": "src/internal/admin/handleAdminOrgRedisConfig.ts",
+      "method": "PATCH",
+      "path": "/admin/orgs/:org_id/redis/migration",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/orgs/:org_id/redis/migration"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpdateAdminOrgRedisPublicUrl",
+      "handlerFile": "src/internal/admin/handleAdminOrgRedisConfig.ts",
+      "method": "PATCH",
+      "path": "/admin/orgs/:org_id/redis/public-url",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/orgs/:org_id/redis/public-url"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetAdminOrgRequestBlock",
+      "handlerFile": "src/internal/admin/handleGetAdminOrgRequestBlock.ts",
+      "method": "GET",
+      "path": "/admin/orgs/:org_id/request-block",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/orgs/:org_id/request-block"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpsertAdminOrgRequestBlock",
+      "handlerFile": "src/internal/admin/handleUpsertAdminOrgRequestBlock.ts",
+      "method": "PUT",
+      "path": "/admin/orgs/:org_id/request-block",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/orgs/:org_id/request-block"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetAdminRateLimitOverridesConfig",
+      "handlerFile": "src/internal/admin/handleGetAdminRateLimitOverridesConfig.ts",
+      "method": "GET",
+      "path": "/admin/rate-limit-overrides-config",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/rate-limit-overrides-config"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpsertAdminRateLimitOverridesConfig",
+      "handlerFile": "src/internal/admin/handleUpsertAdminRateLimitOverridesConfig.ts",
+      "method": "PUT",
+      "path": "/admin/rate-limit-overrides-config",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/rate-limit-overrides-config"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetAdminRateLimitRedisAllowlistConfig",
+      "handlerFile": "src/internal/admin/handleGetAdminRateLimitRedisAllowlistConfig.ts",
+      "method": "GET",
+      "path": "/admin/rate-limit-redis-allowlist-config",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/rate-limit-redis-allowlist-config"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpsertAdminRateLimitRedisAllowlistConfig",
+      "handlerFile": "src/internal/admin/handleUpsertAdminRateLimitRedisAllowlistConfig.ts",
+      "method": "PUT",
+      "path": "/admin/rate-limit-redis-allowlist-config",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/rate-limit-redis-allowlist-config"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetAdminRedisV2CacheConfig",
+      "handlerFile": "src/internal/admin/handleGetAdminRedisV2CacheConfig.ts",
+      "method": "GET",
+      "path": "/admin/redis-v2-cache-config",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/redis-v2-cache-config"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpsertAdminRedisV2CacheConfig",
+      "handlerFile": "src/internal/admin/handleUpsertAdminRedisV2CacheConfig.ts",
+      "method": "PUT",
+      "path": "/admin/redis-v2-cache-config",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/redis-v2-cache-config"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetAdminRequestBlockConfig",
+      "handlerFile": "src/internal/admin/handleGetAdminRequestBlockConfig.ts",
+      "method": "GET",
+      "path": "/admin/request-block-config",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/request-block-config"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpsertAdminRequestBlockConfig",
+      "handlerFile": "src/internal/admin/handleUpsertAdminRequestBlockConfig.ts",
+      "method": "PUT",
+      "path": "/admin/request-block-config",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/request-block-config"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetAdminResetJobConfig",
+      "handlerFile": "src/internal/admin/handleGetAdminResetJobConfig.ts",
+      "method": "GET",
+      "path": "/admin/reset-job-config",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/reset-job-config"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpsertAdminResetJobConfig",
+      "handlerFile": "src/internal/admin/handleUpsertAdminResetJobConfig.ts",
+      "method": "PUT",
+      "path": "/admin/reset-job-config",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/reset-job-config"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetAdminResetJobV2Config",
+      "handlerFile": "src/internal/admin/handleGetAdminResetJobV2Config.ts",
+      "method": "GET",
+      "path": "/admin/reset-job-v2-config",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/reset-job-v2-config"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpsertAdminResetJobV2Config",
+      "handlerFile": "src/internal/admin/handleUpsertAdminResetJobV2Config.ts",
+      "method": "PUT",
+      "path": "/admin/reset-job-v2-config",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/reset-job-v2-config"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetRollouts",
+      "handlerFile": "src/internal/admin/rollouts/handleGetRollouts.ts",
+      "method": "GET",
+      "path": "/admin/rollouts",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/rollouts"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleDeleteRollout",
+      "handlerFile": "src/internal/admin/rollouts/handleDeleteRollout.ts",
+      "method": "DELETE",
+      "path": "/admin/rollouts/:rollout_id",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/rollouts/:rollout_id"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpdateRollout",
+      "handlerFile": "src/internal/admin/rollouts/handleUpdateRollout.ts",
+      "method": "PUT",
+      "path": "/admin/rollouts/:rollout_id",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/rollouts/:rollout_id"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleDeleteRolloutOrg",
+      "handlerFile": "src/internal/admin/rollouts/handleDeleteRolloutOrg.ts",
+      "method": "DELETE",
+      "path": "/admin/rollouts/:rollout_id/orgs/:org_id",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/rollouts/:rollout_id/orgs/:org_id"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpdateRolloutOrg",
+      "handlerFile": "src/internal/admin/rollouts/handleUpdateRolloutOrg.ts",
+      "method": "PUT",
+      "path": "/admin/rollouts/:rollout_id/orgs/:org_id",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/rollouts/:rollout_id/orgs/:org_id"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleListAdminUsers",
+      "handlerFile": "src/internal/admin/handleListAdminUsers.ts",
+      "method": "GET",
+      "path": "/admin/users",
+      "style": "REST",
+      "group": "admin",
+      "mountChain": [
+        "",
+        "admin",
+        "/users"
+      ],
+      "sourceRouterFile": "src/internal/admin/adminRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleCompleteAgentClaim",
+      "handlerFile": "src/internal/orgs/agentOnboarding/handlers/handleCompleteAgentClaim.ts",
+      "method": "POST",
+      "path": "/agent.complete_claim",
+      "style": "RPC",
+      "group": "agent.complete_claim",
+      "mountChain": [
+        "",
+        "",
+        "/agent.complete_claim"
+      ],
+      "sourceRouterFile": "src/internal/orgs/agentOnboarding/agentOnboardingRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetAgentClaimAttempt",
+      "handlerFile": "src/internal/orgs/agentOnboarding/handlers/handleGetAgentClaimAttempt.ts",
+      "method": "GET",
+      "path": "/agent.preview_claim",
+      "style": "RPC",
+      "group": "agent.preview_claim",
+      "mountChain": [
+        "",
+        "",
+        "/agent.preview_claim"
+      ],
+      "sourceRouterFile": "src/internal/orgs/agentOnboarding/agentOnboardingRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleProvisionAgentOrg",
+      "handlerFile": "src/internal/orgs/agentOnboarding/handlers/handleProvisionAgentOrg.ts",
+      "method": "POST",
+      "path": "/agent.provision",
+      "style": "RPC",
+      "group": "agent.provision",
+      "mountChain": [
+        "",
+        "",
+        "/agent.provision"
+      ],
+      "sourceRouterFile": "src/internal/orgs/agentOnboarding/agentOnboardingRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleClaimAgentOrg",
+      "handlerFile": "src/internal/orgs/agentOnboarding/handlers/handleClaimAgentOrg.ts",
+      "method": "POST",
+      "path": "/agent.start_claim",
+      "style": "RPC",
+      "group": "agent.start_claim",
+      "mountChain": [
+        "",
+        "",
+        "/agent.start_claim"
+      ],
+      "sourceRouterFile": "src/internal/orgs/agentOnboarding/agentOnboardingRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "GET",
+      "path": "/agent/approvals/:approvalId",
+      "style": "REST",
+      "group": "agent",
+      "mountChain": [
+        "",
+        "/agent/approvals/:approvalId"
+      ],
+      "sourceRouterFile": "src/routers/chatProxyRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "POST",
+      "path": "/agent/approvals/:approvalId/supersede",
+      "style": "REST",
+      "group": "agent",
+      "mountChain": [
+        "",
+        "/agent/approvals/:approvalId/supersede"
+      ],
+      "sourceRouterFile": "src/routers/chatProxyRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "POST",
+      "path": "/agent/approve",
+      "style": "REST",
+      "group": "agent",
+      "mountChain": [
+        "",
+        "/agent/approve"
+      ],
+      "sourceRouterFile": "src/routers/chatProxyRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "POST",
+      "path": "/agent/chat",
+      "style": "REST",
+      "group": "agent",
+      "mountChain": [
+        "",
+        "/agent/chat"
+      ],
+      "sourceRouterFile": "src/routers/chatProxyRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "GET",
+      "path": "/agent/chat/:threadId/messages",
+      "style": "REST",
+      "group": "agent",
+      "mountChain": [
+        "",
+        "/agent/chat/:threadId/messages"
+      ],
+      "sourceRouterFile": "src/routers/chatProxyRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "DELETE",
+      "path": "/agent/chat/threads",
+      "style": "REST",
+      "group": "agent",
+      "mountChain": [
+        "",
+        "/agent/chat/threads"
+      ],
+      "sourceRouterFile": "src/routers/chatProxyRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "GET",
+      "path": "/agent/chat/threads",
+      "style": "REST",
+      "group": "agent",
+      "mountChain": [
+        "",
+        "/agent/chat/threads"
+      ],
+      "sourceRouterFile": "src/routers/chatProxyRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "GET",
+      "path": "/agent/interactions",
+      "style": "REST",
+      "group": "agent",
+      "mountChain": [
+        "",
+        "/agent/interactions"
+      ],
+      "sourceRouterFile": "src/routers/chatProxyRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "POST",
+      "path": "/agent/reject",
+      "style": "REST",
+      "group": "agent",
+      "mountChain": [
+        "",
+        "/agent/reject"
+      ],
+      "sourceRouterFile": "src/routers/chatProxyRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "GET",
+      "path": "/api/auth/.well-known/oauth-authorization-server",
+      "style": "RPC",
+      "group": "api",
+      "mountChain": [
+        "",
+        "/api/auth/.well-known/oauth-authorization-server"
+      ],
+      "sourceRouterFile": "src/internal/auth/oauth/oauthRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "GET",
+      "path": "/api/auth/.well-known/openid-configuration",
+      "style": "RPC",
+      "group": "api",
+      "mountChain": [
+        "",
+        "/api/auth/.well-known/openid-configuration"
+      ],
+      "sourceRouterFile": "src/internal/auth/oauth/oauthRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "GET",
+      "path": "/api/auth/capy-login",
+      "style": "REST",
+      "group": "api",
+      "mountChain": [
+        "/api/auth/capy-login"
+      ],
+      "sourceRouterFile": "src/initHono.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "GET",
+      "path": "/api/auth/oauth2/authorize",
+      "style": "REST",
+      "group": "api",
+      "mountChain": [
+        "",
+        "/api/auth/oauth2/authorize"
+      ],
+      "sourceRouterFile": "src/internal/auth/oauth/oauthRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "POST",
+      "path": "/api/auth/oauth2/consent",
+      "style": "REST",
+      "group": "api",
+      "mountChain": [
+        "",
+        "/api/auth/oauth2/consent"
+      ],
+      "sourceRouterFile": "src/internal/auth/oauth/oauthRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "POST",
+      "path": "/api/auth/oauth2/register",
+      "style": "REST",
+      "group": "api",
+      "mountChain": [
+        "",
+        "/api/auth/oauth2/register"
+      ],
+      "sourceRouterFile": "src/internal/auth/oauth/oauthRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "POST",
+      "path": "/api/auth/oauth2/token",
+      "style": "REST",
+      "group": "api",
+      "mountChain": [
+        "",
+        "/api/auth/oauth2/token"
+      ],
+      "sourceRouterFile": "src/internal/auth/oauth/oauthRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "GET",
+      "path": "/api/auth/organization/list",
+      "style": "REST",
+      "group": "api",
+      "mountChain": [
+        "/api/auth/organization/list"
+      ],
+      "sourceRouterFile": "src/initHono.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "POST",
+      "path": "/auth/sso/resolve",
+      "style": "REST",
+      "group": "auth",
+      "mountChain": [
+        "",
+        "/auth/sso",
+        "/resolve"
+      ],
+      "sourceRouterFile": "src/internal/auth/sso/publicSsoRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "GET",
+      "path": "/auth/sso/start",
+      "style": "REST",
+      "group": "auth",
+      "mountChain": [
+        "",
+        "/auth/sso",
+        "/start"
+      ],
+      "sourceRouterFile": "src/internal/auth/sso/publicSsoRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetCheckout",
+      "handlerFile": "src/internal/checkouts/handlers/handleGetCheckout.ts",
+      "method": "GET",
+      "path": "/checkouts/:checkout_id",
+      "style": "REST",
+      "group": "checkouts",
+      "mountChain": [
+        "",
+        "/checkouts",
+        "/:checkout_id"
+      ],
+      "sourceRouterFile": "src/internal/checkouts/checkoutRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleConfirmCheckout",
+      "handlerFile": "src/internal/checkouts/handlers/handleConfirmCheckout.ts",
+      "method": "POST",
+      "path": "/checkouts/:checkout_id/confirm",
+      "style": "REST",
+      "group": "checkouts",
+      "mountChain": [
+        "",
+        "/checkouts",
+        "/:checkout_id/confirm"
+      ],
+      "sourceRouterFile": "src/internal/checkouts/checkoutRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handlePreviewCheckout",
+      "handlerFile": "src/internal/checkouts/handlers/handlePreviewCheckout.ts",
+      "method": "POST",
+      "path": "/checkouts/:checkout_id/preview",
+      "style": "REST",
+      "group": "checkouts",
+      "mountChain": [
+        "",
+        "/checkouts",
+        "/:checkout_id/preview"
+      ],
+      "sourceRouterFile": "src/internal/checkouts/checkoutRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleStartLongLivedCheckout",
+      "handlerFile": "src/internal/checkouts/handlers/handleStartLongLivedCheckout.ts",
+      "method": "GET",
+      "path": "/checkouts/:checkout_id/start",
+      "style": "REST",
+      "group": "checkouts",
+      "mountChain": [
+        "",
+        "/checkouts",
+        "/:checkout_id/start"
+      ],
+      "sourceRouterFile": "src/internal/checkouts/checkoutRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleCreateOAuthApiKeys",
+      "handlerFile": "src/internal/dev/cli/handlers/handleCreateOAuthApiKeys.ts",
+      "method": "POST",
+      "path": "/cli/api-keys",
+      "style": "REST",
+      "group": "cli",
+      "mountChain": [
+        "/cli",
+        "/api-keys"
+      ],
+      "sourceRouterFile": "src/internal/dev/cli/cliRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetOrgConsents",
+      "handlerFile": "src/internal/misc/consent/handlers/handleGetOrgConsents.ts",
+      "method": "GET",
+      "path": "/consents/",
+      "style": "REST",
+      "group": "consents",
+      "mountChain": [
+        "",
+        "/consents",
+        "/"
+      ],
+      "sourceRouterFile": "src/internal/misc/consent/consentRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleRevokeConsent",
+      "handlerFile": "src/internal/misc/consent/handlers/handleRevokeConsent.ts",
+      "method": "DELETE",
+      "path": "/consents/:consent_id",
+      "style": "REST",
+      "group": "consents",
+      "mountChain": [
+        "",
+        "/consents",
+        "/:consent_id"
+      ],
+      "sourceRouterFile": "src/internal/misc/consent/consentRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetConsentApiKeys",
+      "handlerFile": "src/internal/misc/consent/handlers/handleGetConsentApiKeys.ts",
+      "method": "GET",
+      "path": "/consents/:consent_id/api-keys",
+      "style": "REST",
+      "group": "consents",
+      "mountChain": [
+        "",
+        "/consents",
+        "/:consent_id/api-keys"
+      ],
+      "sourceRouterFile": "src/internal/misc/consent/consentRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetCustomer",
+      "handlerFile": "src/internal/customers/internalHandlers/handleGetCustomer.ts",
+      "method": "GET",
+      "path": "/customers/:customer_id",
+      "style": "REST",
+      "group": "customers",
+      "mountChain": [
+        "",
+        "/customers",
+        "/:customer_id"
+      ],
+      "sourceRouterFile": "src/internal/customers/internalCusRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleListEntitiesInternal",
+      "handlerFile": "src/internal/customers/internalHandlers/handleListEntitiesInternal.ts",
+      "method": "GET",
+      "path": "/customers/:customer_id/entities",
+      "style": "REST",
+      "group": "customers",
+      "mountChain": [
+        "",
+        "/customers",
+        "/:customer_id/entities"
+      ],
+      "sourceRouterFile": "src/internal/customers/internalCusRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetInvoiceLineItems",
+      "handlerFile": "src/internal/admin/handleGetInvoiceLineItems.ts",
+      "method": "POST",
+      "path": "/customers/:customer_id/invoice-line-items",
+      "style": "REST",
+      "group": "customers",
+      "mountChain": [
+        "",
+        "/customers",
+        "/:customer_id/invoice-line-items"
+      ],
+      "sourceRouterFile": "src/internal/customers/internalCusRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetCustomerProduct",
+      "handlerFile": "src/internal/customers/internalHandlers/handleGetCustomerProduct.ts",
+      "method": "GET",
+      "path": "/customers/:customer_id/product/:product_id",
+      "style": "REST",
+      "group": "customers",
+      "mountChain": [
+        "",
+        "/customers",
+        "/:customer_id/product/:product_id"
+      ],
+      "sourceRouterFile": "src/internal/customers/internalCusRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleListCustomerProducts",
+      "handlerFile": "src/internal/customers/handlers/handleListCustomerProducts.ts",
+      "method": "GET",
+      "path": "/customers/:customer_id/products",
+      "style": "REST",
+      "group": "customers",
+      "mountChain": [
+        "",
+        "/customers",
+        "/:customer_id/products"
+      ],
+      "sourceRouterFile": "src/internal/customers/internalCusRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetCustomerSchedule",
+      "handlerFile": "src/internal/customers/internalHandlers/handleGetCustomerSchedule.ts",
+      "method": "GET",
+      "path": "/customers/:customer_id/schedule",
+      "style": "REST",
+      "group": "customers",
+      "mountChain": [
+        "",
+        "/customers",
+        "/:customer_id/schedule"
+      ],
+      "sourceRouterFile": "src/internal/customers/internalCusRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleCountCustomers",
+      "handlerFile": "src/internal/customers/internalHandlers/handleCountCustomers.ts",
+      "method": "POST",
+      "path": "/customers/all/count",
+      "style": "REST",
+      "group": "customers",
+      "mountChain": [
+        "",
+        "/customers",
+        "/all/count"
+      ],
+      "sourceRouterFile": "src/internal/customers/internalCusRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetFullCustomers",
+      "handlerFile": "src/internal/customers/internalHandlers/handleGetFullCustomers.ts",
+      "method": "POST",
+      "path": "/customers/all/full_customers",
+      "style": "REST",
+      "group": "customers",
+      "mountChain": [
+        "",
+        "/customers",
+        "/all/full_customers"
+      ],
+      "sourceRouterFile": "src/internal/customers/internalCusRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleSearchCustomers",
+      "handlerFile": "src/internal/customers/internalHandlers/handleSearchCustomers.ts",
+      "method": "POST",
+      "path": "/customers/all/search",
+      "style": "REST",
+      "group": "customers",
+      "mountChain": [
+        "",
+        "/customers",
+        "/all/search"
+      ],
+      "sourceRouterFile": "src/internal/customers/internalCusRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleClearCustomerCache",
+      "handlerFile": "src/internal/customers/handlers/handleClearCustomerCache.ts",
+      "method": "POST",
+      "path": "/customers/clear_cache",
+      "style": "REST",
+      "group": "customers",
+      "mountChain": [
+        "",
+        "/customers",
+        "/clear_cache"
+      ],
+      "sourceRouterFile": "src/internal/customers/internalCusRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleSyncCustomerEntitlementAnchors",
+      "handlerFile": "src/internal/customers/internalHandlers/handleSyncCustomerEntitlementAnchors.ts",
+      "method": "POST",
+      "path": "/customers/customer-entitlements/sync-anchor",
+      "style": "REST",
+      "group": "customers",
+      "mountChain": [
+        "",
+        "/customers",
+        "/customer-entitlements/sync-anchor"
+      ],
+      "sourceRouterFile": "src/internal/customers/internalCusRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleListCustomerExports",
+      "handlerFile": "src/internal/customers/internalHandlers/handleListCustomerExports.ts",
+      "method": "GET",
+      "path": "/customers/exports",
+      "style": "REST",
+      "group": "customers",
+      "mountChain": [
+        "",
+        "/customers",
+        "/exports"
+      ],
+      "sourceRouterFile": "src/internal/customers/internalCusRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleCreateCustomerExport",
+      "handlerFile": "src/internal/customers/internalHandlers/handleCreateCustomerExport.ts",
+      "method": "POST",
+      "path": "/customers/exports",
+      "style": "REST",
+      "group": "customers",
+      "mountChain": [
+        "",
+        "/customers",
+        "/exports"
+      ],
+      "sourceRouterFile": "src/internal/customers/internalCusRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleDownloadCustomerExport",
+      "handlerFile": "src/internal/customers/internalHandlers/handleDownloadCustomerExport.ts",
+      "method": "POST",
+      "path": "/customers/exports/:export_id/download",
+      "style": "REST",
+      "group": "customers",
+      "mountChain": [
+        "",
+        "/customers",
+        "/exports/:export_id/download"
+      ],
+      "sourceRouterFile": "src/internal/customers/internalCusRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleCreateSecretKey",
+      "handlerFile": "src/internal/dev/handlers/handleCreateSecretKey.ts",
+      "method": "POST",
+      "path": "/dev/api_key",
+      "style": "REST",
+      "group": "dev",
+      "mountChain": [
+        "",
+        "/dev",
+        "/api_key"
+      ],
+      "sourceRouterFile": "src/internal/dev/devRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleDeleteSecretKey",
+      "handlerFile": "src/internal/dev/handlers/handleDeleteSecretKey.ts",
+      "method": "DELETE",
+      "path": "/dev/api_key/:key_id",
+      "style": "REST",
+      "group": "dev",
+      "mountChain": [
+        "",
+        "/dev",
+        "/api_key/:key_id"
+      ],
+      "sourceRouterFile": "src/internal/dev/devRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetDevData",
+      "handlerFile": "src/internal/dev/handlers/handleGetDevData.ts",
+      "method": "GET",
+      "path": "/dev/data",
+      "style": "REST",
+      "group": "dev",
+      "mountChain": [
+        "",
+        "/dev",
+        "/data"
+      ],
+      "sourceRouterFile": "src/internal/dev/devRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetWebhookSubscriptions",
+      "handlerFile": "src/internal/dev/handlers/handleGetWebhookSubscriptions.ts",
+      "method": "GET",
+      "path": "/dev/webhook_subscriptions",
+      "style": "REST",
+      "group": "dev",
+      "mountChain": [
+        "",
+        "/dev",
+        "/webhook_subscriptions"
+      ],
+      "sourceRouterFile": "src/internal/dev/devRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleSubmitFeedback",
+      "handlerFile": "src/internal/misc/feedback/handleSubmitFeedback.ts",
+      "method": "POST",
+      "path": "/feedback/",
+      "style": "REST",
+      "group": "feedback",
+      "mountChain": [
+        "",
+        "/feedback",
+        ""
+      ],
+      "sourceRouterFile": "src/internal/misc/feedback/feedbackRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleListInvoiceTemplates",
+      "handlerFile": "src/internal/invoices/handlers/handleListInvoiceTemplates.ts",
+      "method": "GET",
+      "path": "/invoice_templates/",
+      "style": "REST",
+      "group": "invoice_templates",
+      "mountChain": [
+        "",
+        "/invoice_templates",
+        ""
+      ],
+      "sourceRouterFile": "src/internal/orgs/invoiceTemplates/invoiceTemplateRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleCreateInvoiceTemplate",
+      "handlerFile": "src/internal/orgs/invoiceTemplates/handlers/handleCreateInvoiceTemplate.ts",
+      "method": "POST",
+      "path": "/invoice_templates/",
+      "style": "REST",
+      "group": "invoice_templates",
+      "mountChain": [
+        "",
+        "/invoice_templates",
+        ""
+      ],
+      "sourceRouterFile": "src/internal/orgs/invoiceTemplates/invoiceTemplateRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleDeleteInvoiceTemplate",
+      "handlerFile": "src/internal/orgs/invoiceTemplates/handlers/handleDeleteInvoiceTemplate.ts",
+      "method": "DELETE",
+      "path": "/invoice_templates/:id",
+      "style": "REST",
+      "group": "invoice_templates",
+      "mountChain": [
+        "",
+        "/invoice_templates",
+        "/:id"
+      ],
+      "sourceRouterFile": "src/internal/orgs/invoiceTemplates/invoiceTemplateRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpdateInvoiceTemplate",
+      "handlerFile": "src/internal/orgs/invoiceTemplates/handlers/handleUpdateInvoiceTemplate.ts",
+      "method": "PATCH",
+      "path": "/invoice_templates/:id",
+      "style": "REST",
+      "group": "invoice_templates",
+      "mountChain": [
+        "",
+        "/invoice_templates",
+        "/:id"
+      ],
+      "sourceRouterFile": "src/internal/orgs/invoiceTemplates/invoiceTemplateRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleRedirectToInvoice",
+      "handlerFile": "src/internal/invoices/handlers/handleRedirectToInvoice.ts",
+      "method": "GET",
+      "path": "/invoices/hosted_invoice_url/:invoiceId",
+      "style": "REST",
+      "group": "invoices",
+      "mountChain": [
+        "",
+        "/invoices",
+        "/hosted_invoice_url/:invoiceId"
+      ],
+      "sourceRouterFile": "src/internal/invoices/invoiceRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "ALL",
+      "path": "/mcp",
+      "style": "REST",
+      "group": "mcp",
+      "mountChain": [
+        "",
+        "/mcp"
+      ],
+      "sourceRouterFile": "src/routers/chatProxyRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "GET",
+      "path": "/oauth/client/:client_id",
+      "style": "REST",
+      "group": "oauth",
+      "mountChain": [
+        "",
+        "/oauth/client/:client_id"
+      ],
+      "sourceRouterFile": "src/internal/auth/oauth/oauthRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleDeleteOrg",
+      "handlerFile": "src/internal/orgs/handlers/crudHandlers/handleDeleteOrg.ts",
+      "method": "DELETE",
+      "path": "/organization/",
+      "style": "REST",
+      "group": "organization",
+      "mountChain": [
+        "",
+        "organization",
+        ""
+      ],
+      "sourceRouterFile": "src/internal/orgs/orgRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetOrg",
+      "handlerFile": "src/internal/orgs/handlers/crudHandlers/handleGetOrg.ts",
+      "method": "GET",
+      "path": "/organization/",
+      "style": "REST",
+      "group": "organization",
+      "mountChain": [
+        "",
+        "organization",
+        ""
+      ],
+      "sourceRouterFile": "src/internal/orgs/orgRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetChat",
+      "handlerFile": "src/internal/chat/handlers/handleGetChat.ts",
+      "method": "GET",
+      "path": "/organization/chat/",
+      "style": "REST",
+      "group": "organization",
+      "mountChain": [
+        "",
+        "organization/chat",
+        "/"
+      ],
+      "sourceRouterFile": "src/internal/chat/chatRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleDisconnectChat",
+      "handlerFile": "src/internal/chat/handlers/handleDisconnectChat.ts",
+      "method": "DELETE",
+      "path": "/organization/chat/:provider",
+      "style": "REST",
+      "group": "organization",
+      "mountChain": [
+        "",
+        "organization/chat",
+        "/:provider"
+      ],
+      "sourceRouterFile": "src/internal/chat/chatRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpdateChatSettings",
+      "handlerFile": "src/internal/chat/handlers/handleUpdateChatSettings.ts",
+      "method": "PATCH",
+      "path": "/organization/chat/:provider/settings",
+      "style": "REST",
+      "group": "organization",
+      "mountChain": [
+        "",
+        "organization/chat",
+        "/:provider/settings"
+      ],
+      "sourceRouterFile": "src/internal/chat/chatRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleCreateChatInstall",
+      "handlerFile": "src/internal/chat/handlers/handleCreateChatInstall.ts",
+      "method": "POST",
+      "path": "/organization/chat/install",
+      "style": "REST",
+      "group": "organization",
+      "mountChain": [
+        "",
+        "organization/chat",
+        "/install"
+      ],
+      "sourceRouterFile": "src/internal/chat/chatRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpdateOrgConfig",
+      "handlerFile": "src/internal/orgs/handlers/handleUpdateOrgConfig.ts",
+      "method": "PATCH",
+      "path": "/organization/config",
+      "style": "REST",
+      "group": "organization",
+      "mountChain": [
+        "",
+        "organization",
+        "/config"
+      ],
+      "sourceRouterFile": "src/internal/orgs/orgRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetCustomButtons",
+      "handlerFile": "src/internal/orgs/handlers/handleCustomButtons.ts",
+      "method": "GET",
+      "path": "/organization/custom-buttons",
+      "style": "REST",
+      "group": "organization",
+      "mountChain": [
+        "",
+        "organization",
+        "/custom-buttons"
+      ],
+      "sourceRouterFile": "src/internal/orgs/orgRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpdateCustomButtons",
+      "handlerFile": "src/internal/orgs/handlers/handleCustomButtons.ts",
+      "method": "PATCH",
+      "path": "/organization/custom-buttons",
+      "style": "REST",
+      "group": "organization",
+      "mountChain": [
+        "",
+        "organization",
+        "/custom-buttons"
+      ],
+      "sourceRouterFile": "src/internal/orgs/orgRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetInvites",
+      "handlerFile": "src/internal/orgs/handlers/memberHandlers/handleGetInvites.ts",
+      "method": "GET",
+      "path": "/organization/invites",
+      "style": "REST",
+      "group": "organization",
+      "mountChain": [
+        "",
+        "organization",
+        "/invites"
+      ],
+      "sourceRouterFile": "src/internal/orgs/orgRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleDeleteOrgLogo",
+      "handlerFile": "src/internal/orgs/handlers/handleDeleteOrgLogo.ts",
+      "method": "DELETE",
+      "path": "/organization/logo",
+      "style": "REST",
+      "group": "organization",
+      "mountChain": [
+        "",
+        "organization",
+        "/logo"
+      ],
+      "sourceRouterFile": "src/internal/orgs/orgRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleFetchOrgLogo",
+      "handlerFile": "src/internal/orgs/handlers/handleFetchOrgLogo.ts",
+      "method": "POST",
+      "path": "/organization/logo/fetch",
+      "style": "REST",
+      "group": "organization",
+      "mountChain": [
+        "",
+        "organization",
+        "/logo/fetch"
+      ],
+      "sourceRouterFile": "src/internal/orgs/orgRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetOrgMembers",
+      "handlerFile": "src/internal/orgs/handlers/memberHandlers/handleGetOrgMembers.ts",
+      "method": "GET",
+      "path": "/organization/members",
+      "style": "REST",
+      "group": "organization",
+      "mountChain": [
+        "",
+        "organization",
+        "/members"
+      ],
+      "sourceRouterFile": "src/internal/orgs/orgRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetOnboardingStatus",
+      "handlerFile": "src/internal/orgs/handlers/handleGetOnboardingStatus.ts",
+      "method": "POST",
+      "path": "/organization/onboardingStatus",
+      "style": "REST",
+      "group": "organization",
+      "mountChain": [
+        "",
+        "organization",
+        "/onboardingStatus"
+      ],
+      "sourceRouterFile": "src/internal/orgs/orgRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleRemoveMember",
+      "handlerFile": "src/internal/orgs/handlers/memberHandlers/handleRemoveMember.ts",
+      "method": "POST",
+      "path": "/organization/remove-member",
+      "style": "REST",
+      "group": "organization",
+      "mountChain": [
+        "",
+        "organization",
+        "/remove-member"
+      ],
+      "sourceRouterFile": "src/internal/orgs/orgRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetSetupState",
+      "handlerFile": "src/internal/setup/handlers/handleGetSetupState.ts",
+      "method": "GET",
+      "path": "/organization/setup/",
+      "style": "REST",
+      "group": "organization",
+      "mountChain": [
+        "",
+        "organization",
+        "/setup",
+        "/"
+      ],
+      "sourceRouterFile": "src/internal/setup/setupRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleCreatePaypalPlan",
+      "handlerFile": "src/internal/setup/handlers/handleCreatePaypalPlan.ts",
+      "method": "POST",
+      "path": "/organization/setup/paypal-plan",
+      "style": "REST",
+      "group": "organization",
+      "mountChain": [
+        "",
+        "organization",
+        "/setup",
+        "/paypal-plan"
+      ],
+      "sourceRouterFile": "src/internal/setup/setupRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleRunSmokeTest",
+      "handlerFile": "src/internal/setup/handlers/handleRunSmokeTest.ts",
+      "method": "POST",
+      "path": "/organization/setup/smoke-test",
+      "style": "REST",
+      "group": "organization",
+      "mountChain": [
+        "",
+        "organization",
+        "/setup",
+        "/smoke-test"
+      ],
+      "sourceRouterFile": "src/internal/setup/setupRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "deleteSso",
+      "handlerFile": null,
+      "method": "DELETE",
+      "path": "/organization/sso/",
+      "style": "REST",
+      "group": "organization",
+      "mountChain": [
+        "",
+        "organization",
+        "/sso",
+        ""
+      ],
+      "sourceRouterFile": "src/internal/auth/sso/ssoRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "getSso",
+      "handlerFile": null,
+      "method": "GET",
+      "path": "/organization/sso/",
+      "style": "REST",
+      "group": "organization",
+      "mountChain": [
+        "",
+        "organization",
+        "/sso",
+        ""
+      ],
+      "sourceRouterFile": "src/internal/auth/sso/ssoRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "createSso",
+      "handlerFile": null,
+      "method": "POST",
+      "path": "/organization/sso/",
+      "style": "REST",
+      "group": "organization",
+      "mountChain": [
+        "",
+        "organization",
+        "/sso",
+        ""
+      ],
+      "sourceRouterFile": "src/internal/auth/sso/ssoRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "completeSso",
+      "handlerFile": null,
+      "method": "POST",
+      "path": "/organization/sso/complete",
+      "style": "REST",
+      "group": "organization",
+      "mountChain": [
+        "",
+        "organization",
+        "/sso",
+        "/complete"
+      ],
+      "sourceRouterFile": "src/internal/auth/sso/ssoRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "testSso",
+      "handlerFile": null,
+      "method": "POST",
+      "path": "/organization/sso/test",
+      "style": "REST",
+      "group": "organization",
+      "mountChain": [
+        "",
+        "organization",
+        "/sso",
+        "/test"
+      ],
+      "sourceRouterFile": "src/internal/auth/sso/ssoRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "verifySso",
+      "handlerFile": null,
+      "method": "POST",
+      "path": "/organization/sso/verify-domain",
+      "style": "REST",
+      "group": "organization",
+      "mountChain": [
+        "",
+        "organization",
+        "/sso",
+        "/verify-domain"
+      ],
+      "sourceRouterFile": "src/internal/auth/sso/ssoRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetTransitionRules",
+      "handlerFile": "src/internal/orgs/handlers/handleTransitionRules.ts",
+      "method": "GET",
+      "path": "/organization/transition_rules",
+      "style": "REST",
+      "group": "organization",
+      "mountChain": [
+        "",
+        "organization",
+        "/transition_rules"
+      ],
+      "sourceRouterFile": "src/internal/orgs/orgRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpdateTransitionRules",
+      "handlerFile": "src/internal/orgs/handlers/handleTransitionRules.ts",
+      "method": "PATCH",
+      "path": "/organization/transition_rules",
+      "style": "REST",
+      "group": "organization",
+      "mountChain": [
+        "",
+        "organization",
+        "/transition_rules"
+      ],
+      "sourceRouterFile": "src/internal/orgs/orgRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetUploadUrl",
+      "handlerFile": "src/internal/orgs/handlers/handleGetUploadUrl.ts",
+      "method": "GET",
+      "path": "/organization/upload_url",
+      "style": "REST",
+      "group": "organization",
+      "mountChain": [
+        "",
+        "organization",
+        "/upload_url"
+      ],
+      "sourceRouterFile": "src/internal/orgs/orgRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "GET",
+      "path": "/paypal/activate/:subscriptionId",
+      "style": "REST",
+      "group": "paypal",
+      "mountChain": [
+        "",
+        "/paypal",
+        "/activate/:subscriptionId"
+      ],
+      "sourceRouterFile": "src/internal/billing/paypal/paypalReturnRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "POST",
+      "path": "/paypal/capture/:order_id",
+      "style": "REST",
+      "group": "paypal",
+      "mountChain": [
+        "",
+        "/paypal",
+        "/capture/:order_id"
+      ],
+      "sourceRouterFile": "src/internal/billing/paypal/paypalReturnRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "GET",
+      "path": "/paypal/poll",
+      "style": "REST",
+      "group": "paypal",
+      "mountChain": [
+        "",
+        "/paypal",
+        "/poll"
+      ],
+      "sourceRouterFile": "src/internal/billing/paypal/paypalReturnRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "GET",
+      "path": "/paypal/return",
+      "style": "REST",
+      "group": "paypal",
+      "mountChain": [
+        "",
+        "/paypal",
+        "/return"
+      ],
+      "sourceRouterFile": "src/internal/billing/paypal/paypalReturnRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "GET",
+      "path": "/portal/:token",
+      "style": "REST",
+      "group": "portal",
+      "mountChain": [
+        "",
+        "/portal",
+        "/:token"
+      ],
+      "sourceRouterFile": "src/internal/billing/portal/portalRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "POST",
+      "path": "/portal/cancel/:token",
+      "style": "REST",
+      "group": "portal",
+      "mountChain": [
+        "",
+        "/portal",
+        "/cancel/:token"
+      ],
+      "sourceRouterFile": "src/internal/billing/portal/portalRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "POST",
+      "path": "/pricing-agent/chat",
+      "style": "REST",
+      "group": "pricing-agent",
+      "mountChain": [
+        "",
+        "/pricing-agent",
+        "/chat"
+      ],
+      "sourceRouterFile": "src/internal/misc/pricingAgent/pricingAgentRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handlePreviewCheckout",
+      "handlerFile": "src/internal/checkouts/handlers/handlePreviewCheckout.ts",
+      "method": "POST",
+      "path": "/pricing-agent/preview/checkout",
+      "style": "REST",
+      "group": "pricing-agent",
+      "mountChain": [
+        "",
+        "/pricing-agent",
+        "/preview/checkout"
+      ],
+      "sourceRouterFile": "src/internal/misc/pricingAgent/pricingAgentRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleSetupPreviewOrg",
+      "handlerFile": "src/internal/misc/pricingAgent/handlers/handleSetupPreviewOrg.ts",
+      "method": "POST",
+      "path": "/pricing-agent/preview/setup",
+      "style": "REST",
+      "group": "pricing-agent",
+      "mountChain": [
+        "",
+        "/pricing-agent",
+        "/preview/setup"
+      ],
+      "sourceRouterFile": "src/internal/misc/pricingAgent/pricingAgentRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleSyncPreviewPricing",
+      "handlerFile": "src/internal/misc/pricingAgent/handlers/handleSyncPreviewPricing.ts",
+      "method": "POST",
+      "path": "/pricing-agent/preview/sync",
+      "style": "REST",
+      "group": "pricing-agent",
+      "mountChain": [
+        "",
+        "/pricing-agent",
+        "/preview/sync"
+      ],
+      "sourceRouterFile": "src/internal/misc/pricingAgent/pricingAgentRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetProductCount",
+      "handlerFile": "src/internal/products/internalHandlers/handleGetProductCount.ts",
+      "method": "GET",
+      "path": "/products/:productId/count",
+      "style": "REST",
+      "group": "products",
+      "mountChain": [
+        "",
+        "/products",
+        "/:productId/count"
+      ],
+      "sourceRouterFile": "src/internal/products/internalProductRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetProductInternal",
+      "handlerFile": "src/internal/products/internalHandlers/handleGetProductInternal.ts",
+      "method": "GET",
+      "path": "/products/:productId/data",
+      "style": "REST",
+      "group": "products",
+      "mountChain": [
+        "",
+        "/products",
+        "/:productId/data"
+      ],
+      "sourceRouterFile": "src/internal/products/internalProductRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetProductDeleteInfo",
+      "handlerFile": "src/internal/products/handlers/handleGetProductDeleteInfo.ts",
+      "method": "GET",
+      "path": "/products/:productId/info",
+      "style": "REST",
+      "group": "products",
+      "mountChain": [
+        "",
+        "/products",
+        "/:productId/info"
+      ],
+      "sourceRouterFile": "src/internal/products/internalProductRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleListPlanVariants",
+      "handlerFile": "src/internal/products/handlers/handleListPlanVariants.ts",
+      "method": "GET",
+      "path": "/products/:productId/variants",
+      "style": "REST",
+      "group": "products",
+      "mountChain": [
+        "",
+        "/products",
+        "/:productId/variants"
+      ],
+      "sourceRouterFile": "src/internal/products/internalProductRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleCopyEnvironment",
+      "handlerFile": "src/internal/products/handlers/handleCopyEnvironment/handleCopyEnvironment.ts",
+      "method": "POST",
+      "path": "/products/copy_to_production",
+      "style": "REST",
+      "group": "products",
+      "mountChain": [
+        "",
+        "/products",
+        "/copy_to_production"
+      ],
+      "sourceRouterFile": "src/internal/products/internalProductRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetFeatures",
+      "handlerFile": "src/internal/products/internalHandlers/handleGetFeatures.ts",
+      "method": "GET",
+      "path": "/products/features",
+      "style": "REST",
+      "group": "products",
+      "mountChain": [
+        "",
+        "/products",
+        "/features"
+      ],
+      "sourceRouterFile": "src/internal/products/internalProductRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "createRoute",
+      "handlerFile": "src/honoMiddlewares/routeHandler.ts",
+      "method": "GET",
+      "path": "/products/has_entity_feature_id",
+      "style": "REST",
+      "group": "products",
+      "mountChain": [
+        "",
+        "/products",
+        "/has_entity_feature_id"
+      ],
+      "sourceRouterFile": "src/internal/products/internalProductRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetLicenseProducts",
+      "handlerFile": "src/internal/products/internalHandlers/handleGetProducts.ts",
+      "method": "GET",
+      "path": "/products/license_products",
+      "style": "REST",
+      "group": "products",
+      "mountChain": [
+        "",
+        "/products",
+        "/license_products"
+      ],
+      "sourceRouterFile": "src/internal/products/internalProductRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetProductCounts",
+      "handlerFile": "src/internal/products/internalHandlers/handleGetProductCounts.ts",
+      "method": "GET",
+      "path": "/products/product_counts",
+      "style": "REST",
+      "group": "products",
+      "mountChain": [
+        "",
+        "/products",
+        "/product_counts"
+      ],
+      "sourceRouterFile": "src/internal/products/internalProductRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetProducts",
+      "handlerFile": "src/internal/products/internalHandlers/handleGetProducts.ts",
+      "method": "GET",
+      "path": "/products/products",
+      "style": "REST",
+      "group": "products",
+      "mountChain": [
+        "",
+        "/products",
+        "/products"
+      ],
+      "sourceRouterFile": "src/internal/products/internalProductRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetProductsByPriceIds",
+      "handlerFile": "src/internal/products/internalHandlers/handleGetProductsByPriceIds.ts",
+      "method": "GET",
+      "path": "/products/products/by-price-ids",
+      "style": "REST",
+      "group": "products",
+      "mountChain": [
+        "",
+        "/products",
+        "/products/by-price-ids"
+      ],
+      "sourceRouterFile": "src/internal/products/internalProductRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetDisplayNames",
+      "handlerFile": "src/internal/analytics/internalHandlers/handleGetDisplayNames.ts",
+      "method": "POST",
+      "path": "/query/display_names",
+      "style": "REST",
+      "group": "query",
+      "mountChain": [
+        "",
+        "/query",
+        "/display_names"
+      ],
+      "sourceRouterFile": "src/internal/analytics/internalAnalyticsRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetEventNames",
+      "handlerFile": "src/internal/analytics/internalHandlers/handleGetEventNames.ts",
+      "method": "GET",
+      "path": "/query/event_names",
+      "style": "REST",
+      "group": "query",
+      "mountChain": [
+        "",
+        "/query",
+        "/event_names"
+      ],
+      "sourceRouterFile": "src/internal/analytics/internalAnalyticsRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleListEventNames",
+      "handlerFile": "src/internal/analytics/internalHandlers/handleListEventNames.ts",
+      "method": "GET",
+      "path": "/query/event_names/list",
+      "style": "REST",
+      "group": "query",
+      "mountChain": [
+        "",
+        "/query",
+        "/event_names/list"
+      ],
+      "sourceRouterFile": "src/internal/analytics/internalAnalyticsRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleInternalAggregateEvents",
+      "handlerFile": "src/internal/analytics/internalHandlers/handleInternalAggregateEvents.ts",
+      "method": "POST",
+      "path": "/query/events",
+      "style": "REST",
+      "group": "query",
+      "mountChain": [
+        "",
+        "/query",
+        "/events"
+      ],
+      "sourceRouterFile": "src/internal/analytics/internalAnalyticsRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleInternalListRawEvents",
+      "handlerFile": "src/internal/analytics/internalHandlers/handleInternalListRawEvents.ts",
+      "method": "POST",
+      "path": "/query/raw",
+      "style": "REST",
+      "group": "query",
+      "mountChain": [
+        "",
+        "/query",
+        "/raw"
+      ],
+      "sourceRouterFile": "src/internal/analytics/internalAnalyticsRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleArpc",
+      "handlerFile": "src/internal/analytics/internalHandlers/handleRevenueAnalytics.ts",
+      "method": "POST",
+      "path": "/query/revenue/arpc",
+      "style": "REST",
+      "group": "query",
+      "mountChain": [
+        "",
+        "/query",
+        "/revenue/arpc"
+      ],
+      "sourceRouterFile": "src/internal/analytics/internalAnalyticsRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleRevenueByProduct",
+      "handlerFile": "src/internal/analytics/internalHandlers/handleRevenueAnalytics.ts",
+      "method": "POST",
+      "path": "/query/revenue/by-product",
+      "style": "REST",
+      "group": "query",
+      "mountChain": [
+        "",
+        "/query",
+        "/revenue/by-product"
+      ],
+      "sourceRouterFile": "src/internal/analytics/internalAnalyticsRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleCustomerLeaderboard",
+      "handlerFile": "src/internal/analytics/internalHandlers/handleRevenueAnalytics.ts",
+      "method": "POST",
+      "path": "/query/revenue/customer-leaderboard",
+      "style": "REST",
+      "group": "query",
+      "mountChain": [
+        "",
+        "/query",
+        "/revenue/customer-leaderboard"
+      ],
+      "sourceRouterFile": "src/internal/analytics/internalAnalyticsRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleEstimatedMrr",
+      "handlerFile": "src/internal/analytics/internalHandlers/handleRevenueAnalytics.ts",
+      "method": "POST",
+      "path": "/query/revenue/estimated-mrr",
+      "style": "REST",
+      "group": "query",
+      "mountChain": [
+        "",
+        "/query",
+        "/revenue/estimated-mrr"
+      ],
+      "sourceRouterFile": "src/internal/analytics/internalAnalyticsRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleInvoiceStatus",
+      "handlerFile": "src/internal/analytics/internalHandlers/handleRevenueAnalytics.ts",
+      "method": "POST",
+      "path": "/query/revenue/invoice-status",
+      "style": "REST",
+      "group": "query",
+      "mountChain": [
+        "",
+        "/query",
+        "/revenue/invoice-status"
+      ],
+      "sourceRouterFile": "src/internal/analytics/internalAnalyticsRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleRevenueProductShare",
+      "handlerFile": "src/internal/analytics/internalHandlers/handleRevenueAnalytics.ts",
+      "method": "POST",
+      "path": "/query/revenue/product-share",
+      "style": "REST",
+      "group": "query",
+      "mountChain": [
+        "",
+        "/query",
+        "/revenue/product-share"
+      ],
+      "sourceRouterFile": "src/internal/analytics/internalAnalyticsRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "GET",
+      "path": "/ready/:token",
+      "style": "REST",
+      "group": "ready",
+      "mountChain": [
+        "/ready/:token"
+      ],
+      "sourceRouterFile": "src/initHono.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetViews",
+      "handlerFile": "src/internal/misc/savedViews/handlers/handleGetViews.ts",
+      "method": "GET",
+      "path": "/saved_views/",
+      "style": "REST",
+      "group": "saved_views",
+      "mountChain": [
+        "",
+        "/saved_views",
+        ""
+      ],
+      "sourceRouterFile": "src/internal/misc/savedViews/savedViewsRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleDeleteView",
+      "handlerFile": "src/internal/misc/savedViews/handlers/handleDeleteView.ts",
+      "method": "DELETE",
+      "path": "/saved_views/:viewId",
+      "style": "REST",
+      "group": "saved_views",
+      "mountChain": [
+        "",
+        "/saved_views",
+        "/:viewId"
+      ],
+      "sourceRouterFile": "src/internal/misc/savedViews/savedViewsRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleSaveView",
+      "handlerFile": "src/internal/misc/savedViews/handlers/handleSaveView.ts",
+      "method": "POST",
+      "path": "/saved_views/save",
+      "style": "REST",
+      "group": "saved_views",
+      "mountChain": [
+        "",
+        "/saved_views",
+        "/save"
+      ],
+      "sourceRouterFile": "src/internal/misc/savedViews/savedViewsRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "GET",
+      "path": "/slack-unfurl/cards/:file",
+      "style": "REST",
+      "group": "slack-unfurl",
+      "mountChain": [
+        "/slack-unfurl",
+        "/cards/:file"
+      ],
+      "sourceRouterFile": "src/internal/slackUnfurl/slackUnfurlRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "POST",
+      "path": "/slack-unfurl/events",
+      "style": "REST",
+      "group": "slack-unfurl",
+      "mountChain": [
+        "/slack-unfurl",
+        "/events"
+      ],
+      "sourceRouterFile": "src/internal/slackUnfurl/slackUnfurlRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "POST",
+      "path": "/slack-unfurl/interactions",
+      "style": "REST",
+      "group": "slack-unfurl",
+      "mountChain": [
+        "/slack-unfurl",
+        "/interactions"
+      ],
+      "sourceRouterFile": "src/internal/slackUnfurl/slackUnfurlRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "POST",
+      "path": "/slack/events",
+      "style": "REST",
+      "group": "slack",
+      "mountChain": [
+        "",
+        "/slack/events"
+      ],
+      "sourceRouterFile": "src/routers/chatProxyRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "POST",
+      "path": "/slack/interactions",
+      "style": "REST",
+      "group": "slack",
+      "mountChain": [
+        "",
+        "/slack/interactions"
+      ],
+      "sourceRouterFile": "src/routers/chatProxyRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "GET",
+      "path": "/slack/oauth/callback",
+      "style": "REST",
+      "group": "slack",
+      "mountChain": [
+        "",
+        "/slack/oauth/callback"
+      ],
+      "sourceRouterFile": "src/routers/chatProxyRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetTrmnlDeviceId",
+      "handlerFile": "src/internal/misc/trmnl/handlers/handleGetTrmnlDeviceId.ts",
+      "method": "GET",
+      "path": "/trmnl/device_id",
+      "style": "REST",
+      "group": "trmnl",
+      "mountChain": [
+        "",
+        "/trmnl",
+        "/device_id"
+      ],
+      "sourceRouterFile": "src/internal/misc/trmnl/trmnlRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handlePostTrmnlDeviceId",
+      "handlerFile": "src/internal/misc/trmnl/handlers/handlePostTrmnlDeviceId.ts",
+      "method": "POST",
+      "path": "/trmnl/device_id",
+      "style": "REST",
+      "group": "trmnl",
+      "mountChain": [
+        "",
+        "/trmnl",
+        "/device_id"
+      ],
+      "sourceRouterFile": "src/internal/misc/trmnl/trmnlRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGenerateTrmnlScreen",
+      "handlerFile": "src/internal/misc/trmnl/handlers/handleGenerateTrmnlScreen.ts",
+      "method": "POST",
+      "path": "/trmnl/screen",
+      "style": "REST",
+      "group": "trmnl",
+      "mountChain": [
+        "",
+        "/trmnl",
+        "/screen"
+      ],
+      "sourceRouterFile": "src/internal/misc/trmnl/trmnlRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGenerateBillingRequest",
+      "handlerFile": "src/internal/billing/v2/handlers/handleGenerateBillingRequest.ts",
+      "method": "POST",
+      "path": "/v1/agent.generate_billing_request",
+      "style": "RPC",
+      "group": "v1/agent",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/agent.generate_billing_request"
+      ],
+      "sourceRouterFile": "src/internal/billing/billingRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGenerateAgentRules",
+      "handlerFile": "src/internal/agent/rules/handlers/handleGenerateAgentRules.ts",
+      "method": "POST",
+      "path": "/v1/agent.generate_rules",
+      "style": "RPC",
+      "group": "v1/agent",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/agent.generate_rules"
+      ],
+      "sourceRouterFile": "src/internal/agent/rules/agentRulesRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetAgentRules",
+      "handlerFile": "src/internal/agent/rules/handlers/handleGetAgentRules.ts",
+      "method": "POST",
+      "path": "/v1/agent.get_rules",
+      "style": "RPC",
+      "group": "v1/agent",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/agent.get_rules"
+      ],
+      "sourceRouterFile": "src/internal/agent/rules/agentRulesRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpdateAgentRules",
+      "handlerFile": "src/internal/agent/rules/handlers/handleUpdateAgentRules.ts",
+      "method": "POST",
+      "path": "/v1/agent.update_rules",
+      "style": "RPC",
+      "group": "v1/agent",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/agent.update_rules"
+      ],
+      "sourceRouterFile": "src/internal/agent/rules/agentRulesRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleBatchTrack",
+      "handlerFile": "src/internal/balances/handlers/handleBatchTrack.ts",
+      "method": "POST",
+      "path": "/v1/balances.batch_track",
+      "style": "RPC",
+      "group": "v1/balances",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/balances.batch_track"
+      ],
+      "sourceRouterFile": "src/internal/balances/balancesRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleBatchTrackTokens",
+      "handlerFile": "src/internal/balances/handlers/handleBatchTrackTokens.ts",
+      "method": "POST",
+      "path": "/v1/balances.batch_track_tokens",
+      "style": "RPC",
+      "group": "v1/balances",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/balances.batch_track_tokens"
+      ],
+      "sourceRouterFile": "src/internal/balances/balancesRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleCheck",
+      "handlerFile": "src/internal/api/check/handleCheck.ts",
+      "method": "POST",
+      "path": "/v1/balances.check",
+      "style": "RPC",
+      "group": "v1/balances",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/balances.check"
+      ],
+      "sourceRouterFile": "src/internal/balances/balancesRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleCreateBalance",
+      "handlerFile": "src/internal/balances/handlers/handleCreateBalance.ts",
+      "method": "POST",
+      "path": "/v1/balances.create",
+      "style": "RPC",
+      "group": "v1/balances",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/balances.create"
+      ],
+      "sourceRouterFile": "src/internal/balances/balancesRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleDeleteBalance",
+      "handlerFile": "src/internal/balances/handlers/handleDeleteBalance.ts",
+      "method": "POST",
+      "path": "/v1/balances.delete",
+      "style": "RPC",
+      "group": "v1/balances",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/balances.delete"
+      ],
+      "sourceRouterFile": "src/internal/balances/balancesRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleFinalizeLock",
+      "handlerFile": "src/internal/balances/handlers/handleFinalizeLock.ts",
+      "method": "POST",
+      "path": "/v1/balances.finalize",
+      "style": "RPC",
+      "group": "v1/balances",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/balances.finalize"
+      ],
+      "sourceRouterFile": "src/internal/balances/balancesRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleRecalculateBalancePreview",
+      "handlerFile": "src/internal/balances/handlers/handleRecalculateBalancePreview.ts",
+      "method": "POST",
+      "path": "/v1/balances.preview_recalculate",
+      "style": "RPC",
+      "group": "v1/balances",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/balances.preview_recalculate"
+      ],
+      "sourceRouterFile": "src/internal/balances/balancesRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleRecalculateBalance",
+      "handlerFile": "src/internal/balances/handlers/handleRecalculateBalance.ts",
+      "method": "POST",
+      "path": "/v1/balances.recalculate",
+      "style": "RPC",
+      "group": "v1/balances",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/balances.recalculate"
+      ],
+      "sourceRouterFile": "src/internal/balances/balancesRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleTrack",
+      "handlerFile": "src/internal/balances/handlers/handleTrack.ts",
+      "method": "POST",
+      "path": "/v1/balances.track",
+      "style": "RPC",
+      "group": "v1/balances",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/balances.track"
+      ],
+      "sourceRouterFile": "src/internal/balances/balancesRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleTrackTokens",
+      "handlerFile": "src/internal/balances/handlers/handleTrackTokens.ts",
+      "method": "POST",
+      "path": "/v1/balances.track_tokens",
+      "style": "RPC",
+      "group": "v1/balances",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/balances.track_tokens"
+      ],
+      "sourceRouterFile": "src/internal/balances/balancesRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpdateBalance",
+      "handlerFile": "src/internal/balances/handlers/handleUpdateBalance.ts",
+      "method": "POST",
+      "path": "/v1/balances.update",
+      "style": "RPC",
+      "group": "v1/balances",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/balances.update"
+      ],
+      "sourceRouterFile": "src/internal/balances/balancesRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleCreateBalance",
+      "handlerFile": "src/internal/balances/handlers/handleCreateBalance.ts",
+      "method": "POST",
+      "path": "/v1/balances/create",
+      "style": "REST",
+      "group": "v1/balances",
+      "mountChain": [
+        "/v1",
+        "",
+        "/balances/create"
+      ],
+      "sourceRouterFile": "src/internal/balances/balancesRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleListBalances",
+      "handlerFile": "src/internal/balances/handlers/handleListBalances.ts",
+      "method": "GET",
+      "path": "/v1/balances/list",
+      "style": "REST",
+      "group": "v1/balances",
+      "mountChain": [
+        "/v1",
+        "",
+        "/balances/list"
+      ],
+      "sourceRouterFile": "src/internal/balances/balancesRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleRecalculateBalancePreview",
+      "handlerFile": "src/internal/balances/handlers/handleRecalculateBalancePreview.ts",
+      "method": "POST",
+      "path": "/v1/balances/preview_recalculate",
+      "style": "REST",
+      "group": "v1/balances",
+      "mountChain": [
+        "/v1",
+        "",
+        "/balances/preview_recalculate"
+      ],
+      "sourceRouterFile": "src/internal/balances/balancesRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleRecalculateBalance",
+      "handlerFile": "src/internal/balances/handlers/handleRecalculateBalance.ts",
+      "method": "POST",
+      "path": "/v1/balances/recalculate",
+      "style": "REST",
+      "group": "v1/balances",
+      "mountChain": [
+        "/v1",
+        "",
+        "/balances/recalculate"
+      ],
+      "sourceRouterFile": "src/internal/balances/balancesRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpdateBalance",
+      "handlerFile": "src/internal/balances/handlers/handleUpdateBalance.ts",
+      "method": "POST",
+      "path": "/v1/balances/update",
+      "style": "REST",
+      "group": "v1/balances",
+      "mountChain": [
+        "/v1",
+        "",
+        "/balances/update"
+      ],
+      "sourceRouterFile": "src/internal/balances/balancesRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleAttachV2",
+      "handlerFile": "src/internal/billing/v2/handlers/handleAttachV2.ts",
+      "method": "POST",
+      "path": "/v1/billing.attach",
+      "style": "RPC",
+      "group": "v1/billing",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/billing.attach"
+      ],
+      "sourceRouterFile": "src/internal/billing/billingRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleMultiAttach",
+      "handlerFile": "src/internal/billing/v2/handlers/handleMultiAttach.ts",
+      "method": "POST",
+      "path": "/v1/billing.multi_attach",
+      "style": "RPC",
+      "group": "v1/billing",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/billing.multi_attach"
+      ],
+      "sourceRouterFile": "src/internal/billing/billingRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleMultiUpdate",
+      "handlerFile": "src/internal/billing/v2/handlers/handleMultiUpdate.ts",
+      "method": "POST",
+      "path": "/v1/billing.multi_update",
+      "style": "RPC",
+      "group": "v1/billing",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/billing.multi_update"
+      ],
+      "sourceRouterFile": "src/internal/billing/billingRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleOpenCustomerPortalV2",
+      "handlerFile": "src/internal/customers/handlers/handleBillingPortal/handleOpenCustomerPortalV2.ts",
+      "method": "POST",
+      "path": "/v1/billing.open_customer_portal",
+      "style": "RPC",
+      "group": "v1/billing",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/billing.open_customer_portal"
+      ],
+      "sourceRouterFile": "src/internal/billing/billingRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handlePreviewAttach",
+      "handlerFile": "src/internal/billing/v2/handlers/handlePreviewAttach.ts",
+      "method": "POST",
+      "path": "/v1/billing.preview_attach",
+      "style": "RPC",
+      "group": "v1/billing",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/billing.preview_attach"
+      ],
+      "sourceRouterFile": "src/internal/billing/billingRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handlePreviewMultiAttach",
+      "handlerFile": "src/internal/billing/v2/handlers/handlePreviewMultiAttach.ts",
+      "method": "POST",
+      "path": "/v1/billing.preview_multi_attach",
+      "style": "RPC",
+      "group": "v1/billing",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/billing.preview_multi_attach"
+      ],
+      "sourceRouterFile": "src/internal/billing/billingRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handlePreviewMultiUpdate",
+      "handlerFile": "src/internal/billing/v2/handlers/handlePreviewMultiUpdate.ts",
+      "method": "POST",
+      "path": "/v1/billing.preview_multi_update",
+      "style": "RPC",
+      "group": "v1/billing",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/billing.preview_multi_update"
+      ],
+      "sourceRouterFile": "src/internal/billing/billingRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handlePreviewUpdateSubscription",
+      "handlerFile": "src/internal/billing/v2/handlers/handlePreviewUpdateSubscription.ts",
+      "method": "POST",
+      "path": "/v1/billing.preview_update",
+      "style": "RPC",
+      "group": "v1/billing",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/billing.preview_update"
+      ],
+      "sourceRouterFile": "src/internal/billing/billingRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleResolveBillingRequest",
+      "handlerFile": "src/internal/billing/v2/handlers/handleResolveBillingRequest.ts",
+      "method": "POST",
+      "path": "/v1/billing.resolve_request",
+      "style": "RPC",
+      "group": "v1/billing",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/billing.resolve_request"
+      ],
+      "sourceRouterFile": "src/internal/billing/billingRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpdateSubscription",
+      "handlerFile": "src/internal/billing/v2/handlers/handleUpdateSubscription.ts",
+      "method": "POST",
+      "path": "/v1/billing.update",
+      "style": "RPC",
+      "group": "v1/billing",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/billing.update"
+      ],
+      "sourceRouterFile": "src/internal/billing/billingRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleCancelV2",
+      "handlerFile": "src/internal/customers/cancel/handleCancelV2.ts",
+      "method": "POST",
+      "path": "/v1/cancel",
+      "style": "REST",
+      "group": "v1/cancel",
+      "mountChain": [
+        "/v1",
+        "",
+        "/cancel"
+      ],
+      "sourceRouterFile": "src/internal/billing/billingRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetCatalog",
+      "handlerFile": "src/internal/models/handlers/handleGetCatalog.ts",
+      "method": "GET",
+      "path": "/v1/catalog",
+      "style": "REST",
+      "group": "v1/catalog",
+      "mountChain": [
+        "/v1",
+        "",
+        "/catalog"
+      ],
+      "sourceRouterFile": "src/internal/models/servedModelRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handlePreviewUpdateCatalog",
+      "handlerFile": "src/internal/catalog/handlers/handlePreviewUpdateCatalog.ts",
+      "method": "POST",
+      "path": "/v1/catalog.preview_update",
+      "style": "RPC",
+      "group": "v1/catalog",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/catalog.preview_update"
+      ],
+      "sourceRouterFile": "src/internal/catalog/catalogRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpdateCatalog",
+      "handlerFile": "src/internal/catalog/handlers/handleUpdateCatalog.ts",
+      "method": "POST",
+      "path": "/v1/catalog.update",
+      "style": "RPC",
+      "group": "v1/catalog",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/catalog.update"
+      ],
+      "sourceRouterFile": "src/internal/catalog/catalogRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleDiffCatalogV2",
+      "handlerFile": "src/internal/catalogV2/handlers/handleDiffCatalogV2.ts",
+      "method": "POST",
+      "path": "/v1/catalogV2.diff",
+      "style": "RPC",
+      "group": "v1/catalogV2",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/catalogV2.diff"
+      ],
+      "sourceRouterFile": "src/internal/catalogV2/catalogV2Router.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetCatalogV2",
+      "handlerFile": "src/internal/catalogV2/handlers/handleGetCatalogV2.ts",
+      "method": "POST",
+      "path": "/v1/catalogV2.get",
+      "style": "RPC",
+      "group": "v1/catalogV2",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/catalogV2.get"
+      ],
+      "sourceRouterFile": "src/internal/catalogV2/catalogV2Router.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handlePreviewUpdateCatalogV2",
+      "handlerFile": "src/internal/catalogV2/handlers/handlePreviewUpdateCatalogV2.ts",
+      "method": "POST",
+      "path": "/v1/catalogV2.preview_update",
+      "style": "RPC",
+      "group": "v1/catalogV2",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/catalogV2.preview_update"
+      ],
+      "sourceRouterFile": "src/internal/catalogV2/catalogV2Router.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpdateCatalogV2",
+      "handlerFile": "src/internal/catalogV2/handlers/handleUpdateCatalogV2.ts",
+      "method": "POST",
+      "path": "/v1/catalogV2.update",
+      "style": "RPC",
+      "group": "v1/catalogV2",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/catalogV2.update"
+      ],
+      "sourceRouterFile": "src/internal/catalogV2/catalogV2Router.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "POST",
+      "path": "/v1/chat/completions",
+      "style": "REST",
+      "group": "v1/chat",
+      "mountChain": [
+        "/v1",
+        "/chat/completions"
+      ],
+      "sourceRouterFile": "src/internal/inference/inferenceRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleCheck",
+      "handlerFile": "src/internal/api/check/handleCheck.ts",
+      "method": "POST",
+      "path": "/v1/check",
+      "style": "REST",
+      "group": "v1/check",
+      "mountChain": [
+        "/v1",
+        "",
+        "/check"
+      ],
+      "sourceRouterFile": "src/internal/balances/balancesRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleLegacyApiCheckout",
+      "handlerFile": "src/internal/billing/checkout/handleLegacyApiCheckout.ts",
+      "method": "POST",
+      "path": "/v1/checkout",
+      "style": "REST",
+      "group": "v1/checkout",
+      "mountChain": [
+        "/v1",
+        "",
+        "/checkout"
+      ],
+      "sourceRouterFile": "src/internal/billing/billingRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetPricingTable",
+      "handlerFile": "src/internal/misc/components/handlers/handleGetPricingTable.ts",
+      "method": "GET",
+      "path": "/v1/components/pricing_table",
+      "style": "REST",
+      "group": "v1/components",
+      "mountChain": [
+        "/v1",
+        "/components",
+        "/pricing_table"
+      ],
+      "sourceRouterFile": "src/internal/misc/components/componentsRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleNukeOrganisationConfiguration",
+      "handlerFile": "src/internal/misc/configs/handlers/handleNukeOrganisationConfiguration.ts",
+      "method": "DELETE",
+      "path": "/v1/configs/nuke",
+      "style": "REST",
+      "group": "v1/configs",
+      "mountChain": [
+        "/v1",
+        "/configs",
+        "/nuke"
+      ],
+      "sourceRouterFile": "src/internal/misc/configs/configsRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handlePushOrganisationConfiguration",
+      "handlerFile": "src/internal/misc/configs/handlers/handlePushOrganisationConfiguration.ts",
+      "method": "POST",
+      "path": "/v1/configs/push",
+      "style": "REST",
+      "group": "v1/configs",
+      "mountChain": [
+        "/v1",
+        "/configs",
+        "/push"
+      ],
+      "sourceRouterFile": "src/internal/misc/configs/configsRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleDeleteCustomerV2",
+      "handlerFile": "src/internal/customers/handlers/handleDeleteCustomer.ts",
+      "method": "POST",
+      "path": "/v1/customers.delete",
+      "style": "RPC",
+      "group": "v1/customers",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/customers.delete"
+      ],
+      "sourceRouterFile": "src/internal/customers/cusRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetCustomerV3",
+      "handlerFile": "src/internal/customers/handlers/handleGetCustomerV3.ts",
+      "method": "POST",
+      "path": "/v1/customers.get",
+      "style": "RPC",
+      "group": "v1/customers",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/customers.get"
+      ],
+      "sourceRouterFile": "src/internal/customers/cusRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetOrCreateCustomerV2",
+      "handlerFile": "src/internal/customers/handlers/handleGetOrCreateCustomer/handleGetOrCreateCustomerV2.ts",
+      "method": "POST",
+      "path": "/v1/customers.get_or_create",
+      "style": "RPC",
+      "group": "v1/customers",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/customers.get_or_create"
+      ],
+      "sourceRouterFile": "src/internal/customers/cusRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleListCustomersV2",
+      "handlerFile": "src/internal/customers/handlers/handleListCustomersV2.ts",
+      "method": "POST",
+      "path": "/v1/customers.list",
+      "style": "RPC",
+      "group": "v1/customers",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/customers.list"
+      ],
+      "sourceRouterFile": "src/internal/customers/cusRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpdateCustomerV2",
+      "handlerFile": "src/internal/customers/handlers/handleUpdateCustomer/handleUpdateCustomerV2.ts",
+      "method": "POST",
+      "path": "/v1/customers.update",
+      "style": "RPC",
+      "group": "v1/customers",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/customers.update"
+      ],
+      "sourceRouterFile": "src/internal/customers/cusRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleListCustomers",
+      "handlerFile": "src/internal/customers/handlers/handleListCustomers.ts",
+      "method": "GET",
+      "path": "/v1/customers/",
+      "style": "REST",
+      "group": "v1/customers",
+      "mountChain": [
+        "/v1",
+        "/customers",
+        ""
+      ],
+      "sourceRouterFile": "src/internal/customers/cusRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handlePostCustomer",
+      "handlerFile": "src/internal/customers/handlers/handleGetOrCreateCustomer/handleGetOrCreateCustomer.ts",
+      "method": "POST",
+      "path": "/v1/customers/",
+      "style": "REST",
+      "group": "v1/customers",
+      "mountChain": [
+        "/v1",
+        "/customers",
+        ""
+      ],
+      "sourceRouterFile": "src/internal/customers/cusRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleDeleteCustomer",
+      "handlerFile": "src/internal/customers/handlers/handleDeleteCustomer.ts",
+      "method": "DELETE",
+      "path": "/v1/customers/:customer_id",
+      "style": "REST",
+      "group": "v1/customers",
+      "mountChain": [
+        "/v1",
+        "/customers",
+        "/:customer_id"
+      ],
+      "sourceRouterFile": "src/internal/customers/cusRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetCustomerV2",
+      "handlerFile": "src/internal/customers/handlers/handleGetCustomerV2.ts",
+      "method": "GET",
+      "path": "/v1/customers/:customer_id",
+      "style": "REST",
+      "group": "v1/customers",
+      "mountChain": [
+        "/v1",
+        "/customers",
+        "/:customer_id"
+      ],
+      "sourceRouterFile": "src/internal/customers/cusRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpdateCustomer",
+      "handlerFile": "src/internal/customers/handlers/handleUpdateCustomer/handleUpdateCustomer.ts",
+      "method": "PATCH",
+      "path": "/v1/customers/:customer_id",
+      "style": "REST",
+      "group": "v1/customers",
+      "mountChain": [
+        "/v1",
+        "/customers",
+        "/:customer_id"
+      ],
+      "sourceRouterFile": "src/internal/customers/cusRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpdateCustomer",
+      "handlerFile": "src/internal/customers/handlers/handleUpdateCustomer/handleUpdateCustomer.ts",
+      "method": "POST",
+      "path": "/v1/customers/:customer_id",
+      "style": "REST",
+      "group": "v1/customers",
+      "mountChain": [
+        "/v1",
+        "/customers",
+        "/:customer_id"
+      ],
+      "sourceRouterFile": "src/internal/customers/cusRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpdateBalancesV2",
+      "handlerFile": "src/internal/customers/handlers/handleUpdateBalancesV2.ts",
+      "method": "POST",
+      "path": "/v1/customers/:customer_id/balances",
+      "style": "REST",
+      "group": "v1/customers",
+      "mountChain": [
+        "/v1",
+        "/customers",
+        "/:customer_id/balances"
+      ],
+      "sourceRouterFile": "src/internal/customers/cusRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetBillingPortal",
+      "handlerFile": "src/internal/customers/handlers/handleBillingPortal/handleGetBillingPortal.ts",
+      "method": "GET",
+      "path": "/v1/customers/:customer_id/billing_portal",
+      "style": "REST",
+      "group": "v1/customers",
+      "mountChain": [
+        "/v1",
+        "/customers",
+        "/:customer_id/billing_portal"
+      ],
+      "sourceRouterFile": "src/internal/customers/cusRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleCreateBillingPortal",
+      "handlerFile": "src/internal/customers/handlers/handleBillingPortal/handleCreateBillingPortal.ts",
+      "method": "POST",
+      "path": "/v1/customers/:customer_id/billing_portal",
+      "style": "REST",
+      "group": "v1/customers",
+      "mountChain": [
+        "/v1",
+        "/customers",
+        "/:customer_id/billing_portal"
+      ],
+      "sourceRouterFile": "src/internal/customers/cusRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleListEntities",
+      "handlerFile": "src/internal/entities/handlers/handleListEntities.ts",
+      "method": "GET",
+      "path": "/v1/customers/:customer_id/entities",
+      "style": "REST",
+      "group": "v1/customers",
+      "mountChain": [
+        "/v1",
+        "",
+        "/customers/:customer_id/entities"
+      ],
+      "sourceRouterFile": "src/internal/entities/entityRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleCreateEntity",
+      "handlerFile": "src/internal/entities/handlers/handleCreateEntity/handleCreateEntity.ts",
+      "method": "POST",
+      "path": "/v1/customers/:customer_id/entities",
+      "style": "REST",
+      "group": "v1/customers",
+      "mountChain": [
+        "/v1",
+        "",
+        "/customers/:customer_id/entities"
+      ],
+      "sourceRouterFile": "src/internal/entities/entityRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleDeleteEntity",
+      "handlerFile": "src/internal/entities/handlers/handleDeleteEntity/handleDeleteEntity.ts",
+      "method": "DELETE",
+      "path": "/v1/customers/:customer_id/entities/:entity_id",
+      "style": "REST",
+      "group": "v1/customers",
+      "mountChain": [
+        "/v1",
+        "",
+        "/customers/:customer_id/entities/:entity_id"
+      ],
+      "sourceRouterFile": "src/internal/entities/entityRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetEntity",
+      "handlerFile": "src/internal/entities/handlers/handleGetEntity/handleGetEntity.ts",
+      "method": "GET",
+      "path": "/v1/customers/:customer_id/entities/:entity_id",
+      "style": "REST",
+      "group": "v1/customers",
+      "mountChain": [
+        "/v1",
+        "",
+        "/customers/:customer_id/entities/:entity_id"
+      ],
+      "sourceRouterFile": "src/internal/entities/entityRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleRefundInvoice",
+      "handlerFile": "src/internal/customers/handlers/handleRefundInvoice/handleRefundInvoice.ts",
+      "method": "POST",
+      "path": "/v1/customers/:customer_id/invoices/:processor_invoice_id/refund",
+      "style": "REST",
+      "group": "v1/customers",
+      "mountChain": [
+        "/v1",
+        "/customers",
+        "/:customer_id/invoices/:processor_invoice_id/refund"
+      ],
+      "sourceRouterFile": "src/internal/customers/cusRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleListCustomerProducts",
+      "handlerFile": "src/internal/customers/handlers/handleListCustomerProducts.ts",
+      "method": "GET",
+      "path": "/v1/customers/:customer_id/products",
+      "style": "REST",
+      "group": "v1/customers",
+      "mountChain": [
+        "/v1",
+        "/customers",
+        "/:customer_id/products"
+      ],
+      "sourceRouterFile": "src/internal/customers/cusRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleTransferProductV2",
+      "handlerFile": "src/internal/customers/handlers/handleTransferProductV2.ts",
+      "method": "POST",
+      "path": "/v1/customers/:customer_id/transfer",
+      "style": "REST",
+      "group": "v1/customers",
+      "mountChain": [
+        "/v1",
+        "/customers",
+        "/:customer_id/transfer"
+      ],
+      "sourceRouterFile": "src/internal/customers/cusRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleClearCustomerCache",
+      "handlerFile": "src/internal/customers/handlers/handleClearCustomerCache.ts",
+      "method": "POST",
+      "path": "/v1/customers/clear_cache",
+      "style": "REST",
+      "group": "v1/customers",
+      "mountChain": [
+        "/v1",
+        "/customers",
+        "/clear_cache"
+      ],
+      "sourceRouterFile": "src/internal/customers/cusRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleListCustomersV2",
+      "handlerFile": "src/internal/customers/handlers/handleListCustomersV2.ts",
+      "method": "POST",
+      "path": "/v1/customers/list",
+      "style": "REST",
+      "group": "v1/customers",
+      "mountChain": [
+        "/v1",
+        "/customers",
+        "list"
+      ],
+      "sourceRouterFile": "src/internal/customers/cusRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleCreateEntityV2",
+      "handlerFile": "src/internal/entities/handlers/handleCreateEntity/handleCreateEntityV2.ts",
+      "method": "POST",
+      "path": "/v1/entities.create",
+      "style": "RPC",
+      "group": "v1/entities",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/entities.create"
+      ],
+      "sourceRouterFile": "src/internal/entities/entityRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleDeleteEntityV2",
+      "handlerFile": "src/internal/entities/handlers/handleDeleteEntity/handleDeleteEntityV2.ts",
+      "method": "POST",
+      "path": "/v1/entities.delete",
+      "style": "RPC",
+      "group": "v1/entities",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/entities.delete"
+      ],
+      "sourceRouterFile": "src/internal/entities/entityRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetEntityV2",
+      "handlerFile": "src/internal/entities/handlers/handleGetEntity/handleGetEntityV2.ts",
+      "method": "POST",
+      "path": "/v1/entities.get",
+      "style": "RPC",
+      "group": "v1/entities",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/entities.get"
+      ],
+      "sourceRouterFile": "src/internal/entities/entityRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleListEntitiesV2",
+      "handlerFile": "src/internal/entities/handlers/handleListEntitiesV2.ts",
+      "method": "POST",
+      "path": "/v1/entities.list",
+      "style": "RPC",
+      "group": "v1/entities",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/entities.list"
+      ],
+      "sourceRouterFile": "src/internal/entities/entityRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpdateEntity",
+      "handlerFile": "src/internal/entities/handlers/handleUpdateEntity/handleUpdateEntity.ts",
+      "method": "POST",
+      "path": "/v1/entities.update",
+      "style": "RPC",
+      "group": "v1/entities",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/entities.update"
+      ],
+      "sourceRouterFile": "src/internal/entities/entityRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleCheck",
+      "handlerFile": "src/internal/api/check/handleCheck.ts",
+      "method": "POST",
+      "path": "/v1/entitled",
+      "style": "REST",
+      "group": "v1/entitled",
+      "mountChain": [
+        "/v1",
+        "",
+        "/entitled"
+      ],
+      "sourceRouterFile": "src/internal/balances/balancesRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleTrack",
+      "handlerFile": "src/internal/balances/handlers/handleTrack.ts",
+      "method": "POST",
+      "path": "/v1/events",
+      "style": "REST",
+      "group": "v1/events",
+      "mountChain": [
+        "/v1",
+        "",
+        "/events"
+      ],
+      "sourceRouterFile": "src/internal/balances/balancesRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleExternalAggregateEvents",
+      "handlerFile": "src/internal/events/handlers/handleExternalAggregateEvents.ts",
+      "method": "POST",
+      "path": "/v1/events.aggregate",
+      "style": "RPC",
+      "group": "v1/events",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "events.aggregate"
+      ],
+      "sourceRouterFile": "src/internal/events/eventsRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleExternalListEvents",
+      "handlerFile": "src/internal/events/handlers/handleExternalListEvents.ts",
+      "method": "POST",
+      "path": "/v1/events.list",
+      "style": "RPC",
+      "group": "v1/events",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "events.list"
+      ],
+      "sourceRouterFile": "src/internal/events/eventsRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleExternalAggregateEvents",
+      "handlerFile": "src/internal/events/handlers/handleExternalAggregateEvents.ts",
+      "method": "POST",
+      "path": "/v1/events/aggregate",
+      "style": "REST",
+      "group": "v1/events",
+      "mountChain": [
+        "/v1",
+        "/events",
+        "aggregate"
+      ],
+      "sourceRouterFile": "src/internal/events/eventsRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleExternalListEvents",
+      "handlerFile": "src/internal/events/handlers/handleExternalListEvents.ts",
+      "method": "POST",
+      "path": "/v1/events/list",
+      "style": "REST",
+      "group": "v1/events",
+      "mountChain": [
+        "/v1",
+        "/events",
+        "list"
+      ],
+      "sourceRouterFile": "src/internal/events/eventsRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleCreateFeatureV2",
+      "handlerFile": "src/internal/features/handlers/handleCreateFeature/handleCreateFeatureV2.ts",
+      "method": "POST",
+      "path": "/v1/features.create",
+      "style": "RPC",
+      "group": "v1/features",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/features.create"
+      ],
+      "sourceRouterFile": "src/internal/features/featureRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleDeleteFeatureV2",
+      "handlerFile": "src/internal/features/handlers/handleDeleteFeature/handleDeleteFeatureV2.ts",
+      "method": "POST",
+      "path": "/v1/features.delete",
+      "style": "RPC",
+      "group": "v1/features",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/features.delete"
+      ],
+      "sourceRouterFile": "src/internal/features/featureRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetFeatureV2",
+      "handlerFile": "src/internal/features/handlers/handleGetFeature/handleGetFeatureV2.ts",
+      "method": "POST",
+      "path": "/v1/features.get",
+      "style": "RPC",
+      "group": "v1/features",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/features.get"
+      ],
+      "sourceRouterFile": "src/internal/features/featureRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleListFeaturesV1",
+      "handlerFile": "src/internal/features/handlers/handleListFeatures/handleListFeaturesV1.ts",
+      "method": "POST",
+      "path": "/v1/features.list",
+      "style": "RPC",
+      "group": "v1/features",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/features.list"
+      ],
+      "sourceRouterFile": "src/internal/features/featureRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpdateFeatureV2",
+      "handlerFile": "src/internal/features/handlers/handleUpdateFeature/handleUpdateFeatureV2.ts",
+      "method": "POST",
+      "path": "/v1/features.update",
+      "style": "RPC",
+      "group": "v1/features",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/features.update"
+      ],
+      "sourceRouterFile": "src/internal/features/featureRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleListFeaturesV1",
+      "handlerFile": "src/internal/features/handlers/handleListFeatures/handleListFeaturesV1.ts",
+      "method": "GET",
+      "path": "/v1/features/",
+      "style": "REST",
+      "group": "v1/features",
+      "mountChain": [
+        "/v1",
+        "/features",
+        ""
+      ],
+      "sourceRouterFile": "src/internal/features/featureRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleCreateFeatureV1",
+      "handlerFile": "src/internal/features/handlers/handleCreateFeature/handleCreateFeatureV1.ts",
+      "method": "POST",
+      "path": "/v1/features/",
+      "style": "REST",
+      "group": "v1/features",
+      "mountChain": [
+        "/v1",
+        "/features",
+        ""
+      ],
+      "sourceRouterFile": "src/internal/features/featureRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleDeleteFeatureV1",
+      "handlerFile": "src/internal/features/handlers/handleDeleteFeature/handleDeleteFeatureV1.ts",
+      "method": "DELETE",
+      "path": "/v1/features/:feature_id",
+      "style": "REST",
+      "group": "v1/features",
+      "mountChain": [
+        "/v1",
+        "/features",
+        "/:feature_id"
+      ],
+      "sourceRouterFile": "src/internal/features/featureRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetFeatureV1",
+      "handlerFile": "src/internal/features/handlers/handleGetFeature/handleGetFeatureV1.ts",
+      "method": "GET",
+      "path": "/v1/features/:feature_id",
+      "style": "REST",
+      "group": "v1/features",
+      "mountChain": [
+        "/v1",
+        "/features",
+        "/:feature_id"
+      ],
+      "sourceRouterFile": "src/internal/features/featureRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpdateFeatureV1",
+      "handlerFile": "src/internal/features/handlers/handleUpdateFeature/handleUpdateFeatureV1.ts",
+      "method": "POST",
+      "path": "/v1/features/:feature_id",
+      "style": "REST",
+      "group": "v1/features",
+      "mountChain": [
+        "/v1",
+        "/features",
+        "/:feature_id"
+      ],
+      "sourceRouterFile": "src/internal/features/featureRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetFeatureDeletionInfo",
+      "handlerFile": "src/internal/features/internalHandlers/handleGetFeatureDeletionInfo.ts",
+      "method": "GET",
+      "path": "/v1/features/:feature_id/deletion_info",
+      "style": "REST",
+      "group": "v1/features",
+      "mountChain": [
+        "/v1",
+        "/features",
+        "/:feature_id/deletion_info"
+      ],
+      "sourceRouterFile": "src/internal/features/featureRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetModelPricing",
+      "handlerFile": "src/internal/features/internalHandlers/handleGetModelPricing.ts",
+      "method": "GET",
+      "path": "/v1/features/ai/model_pricing",
+      "style": "REST",
+      "group": "v1/features",
+      "mountChain": [
+        "/v1",
+        "/features",
+        "/ai/model_pricing"
+      ],
+      "sourceRouterFile": "src/internal/features/featureRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleInsertInvoices",
+      "handlerFile": "src/internal/invoices/handlers/handleInsertInvoices.ts",
+      "method": "POST",
+      "path": "/v1/invoices.insert",
+      "style": "RPC",
+      "group": "v1/invoices",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/invoices.insert"
+      ],
+      "sourceRouterFile": "src/internal/invoices/invoiceRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleListInvoices",
+      "handlerFile": "src/internal/invoices/handlers/handleListInvoices.ts",
+      "method": "POST",
+      "path": "/v1/invoices.list",
+      "style": "RPC",
+      "group": "v1/invoices",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/invoices.list"
+      ],
+      "sourceRouterFile": "src/internal/invoices/invoiceRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleListInvoiceTemplates",
+      "handlerFile": "src/internal/invoices/handlers/handleListInvoiceTemplates.ts",
+      "method": "POST",
+      "path": "/v1/invoices.listTemplates",
+      "style": "RPC",
+      "group": "v1/invoices",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/invoices.listTemplates"
+      ],
+      "sourceRouterFile": "src/internal/invoices/invoiceRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "POST",
+      "path": "/v1/keys",
+      "style": "REST",
+      "group": "v1/keys",
+      "mountChain": [
+        "/v1",
+        "/keys"
+      ],
+      "sourceRouterFile": "src/internal/inference/inferenceRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleMintKey",
+      "handlerFile": "src/internal/keys/handleMintKey.ts",
+      "method": "POST",
+      "path": "/v1/keys.mint",
+      "style": "RPC",
+      "group": "v1/keys",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/keys.mint"
+      ],
+      "sourceRouterFile": "src/internal/keys/keysRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleRefreshKey",
+      "handlerFile": "src/internal/keys/handleRefreshKey.ts",
+      "method": "POST",
+      "path": "/v1/keys.refresh",
+      "style": "RPC",
+      "group": "v1/keys",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/keys.refresh"
+      ],
+      "sourceRouterFile": "src/internal/keys/keysRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleRevokeKey",
+      "handlerFile": "src/internal/keys/handleRevokeKey.ts",
+      "method": "POST",
+      "path": "/v1/keys.revoke",
+      "style": "RPC",
+      "group": "v1/keys",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/keys.revoke"
+      ],
+      "sourceRouterFile": "src/internal/keys/keysRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "GET",
+      "path": "/v1/keys/:customer_id",
+      "style": "REST",
+      "group": "v1/keys",
+      "mountChain": [
+        "/v1",
+        "/keys/:customer_id"
+      ],
+      "sourceRouterFile": "src/internal/inference/inferenceRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleAttachLicense",
+      "handlerFile": "src/internal/licenses/handlers/handleAttachLicense.ts",
+      "method": "POST",
+      "path": "/v1/licenses.attach",
+      "style": "RPC",
+      "group": "v1/licenses",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/licenses.attach"
+      ],
+      "sourceRouterFile": "src/internal/licenses/licenseRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleListLicenses",
+      "handlerFile": "src/internal/licenses/handlers/handleListLicenses.ts",
+      "method": "POST",
+      "path": "/v1/licenses.list",
+      "style": "RPC",
+      "group": "v1/licenses",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/licenses.list"
+      ],
+      "sourceRouterFile": "src/internal/licenses/licenseRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleListLicenseAssignments",
+      "handlerFile": "src/internal/licenses/handlers/handleListLicenseAssignments.ts",
+      "method": "POST",
+      "path": "/v1/licenses.list_assignments",
+      "style": "RPC",
+      "group": "v1/licenses",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/licenses.list_assignments"
+      ],
+      "sourceRouterFile": "src/internal/licenses/licenseRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleReleaseLicense",
+      "handlerFile": "src/internal/licenses/handlers/handleReleaseLicense.ts",
+      "method": "POST",
+      "path": "/v1/licenses.release",
+      "style": "RPC",
+      "group": "v1/licenses",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/licenses.release"
+      ],
+      "sourceRouterFile": "src/internal/licenses/licenseRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleQueryLogs",
+      "handlerFile": "src/internal/logs/handlers/handleQueryLogs.ts",
+      "method": "POST",
+      "path": "/v1/logs.query",
+      "style": "RPC",
+      "group": "v1/logs",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/logs.query"
+      ],
+      "sourceRouterFile": "src/internal/logs/logsRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleSearchLogs",
+      "handlerFile": "src/internal/logs/handlers/handleSearchLogs.ts",
+      "method": "POST",
+      "path": "/v1/logs.search",
+      "style": "RPC",
+      "group": "v1/logs",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/logs.search"
+      ],
+      "sourceRouterFile": "src/internal/logs/logsRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handlePreviewUpdateOrganization",
+      "handlerFile": "src/internal/orgs/handlers/rpcHandlers/handlePreviewUpdateOrganization.ts",
+      "method": "POST",
+      "path": "/v1/organization.preview_update",
+      "style": "RPC",
+      "group": "v1/organization",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/organization.preview_update"
+      ],
+      "sourceRouterFile": "src/internal/orgs/organizationRpcRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpdateOrganization",
+      "handlerFile": "src/internal/orgs/handlers/rpcHandlers/handleUpdateOrganization.ts",
+      "method": "POST",
+      "path": "/v1/organization.update",
+      "style": "RPC",
+      "group": "v1/organization",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/organization.update"
+      ],
+      "sourceRouterFile": "src/internal/orgs/organizationRpcRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetOrg",
+      "handlerFile": "src/internal/orgs/handlers/crudHandlers/handleGetOrg.ts",
+      "method": "GET",
+      "path": "/v1/organization/",
+      "style": "REST",
+      "group": "v1/organization",
+      "mountChain": [
+        "/v1",
+        "/organization",
+        ""
+      ],
+      "sourceRouterFile": "src/internal/orgs/orgRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpdateOrg",
+      "handlerFile": "src/internal/orgs/handlers/handleUpdateOrg.ts",
+      "method": "PATCH",
+      "path": "/v1/organization/",
+      "style": "REST",
+      "group": "v1/organization",
+      "mountChain": [
+        "/v1",
+        "/organization",
+        ""
+      ],
+      "sourceRouterFile": "src/internal/orgs/orgRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpdateOrgConfig",
+      "handlerFile": "src/internal/orgs/handlers/handleUpdateOrgConfig.ts",
+      "method": "PATCH",
+      "path": "/v1/organization/config",
+      "style": "REST",
+      "group": "v1/organization",
+      "mountChain": [
+        "/v1",
+        "/organization",
+        "/config"
+      ],
+      "sourceRouterFile": "src/internal/orgs/orgRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetCustomButtons",
+      "handlerFile": "src/internal/orgs/handlers/handleCustomButtons.ts",
+      "method": "GET",
+      "path": "/v1/organization/custom-buttons",
+      "style": "REST",
+      "group": "v1/organization",
+      "mountChain": [
+        "/v1",
+        "/organization",
+        "/custom-buttons"
+      ],
+      "sourceRouterFile": "src/internal/orgs/orgRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpdateCustomButtons",
+      "handlerFile": "src/internal/orgs/handlers/handleCustomButtons.ts",
+      "method": "PATCH",
+      "path": "/v1/organization/custom-buttons",
+      "style": "REST",
+      "group": "v1/organization",
+      "mountChain": [
+        "/v1",
+        "/organization",
+        "/custom-buttons"
+      ],
+      "sourceRouterFile": "src/internal/orgs/orgRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetOrgFlags",
+      "handlerFile": "src/internal/orgs/handlers/handleGetOrgFlags.ts",
+      "method": "GET",
+      "path": "/v1/organization/flags",
+      "style": "REST",
+      "group": "v1/organization",
+      "mountChain": [
+        "/v1",
+        "/organization",
+        "/flags"
+      ],
+      "sourceRouterFile": "src/internal/orgs/orgRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "GET",
+      "path": "/v1/organization/me",
+      "style": "REST",
+      "group": "v1/organization",
+      "mountChain": [
+        "/v1",
+        "/organization",
+        "/me"
+      ],
+      "sourceRouterFile": "src/internal/orgs/orgRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleDeletePaypal",
+      "handlerFile": "src/internal/orgs/handlers/paypalHandlers/handleDeletePaypal.ts",
+      "method": "DELETE",
+      "path": "/v1/organization/paypal",
+      "style": "REST",
+      "group": "v1/organization",
+      "mountChain": [
+        "/v1",
+        "/organization",
+        "/paypal"
+      ],
+      "sourceRouterFile": "src/internal/orgs/orgRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetPaypalConfig",
+      "handlerFile": "src/internal/orgs/handlers/paypalHandlers/handleGetPaypalConfig.ts",
+      "method": "GET",
+      "path": "/v1/organization/paypal",
+      "style": "REST",
+      "group": "v1/organization",
+      "mountChain": [
+        "/v1",
+        "/organization",
+        "/paypal"
+      ],
+      "sourceRouterFile": "src/internal/orgs/orgRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleConnectPaypal",
+      "handlerFile": "src/internal/orgs/handlers/paypalHandlers/handleConnectPaypal.ts",
+      "method": "POST",
+      "path": "/v1/organization/paypal",
+      "style": "REST",
+      "group": "v1/organization",
+      "mountChain": [
+        "/v1",
+        "/organization",
+        "/paypal"
+      ],
+      "sourceRouterFile": "src/internal/orgs/orgRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleDeleteRedisConfig",
+      "handlerFile": "src/internal/orgs/handlers/handleRedisConfig.ts",
+      "method": "DELETE",
+      "path": "/v1/organization/redis",
+      "style": "REST",
+      "group": "v1/organization",
+      "mountChain": [
+        "/v1",
+        "/organization",
+        "/redis"
+      ],
+      "sourceRouterFile": "src/internal/orgs/orgRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpsertRedisConfig",
+      "handlerFile": "src/internal/orgs/handlers/handleRedisConfig.ts",
+      "method": "PATCH",
+      "path": "/v1/organization/redis",
+      "style": "REST",
+      "group": "v1/organization",
+      "mountChain": [
+        "/v1",
+        "/organization",
+        "/redis"
+      ],
+      "sourceRouterFile": "src/internal/orgs/orgRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpdateRedisMigration",
+      "handlerFile": "src/internal/orgs/handlers/handleRedisConfig.ts",
+      "method": "PATCH",
+      "path": "/v1/organization/redis/migration",
+      "style": "REST",
+      "group": "v1/organization",
+      "mountChain": [
+        "/v1",
+        "/organization",
+        "/redis/migration"
+      ],
+      "sourceRouterFile": "src/internal/orgs/orgRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetTransitionRules",
+      "handlerFile": "src/internal/orgs/handlers/handleTransitionRules.ts",
+      "method": "GET",
+      "path": "/v1/organization/transition_rules",
+      "style": "REST",
+      "group": "v1/organization",
+      "mountChain": [
+        "/v1",
+        "/organization",
+        "/transition_rules"
+      ],
+      "sourceRouterFile": "src/internal/orgs/orgRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpdateTransitionRules",
+      "handlerFile": "src/internal/orgs/handlers/handleTransitionRules.ts",
+      "method": "PATCH",
+      "path": "/v1/organization/transition_rules",
+      "style": "REST",
+      "group": "v1/organization",
+      "mountChain": [
+        "/v1",
+        "/organization",
+        "/transition_rules"
+      ],
+      "sourceRouterFile": "src/internal/orgs/orgRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleCreateOverageInvoice",
+      "handlerFile": null,
+      "method": "POST",
+      "path": "/v1/overage_invoices",
+      "style": "REST",
+      "group": "v1/overage_invoices",
+      "mountChain": [
+        "/v1",
+        "",
+        "/overage_invoices"
+      ],
+      "sourceRouterFile": "src/internal/billing/paypal/paypalRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleCreatePlanV2",
+      "handlerFile": "src/internal/products/handlers/handleCreateProduct/handleCreatePlanV2.ts",
+      "method": "POST",
+      "path": "/v1/plans.create",
+      "style": "RPC",
+      "group": "v1/plans",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/plans.create"
+      ],
+      "sourceRouterFile": "src/internal/products/productRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleCreateVariantV2",
+      "handlerFile": "src/internal/products/handlers/handleCreateVariant/handleCreateVariantV2.ts",
+      "method": "POST",
+      "path": "/v1/plans.create_variant",
+      "style": "RPC",
+      "group": "v1/plans",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/plans.create_variant"
+      ],
+      "sourceRouterFile": "src/internal/products/productRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleDeletePlanV2",
+      "handlerFile": "src/internal/products/handlers/handleDeletePlan/handleDeletePlanV2.ts",
+      "method": "POST",
+      "path": "/v1/plans.delete",
+      "style": "RPC",
+      "group": "v1/plans",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/plans.delete"
+      ],
+      "sourceRouterFile": "src/internal/products/productRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetPlanV2",
+      "handlerFile": "src/internal/products/handlers/handleGetPlan/handleGetPlanV2.ts",
+      "method": "POST",
+      "path": "/v1/plans.get",
+      "style": "RPC",
+      "group": "v1/plans",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/plans.get"
+      ],
+      "sourceRouterFile": "src/internal/products/productRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handlePlanHasCustomersV2",
+      "handlerFile": "src/internal/products/handlers/handlePlanHasCustomersV2.ts",
+      "method": "POST",
+      "path": "/v1/plans.has_customers",
+      "style": "RPC",
+      "group": "v1/plans",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/plans.has_customers"
+      ],
+      "sourceRouterFile": "src/internal/products/productRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleListPlansV2",
+      "handlerFile": "src/internal/products/handlers/handleListPlans/handleListPlansV2.ts",
+      "method": "POST",
+      "path": "/v1/plans.list",
+      "style": "RPC",
+      "group": "v1/plans",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/plans.list"
+      ],
+      "sourceRouterFile": "src/internal/products/productRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handlePreviewUpdatePlanV2",
+      "handlerFile": "src/internal/products/handlers/handlePreviewUpdatePlan/handlePreviewUpdatePlanV2.ts",
+      "method": "POST",
+      "path": "/v1/plans.preview_update",
+      "style": "RPC",
+      "group": "v1/plans",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/plans.preview_update"
+      ],
+      "sourceRouterFile": "src/internal/products/productRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpdatePlanV2",
+      "handlerFile": "src/internal/products/handlers/handleUpdatePlan/handleUpdatePlanV2.ts",
+      "method": "POST",
+      "path": "/v1/plans.update",
+      "style": "RPC",
+      "group": "v1/plans",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/plans.update"
+      ],
+      "sourceRouterFile": "src/internal/products/productRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleDeletePlatformOrg",
+      "handlerFile": "src/internal/platform/platformBeta/handlers/handleDeletePlatformOrg.ts",
+      "method": "DELETE",
+      "path": "/v1/platform/organizations",
+      "style": "REST",
+      "group": "v1/platform",
+      "mountChain": [
+        "/v1",
+        "/platform",
+        "/organizations"
+      ],
+      "sourceRouterFile": "src/internal/platform/platformBeta/platformBetaRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleListPlatformOrgs",
+      "handlerFile": "src/internal/platform/platformBeta/handlers/handleListPlatformOrgs.ts",
+      "method": "GET",
+      "path": "/v1/platform/organizations",
+      "style": "REST",
+      "group": "v1/platform",
+      "mountChain": [
+        "/v1",
+        "/platform",
+        "/organizations"
+      ],
+      "sourceRouterFile": "src/internal/platform/platformBeta/platformBetaRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleCreatePlatformOrg",
+      "handlerFile": "src/internal/platform/platformBeta/handlers/handleCreatePlatformOrg.ts",
+      "method": "POST",
+      "path": "/v1/platform/organizations",
+      "style": "REST",
+      "group": "v1/platform",
+      "mountChain": [
+        "/v1",
+        "/platform",
+        "/organizations"
+      ],
+      "sourceRouterFile": "src/internal/platform/platformBeta/platformBetaRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "listPlatformUsers",
+      "handlerFile": "src/internal/platform/platformBeta/handlers/handleListPlatformUsers.ts",
+      "method": "GET",
+      "path": "/v1/platform/users",
+      "style": "REST",
+      "group": "v1/platform",
+      "mountChain": [
+        "/v1",
+        "/platform",
+        "/users"
+      ],
+      "sourceRouterFile": "src/internal/platform/platformBeta/platformBetaRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleListPooledBalanceContributions",
+      "handlerFile": "src/internal/customers/pooledBalances/handlers/handleListPooledBalanceContributions.ts",
+      "method": "POST",
+      "path": "/v1/pooled_balances.list_contributions",
+      "style": "RPC",
+      "group": "v1/pooled_balances",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/pooled_balances.list_contributions"
+      ],
+      "sourceRouterFile": "src/internal/customers/pooledBalances/pooledBalanceRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleListPlans",
+      "handlerFile": "src/internal/products/handlers/handleListPlans.ts",
+      "method": "GET",
+      "path": "/v1/products/",
+      "style": "REST",
+      "group": "v1/products",
+      "mountChain": [
+        "/v1",
+        "/products",
+        ""
+      ],
+      "sourceRouterFile": "src/internal/products/productRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleCreatePlan",
+      "handlerFile": "src/internal/products/handlers/handleCreateProduct/handleCreatePlan.ts",
+      "method": "POST",
+      "path": "/v1/products/",
+      "style": "REST",
+      "group": "v1/products",
+      "mountChain": [
+        "/v1",
+        "/products",
+        ""
+      ],
+      "sourceRouterFile": "src/internal/products/productRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleDeletePlanV1",
+      "handlerFile": "src/internal/products/handlers/handleDeletePlan/handleDeletePlanV1.ts",
+      "method": "DELETE",
+      "path": "/v1/products/:product_id",
+      "style": "REST",
+      "group": "v1/products",
+      "mountChain": [
+        "/v1",
+        "/products",
+        "/:product_id"
+      ],
+      "sourceRouterFile": "src/internal/products/productRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetPlanV1",
+      "handlerFile": "src/internal/products/handlers/handleGetPlan/handleGetPlanV1.ts",
+      "method": "GET",
+      "path": "/v1/products/:product_id",
+      "style": "REST",
+      "group": "v1/products",
+      "mountChain": [
+        "/v1",
+        "/products",
+        "/:product_id"
+      ],
+      "sourceRouterFile": "src/internal/products/productRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpdatePlanV1",
+      "handlerFile": "src/internal/products/handlers/handleUpdatePlan/handleUpdatePlanV1.ts",
+      "method": "PATCH",
+      "path": "/v1/products/:product_id",
+      "style": "REST",
+      "group": "v1/products",
+      "mountChain": [
+        "/v1",
+        "/products",
+        "/:product_id"
+      ],
+      "sourceRouterFile": "src/internal/products/productRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpdatePlanV1",
+      "handlerFile": "src/internal/products/handlers/handleUpdatePlan/handleUpdatePlanV1.ts",
+      "method": "POST",
+      "path": "/v1/products/:product_id",
+      "style": "REST",
+      "group": "v1/products",
+      "mountChain": [
+        "/v1",
+        "/products",
+        "/:product_id"
+      ],
+      "sourceRouterFile": "src/internal/products/productRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleCopyProductV2",
+      "handlerFile": "src/internal/products/handlers/handleCopyProduct/handleCopyProductV2.ts",
+      "method": "POST",
+      "path": "/v1/products/:product_id/copy",
+      "style": "REST",
+      "group": "v1/products",
+      "mountChain": [
+        "/v1",
+        "/products",
+        "/:product_id/copy"
+      ],
+      "sourceRouterFile": "src/internal/products/productRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetPlanDeleteInfo",
+      "handlerFile": "src/internal/products/handlers/handleGetPlanDeleteInfo.ts",
+      "method": "GET",
+      "path": "/v1/products/:product_id/deletion_info",
+      "style": "REST",
+      "group": "v1/products",
+      "mountChain": [
+        "/v1",
+        "/products",
+        "/:product_id/deletion_info"
+      ],
+      "sourceRouterFile": "src/internal/products/productRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handlePlanHasCustomersV2",
+      "handlerFile": "src/internal/products/handlers/handlePlanHasCustomersV2.ts",
+      "method": "GET",
+      "path": "/v1/products/:product_id/has_customers",
+      "style": "REST",
+      "group": "v1/products",
+      "mountChain": [
+        "/v1",
+        "/products",
+        "/:product_id/has_customers"
+      ],
+      "sourceRouterFile": "src/internal/products/productRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handlePlanHasCustomersV2",
+      "handlerFile": "src/internal/products/handlers/handlePlanHasCustomersV2.ts",
+      "method": "POST",
+      "path": "/v1/products/:product_id/has_customers",
+      "style": "REST",
+      "group": "v1/products",
+      "mountChain": [
+        "/v1",
+        "/products",
+        "/:product_id/has_customers"
+      ],
+      "sourceRouterFile": "src/internal/products/productRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetLicenseProducts",
+      "handlerFile": "src/internal/products/internalHandlers/handleGetProducts.ts",
+      "method": "GET",
+      "path": "/v1/products/license_products",
+      "style": "REST",
+      "group": "v1/products",
+      "mountChain": [
+        "/v1",
+        "/products",
+        "/license_products"
+      ],
+      "sourceRouterFile": "src/internal/products/productRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleListPlans",
+      "handlerFile": "src/internal/products/handlers/handleListPlans.ts",
+      "method": "GET",
+      "path": "/v1/products_beta/",
+      "style": "REST",
+      "group": "v1/products_beta",
+      "mountChain": [
+        "/v1",
+        "/products_beta",
+        ""
+      ],
+      "sourceRouterFile": "src/internal/products/productRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleExternalAggregateEvents",
+      "handlerFile": "src/internal/events/handlers/handleExternalAggregateEvents.ts",
+      "method": "POST",
+      "path": "/v1/query/",
+      "style": "REST",
+      "group": "v1/query",
+      "mountChain": [
+        "/v1",
+        "/query",
+        ""
+      ],
+      "sourceRouterFile": "src/internal/analytics/legacyAnalyticsRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleCopySandbox",
+      "handlerFile": "src/internal/sandboxes/handlers/handleCopySandbox.ts",
+      "method": "POST",
+      "path": "/v1/sandboxes.copy",
+      "style": "RPC",
+      "group": "v1/sandboxes",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/sandboxes.copy"
+      ],
+      "sourceRouterFile": "src/internal/sandboxes/sandboxesRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleCreateSandbox",
+      "handlerFile": "src/internal/sandboxes/handlers/handleCreateSandbox.ts",
+      "method": "POST",
+      "path": "/v1/sandboxes.create",
+      "style": "RPC",
+      "group": "v1/sandboxes",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/sandboxes.create"
+      ],
+      "sourceRouterFile": "src/internal/sandboxes/sandboxesRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleCreateSandboxKey",
+      "handlerFile": "src/internal/sandboxes/handlers/handleCreateSandboxKey.ts",
+      "method": "POST",
+      "path": "/v1/sandboxes.create_key",
+      "style": "RPC",
+      "group": "v1/sandboxes",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/sandboxes.create_key"
+      ],
+      "sourceRouterFile": "src/internal/sandboxes/sandboxesRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleDeleteSandbox",
+      "handlerFile": "src/internal/sandboxes/handlers/handleDeleteSandbox.ts",
+      "method": "POST",
+      "path": "/v1/sandboxes.delete",
+      "style": "RPC",
+      "group": "v1/sandboxes",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/sandboxes.delete"
+      ],
+      "sourceRouterFile": "src/internal/sandboxes/sandboxesRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleListSandboxes",
+      "handlerFile": "src/internal/sandboxes/handlers/handleListSandboxes.ts",
+      "method": "POST",
+      "path": "/v1/sandboxes.list",
+      "style": "RPC",
+      "group": "v1/sandboxes",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/sandboxes.list"
+      ],
+      "sourceRouterFile": "src/internal/sandboxes/sandboxesRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleResetSandbox",
+      "handlerFile": "src/internal/sandboxes/handlers/handleResetSandbox.ts",
+      "method": "POST",
+      "path": "/v1/sandboxes.reset",
+      "style": "RPC",
+      "group": "v1/sandboxes",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/sandboxes.reset"
+      ],
+      "sourceRouterFile": "src/internal/sandboxes/sandboxesRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpdateSandbox",
+      "handlerFile": "src/internal/sandboxes/handlers/handleUpdateSandbox.ts",
+      "method": "POST",
+      "path": "/v1/sandboxes.update",
+      "style": "RPC",
+      "group": "v1/sandboxes",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/sandboxes.update"
+      ],
+      "sourceRouterFile": "src/internal/sandboxes/sandboxesRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleListServedModels",
+      "handlerFile": "src/internal/models/handlers/handleListServedModels.ts",
+      "method": "GET",
+      "path": "/v1/served_models",
+      "style": "REST",
+      "group": "v1/served_models",
+      "mountChain": [
+        "/v1",
+        "",
+        "/served_models"
+      ],
+      "sourceRouterFile": "src/internal/models/servedModelRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpsertServedModel",
+      "handlerFile": "src/internal/models/handlers/handleUpsertServedModel.ts",
+      "method": "POST",
+      "path": "/v1/served_models",
+      "style": "REST",
+      "group": "v1/served_models",
+      "mountChain": [
+        "/v1",
+        "",
+        "/served_models"
+      ],
+      "sourceRouterFile": "src/internal/models/servedModelRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleDeleteServedModel",
+      "handlerFile": "src/internal/models/handlers/handleDeleteServedModel.ts",
+      "method": "DELETE",
+      "path": "/v1/served_models/:model_id",
+      "style": "REST",
+      "group": "v1/served_models",
+      "mountChain": [
+        "/v1",
+        "",
+        "/served_models/:model_id"
+      ],
+      "sourceRouterFile": "src/internal/models/servedModelRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleCreateDeployment",
+      "handlerFile": "src/internal/models/handlers/handleCreateDeployment.ts",
+      "method": "POST",
+      "path": "/v1/served_models/:model_id/deployments",
+      "style": "REST",
+      "group": "v1/served_models",
+      "mountChain": [
+        "/v1",
+        "",
+        "/served_models/:model_id/deployments"
+      ],
+      "sourceRouterFile": "src/internal/models/servedModelRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleDeleteDeployment",
+      "handlerFile": "src/internal/models/handlers/handleDeleteDeployment.ts",
+      "method": "DELETE",
+      "path": "/v1/served_models/:model_id/deployments/:deployment_id",
+      "style": "REST",
+      "group": "v1/served_models",
+      "mountChain": [
+        "/v1",
+        "",
+        "/served_models/:model_id/deployments/:deployment_id"
+      ],
+      "sourceRouterFile": "src/internal/models/servedModelRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpdateDeployment",
+      "handlerFile": "src/internal/models/handlers/handleUpdateDeployment.ts",
+      "method": "PATCH",
+      "path": "/v1/served_models/:model_id/deployments/:deployment_id",
+      "style": "REST",
+      "group": "v1/served_models",
+      "mountChain": [
+        "/v1",
+        "",
+        "/served_models/:model_id/deployments/:deployment_id"
+      ],
+      "sourceRouterFile": "src/internal/models/servedModelRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetAvailableModels",
+      "handlerFile": "src/internal/models/handlers/handleGetAvailableModels.ts",
+      "method": "GET",
+      "path": "/v1/served_models/available",
+      "style": "REST",
+      "group": "v1/served_models",
+      "mountChain": [
+        "/v1",
+        "",
+        "/served_models/available"
+      ],
+      "sourceRouterFile": "src/internal/models/servedModelRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleTrack",
+      "handlerFile": "src/internal/balances/handlers/handleTrack.ts",
+      "method": "POST",
+      "path": "/v1/track",
+      "style": "REST",
+      "group": "v1/track",
+      "mountChain": [
+        "/v1",
+        "",
+        "/track"
+      ],
+      "sourceRouterFile": "src/internal/balances/balancesRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleTrackTokens",
+      "handlerFile": "src/internal/balances/handlers/handleTrackTokens.ts",
+      "method": "POST",
+      "path": "/v1/track_tokens",
+      "style": "REST",
+      "group": "v1/track_tokens",
+      "mountChain": [
+        "/v1",
+        "",
+        "/track_tokens"
+      ],
+      "sourceRouterFile": "src/internal/balances/balancesRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleSetUsage",
+      "handlerFile": "src/internal/balances/handlers/handleSetUsage.ts",
+      "method": "POST",
+      "path": "/v1/usage",
+      "style": "REST",
+      "group": "v1/usage",
+      "mountChain": [
+        "/v1",
+        "",
+        "/usage"
+      ],
+      "sourceRouterFile": "src/internal/balances/balancesRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleCreateWebhook",
+      "handlerFile": "src/internal/webhooks/handlers/handleCreateWebhook.ts",
+      "method": "POST",
+      "path": "/v1/webhooks.create",
+      "style": "RPC",
+      "group": "v1/webhooks",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/webhooks.create"
+      ],
+      "sourceRouterFile": "src/internal/webhooks/webhooksRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleDeleteWebhook",
+      "handlerFile": "src/internal/webhooks/handlers/handleDeleteWebhook.ts",
+      "method": "POST",
+      "path": "/v1/webhooks.delete",
+      "style": "RPC",
+      "group": "v1/webhooks",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/webhooks.delete"
+      ],
+      "sourceRouterFile": "src/internal/webhooks/webhooksRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleGetWebhook",
+      "handlerFile": "src/internal/webhooks/handlers/handleGetWebhook.ts",
+      "method": "POST",
+      "path": "/v1/webhooks.get",
+      "style": "RPC",
+      "group": "v1/webhooks",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/webhooks.get"
+      ],
+      "sourceRouterFile": "src/internal/webhooks/webhooksRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleListWebhooks",
+      "handlerFile": "src/internal/webhooks/handlers/handleListWebhooks.ts",
+      "method": "POST",
+      "path": "/v1/webhooks.list",
+      "style": "RPC",
+      "group": "v1/webhooks",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/webhooks.list"
+      ],
+      "sourceRouterFile": "src/internal/webhooks/webhooksRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handlePreviewSyncWebhooks",
+      "handlerFile": "src/internal/webhooks/handlers/handlePreviewSyncWebhooks.ts",
+      "method": "POST",
+      "path": "/v1/webhooks.preview_sync",
+      "style": "RPC",
+      "group": "v1/webhooks",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/webhooks.preview_sync"
+      ],
+      "sourceRouterFile": "src/internal/webhooks/webhooksRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleSyncWebhooks",
+      "handlerFile": "src/internal/webhooks/handlers/handleSyncWebhooks.ts",
+      "method": "POST",
+      "path": "/v1/webhooks.sync",
+      "style": "RPC",
+      "group": "v1/webhooks",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/webhooks.sync"
+      ],
+      "sourceRouterFile": "src/internal/webhooks/webhooksRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "handleUpdateWebhook",
+      "handlerFile": "src/internal/webhooks/handlers/handleUpdateWebhook.ts",
+      "method": "POST",
+      "path": "/v1/webhooks.update",
+      "style": "RPC",
+      "group": "v1/webhooks",
+      "mountChain": [
+        "/v1",
+        "",
+        "",
+        "/webhooks.update"
+      ],
+      "sourceRouterFile": "src/internal/webhooks/webhooksRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "POST",
+      "path": "/webhooks/autumn/",
+      "style": "REST",
+      "group": "webhooks",
+      "mountChain": [
+        "/webhooks/autumn",
+        ""
+      ],
+      "sourceRouterFile": "src/external/autumn/autumnWebhookRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": true
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "POST",
+      "path": "/webhooks/paypal",
+      "style": "REST",
+      "group": "webhooks",
+      "mountChain": [
+        "",
+        "/webhooks/paypal"
+      ],
+      "sourceRouterFile": "src/external/paypal/webhookRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": true
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "POST",
+      "path": "/webhooks/paypal/:orgId",
+      "style": "REST",
+      "group": "webhooks",
+      "mountChain": [
+        "",
+        "/webhooks/paypal/:orgId"
+      ],
+      "sourceRouterFile": "src/external/paypal/webhookRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": true
+    },
+    {
+      "handlerName": "<inline>",
+      "handlerFile": null,
+      "method": "POST",
+      "path": "/webhooks/paypal/:orgId/:webhookId",
+      "style": "REST",
+      "group": "webhooks",
+      "mountChain": [
+        "",
+        "/webhooks/paypal/:orgId/:webhookId"
+      ],
+      "sourceRouterFile": "src/external/paypal/webhookRouter.ts",
+      "routeKind": "plain",
+      "needsScopes": false,
+      "isWebhookExempt": true
+    },
+    {
+      "handlerName": "handleListRequestLogs",
+      "handlerFile": "src/internal/workbench/handlers/handleListRequestLogs.ts",
+      "method": "POST",
+      "path": "/workbench/requests",
+      "style": "REST",
+      "group": "workbench",
+      "mountChain": [
+        "",
+        "/workbench",
+        "/requests"
+      ],
+      "sourceRouterFile": "src/internal/workbench/workbenchRouter.ts",
+      "routeKind": "createRoute",
+      "needsScopes": true,
+      "isWebhookExempt": false
+    }
+  ]
+}

@@ -24,10 +24,7 @@ import { ProductService } from "@/internal/products/ProductService.js";
 import { handleNewProductItems } from "@/internal/products/product-items/productItemUtils/handleNewProductItems.js";
 import { getProductResponse } from "@/internal/products/productUtils/productResponseUtils/getProductResponse.js";
 import { buildFullProductFromV2 } from "@/internal/products/productUtils/productV2Utils/buildFullProductFromV2.js";
-import {
-	constructProduct,
-	initProductInStripe,
-} from "@/internal/products/productUtils.js";
+import { constructProduct } from "@/internal/products/productUtils.js";
 import { JobName } from "@/queue/JobName.js";
 import { addTaskToQueue } from "@/queue/queueUtils.js";
 import { validateDefaultFlag } from "./validateDefaultFlag.js";
@@ -131,13 +128,6 @@ export const createProduct = async ({
 			ctx,
 			prepared: preparedLicenses,
 			parentInternalProductId: newFullProduct.internal_id,
-		});
-	}
-
-	if (data.create_in_stripe !== false) {
-		await initProductInStripe({
-			ctx,
-			product: newFullProduct,
 		});
 	}
 

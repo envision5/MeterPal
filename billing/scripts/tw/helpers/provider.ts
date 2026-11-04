@@ -99,7 +99,6 @@ export type ListedSandbox = {
 /** The full surface a backend must implement. */
 export type ProviderImpl = {
 	createWarmSandbox(opts: CreateSandboxOptions): Promise<ProviderSandbox>;
-	createIngressSandbox(opts: CreateSandboxOptions): Promise<ProviderSandbox>;
 	forkWorker(opts: ForkWorkerOptions): Promise<ProviderSandbox>;
 	snapshotAndStop(
 		sandbox: ProviderSandbox,
@@ -177,8 +176,6 @@ const get = (): ProviderImpl => {
 // ---- delegating exports (the orchestrator's stable call surface) ----------
 export const createWarmSandbox = (o: CreateSandboxOptions) =>
 	get().createWarmSandbox(o);
-export const createIngressSandbox = (o: CreateSandboxOptions) =>
-	get().createIngressSandbox(o);
 export const forkWorker = (o: ForkWorkerOptions) => get().forkWorker(o);
 export const snapshotAndStop = (
 	s: ProviderSandbox,

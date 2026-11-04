@@ -72,7 +72,7 @@ export type RemoteExecutorOptions = {
  * goaws, the server, workers and cron, so the contended profile is the correct
  * one — the serial profile is why settle-dependent assertions (invoice counts,
  * post-attach balances) flake in tw but pass locally. Prefixed via coreutils
- * `env` so it MERGES into the sandbox environment (DATABASE_URL, Stripe keys)
+ * `env` so it MERGES into the sandbox environment (DATABASE_URL, PayPal keys)
  * instead of relying on provider-specific env-replacement semantics.
  */
 const TEST_ENV_PREFIX = ["env", "TEST_FILE_CONCURRENCY=4"];

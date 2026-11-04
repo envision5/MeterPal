@@ -15,11 +15,6 @@ import { entities } from "../cusModels/entityModels/entityTable.js";
 import { freeTrials } from "../productModels/freeTrialModels/freeTrialTable.js";
 import { products } from "../productModels/productTable.js";
 
-export type CustomerProductProcessor = {
-	type: "stripe" | "revenuecat";
-	id: string;
-};
-
 export const customerProducts = pgTable(
 	"customer_products",
 	{
@@ -31,8 +26,6 @@ export const customerProducts = pgTable(
 		created_at: numeric({ mode: "number" }),
 		updated_at: numeric({ mode: "number" }),
 		status: text(),
-		processor: jsonb().$type<CustomerProductProcessor>(),
-		// processors: jsonb().$type<ExternalCusProductProcessors>(),
 
 		canceled: boolean("canceled").default(false),
 		canceled_at: numeric({ mode: "number" }),
@@ -72,11 +65,6 @@ export const customerProducts = pgTable(
 		api_semver: text("api_semver"),
 
 		external_id: text("external_id"),
-
-		// When the cusProduct was created via a Stripe checkout flow with
-		// enable_plan_immediately, this links the row to the pending checkout session
-		// so the webhook can patch in subscription_ids on completion (or expire on abandonment).
-		stripe_checkout_session_id: text("stripe_checkout_session_id"),
 
 		// Links a pending row to the deferred billing plan that will promote it
 		// on payment, or expire it when the invoice is voided.
@@ -137,7 +125,7 @@ export const customerProducts = pgTable(
 			table.internal_product_id,
 		),
 		// GIN indexes match elements, not length, so they can't serve cardinality().
-		index("idx_customer_products_stripe_linked_customer")
+		index("idx_customer_products_linked_customer")
 			.on(table.internal_customer_id)
 			.where(
 				sql`cardinality(${table.subscription_ids}) > 0 OR cardinality(${table.scheduled_ids}) > 0`,
@@ -150,9 +138,6 @@ export const customerProducts = pgTable(
 		index("idx_customer_products_scheduled_ids").using(
 			"gin",
 			table.scheduled_ids,
-		),
-		index("idx_customer_products_stripe_checkout_session_id").on(
-			table.stripe_checkout_session_id,
 		),
 		index("idx_customer_products_metadata_id")
 			.on(table.metadata_id)
@@ -191,9 +176,6 @@ export const customerProducts = pgTable(
 			.on(table.free_trial_id)
 			.where(sql`${table.free_trial_id} IS NOT NULL`)
 			.concurrently(),
-		index("idx_customer_products_revenuecat_processor")
-			.on(table.internal_customer_id)
-			.where(sql`(${table.processor} ->> 'type') = 'revenuecat'`),
 		index("idx_customer_products_ended_at")
 			.on(table.ended_at)
 			.where(

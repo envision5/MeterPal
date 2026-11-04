@@ -60,12 +60,12 @@ const BILLING_TOGGLES = [
 	{
 		key: "invoice_memos",
 		label: ORG_SETTINGS_LABELS.invoice_memos,
-		description: "Include line-item memos on Stripe invoices",
+		description: "Include line-item memos on invoices",
 	},
 	{
 		key: "disable_overage_billing",
 		label: ORG_SETTINGS_LABELS.disable_overage_billing,
-		description: "Stop posting usage overage line items to Stripe",
+		description: "Stop posting usage overage line items to invoices",
 	},
 	{
 		key: "persist_free_overage",
@@ -88,14 +88,9 @@ const BILLING_TOGGLES = [
 		description: "The default plan is applied at entity level",
 	},
 	{
-		key: "disable_stripe_writes",
-		label: "Disable Stripe writes",
-		description: "Prevent MeterPal from writing to Stripe (read-only mode)",
-	},
-	{
 		key: "automatic_tax",
 		label: ORG_SETTINGS_LABELS.automatic_tax,
-		description: "Enable Stripe Tax for automatic tax calculation",
+		description: "Enable automatic tax calculation on invoices",
 	},
 	{
 		key: "multi_currency",

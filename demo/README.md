@@ -57,7 +57,7 @@ A fresh MeterPal DB has no organization, so the script:
    credits/month of `ai_tokens` with `auto_enable: true`.
 4. **`POST /v1/customers`** — creates `demo-customer`; the auto-enable plan
    attaches on creation and grants the credits (in production this attach is
-   what a Stripe/PayPal subscription webhook triggers).
+   what a PayPal subscription webhook triggers).
 5. **`POST /v1/check`** — verifies admission would allow the customer.
 
 Idempotent: re-running resets to the same state.

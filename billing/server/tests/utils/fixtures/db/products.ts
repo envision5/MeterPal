@@ -10,10 +10,8 @@ import {
  */
 const create = ({
 	id = "prod_test",
-	stripeProductId,
 }: {
 	id?: string;
-	stripeProductId?: string;
 } = {}) => ({
 	id,
 	name: "Test Product",
@@ -30,7 +28,6 @@ const create = ({
 	internal_id: `internal_${id}`,
 	org_id: "org_test",
 	created_at: Date.now(),
-	processor: stripeProductId ? { type: "stripe", id: stripeProductId } : null,
 	base_variant_id: null,
 	base_internal_product_id: null,
 	archived: false,
@@ -46,14 +43,12 @@ const createFull = ({
 	name = "Test Product",
 	prices = [],
 	entitlements = [],
-	stripeProductId,
 	isAddOn = false,
 }: {
 	id?: string;
 	name?: string;
 	prices?: Price[];
 	entitlements?: EntitlementWithFeature[];
-	stripeProductId?: string;
 	isAddOn?: boolean;
 }): FullProduct =>
 	({
@@ -72,7 +67,6 @@ const createFull = ({
 		internal_id: `internal_${id}`,
 		org_id: "org_test",
 		created_at: Date.now(),
-		processor: stripeProductId ? { type: "stripe", id: stripeProductId } : null,
 		base_variant_id: null,
 		base_internal_product_id: null,
 		archived: false,

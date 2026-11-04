@@ -35,11 +35,10 @@ import type { HonoEnv } from "../honoUtils/HonoEnv.js";
 import { balancesRouter } from "../internal/balances/balancesRouter";
 import { billingRouter } from "../internal/billing/billingRouter";
 import { paypalRouter } from "../internal/billing/paypal/paypalRouter";
-import { servedModelRouter } from "../internal/models/servedModelRouter";
 import { cusRouter } from "../internal/customers/cusRouter";
 import { entityRouter } from "../internal/entities/entityRouter";
 import { featureRouter } from "../internal/features/featureRouter";
-import { invoiceRouter } from "../internal/invoices/invoiceRouter.js";
+import { servedModelRouter } from "../internal/models/servedModelRouter";
 import { honoOrgRouter } from "../internal/orgs/orgRouter";
 import { platformBetaRouter } from "../internal/platform/platformBeta/platformBetaRouter";
 import {
@@ -76,7 +75,6 @@ apiRouter.route("", balancesRouter);
 apiRouter.route("", servedModelRouter);
 apiRouter.route("", entityRouter);
 apiRouter.route("/customers", cusRouter);
-apiRouter.route("/invoices", invoiceRouter);
 
 apiRouter.route("/products_beta", honoProductBetaRouter);
 apiRouter.route("/products", honoProductRouter);

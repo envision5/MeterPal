@@ -2,11 +2,10 @@ import {
 	type AttachParamsV0,
 	AttachParamsV1Schema,
 	billingParamsV1ToV0,
-	type CreateScheduleParamsV0,
-	CreateScheduleParamsV0Schema,
-	type CreateSchedulePlanV0,
+	type CustomizePlanV1,
 	cusProductToProduct,
 	customizePlanV1ToV0,
+	type FeatureQuantityParamsV0,
 	type FullProduct,
 	type UpdateSubscriptionV0Params,
 	UpdateSubscriptionV1ParamsSchema,
@@ -20,10 +19,6 @@ import { ProductService } from "@/internal/products/ProductService";
 export const ResolveBillingRequestParamsSchema = z.discriminatedUnion("tool", [
 	z.object({ request: AttachParamsV1Schema, tool: z.literal("attach") }),
 	z.object({
-		request: CreateScheduleParamsV0Schema,
-		tool: z.literal("create_schedule"),
-	}),
-	z.object({
 		request: UpdateSubscriptionV1ParamsSchema,
 		tool: z.literal("update_subscription"),
 	}),
@@ -35,17 +30,26 @@ export type ResolveBillingRequestParams = z.infer<
 
 export type ResolvedBillingRequestV0 =
 	| AttachParamsV0
-	| CreateScheduleParamsV0
 	| UpdateSubscriptionV0Params;
 
+/** A plan the request-generation flow can customize before it becomes a
+ * multi-attach plan entry. */
+export type ResolvedPlanSpec = {
+	plan_id: string;
+	entity_id?: string | null;
+	feature_quantities?: FeatureQuantityParamsV0[];
+	version?: number;
+	customize?: CustomizePlanV1;
+};
+
 /** Resolves one plan's `customize` patch into concrete V0 items against its
- * catalog plan — shared by schedule resolution and multi-attach generation. */
+ * catalog plan — shared by multi-attach generation. */
 export const resolveCustomizedPlan = async ({
 	ctx,
 	plan,
 }: {
 	ctx: AutumnContext;
-	plan: CreateSchedulePlanV0;
+	plan: ResolvedPlanSpec;
 }) => {
 	if (!plan.customize) return plan;
 	const fullProduct = await ProductService.getFull({
@@ -67,7 +71,7 @@ export const resolveCustomizedPlan = async ({
 };
 
 /** Maps a billing request into the dashboard's dialect — `customize` resolves
- * to items against catalog plans (attach/schedule) or the live subscription (updates). */
+ * to items against catalog plans (attach) or the live subscription (updates). */
 export const resolveBillingRequest = async ({
 	ctx,
 	params,
@@ -78,31 +82,6 @@ export const resolveBillingRequest = async ({
 	request: ResolvedBillingRequestV0;
 	unrepresentable: string[];
 }> => {
-	if (params.tool === "create_schedule") {
-		const resolvePlans = (plans: ReadonlyArray<CreateSchedulePlanV0>) =>
-			Promise.all(plans.map((plan) => resolveCustomizedPlan({ ctx, plan })));
-		const request = {
-			...params.request,
-			phases: await Promise.all(
-				params.request.phases.map(async (phase) => ({
-					...phase,
-					plans: await resolvePlans(phase.plans),
-				})),
-			),
-			...(params.request.unscheduled_plans
-				? {
-						unscheduled_plans: await resolvePlans(
-							params.request.unscheduled_plans,
-						),
-					}
-				: {}),
-		};
-		return {
-			request: request as CreateScheduleParamsV0,
-			unrepresentable: [],
-		};
-	}
-
 	let fullProduct: FullProduct;
 	if (params.tool === "attach") {
 		fullProduct = await ProductService.getFull({

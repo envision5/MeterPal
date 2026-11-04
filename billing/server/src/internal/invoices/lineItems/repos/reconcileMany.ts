@@ -3,25 +3,22 @@ import { sql } from "drizzle-orm";
 import type { DrizzleCli } from "@/db/initDrizzle";
 
 /**
- * Reconciles invoice line items by stripe_id with partial updates.
+ * Reconciles invoice line items by processor_id with partial updates.
  *
- * For existing rows (matched by stripe_id): Updates only Stripe-authoritative fields,
- * preserving Autumn metadata (product_id, feature_id, billing_timing, etc.).
+ * For existing rows (matched by processor_id): Updates only processor-authoritative
+ * fields, preserving Autumn metadata (product_id, feature_id, billing_timing, etc.).
  *
- * For new rows (no matching stripe_id): Inserts the full row.
+ * For new rows (no matching processor_id): Inserts the full row.
  *
- * This is used by invoice.finalized to update amounts/quantities without
- * overwriting the Autumn context that was set during invoice.created.
- *
- * Stripe-authoritative fields (updated):
+ * Processor-authoritative fields (updated):
  * - amount, amount_after_discounts, currency
- * - stripe_quantity
- * - discounts, stripe_discountable
+ * - raw_quantity
+ * - discounts
  * - effective_period_start, effective_period_end
- * - description (only when description_source = "stripe")
+ * - description (only when description_source = "processor")
  *
  * Autumn-authoritative fields (preserved):
- * - total_quantity, paid_quantity (computed from billing_units, not raw Stripe packs)
+ * - total_quantity, paid_quantity (computed from billing_units, not raw packs)
  * - product_id, internal_product_id
  * - feature_id, internal_feature_id
  * - price_id, billing_timing, direction, prorated
@@ -38,43 +35,44 @@ export const reconcileMany = async ({
 }): Promise<void> => {
 	if (lineItems.length === 0) return;
 
-	// Separate items with and without stripe_id
-	const itemsWithStripeId = lineItems.filter((li) => li.stripe_id != null);
-	const itemsWithoutStripeId = lineItems.filter((li) => li.stripe_id == null);
+	// Separate items with and without processor_id
+	const itemsWithProcessorId = lineItems.filter((li) => li.processor_id != null);
+	const itemsWithoutProcessorId = lineItems.filter(
+		(li) => li.processor_id == null,
+	);
 
-	// Partial upsert for items with stripe_id
-	// Only update Stripe-authoritative fields, preserve Autumn metadata
-	if (itemsWithStripeId.length > 0) {
-		for (const lineItem of itemsWithStripeId) {
+	// Partial upsert for items with processor_id
+	// Only update processor-authoritative fields, preserve Autumn metadata
+	if (itemsWithProcessorId.length > 0) {
+		for (const lineItem of itemsWithProcessorId) {
 			await db
 				.insert(invoiceLineItems)
 				.values(lineItem)
 				.onConflictDoUpdate({
-					target: invoiceLineItems.stripe_id,
+					target: invoiceLineItems.processor_id,
 					set: {
-						// Stripe-authoritative: amounts
+						// Processor-authoritative: amounts
 						amount: sql`excluded.amount`,
 						amount_after_discounts: sql`excluded.amount_after_discounts`,
 						currency: sql`excluded.currency`,
 
-						// Stripe-authoritative: quantities (only stripe_quantity)
+						// Processor-authoritative: quantities (only raw_quantity)
 						// Note: total_quantity and paid_quantity are Autumn-authoritative
 						// (computed from billing_units), so they are NOT updated here
-						stripe_quantity: sql`excluded.stripe_quantity`,
+						raw_quantity: sql`excluded.raw_quantity`,
 
-						// Stripe-authoritative: discounts
+						// Processor-authoritative: discounts
 						discounts: sql`excluded.discounts`,
-						stripe_discountable: sql`excluded.stripe_discountable`,
 
-						// Stripe-authoritative: period
+						// Processor-authoritative: period
 						effective_period_start: sql`excluded.effective_period_start`,
 						effective_period_end: sql`excluded.effective_period_end`,
 
-						// Description: only update if incoming source is "stripe"
+						// Description: only update if incoming source is "processor"
 						// This preserves Autumn-sourced descriptions
-						description: sql`CASE 
-							WHEN excluded.description_source = 'stripe' THEN excluded.description 
-							ELSE ${invoiceLineItems.description} 
+						description: sql`CASE
+							WHEN excluded.description_source = 'processor' THEN excluded.description
+							ELSE ${invoiceLineItems.description}
 						END`,
 
 						// Note: All Autumn-authoritative fields are intentionally NOT updated:
@@ -88,8 +86,8 @@ export const reconcileMany = async ({
 		}
 	}
 
-	// Plain insert for items without stripe_id (no conflict possible)
-	if (itemsWithoutStripeId.length > 0) {
-		await db.insert(invoiceLineItems).values(itemsWithoutStripeId);
+	// Plain insert for items without processor_id (no conflict possible)
+	if (itemsWithoutProcessorId.length > 0) {
+		await db.insert(invoiceLineItems).values(itemsWithoutProcessorId);
 	}
 };

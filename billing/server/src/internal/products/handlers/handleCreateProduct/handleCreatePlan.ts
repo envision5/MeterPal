@@ -30,7 +30,7 @@ import {
 import { ProductService } from "../../ProductService.js";
 import { handleNewProductItems } from "../../product-items/productItemUtils/handleNewProductItems.js";
 import { getPlanResponse } from "../../productUtils/productResponseUtils/getPlanResponse.js";
-import { constructProduct, initProductInStripe } from "../../productUtils.js";
+import { constructProduct } from "../../productUtils.js";
 
 /**
  * Route: POST /products - Create a product
@@ -134,13 +134,6 @@ export const handleCreatePlan = createRoute({
 			}),
 			free_trial: newFreeTrial,
 		};
-
-		if (v1_2Body.create_in_stripe !== false) {
-			await initProductInStripe({
-				ctx,
-				product: newFullProduct,
-			});
-		}
 
 		await addTaskToQueue({
 			jobName: JobName.DetectBaseVariant,

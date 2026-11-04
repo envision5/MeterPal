@@ -15,7 +15,7 @@ import { ProductService } from "@/internal/products/ProductService.js";
 import { expectCatalogPreviewCorrect } from "../../../utils/expectCatalogUpdate.js";
 import { uniqueTestId } from "../../../utils/uniqueTestId.js";
 import { withCatalogPlans } from "../../licenses/utils/seedLicensePlans.js";
-import { seedVersionableCustomer } from "../../migrations/utils/seedVersionableCustomer.js";
+import { seedVersionableCustomer } from "../../utils/seedVersionableCustomer.js";
 import {
 	expectVariantPlanCorrect,
 	expectVariantPointerCorrect,

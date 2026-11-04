@@ -28,8 +28,8 @@ items = Σ assigned-seat fixed price rows     (each seat's mint-time snapshot,
 - **Used seats have price memory (their customer_prices snapshot); the
   unassigned buffer has none** — it bills at the link-resolved effective
   price ("what does a unit cost today through this plan_license").
-- Same price ⇒ same stripe_price_id ⇒ downstream merge collapses seats +
-  buffer into ONE Stripe item. Assignment is Stripe-neutral unless prices
+- Same price ⇒ same processor_price_id ⇒ downstream merge collapses seats +
+  buffer into ONE processor item. Assignment is processor-neutral unless prices
   drifted.
 - `used` DOES affect billing (John's call): future PAYG = overflow take does
   `paid_quantity += N` on the row. Formula unchanged.
@@ -63,7 +63,7 @@ items = Σ assigned-seat fixed price rows     (each seat's mint-time snapshot,
 - Migrations 0044–0047 are NOT applied anywhere. John runs `bun db migrate`
   himself (never run DB-mutating commands for him).
 
-## 4. Stripe/billing construction (LANDED — the "quantities unit")
+## 4. Processor/billing construction (LANDED — the "quantities unit")
 
 Contract: `BillingPriceRow` (shared/models/billingModels/billingPriceRow.ts)
 — the scope-agnostic "SQL-constructed billing" shape John wants to extend to
@@ -86,15 +86,15 @@ Flow (one SQL query + in-memory math):
   attribute to `cl.parent_customer_product_id` (survives adoption), never
   the seat's stale parent column. `liveSeatSql` predicate = anchored +
   entity + status IN (active, past_due).
-- `evaluateStripeBillingPlan` loads these once (`??=` on
+- `evaluateProcessorBillingPlan` loads these once (`??=` on
   `billingContext.customerLicenseBillingPriceRows`). Buffer needs NO query.
 - `customerProductToCustomerLicenseItemSpecs.ts` (called from
-  customerProductToStripeItemSpecs, so subscription items AND schedule
+  customerProductToProcessorItemSpecs, so subscription items AND schedule
   phases both inherit): seat rows from context + buffer rows computed
   in-memory per customer license (persisted rows from
   fullCustomer.customer_licenses; freshly planned rows ride the inserted
   product's own customer_licenses — one uniform code path). Rows without
-  config.stripe_price_id are SKIPPED (stripe resource init for license
+  config.processor_price_id are SKIPPED (processor resource init for license
   products = deferred, John's call: keep simple, priceId-keyed list).
 - Buffer prices = the row's hydrated `license.product.prices` — resolved by
   `planLicenseFullProductJson` (customized overlay when set, else pinned
@@ -186,7 +186,7 @@ The consolidation argument (analyzed, leaning yes, NOT confirmed):
   repoint. Fires ONLY on adoption events ⇒ catalog-edit grandfathering
   preserved by construction; idempotent (re-run matches nothing).
   Attach compute keeps ONLY the pure projection (plan op as carrier) for
-  Stripe AFTER-state + line items; NO second executor.
+  Processor AFTER-state + line items; NO second executor.
   Same-parent billing.update transitions have no adoption — that path DOES
   need plan-op execution or an equivalent hook; resolve this asymmetry with
   John before building.
@@ -201,10 +201,10 @@ The consolidation argument (analyzed, leaning yes, NOT confirmed):
 - handleSchedulePhaseChanges via reconcile adoption (if consolidation).
 
 ### Evaluate wiring (REVERTED, re-add after audit)
-In evaluateStripeBillingPlan after the rows load: apply
+In evaluateProcessorBillingPlan after the rows load: apply
 `applyCustomerLicenseTransitionsToBillingPriceRows` with
 plan.customerLicenseTransitions + toPriceById from the incoming products'
-customer_licenses[].license.product.prices — so Stripe sees the AFTER state.
+customer_licenses[].license.product.prices — so the processor sees the AFTER state.
 
 ## 6. Line items (NOT built — design settled)
 
@@ -232,7 +232,7 @@ productByCustomerLicenseId map, parent product as fallback.
    (prepaid feature mechanism) and mirror it vs pending_quantity-on-row +
    phase-aware specs. Decrease floor: John leans REJECT below live seats.
 6. Entitlement transition balance semantics (§5 matchers note).
-7. Deferred: stripe resource init for license products; PAYG overflow take;
+7. Deferred: processor resource init for license products; PAYG overflow take;
    priced-license customer-level gate vs paid_quantity>0; adoption ×
    explicit license_quantities (fresh row's quantity should win over
    carried); used>granted healing; batching repoints only if single

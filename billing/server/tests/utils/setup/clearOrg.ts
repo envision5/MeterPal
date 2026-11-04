@@ -9,14 +9,12 @@ import {
 import { and, eq, inArray } from "drizzle-orm";
 import type { DrizzleCli } from "@/db/initDrizzle.js";
 import { initDrizzle } from "@/db/initDrizzle.js";
-import { AutumnInt } from "@/external/autumn/autumnCli.js";
 import { clearSecretKeyCache } from "@/external/redis/actions/secretKeyCache/secretKeyCache.js";
 import { CusService } from "@/internal/customers/CusService.js";
 import { hashApiKey } from "@/internal/dev/apiKeys/apiKeyUtils.js";
 import { FeatureService } from "@/internal/features/FeatureService.js";
 import { OrgService } from "@/internal/orgs/OrgService.js";
 import { ProductService } from "@/internal/products/ProductService.js";
-import { rewardRepo } from "@/internal/rewards/repos/index.js";
 
 /**
  * DB-only org cleanup — no HTTP calls, no connection lifecycle.
@@ -52,25 +50,20 @@ export const clearOrgDbOnly = async ({
 		.where(inArray(planLicenses.parent_internal_product_id, orgProductIds));
 
 	await ProductService.deleteByOrgId({ db, orgId, env });
-	await rewardRepo.deleteByOrgId({ db, orgId, env });
 	await FeatureService.deleteByOrgId({ db, orgId, env });
 };
 
 export const clearOrg = async ({
 	orgSlug,
 	env,
-	skipStripeReset,
 }: {
 	orgSlug: string;
 	env: AppEnv;
-	skipStripeReset?: boolean;
 }) => {
 	if (env !== AppEnv.Sandbox) {
 		console.error("Cannot clear non-sandbox orgs");
 		process.exit(1);
 	}
-
-	const autumn = new AutumnInt();
 
 	const { db, client } = initDrizzle();
 	const org = await OrgService.getBySlug({ db, slug: orgSlug });
@@ -97,24 +90,8 @@ export const clearOrg = async ({
 
 	const orgId = org.id;
 
-	if (!skipStripeReset) {
-		// Reset default account using the new internal endpoint
-		// This will delete and recreate the Stripe account, which automatically removes all Stripe resources
-		console.log("   🔄 Resetting default account...");
-		try {
-			const data = await autumn.organization.resetDefaultAccount();
-			console.log(
-				"   ✅ Reset default account, new account:",
-				data?.new_account_id,
-			);
-		} catch (error: any) {
-			console.error("   ❌ Failed to reset default account:", error.message);
-			// Continue anyway as this is not critical
-		}
-	}
-
 	await clearOrgDbOnly({ db, orgId, env });
-	console.log("   ✅ Deleted customers, products, rewards, and features");
+	console.log("   Deleted customers, products, and features");
 
 	// migration_item_runs has no FK to migrations/org; clear by joining first.
 	// migrations cascades to migration_runs, so deleting it is enough.

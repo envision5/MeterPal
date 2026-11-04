@@ -31,7 +31,7 @@ export type UpdatePlanPriceIntervalRequestBody = ClosedEnum<
 
 export type UpdatePlanAdditionalCurrencyRequestBody = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -105,7 +105,7 @@ export type UpdatePlanItemResetRequestBody = {
 
 export type UpdatePlanItemAdditionalCurrencyRequestBody = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -118,7 +118,7 @@ export type UpdatePlanItemPriceToRequestBody = number | string;
 
 export type UpdatePlanItemTierAdditionalCurrencyRequestBody = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -692,7 +692,7 @@ export type UpdatePlanPriceLicenseInterval = ClosedEnum<
 
 export type UpdatePlanLicenseAdditionalCurrency = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -764,7 +764,7 @@ export type UpdatePlanLicenseReset = {
 
 export type UpdatePlanLicenseAddItemAdditionalCurrency = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -777,7 +777,7 @@ export type UpdatePlanLicensePriceTo = number | string;
 
 export type UpdatePlanLicenseTierAdditionalCurrency = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -1567,7 +1567,7 @@ export type UpdatePlanSpendLimitRequestBody = {
    */
   overageLimit?: number | undefined;
   /**
-   * When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally.
+   * When true, overage for this feature is not posted to the billing processor. Usage tracking and balance resets still behave normally.
    */
   skipOverageBilling?: boolean | undefined;
 };
@@ -1779,7 +1779,7 @@ export type UpdatePlanPriceVariantInterval = ClosedEnum<
 
 export type UpdatePlanVariantAdditionalCurrency = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -1851,7 +1851,7 @@ export type UpdatePlanVariantReset = {
 
 export type UpdatePlanVariantAddItemAdditionalCurrency = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -1864,7 +1864,7 @@ export type UpdatePlanVariantPriceTo = number | string;
 
 export type UpdatePlanVariantTierAdditionalCurrency = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**

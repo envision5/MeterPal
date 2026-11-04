@@ -31,7 +31,6 @@ test(`${chalk.yellowBright("attach-paid-default: customer with paid default prod
 		setup: [
 			s.products({ list: [paidDefault] }),
 			s.customer({ withDefault: true }),
-			s.attachPaymentMethod({ type: "success" }),
 			s.advanceToNextInvoice(),
 		],
 		actions: [],

@@ -27,7 +27,7 @@ export type GrantCheckoutRewardPayload = {
 	env: AppEnv;
 	customerId: string;
 	productId: string;
-	stripeSubscriptionId?: string;
+	processorSubscriptionId?: string;
 };
 
 export type BatchResetCusEntsPayload = {
@@ -51,11 +51,11 @@ export type AutoTopUpPayload = {
 export type StoreInvoiceLineItemsPayload = {
 	orgId: string;
 	env: AppEnv;
-	stripeInvoiceId: string;
+	processorInvoiceId: string;
 	autumnInvoiceId: string;
-	/** LineItem[] for matching Stripe line items back to Autumn billing context */
+	/** LineItem[] for matching processor line items back to Autumn billing context */
 	billingLineItems?: unknown[];
-	/** When true, only update Stripe-authoritative fields (amounts, quantities) and preserve Autumn metadata */
+	/** When true, only update processor-authoritative fields (amounts, quantities) and preserve Autumn metadata */
 	reconcileOnly?: boolean;
 	/** Fire `invoice.finalized` to the org once line items are stored */
 	emitFinalizedWebhook?: boolean;
@@ -64,9 +64,9 @@ export type StoreInvoiceLineItemsPayload = {
 export type StoreDeferredInvoiceLineItemsPayload = {
 	orgId: string;
 	env: AppEnv;
-	/** Stripe InvoiceItem[] from createStripeInvoiceItems for ProrateNextCycle deferred charges */
-	deferredStripeInvoiceItems: unknown[];
-	/** LineItem[] (chargeImmediately=false) for matching to Stripe invoice items */
+	/** Processor invoice items for ProrateNextCycle deferred charges */
+	deferredProcessorInvoiceItems: unknown[];
+	/** LineItem[] (chargeImmediately=false) for matching to processor invoice items */
 	billingLineItems: unknown[];
 };
 

@@ -3,23 +3,18 @@ import {
 	cusProductToPrices,
 	type FullCusProduct,
 	getCycleEnd,
-	secondsToMs,
 } from "@autumn/shared";
-import type Stripe from "stripe";
-import { getLatestPeriodEnd } from "@/external/stripe/stripeSubUtils/convertSubUtils";
 import { getLargestInterval } from "@/internal/products/prices/priceUtils/priceIntervalUtils";
 
-/** Resolves a scheduled attachment's cycle boundary from Autumn or Stripe. */
+/** Resolves a scheduled attachment's cycle boundary from Autumn's own state. */
 export const setupAttachEndOfCycleMs = ({
 	planTiming,
 	currentCustomerProduct,
-	stripeSubscription,
 	billingCycleAnchorMs,
 	currentEpochMs,
 }: {
 	planTiming: PlanTiming;
 	currentCustomerProduct?: FullCusProduct;
-	stripeSubscription?: Stripe.Subscription;
 	billingCycleAnchorMs?: number | "now";
 	currentEpochMs: number;
 }): number | undefined => {
@@ -27,7 +22,8 @@ export const setupAttachEndOfCycleMs = ({
 		return undefined;
 	}
 
-	// Case 1: Transitioning from existing product (upgrade/downgrade)
+	// Transitioning from an existing product (upgrade/downgrade): the cycle
+	// boundary is the end of the outgoing product's largest recurring interval.
 	if (currentCustomerProduct && billingCycleAnchorMs !== undefined) {
 		const currentPrices = cusProductToPrices({
 			cusProduct: currentCustomerProduct,
@@ -48,19 +44,6 @@ export const setupAttachEndOfCycleMs = ({
 					billingCycleAnchorMs === "now" ? undefined : billingCycleAnchorMs,
 			});
 		}
-	}
-
-	const latestPeriodEndSeconds = getLatestPeriodEnd({
-		sub: stripeSubscription,
-		subItems: stripeSubscription?.items.data,
-	});
-	const latestPeriodEndMs = latestPeriodEndSeconds
-		? secondsToMs(latestPeriodEndSeconds)
-		: undefined;
-	// Case 2: Merged subscription - no existing product but joining existing subscription
-	// Use the subscription's current period end as the scheduled start time
-	if (latestPeriodEndMs) {
-		return latestPeriodEndMs;
 	}
 
 	return undefined;

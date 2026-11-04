@@ -16,7 +16,7 @@ import {
 	expectLicenseLinkCorrect,
 	expectLicenseLinkMissing,
 } from "../utils/expectLicenseLinkCorrect.js";
-import { seedChildVersionsThenParent } from "../../migrations/licenses/utils/seedLicenseDraftPlans.js";
+import { seedChildVersionsThenParent } from "../utils/seedLicenseDraftPlans.js";
 import {
 	messagesItem,
 	seedParentWithTwoChildren,

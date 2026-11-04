@@ -208,7 +208,7 @@ export type GetCustomerSpendLimit = {
    */
   overageLimit?: number | undefined;
   /**
-   * When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally.
+   * When true, overage for this feature is not posted to the billing processor. Usage tracking and balance resets still behave normally.
    */
   skipOverageBilling?: boolean | undefined;
   /**
@@ -947,23 +947,7 @@ export type GetCustomerDisplay = {
   plural?: string | null | undefined;
 };
 
-export type GetCustomerFlagsStripe = {
-  /**
-   * Stripe product ID this feature's usage prices bill under.
-   */
-  productId?: string | undefined;
-  /**
-   * Stripe meter ID used to create this feature's metered price.
-   */
-  meterId?: string | undefined;
-};
 
-/**
- * Processor mappings for this feature. Present when a Stripe product or meter is set.
- */
-export type GetCustomerFlagsProcessors = {
-  stripe?: GetCustomerFlagsStripe | undefined;
-};
 
 /**
  * The full feature object if expanded.
@@ -1022,11 +1006,7 @@ export type GetCustomerFeature = {
    * Whether the feature is archived and hidden from the dashboard.
    */
   archived: boolean;
-  /**
-   * Processor mappings for this feature. Present when a Stripe product or meter is set.
-   */
-  processors?: GetCustomerFlagsProcessors | undefined;
-};
+  };
 
 export type GetCustomerFlags = {
   /**
@@ -1060,69 +1040,20 @@ export type GetCustomerConfig = {
    */
   disablePooledBalance?: boolean | undefined;
   /**
-   * Stops Autumn from posting usage-overage line items to Stripe for this customer. Check/track and balance resets still behave normally. When set, this overrides the organization-level disable_overage_billing setting.
+   * Stops Autumn from posting usage-overage line items for this customer. Check/track and balance resets still behave normally. When set, this overrides the organization-level disable_overage_billing setting.
    */
   disableOverageBilling?: boolean | undefined;
 };
 
-/**
- * Stripe processor connection for the customer.
- */
-export type GetCustomerStripe = {
-  /**
-   * Stripe customer ID.
-   */
-  id: string;
-};
 
-/**
- * Vercel processor connection for the customer (public-safe subset).
- */
-export type GetCustomerVercel = {
-  /**
-   * Vercel marketplace installation ID for this customer.
-   */
-  installationId: string;
-  /**
-   * Vercel account ID associated with the installation.
-   */
-  accountId: string;
-};
 
-/**
- * RevenueCat processor connection for the customer.
- */
-export type GetCustomerRevenuecat = {
-  /**
-   * Customer's external ID, used as the RevenueCat app user ID. Null if the customer has no external ID set.
-   */
-  id: string | null;
-};
 
-/**
- * Payment processors this customer is connected to (Stripe, Vercel, RevenueCat). Omitted entirely when the customer has not been created in any processor.
- */
-export type GetCustomerProcessors = {
-  /**
-   * Stripe processor connection for the customer.
-   */
-  stripe?: GetCustomerStripe | undefined;
-  /**
-   * Vercel processor connection for the customer (public-safe subset).
-   */
-  vercel?: GetCustomerVercel | undefined;
-  /**
-   * RevenueCat processor connection for the customer.
-   */
-  revenuecat?: GetCustomerRevenuecat | undefined;
-};
 
 /**
  * The billing processor that owns this invoice.
  */
 export const GetCustomerProcessorType = {
-  Stripe: "stripe",
-  Revenuecat: "revenuecat",
+  Paypal: "paypal",
 } as const;
 /**
  * The billing processor that owns this invoice.
@@ -1137,9 +1068,9 @@ export type GetCustomerInvoice = {
    */
   planIds: Array<string>;
   /**
-   * The Stripe invoice ID
+   * The processor invoice ID
    */
-  stripeId: string;
+  processorInvoiceId: string;
   /**
    * The billing processor that owns this invoice.
    */
@@ -1161,7 +1092,7 @@ export type GetCustomerInvoice = {
    */
   createdAt: number;
   /**
-   * URL to the Stripe-hosted invoice page
+   * URL to the processor-hosted invoice page
    */
   hostedInvoiceUrl?: string | null | undefined;
 };
@@ -1364,7 +1295,7 @@ export type GetCustomerRewardsDiscount = {
    */
   end?: number | null | undefined;
   /**
-   * The Stripe subscription ID this discount is applied to
+   * The processor subscription ID this discount is applied to
    */
   subscriptionId?: string | null | undefined;
   /**
@@ -1407,7 +1338,7 @@ export type GetCustomerBillingDetailsAddress = {
 
 export type GetCustomerBillingDetailsTaxId = {
   /**
-   * Stripe tax ID type, e.g. eu_vat, gb_vat, us_ein. See https://docs.stripe.com/billing/customer/tax-ids#supported-tax-id
+   * Tax ID type, e.g. eu_vat, gb_vat, us_ein.
    */
   type: string;
   /**
@@ -1436,7 +1367,7 @@ export type GetCustomerInvoiceSettings = {
 };
 
 /**
- * Billing details read live from the linked Stripe customer. Null when no Stripe customer is linked.
+ * Billing details read live from the linked processor customer. Null when no processor customer is linked.
  */
 export type GetCustomerBillingDetails = {
   address: GetCustomerBillingDetailsAddress | null;
@@ -1469,11 +1400,7 @@ export type GetCustomerResponse = {
    * A unique identifier (eg. serial number) to de-duplicate customers across devices or browsers. For example: apple device ID.
    */
   fingerprint: string | null;
-  /**
-   * Stripe customer ID.
-   */
-  stripeId: string | null;
-  /**
+    /**
    * The environment this customer was created in.
    */
   env: GetCustomerEnv;
@@ -1513,16 +1440,12 @@ export type GetCustomerResponse = {
    * Configuration for the customer.
    */
   config?: GetCustomerConfig | undefined;
-  /**
-   * Payment processors this customer is connected to (Stripe, Vercel, RevenueCat). Omitted entirely when the customer has not been created in any processor.
-   */
-  processors?: GetCustomerProcessors | undefined;
-  /**
+    /**
    * Invoices for this customer.
    */
   invoices?: Array<GetCustomerInvoice> | undefined;
   /**
-   * Upcoming invoice for each of this customer's Stripe subscriptions.
+   * Upcoming invoice for each of this customer's processor subscriptions.
    */
   invoicePreviews?: Array<GetCustomerInvoicePreview> | undefined;
   /**
@@ -1546,7 +1469,7 @@ export type GetCustomerResponse = {
    */
   paymentMethod?: any | null | undefined;
   /**
-   * Billing details from the linked Stripe customer. Returned only if billing_details is provided in the expand parameter.
+   * Billing details from the linked processor customer. Returned only if billing_details is provided in the expand parameter.
    */
   billingDetails?: GetCustomerBillingDetails | null | undefined;
 };
@@ -2802,50 +2725,9 @@ export function getCustomerDisplayFromJSON(
   );
 }
 
-/** @internal */
-export const GetCustomerFlagsStripe$inboundSchema: z.ZodMiniType<
-  GetCustomerFlagsStripe,
-  unknown
-> = z.pipe(
-  z.object({
-    product_id: types.optional(types.string()),
-    meter_id: types.optional(types.string()),
-  }),
-  z.transform((v) => {
-    return remap$(v, {
-      "product_id": "productId",
-      "meter_id": "meterId",
-    });
-  }),
-);
 
-export function getCustomerFlagsStripeFromJSON(
-  jsonString: string,
-): SafeParseResult<GetCustomerFlagsStripe, SDKValidationError> {
-  return safeParse(
-    jsonString,
-    (x) => GetCustomerFlagsStripe$inboundSchema.parse(JSON.parse(x)),
-    `Failed to parse 'GetCustomerFlagsStripe' from JSON`,
-  );
-}
 
-/** @internal */
-export const GetCustomerFlagsProcessors$inboundSchema: z.ZodMiniType<
-  GetCustomerFlagsProcessors,
-  unknown
-> = z.object({
-  stripe: types.optional(z.lazy(() => GetCustomerFlagsStripe$inboundSchema)),
-});
 
-export function getCustomerFlagsProcessorsFromJSON(
-  jsonString: string,
-): SafeParseResult<GetCustomerFlagsProcessors, SDKValidationError> {
-  return safeParse(
-    jsonString,
-    (x) => GetCustomerFlagsProcessors$inboundSchema.parse(JSON.parse(x)),
-    `Failed to parse 'GetCustomerFlagsProcessors' from JSON`,
-  );
-}
 
 /** @internal */
 export const GetCustomerFeature$inboundSchema: z.ZodMiniType<
@@ -2878,9 +2760,6 @@ export const GetCustomerFeature$inboundSchema: z.ZodMiniType<
       GetCustomerDisplay$inboundSchema
     )),
     archived: types.boolean(),
-    processors: types.optional(z.lazy(() =>
-      GetCustomerFlagsProcessors$inboundSchema
-    )),
   }),
   z.transform((v) => {
     return remap$(v, {
@@ -2961,88 +2840,13 @@ export function getCustomerConfigFromJSON(
   );
 }
 
-/** @internal */
-export const GetCustomerStripe$inboundSchema: z.ZodMiniType<
-  GetCustomerStripe,
-  unknown
-> = z.object({
-  id: types.string(),
-});
 
-export function getCustomerStripeFromJSON(
-  jsonString: string,
-): SafeParseResult<GetCustomerStripe, SDKValidationError> {
-  return safeParse(
-    jsonString,
-    (x) => GetCustomerStripe$inboundSchema.parse(JSON.parse(x)),
-    `Failed to parse 'GetCustomerStripe' from JSON`,
-  );
-}
 
-/** @internal */
-export const GetCustomerVercel$inboundSchema: z.ZodMiniType<
-  GetCustomerVercel,
-  unknown
-> = z.pipe(
-  z.object({
-    installation_id: types.string(),
-    account_id: types.string(),
-  }),
-  z.transform((v) => {
-    return remap$(v, {
-      "installation_id": "installationId",
-      "account_id": "accountId",
-    });
-  }),
-);
 
-export function getCustomerVercelFromJSON(
-  jsonString: string,
-): SafeParseResult<GetCustomerVercel, SDKValidationError> {
-  return safeParse(
-    jsonString,
-    (x) => GetCustomerVercel$inboundSchema.parse(JSON.parse(x)),
-    `Failed to parse 'GetCustomerVercel' from JSON`,
-  );
-}
 
-/** @internal */
-export const GetCustomerRevenuecat$inboundSchema: z.ZodMiniType<
-  GetCustomerRevenuecat,
-  unknown
-> = z.object({
-  id: types.nullable(types.string()),
-});
 
-export function getCustomerRevenuecatFromJSON(
-  jsonString: string,
-): SafeParseResult<GetCustomerRevenuecat, SDKValidationError> {
-  return safeParse(
-    jsonString,
-    (x) => GetCustomerRevenuecat$inboundSchema.parse(JSON.parse(x)),
-    `Failed to parse 'GetCustomerRevenuecat' from JSON`,
-  );
-}
 
-/** @internal */
-export const GetCustomerProcessors$inboundSchema: z.ZodMiniType<
-  GetCustomerProcessors,
-  unknown
-> = z.object({
-  stripe: types.optional(z.lazy(() => GetCustomerStripe$inboundSchema)),
-  vercel: types.optional(z.lazy(() => GetCustomerVercel$inboundSchema)),
-  revenuecat: types.optional(z.lazy(() => GetCustomerRevenuecat$inboundSchema)),
-});
 
-export function getCustomerProcessorsFromJSON(
-  jsonString: string,
-): SafeParseResult<GetCustomerProcessors, SDKValidationError> {
-  return safeParse(
-    jsonString,
-    (x) => GetCustomerProcessors$inboundSchema.parse(JSON.parse(x)),
-    `Failed to parse 'GetCustomerProcessors' from JSON`,
-  );
-}
 
 /** @internal */
 export const GetCustomerProcessorType$inboundSchema: z.ZodMiniType<
@@ -3057,10 +2861,10 @@ export const GetCustomerInvoice$inboundSchema: z.ZodMiniType<
 > = z.pipe(
   z.object({
     plan_ids: z.array(types.string()),
-    stripe_id: types.string(),
+    processor_invoice_id: types.string(),
     processor_type: z._default(
       GetCustomerProcessorType$inboundSchema,
-      "stripe",
+      "paypal",
     ),
     status: types.string(),
     total: types.number(),
@@ -3071,7 +2875,7 @@ export const GetCustomerInvoice$inboundSchema: z.ZodMiniType<
   z.transform((v) => {
     return remap$(v, {
       "plan_ids": "planIds",
-      "stripe_id": "stripeId",
+      "processor_invoice_id": "processorInvoiceId",
       "processor_type": "processorType",
       "created_at": "createdAt",
       "hosted_invoice_url": "hostedInvoiceUrl",
@@ -3540,7 +3344,7 @@ export const GetCustomerResponse$inboundSchema: z.ZodMiniType<
     email: types.nullable(types.string()),
     created_at: types.number(),
     fingerprint: types.nullable(types.string()),
-    stripe_id: types.nullable(types.string()),
+    processor_invoice_id: types.nullable(types.string()),
     env: GetCustomerEnv$inboundSchema,
     metadata: z.record(z.string(), z.any()),
     send_email_receipts: types.boolean(),
@@ -3551,9 +3355,6 @@ export const GetCustomerResponse$inboundSchema: z.ZodMiniType<
     balances: z.record(z.string(), Balance$inboundSchema),
     flags: z.record(z.string(), z.lazy(() => GetCustomerFlags$inboundSchema)),
     config: types.optional(z.lazy(() => GetCustomerConfig$inboundSchema)),
-    processors: types.optional(
-      z.lazy(() => GetCustomerProcessors$inboundSchema),
-    ),
     invoices: types.optional(
       z.array(z.lazy(() => GetCustomerInvoice$inboundSchema)),
     ),
@@ -3580,7 +3381,6 @@ export const GetCustomerResponse$inboundSchema: z.ZodMiniType<
   z.transform((v) => {
     return remap$(v, {
       "created_at": "createdAt",
-      "stripe_id": "stripeId",
       "send_email_receipts": "sendEmailReceipts",
       "billing_controls": "billingControls",
       "invoice_previews": "invoicePreviews",

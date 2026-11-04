@@ -61,7 +61,7 @@
 									"documentation/concepts/plan-items",
 									"documentation/concepts/subscriptions",
 									"documentation/concepts/balances",
-									"documentation/concepts/stripe"
+									"documentation/concepts/paypal"
 								]
 							},
 							"documentation/getting-started/migration",
@@ -132,7 +132,6 @@
 							"documentation/rate-limits",
 							"documentation/external-providers/ai-sdk",
 							"documentation/external-providers/openrouter",
-							"documentation/external-providers/revenuecat",
 							"documentation/external-providers/vercel-marketplace",
 							{
 								"group": "Lakehouse",
@@ -179,13 +178,10 @@
 							"api-reference/billing/previewAttach",
 							"api-reference/billing/previewUpdate",
 							"api-reference/billing/openCustomerPortal",
-							"api-reference/billing/setupPayment",
 							"api-reference/billing/previewMultiAttach",
 							"api-reference/billing/multiAttach",
 							"api-reference/billing/previewMultiUpdate",
 							"api-reference/billing/multiUpdate",
-							"api-reference/billing/createSchedule",
-							"api-reference/billing/import",
 							{
 								"group": "Licenses",
 								"pages": [
@@ -321,10 +317,6 @@
 						"pages": [
 							"api-reference/platform/overview",
 							"api-reference/platform/create-organization",
-							"api-reference/platform/oauth-url",
-							"api-reference/platform/getStripeConnection",
-							"api-reference/platform/disconnectStripe",
-							"api-reference/platform/update-stripe",
 							"api-reference/platform/list-users",
 							"api-reference/platform/list-orgs"
 						]

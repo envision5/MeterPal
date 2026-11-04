@@ -30,7 +30,7 @@ const DOCKER = [
 
 const SHARED_SERVICES = [
 	{ name: "Axiom", detail: "logs · traces" },
-	{ name: "Stripe", detail: "billing sandbox" },
+	{ name: "PayPal", detail: "billing sandbox" },
 	{ name: "Tinybird", detail: "analytics" },
 	{ name: "Amazon S3", detail: "storage" },
 	{ name: "Trigger.dev", detail: "background jobs" },

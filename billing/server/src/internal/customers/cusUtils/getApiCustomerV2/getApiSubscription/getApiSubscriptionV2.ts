@@ -72,7 +72,7 @@ export const getApiSubscriptionV2 = async ({
 	const autumnSubscription = fullSubject.subscriptions?.find(
 		(subscription) =>
 			subscription.id === subId ||
-			(subscription as Subscription).stripe_id === subId,
+			(subscription as Subscription).processor_id === subId,
 	);
 
 	let subscriptionPeriod = {

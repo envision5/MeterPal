@@ -3,6 +3,7 @@ import type { DrizzleCli } from "@/db/initDrizzle.js";
 import { EntitlementService } from "@/internal/products/entitlements/EntitlementService.js";
 import { PriceService } from "@/internal/products/prices/PriceService.js";
 
+/** Inserts the custom entitlements and prices a plan was built with. */
 export const insertCustomItems = async ({
 	db,
 	customPrices,

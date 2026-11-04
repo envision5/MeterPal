@@ -5,8 +5,8 @@ import type { FormDiscount } from "../../attach-v2/utils/discountUtils";
 export type InvoiceDiscountRow = { label: string; amount: number };
 
 /**
- * Stripe lists each coupon on its own row and applies them in order, so a
- * percentage coupon discounts what is left after the ones before it. Rows are
+ * The processor lists each coupon on its own row and applies them in order, so
+ * a percentage coupon discounts what is left after the ones before it. Rows are
  * rounded per line while the server rounds once, so the last row absorbs the
  * difference and the displayed rows always sum to the invoice's discount.
  */

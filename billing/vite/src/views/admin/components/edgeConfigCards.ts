@@ -1,7 +1,6 @@
 import {
 	Activity,
 	Clock,
-	CreditCard,
 	Database,
 	Gauge,
 	HardDrive,
@@ -35,7 +34,6 @@ export type EdgeConfigCardId =
 	| "rate-limit-overrides"
 	| "rate-limit-redis-allowlist"
 	| "agent-provision-rate-limit"
-	| "stripe-sync"
 	| "redis-v2-cache"
 	| "misc-redis"
 	| "cache-v2-ramp"
@@ -408,32 +406,6 @@ export const EDGE_CONFIG_SECTIONS: EdgeConfigSectionDef[] = [
 						: {
 								label: parts.join(" | "),
 								tone: axiomResponseBodyReductionDisabled ? "warning" : "active",
-							};
-				},
-			},
-		],
-	},
-	{
-		id: "integrations",
-		title: "Integrations",
-		description: "Third-party sync behaviour.",
-		cards: [
-			{
-				id: "stripe-sync",
-				title: "Stripe Sync",
-				description:
-					"Enable Stripe webhook event syncing to the sync DB per org.",
-				icon: CreditCard,
-				endpoint: "/admin/stripe-sync-config",
-				deriveStatus: (data) => {
-					const ids = asRecord(data).enabledOrgIds;
-					const count = Array.isArray(ids) ? ids.length : 0;
-
-					return count === 0
-						? { label: "No orgs enabled", tone: "neutral" }
-						: {
-								label: `${pluralize({ count, noun: "org" })} enabled`,
-								tone: "active",
 							};
 				},
 			},

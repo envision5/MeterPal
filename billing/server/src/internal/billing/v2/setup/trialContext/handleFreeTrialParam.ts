@@ -5,8 +5,6 @@ import {
 	isProductPaidAndRecurring,
 } from "@autumn/shared";
 import type { FreeTrialParamsV1 } from "@shared/api/common/freeTrial/freeTrialParamsV1";
-import type Stripe from "stripe";
-import { isStripeSubscriptionTrialing } from "@/external/stripe/subscriptions/utils/classifyStripeSubscriptionUtils";
 import { initFreeTrialFromParamsV1 } from "@/internal/products/free-trials/initFreeTrialFromParamsV1";
 
 /**
@@ -17,13 +15,11 @@ import { initFreeTrialFromParamsV1 } from "@/internal/products/free-trials/initF
  */
 export const handleFreeTrialParam = ({
 	freeTrialParams,
-	stripeSubscription,
 	customerProduct,
 	fullProduct,
 	currentEpochMs,
 }: {
 	freeTrialParams: FreeTrialParamsV1 | null;
-	stripeSubscription?: Stripe.Subscription;
 	customerProduct?: FullCusProduct;
 	fullProduct: FullProduct;
 	currentEpochMs: number;
@@ -32,9 +28,9 @@ export const handleFreeTrialParam = ({
 
 	// free_trial: null → Remove trial if currently trialing
 	if (freeTrialParams === null) {
-		const isCurrentlyTrialing =
-			isStripeSubscriptionTrialing(stripeSubscription) ||
-			isCustomerProductTrialing(customerProduct, { nowMs: currentEpochMs });
+		const isCurrentlyTrialing = isCustomerProductTrialing(customerProduct, {
+			nowMs: currentEpochMs,
+		});
 
 		if (isCurrentlyTrialing) {
 			return {

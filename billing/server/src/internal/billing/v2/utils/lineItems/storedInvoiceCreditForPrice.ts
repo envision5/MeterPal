@@ -45,8 +45,7 @@ export const storedInvoiceCreditForPrice = ({
 	const priceChargeRows = chargeRows.filter(
 		(row) =>
 			row.customer_product_ids.includes(customerProduct.id) &&
-			(row.price_id === price.id ||
-				row.stripe_price_id === price.config?.stripe_price_id) &&
+			row.price_id === price.id &&
 			(!product ||
 				row.internal_product_id === product.internal_id ||
 				row.product_id === product.id),

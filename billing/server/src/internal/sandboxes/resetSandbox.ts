@@ -6,13 +6,12 @@ import { CusService } from "@/internal/customers/CusService.js";
 import { FeatureService } from "@/internal/features/FeatureService.js";
 import { clearOrgCache } from "@/internal/orgs/orgUtils/clearOrgCache.js";
 import { ProductService } from "@/internal/products/ProductService.js";
-import { deleteMigrationDrafts } from "./deleteMigrationDrafts.js";
 
 export const SANDBOX_ONLY_MESSAGE = "Only sandboxes can be reset";
 
 /**
- * Empties the sandbox the caller's key belongs to: its migration drafts,
- * customers, plans and features. Keys, settings and Stripe are left alone.
+ * Empties the sandbox the caller's key belongs to: its customers, plans and
+ * features. Keys and settings are left alone.
  */
 export const resetSandbox = async ({
 	ctx,
@@ -34,8 +33,6 @@ export const resetSandbox = async ({
 		// customers whose plans are gone, with no way to retry back to the start.
 		await db.transaction(async (transaction) => {
 			const tx = transaction as unknown as DrizzleCli;
-			// Drafts first: they reference the plans the product delete is about to take.
-			await deleteMigrationDrafts({ ctx: { ...ctx, db: tx } });
 
 			// Then the three deletes in FK order — customers hold products, products hold
 			// features; deleting a feature first would fail on the references to it.

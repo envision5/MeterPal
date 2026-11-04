@@ -15,13 +15,13 @@ export const computeScheduledPooledAnchorResetPlan = ({
 	ctx,
 	fullCustomer,
 	customerProducts,
-	stripeSubscriptionId,
+	processorSubscriptionId,
 	anchorMs,
 }: {
 	ctx: AutumnContext;
 	fullCustomer: FullCustomer;
 	customerProducts: FullCusProduct[];
-	stripeSubscriptionId: string;
+	processorSubscriptionId: string;
 	anchorMs: number;
 }) => {
 	// A pool is only re-anchored and reset here when one of the products whose
@@ -42,8 +42,8 @@ export const computeScheduledPooledAnchorResetPlan = ({
 		(customerEntitlement) =>
 			customerEntitlement.pooled_balance?.reset_mode ===
 				PooledBalanceResetMode.Subscription &&
-			customerEntitlement.pooled_balance.stripe_subscription_id ===
-				stripeSubscriptionId &&
+			customerEntitlement.pooled_balance.processor_subscription_id ===
+				processorSubscriptionId &&
 			resetContributionPoolIds.has(customerEntitlement.pooled_balance.id) &&
 			isResettingEntitlement({ entitlement: customerEntitlement.entitlement }),
 	);
@@ -88,7 +88,7 @@ export const computeScheduledPooledAnchorResetPlan = ({
 		fullCustomer,
 		outgoingCustomerProducts,
 		incomingCustomerProducts,
-		stripeSubscriptionId,
+		processorSubscriptionId,
 		now: anchorMs,
 	});
 	const updates = new Map(

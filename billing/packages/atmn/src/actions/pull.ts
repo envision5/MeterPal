@@ -52,7 +52,7 @@ export type PullOptions = {
 	cwd?: string;
 	/** `-c`: the config file or its folder; found from cwd or the root marker otherwise. */
 	configPath?: string;
-	/** Keep processor mappings (Stripe product/meter ids) in pulled fixtures. */
+	/** Keep processor mappings (processor product/price ids) in pulled fixtures. */
 	includeMappings?: boolean;
 	/** Where to write progress. Injected so tests can capture it. */
 	write?: (text: string) => void;

@@ -142,7 +142,7 @@ const runAtScale = async (total: number) => {
 	await db.execute(sql`
 		INSERT INTO pooled_balances (id, org_id, env, internal_customer_id, internal_feature_id,
 			unlimited, granted, interval, interval_count, reset_cycle_anchor, reset_mode,
-			stripe_subscription_id, customer_license_link_id, rollover_signature,
+			processor_subscription_id, customer_license_link_id, rollover_signature,
 			customer_entitlement_id, last_applied_reset_at)
 		SELECT ${POOL_ID}, org_id, env, internal_customer_id, internal_feature_id,
 			false, ${total * 10}, interval, interval_count, 42, 'lazy',

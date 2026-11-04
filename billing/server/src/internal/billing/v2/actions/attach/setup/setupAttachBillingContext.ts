@@ -4,20 +4,15 @@ import {
 	type BillingContextOverride,
 	BillingVersion,
 	findActiveCustomerProductById,
-	hasActivePaidSubscription,
 	hasCustomItems,
-	isCustomerProductFree,
 	isFutureStartDate,
 	isOneOffProduct,
 	isPastStartDate,
-	isProductPaidAndRecurring,
-	notNullish,
-	orgDisableStripeWrites,
+	orgDisableProcessorWrites,
 	orgToReturnUrl,
 	resolveCustomerCurrency,
 } from "@autumn/shared";
 import type { AutumnContext } from "@/honoUtils/HonoEnv";
-import { setupStripeBillingContext } from "@/internal/billing/v2/providers/stripe/setup/setupStripeBillingContext";
 import { setupCustomerLicenseBillingContext } from "@/internal/billing/v2/setup/customerLicenseBillingContext/setupCustomerLicenseBillingContext";
 import { fetchStoredLineItemsForSubscriptionBilling } from "@/internal/billing/v2/setup/fetchStoredLineItemsForSubscriptionBilling";
 import { setupBillingCycleAnchor } from "@/internal/billing/v2/setup/setupBillingCycleAnchor";
@@ -113,61 +108,19 @@ export const setupAttachBillingContext = async ({
 	const carryOverSourceCustomerProduct =
 		currentCustomerProduct ?? removedCarrySource ?? undefined;
 
-	const isAttachPaidRecurring = isProductPaidAndRecurring(attachProduct);
-
-	const hasPaidRecurringSubscription = hasActivePaidSubscription({
-		customerProducts: fullCustomer.customer_products,
-	});
-
-	const isTransitionFromFree =
-		notNullish(currentCustomerProduct) &&
-		isCustomerProductFree(currentCustomerProduct);
-
-	// Only respect new_billing_subscription for non-transition scenarios
-	// (add-ons, entity products). Upgrades/downgrades ignore the flag.
-	const shouldForceNewSubscription =
-		(!currentCustomerProduct && params.new_billing_subscription) ||
-		(Boolean(params.new_billing_subscription) &&
-			isAttachPaidRecurring &&
-			isTransitionFromFree &&
-			hasPaidRecurringSubscription);
-
 	// no_billing_changes blocks WRITES but should still allow reading the
-	// existing Stripe sub when one is linked — needed so the new cusProduct
-	// inherits subscription_ids and the paid-product guard doesn't misfire.
-	// External-PSP origin callers (e.g. RevenueCat) opt out of fetching
-	// entirely via `contextOverride.skipBillingFetching`.
+	// existing processor subscription when one is linked — needed so the new
+	// cusProduct inherits subscription_ids and the paid-product guard doesn't
+	// misfire. Callers whose customers have no processor presence opt out of
+	// fetching entirely via `contextOverride.skipBillingFetching`.
 	const skipBillingFetching =
-		orgDisableStripeWrites({ ctx }) ||
+		orgDisableProcessorWrites({ ctx }) ||
 		contextOverride.skipBillingFetching === true;
 
 	const skipBillingChangesBase =
 		skipBillingFetching ||
 		params.no_billing_changes === true ||
 		params.processor_subscription_id !== undefined;
-
-	const {
-		stripeSubscription,
-		stripeSubscriptionSchedule,
-		stripeCustomer,
-		stripeDiscounts,
-		stripeTaxRate,
-		paymentMethod,
-		testClockFrozenTime,
-		canceledStripeSubscriptionId,
-	} = await setupStripeBillingContext({
-		ctx,
-		fullCustomer,
-		product: attachProduct,
-		targetCustomerProduct: currentCustomerProduct,
-		contextOverride,
-		params,
-		newBillingSubscription: shouldForceNewSubscription,
-		skipBillingFetching,
-		createStripeCustomerIfMissing:
-			!preview && params.no_billing_changes !== true,
-		fetchTaxRate: preview,
-	});
 
 	const featureQuantities = setupFeatureQuantitiesContext({
 		ctx,
@@ -188,11 +141,9 @@ export const setupAttachBillingContext = async ({
 		ctx,
 		fullCustomer,
 		params,
-		stripeCustomer,
 	});
 	const paymentBehaviorIntent = setupPaymentBehaviorIntent({
 		contextOverride,
-		paymentMethod,
 	});
 	const shouldFinalizeFirstInvoice = setupFinalizeFirstInvoice({
 		contextOverride,
@@ -201,7 +152,7 @@ export const setupAttachBillingContext = async ({
 	const isCustom = hasCustomItems(params.customize);
 
 	// Timestamp context
-	const currentEpochMs = testClockFrozenTime ?? Date.now();
+	const currentEpochMs = Date.now();
 
 	// Setup trial context
 	const trialContext = await setupAttachTrialContext({
@@ -210,7 +161,6 @@ export const setupAttachBillingContext = async ({
 		currentContext: {
 			fullCustomer,
 			attachProduct,
-			stripeSubscription,
 			currentEpochMs,
 			currentCustomerProduct,
 		},
@@ -220,7 +170,6 @@ export const setupAttachBillingContext = async ({
 		skipBillingChangesBase || isRevertTrialContext({ trialContext });
 
 	let billingCycleAnchorMs = setupBillingCycleAnchor({
-		stripeSubscription,
 		customerProduct: currentCustomerProduct,
 		newFullProduct: attachProduct,
 		trialContext,
@@ -239,7 +188,6 @@ export const setupAttachBillingContext = async ({
 		setupAttachEndOfCycleMs({
 			planTiming,
 			currentCustomerProduct,
-			stripeSubscription,
 			billingCycleAnchorMs,
 			currentEpochMs,
 		});
@@ -272,10 +220,8 @@ export const setupAttachBillingContext = async ({
 	});
 
 	const checkoutMode = setupAttachCheckoutMode({
-		paymentMethod,
 		redirectMode: params.redirect_mode,
 		attachProduct,
-		stripeSubscription,
 		trialContext,
 		invoiceMode,
 		hasFutureStartDate,
@@ -293,7 +239,6 @@ export const setupAttachBillingContext = async ({
 		await fetchStoredLineItemsForSubscriptionBilling({
 			db: ctx.db,
 			fullCustomer,
-			stripeSubscription,
 			outgoingCusProductIds,
 		});
 
@@ -308,7 +253,6 @@ export const setupAttachBillingContext = async ({
 			customer: fullCustomer,
 			org: ctx.org,
 			requested: params.currency,
-			stripeCurrency: stripeCustomer?.currency,
 		}),
 		featureQuantities,
 		customerLicenseQuantities,
@@ -317,18 +261,10 @@ export const setupAttachBillingContext = async ({
 		currentCustomerProduct,
 		scheduledCustomerProduct,
 		carryOverSourceCustomerProduct,
-		canceledStripeSubscriptionId,
 
 		planTiming,
 		endOfCycleMs,
 		checkoutMode,
-
-		stripeCustomer,
-		stripeSubscription,
-		stripeSubscriptionSchedule,
-		stripeDiscounts,
-		stripeTaxRate,
-		paymentMethod,
 
 		currentEpochMs,
 		billingCycleAnchorMs,
@@ -370,7 +306,6 @@ export const setupAttachBillingContext = async ({
 		insertPlanLicenses,
 
 		skipBillingChanges,
-		dryRunStripe: preview,
 
 		storedChargeLineItems,
 		storedRefundLineItems,

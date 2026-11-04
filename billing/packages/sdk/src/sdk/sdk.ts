@@ -20,7 +20,6 @@ import { Keys } from "./keys.js";
 import { Licenses } from "./licenses.js";
 import { Logs } from "./logs.js";
 import { Plans } from "./plans.js";
-import { Platform } from "./platform.js";
 import { Referrals } from "./referrals.js";
 import { Rewards } from "./rewards.js";
 import { Sandboxes } from "./sandboxes.js";
@@ -84,11 +83,6 @@ export class Autumn extends ClientSDK {
   private _rewards?: Rewards;
   get rewards(): Rewards {
     return (this._rewards ??= new Rewards(this._options));
-  }
-
-  private _platform?: Platform;
-  get platform(): Platform {
-    return (this._platform ??= new Platform(this._options));
   }
 
   private _keys?: Keys;

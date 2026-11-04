@@ -85,7 +85,7 @@ describe("classifyWriteExecution", () => {
 							id: "TOOL_EXECUTION_FAILED",
 							details: {
 								errorMessage:
-									'Error: Autumn API request failed (400): {"message":"Missing email.","code":"stripe_error"}',
+									'Error: Autumn API request failed (400): {"message":"Either customer ID or email is required","code":"invalid_request"}',
 							},
 						}),
 					},
@@ -93,7 +93,7 @@ describe("classifyWriteExecution", () => {
 			},
 		});
 		expect(outcome.status).toBe("failed");
-		expect("detail" in outcome && outcome.detail).toContain("Missing email");
+		expect("detail" in outcome && outcome.detail).toContain("email is required");
 	});
 
 	test("thrown errors are unknown — never auto-retried", () => {

@@ -8,8 +8,6 @@ SQL >
     SELECT
         assumeNotNull(id)                                               AS id,
         coalesce(org_id, '')                                           AS org_id,
-        stripe_id,
-        stripe_schedule_id,
         created_at::Int64                                               AS created_at,
         ifNull(toString(metadata), '{}')                AS metadata,
         arrayMap(x -> assumeNotNull(x), coalesce(usage_features, [])) AS usage_features,

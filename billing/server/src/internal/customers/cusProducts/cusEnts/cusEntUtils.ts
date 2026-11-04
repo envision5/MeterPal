@@ -13,7 +13,6 @@ import {
 	getStartingBalance,
 	type Organization,
 } from "@autumn/shared";
-import { createStripeCli } from "@server/external/connect/createStripeCli.js";
 import { getEntOptions } from "@server/internal/products/prices/priceUtils.js";
 import { notNullish, nullish } from "@server/utils/genUtils.js";
 import { logger } from "better-auth";
@@ -114,47 +113,6 @@ export const getRelatedCusPrice = (
 
 		return productMatch && entMatch;
 	});
-};
-
-// 3. Perform deductions and update customer balance
-const updateCusEntInStripe = async ({
-	cusEnt,
-	cusPrices,
-	org,
-	env,
-	customer,
-	amountUsed,
-	eventId,
-}: {
-	cusEnt: FullCustomerEntitlement;
-	cusPrices: FullCustomerPrice[];
-	org: Organization;
-	env: AppEnv;
-	customer: Customer;
-	amountUsed: number;
-	eventId: string;
-}) => {
-	const relatedCusPrice = getRelatedCusPrice(cusEnt, cusPrices);
-
-	if (!relatedCusPrice) {
-		return;
-	}
-
-	// Send event to Stripe
-	const stripeCli = createStripeCli({
-		org,
-		env,
-	});
-
-	await stripeCli.billing.meterEvents.create({
-		event_name: relatedCusPrice.price.id!,
-		payload: {
-			stripe_customer_id: customer.processor.id,
-			value: amountUsed.toString(),
-		},
-		identifier: eventId,
-	});
-	console.log(`   ✅ Stripe event sent, amount: (${amountUsed})`);
 };
 
 export const getUnlimitedAndUsageAllowed = ({

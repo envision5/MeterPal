@@ -28,7 +28,7 @@ setup
   -> load customer, pools, contributions, owners, and balance state
 compute
   -> produce the complete AutumnBillingPlan with explicit pooled writes
-evaluate / execute Stripe
+evaluate / execute processor
   -> resolve processor resources and IDs
 execute Autumn
   -> mechanically apply already-computed writes
@@ -38,7 +38,7 @@ Required rules:
 
 1. Setup performs every database read needed to decide pooled writes.
 2. Compute is deterministic and performs no database reads.
-3. Stripe evaluation may replace temporary owner IDs with real Stripe IDs.
+3. Processor evaluation may replace temporary owner IDs with real processor IDs.
 4. Autumn execution does not rediscover contributions, choose pools, calculate deltas, or reload a FullSubject to rebalance.
 5. executeAutumnBillingPlan stays one cohesive path. Pooled execution is one ordinary optional step, not a separate product/license lifecycle.
 6. executeCustomerLicenseTransitions runs normally. Its pooled effects are prepared in setup/compute and included in the main pooled plan.
@@ -89,7 +89,7 @@ It stores:
 - current_contribution: grant currently minted into the pool.
 - next_cycle_contribution: grant to mint after the next owner reset.
 - effective_at: staged removal boundary, or null.
-- stripe_subscription_id: paid recurring reset owner.
+- processor_subscription_id: paid recurring reset owner.
 - customer_license_link_id: assigned-seat reset owner.
 - neither owner: free/lazy contribution.
 
@@ -115,7 +115,7 @@ Whole-source removal affects all contributions under a source product. Single-co
 
 Free sources use lazy reset. Reference anchor priority was requested anchor, billing start, outgoing pooled-source anchor, then customer creation time.
 
-Paid recurring sources require a Stripe subscription owner. A new customer-product ID may be a temporary compute token, but Stripe execution replaces it before Autumn persistence. Under skipBillingChanges, an active paid source without an existing/supplied subscription is invalid.
+Paid recurring sources require a processor subscription owner. A new customer-product ID may be a temporary compute token, but processor execution replaces it before Autumn persistence. Under skipBillingChanges, an active paid source without an existing/supplied subscription is invalid.
 
 License assignments use customer_license.link_id as reset owner and inherit the parent reset cycle.
 
@@ -195,7 +195,7 @@ Each action loads only pooled state it can affect:
 - eligible customer-level numeric entitlements;
 - balances, adjustments, cache versions, and reset metadata;
 - status filters and deduction order;
-- known Stripe IDs and anchors;
+- known processor IDs and anchors;
 - license parents, links, seats, unused assignments, and definition transitions;
 - one captured current timestamp.
 
@@ -238,7 +238,7 @@ A missing pool requires one custom pooled entitlement definition, one synthetic 
 - Reuse only when every identity field matches.
 - Add a contribution keyed by the new source product and entitlement.
 - Increase balance and adjustment by its current contribution.
-- Reject a conflicting Stripe owner.
+- Reject a conflicting processor owner.
 
 #### A5. Idempotency
 
@@ -269,7 +269,7 @@ Keep these rejections until each has an explicit lifecycle design.
 #### A8. Processor safety
 
 - Preview computes the same plan but writes nothing.
-- Stripe failure leaves no Autumn pooled state.
+- Processor failure leaves no Autumn pooled state.
 - Actual subscription ID reaches product and contribution owner before persistence.
 
 ### B. Immediate multi-product attach
@@ -382,7 +382,7 @@ Reference: Implemented.
 - Remove canceled source immediately.
 - Prepare an immediate default pooled product without removing twice.
 - Remove invalidated add-on sources only if active.
-- Keep normal refund/Stripe behavior.
+- Keep normal refund/processor behavior.
 
 #### D7. End-of-cycle cancellation
 
@@ -431,21 +431,21 @@ Reference: Partial.
 - Changed non-lifetime anchor changes pool identity and may require transfer.
 - Add an explicit decision/test rather than silently mutating identity.
 
-### E. Stripe sync
+### E. Processor sync
 
 Reference: immediate replacement and detection scope Implemented; future phases/concurrency Partial.
 
 #### E1. Immediate replacement
 
 - Same product with only license quantity drift updates license state without recreating parent source.
-- Otherwise initialize from Stripe.
+- Otherwise initialize from the processor.
 - Apply configured usage carry before pooled preparation.
 - Remove old source, add new source, expire old product.
-- Existing Stripe ID is required as reset owner.
+- Existing processor ID is required as reset owner.
 
 #### E2. Prepaid drift detection
 
-- Compare Stripe-derived totals with linked product prepaid state.
+- Compare processor-derived totals with linked product prepaid state.
 - Desired zero with zero purchased packs is not drift solely because catalog allowance is nonzero.
 - Detect main and add-on drift.
 - Replace with usage carry instead of directly overwriting source.
@@ -455,7 +455,7 @@ Reference: immediate replacement and detection scope Implemented; future phases/
 - Preserve existing entity binding in generated sync params.
 - Reject/skip ambiguous mappings.
 - Never create customer-level duplicate for an entity-linked source.
-- Infer removed add-ons only when Stripe detection has no unmatched items.
+- Infer removed add-ons only when processor detection has no unmatched items.
 
 #### E4. Future phases
 
@@ -591,7 +591,7 @@ Reference: Partial / effectively unimplemented.
 The repository exposed applyReset, owner lookups, next contributions, effective boundaries, and last_applied_reset_at, but no production caller applied pooled resets. The rebuild needs:
 
 - lazy reset for free pools;
-- subscription renewal reset by Stripe owner;
+- subscription renewal reset by processor owner;
 - license-parent reset by license link;
 - current becoming next contribution;
 - staged removal becoming zero at boundary;
@@ -625,21 +625,21 @@ The reference commit added no pooled billing integration tests. Every case below
 ### Attach
 
 - PB-A01: first free entity source creates graph, normalized source, contribution, and balance.
-- PB-A02: first paid source uses real post-Stripe subscription owner.
+- PB-A02: first paid source uses real post-processor subscription owner.
 - PB-A03: second entity with identical identity joins existing pool.
 - PB-A04: identity difference creates a distinct pool.
 - PB-A05: repeated upsert does not duplicate contribution or grant.
 - PB-A06: immediate replacement removes old and adds new in one result.
 - PB-A07: non-pooled to pooled preserves usage.
 - PB-A08: pooled to non-pooled does not infer usage from normalized zero.
-- PB-A09: conflicting Stripe owner is rejected.
+- PB-A09: conflicting processor owner is rejected.
 - PB-A10: customer-level pooled definition is not a source.
 - PB-A11: future active start is rejected.
 - PB-A12: free trial is rejected.
 - PB-A13: paid non-recurring source is rejected.
 - PB-A14: missing reset owner under skip-billing is rejected.
 - PB-A15: negative, infinite, or NaN contribution is rejected.
-- PB-A16: preview and Stripe failure write nothing.
+- PB-A16: preview and processor failure write nothing.
 
 ### Multi-attach and schedules
 
@@ -678,7 +678,7 @@ The reference commit added no pooled billing integration tests. Every case below
 - PB-Y03: main/add-on prepaid drift is detected.
 - PB-Y04: entity binding is preserved.
 - PB-Y05: ambiguous entities do not create customer-level duplicate.
-- PB-Y06: unmatched Stripe items do not cause false removal.
+- PB-Y06: unmatched processor items do not cause false removal.
 - PB-Y07: future sync phase does not remove current source early.
 - PB-F01: flashed unused grant imports full contribution.
 - PB-F02: flashed used grant reapplies imported usage once.
@@ -782,5 +782,5 @@ The reference commit added no pooled billing integration tests. Every case below
 - No leaf pooled executor opens a transaction or lock.
 - Scheduled cancellation has a real reset consumer.
 - Cache/balance-sync correctness is restored.
-- Preview, Stripe failure, and DB rollback are side-effect safe.
+- Preview, processor failure, and DB rollback are side-effect safe.
 - Logs expose pool/source IDs and deltas without runtime recomputation.

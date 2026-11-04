@@ -99,7 +99,7 @@ function ActivationPreviewStage({
 				<SheetSection withSeparator>
 					<ConfigRow
 						title="Long-lived checkout link"
-						description="Link lasts for 90 days. Stripe checkout sessions are only created when required."
+						description="Link lasts for 90 days. Checkout sessions are only created when required."
 						action={
 							<Switch
 								checked={!!longLivedCheckout}

@@ -112,7 +112,7 @@ export function transformCusProductV2ToV1({
 		canceled_at: v2CusProduct.canceled_at,
 
 		processor: {
-			type: "stripe",
+			type: "paypal",
 			subscription_id: null,
 		},
 		subscription_ids: subId ? [subId] : [],

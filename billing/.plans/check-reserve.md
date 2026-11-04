@@ -71,7 +71,7 @@ Durability is async and cache-based:
 
 ### Resiliency problem today
 
-`server/src/external/stripe/webhookMiddlewares/stripeWebhookRefreshMiddleware.ts` can clear the cached customer after webhook handling.
+The processor webhook refresh middleware can clear the cached customer after webhook handling.
 
 That creates a failure window:
 
@@ -207,7 +207,7 @@ Still unresolved:
 - a reservation cannot exist only inside a transient Redis cache mutation
 - reservation state must survive:
   - full-customer cache eviction
-  - Stripe webhook refresh
+  - Processor webhook refresh
   - queue delay
   - queue enqueue failure
   - worker retry or replay

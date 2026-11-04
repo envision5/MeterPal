@@ -1,6 +1,7 @@
 import type {
 	BillingContext,
 	BillingPeriod,
+	FullCusProduct,
 	LineItemContext,
 	Price,
 } from "@autumn/shared";
@@ -19,14 +20,21 @@ export const getBackdatedLineItemContext = ({
 	billingTiming,
 }: {
 	price: Price;
-	billingContext: BillingContext;
+	billingContext: BillingContext & {
+		currentCustomerProduct?: FullCusProduct;
+		customerProduct?: FullCusProduct;
+	};
 	billingPeriod?: BillingPeriod;
 	direction: LineItemContext["direction"];
 	billingTiming: LineItemContext["billingTiming"];
 }): BackdatedLineItemContext | undefined => {
 	if (!billingPeriod) return undefined;
 	if (billingContext.subscriptionBackdateStartMs === undefined) return undefined;
-	if (billingContext.stripeSubscription) return undefined;
+	// Backdating only applies to a brand-new subscription. An existing one
+	// would be prorated by the processor instead.
+	const customerProduct =
+		billingContext.currentCustomerProduct ?? billingContext.customerProduct;
+	if (customerProduct?.subscription_ids?.length) return undefined;
 	if (direction !== "charge") return undefined;
 	if (billingTiming !== "in_advance") return undefined;
 

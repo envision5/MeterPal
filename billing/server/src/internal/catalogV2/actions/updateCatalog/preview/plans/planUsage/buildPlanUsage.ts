@@ -54,20 +54,6 @@ const licenseParentSamples = ({
 		),
 	);
 
-const rewardProgramSamples = ({
-	planId,
-	productStatesContext,
-}: {
-	planId: string;
-	productStatesContext: ProductStatesContext;
-}): { id: string; name: string }[] =>
-	(productStatesContext.rewardProgramsByPlanId[planId] ?? []).map(
-		(program) => ({
-			id: program.id,
-			name: program.id,
-		}),
-	);
-
 const variantSamples = ({
 	rows,
 	productStatesContext,
@@ -167,12 +153,7 @@ export const buildPlanUsage = ({
 		license_parents: toCappedBucket({
 			samples: licenseParentSamples({ rows }),
 		}),
-		reward_programs: toCappedBucket({
-			samples: rewardProgramSamples({
-				planId: first.planId,
-				productStatesContext,
-			}),
-		}),
+		reward_programs: toCappedBucket({ samples: [] }),
 		variants: toCappedBucket({
 			samples: variantSamples({ rows, productStatesContext }),
 		}),

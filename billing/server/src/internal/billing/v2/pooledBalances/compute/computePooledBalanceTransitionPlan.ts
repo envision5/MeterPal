@@ -16,14 +16,14 @@ export const computePooledBalanceTransitionPlan = ({
 	fullCustomer,
 	outgoingCustomerProducts = [],
 	incomingCustomerProducts: inputIncomingCustomerProducts = [],
-	stripeSubscriptionId,
+	processorSubscriptionId,
 	now,
 }: {
 	ctx: AutumnContext;
 	fullCustomer: FullCustomer;
 	outgoingCustomerProducts?: FullCusProduct[];
 	incomingCustomerProducts?: FullCusProduct[];
-	stripeSubscriptionId?: string;
+	processorSubscriptionId?: string;
 	now: number;
 }): {
 	pooledBalancePlan?: PooledBalancePlan;
@@ -61,8 +61,8 @@ export const computePooledBalanceTransitionPlan = ({
 			ctx,
 			computeContext,
 			customerProduct,
-			stripeSubscriptionId:
-				stripeSubscriptionId ??
+			processorSubscriptionId:
+				processorSubscriptionId ??
 				customerProduct.subscription_ids?.[0] ??
 				pendingSubscriptionId,
 			customerCreatedAt: fullCustomer.created_at,

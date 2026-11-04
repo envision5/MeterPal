@@ -3,59 +3,30 @@ import { createRouterRateLimiter } from "@/honoMiddlewares/routerRateLimiter/ind
 import { handleGenerateBillingRequest } from "@/internal/billing/v2/handlers/handleGenerateBillingRequest.js";
 import { handlePreviewAttach } from "@/internal/billing/v2/handlers/handlePreviewAttach.js";
 import { handleResolveBillingRequest } from "@/internal/billing/v2/handlers/handleResolveBillingRequest.js";
-import { handleAttachPreview } from "@/internal/customers/attach/handleAttachPreview/handleAttachPreview.js";
 import { handleCancelV2 } from "@/internal/customers/cancel/handleCancelV2.js";
 import { handleOpenCustomerPortalV2 } from "@/internal/customers/handlers/handleBillingPortal/handleOpenCustomerPortalV2.js";
 import type { HonoEnv } from "../../honoUtils/HonoEnv.js";
-import { handleAttach } from "./attach/handleAttach.js";
 import { handleLegacyApiCheckout } from "./checkout/handleLegacyApiCheckout.js";
-import { handleSetupPayment } from "./handlers/handleSetupPayment.js";
 import { handleAttachV2 } from "./v2/handlers/handleAttachV2.js";
-import { handleCreateSchedule } from "./v2/handlers/handleCreateSchedule.js";
-import { handleLegacyAdvanceTestClock } from "./v2/handlers/handleLegacyAdvanceTestClock.js";
 import { handleMultiAttach } from "./v2/handlers/handleMultiAttach.js";
 import { handleMultiUpdate } from "./v2/handlers/handleMultiUpdate.js";
-import { handlePreviewCreateSchedule } from "./v2/handlers/handlePreviewCreateSchedule.js";
 import { handlePreviewMultiAttach } from "./v2/handlers/handlePreviewMultiAttach.js";
 import { handlePreviewMultiUpdate } from "./v2/handlers/handlePreviewMultiUpdate.js";
-import { handlePreviewSyncV2 } from "./v2/handlers/handlePreviewSyncV2.js";
 import { handlePreviewUpdateSubscription } from "./v2/handlers/handlePreviewUpdateSubscription.js";
-import { handleRestore } from "./v2/handlers/handleRestore.js";
-import { handleSetupPaymentV2 } from "./v2/handlers/handleSetupPaymentV2.js";
-import { handleSync } from "./v2/handlers/handleSync.js";
-import { handleSyncProposals } from "./v2/handlers/handleSyncProposals.js";
-import { handleSyncProposalsV2 } from "./v2/handlers/handleSyncProposalsV2.js";
-import { handleSyncV2 } from "./v2/handlers/handleSyncV2.js";
 import { handleUpdateSubscription } from "./v2/handlers/handleUpdateSubscription.js";
-import { handleVerify } from "./v2/handlers/handleVerify.js";
 
 export const billingRouter = new Hono<HonoEnv>();
 
-// Legacy
-billingRouter.post("/attach/preview", ...handleAttachPreview);
 billingRouter.post("/cancel", ...handleCancelV2);
-
-billingRouter.post("/setup_payment", ...handleSetupPayment);
 billingRouter.post("/checkout", ...handleLegacyApiCheckout);
-billingRouter.post("/attach", ...handleAttach);
 
 export const billingRpcRouter = new Hono<HonoEnv>();
-// Deprecated: superseded by customers.advance_test_clock.
-billingRpcRouter.post(
-	"/billing.advance_test_clock",
-	...handleLegacyAdvanceTestClock,
-);
 billingRpcRouter.post("/billing.update", ...handleUpdateSubscription);
 billingRpcRouter.post(
 	"/billing.preview_update",
 	...handlePreviewUpdateSubscription,
 );
 billingRpcRouter.post("/billing.attach", ...handleAttachV2);
-billingRpcRouter.post("/billing.create_schedule", ...handleCreateSchedule);
-billingRpcRouter.post(
-	"/billing.preview_create_schedule",
-	...handlePreviewCreateSchedule,
-);
 billingRpcRouter.post("/billing.multi_attach", ...handleMultiAttach);
 billingRpcRouter.post(
 	"/billing.preview_multi_attach",
@@ -82,15 +53,7 @@ billingRpcRouter.post(
 	generateBillingRequestLimiter,
 	...handleGenerateBillingRequest,
 );
-billingRpcRouter.post("/billing.setup_payment", ...handleSetupPaymentV2);
 billingRpcRouter.post(
 	"/billing.open_customer_portal",
 	...handleOpenCustomerPortalV2,
 );
-billingRpcRouter.post("/billing.sync_proposals", ...handleSyncProposals);
-billingRpcRouter.post("/billing.sync_proposals_v2", ...handleSyncProposalsV2);
-billingRpcRouter.post("/billing.sync", ...handleSync);
-billingRpcRouter.post("/billing.sync_v2", ...handleSyncV2);
-billingRpcRouter.post("/billing.preview_sync_v2", ...handlePreviewSyncV2);
-billingRpcRouter.post("/billing.restore", ...handleRestore);
-billingRpcRouter.post("/billing.verify", ...handleVerify);

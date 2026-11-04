@@ -1,7 +1,7 @@
 // Billing utils
 export * from "./common/unixUtils";
 // Currency utils
-export * from "./currencyUtils/stripeCurrencies";
+export * from "./currencyUtils/currencies";
 // Cursor pagination utils
 export * from "./cursorUtils";
 // Balance utils
@@ -52,14 +52,11 @@ export * from "./planV1Utils/licenses/applyLicenseCustomizeToBasePlan";
 export * from "./planV1Utils/licenses/diffLicensePlanCustomize";
 export * from "./pooledBalanceUtils/index";
 export * from "./productUtils/classifyProduct/classifyProductUtils";
-export * from "./productUtils/classifyProduct/hasMissingStripeResourcesForProduct";
 export * from "./productUtils/classifyProduct/isEligibleDefaultProduct";
 export * from "./productUtils/classifyProduct/isProductPaidAndRecurring";
 export * from "./productUtils/compareProduct/productDetailsAreSame";
-export * from "./productUtils/compareProduct/productProcessorsAreSame";
 export * from "./productUtils/convertProduct/productKey";
 export * from "./productUtils/convertProduct/productToEffectivePrices";
-export * from "./productUtils/convertProduct/productToPlanProcessors";
 export * from "./productUtils/convertProduct/productToProductKey";
 export * from "./productUtils/convertProduct/productToReplacementKey";
 // Product utils
@@ -69,14 +66,7 @@ export * from "./productUtils/freeTrialUtils";
 export * from "./productUtils/index";
 export * from "./productUtils/isProductUpgrade";
 export * from "./productUtils/priceUtils";
-// Price match utils
-export * from "./productUtils/priceUtils/convertPrice/priceToRequiredStripeSlots";
 export * from "./productUtils/priceUtils/index";
-export * from "./productUtils/priceUtils/match/copyStripeResourcesToMatchingPrice";
-export * from "./productUtils/priceUtils/match/getPriceStripeReuseLevel";
-export * from "./productUtils/priceUtils/match/priceStripeObjectsMatch";
-export * from "./productUtils/priceUtils/match/stripePriceIdForInitializedPrice";
-export * from "./productUtils/priceUtils/match/stripePriceMappingSlots";
 export * from "./productV2Utils/mapToProductV2";
 export * from "./productV2Utils/productItemUtils/classifyItemUtils";
 export * from "./productV2Utils/productItemUtils/getItemType";
@@ -92,7 +82,4 @@ export * from "./productV2Utils/productV2ToFrontendProduct";
 export * from "./productV2Utils/productV2ToV1";
 export * from "./productV3Utils/productItemUtils/productV3ItemUtils";
 
-// Stripe resource utils
-export * from "./stripeUtils/classifyStripeResource/isPreviewStripeId";
-export * from "./taxIdUtils/stripeTaxIdOptions";
 export * from "./utils";

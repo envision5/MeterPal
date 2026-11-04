@@ -1,7 +1,7 @@
 /**
  * Proration utilities for billing tests.
  *
- * These utilities fetch billing period directly from Stripe and calculate
+ * These utilities fetch billing period directly from the processor and calculate
  * exact prorated amounts for mid-cycle upgrades, downgrades, and other
  * subscription changes.
  *

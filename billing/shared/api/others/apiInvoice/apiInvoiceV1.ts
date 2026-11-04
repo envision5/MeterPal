@@ -6,16 +6,16 @@ export const ApiInvoiceV1Schema = z.object({
 		description: "Array of plan IDs included in this invoice",
 		example: ["pro_plan", "addon_feature"],
 	}),
-	stripe_id: z.string().meta({
-		description: "The Stripe invoice ID",
-		example: "in_1A2B3C4D5E6F7G8H",
+	processor_invoice_id: z.string().meta({
+		description: "The processor invoice ID",
+		example: "pp-cap-8FJ0231A",
 	}),
 	processor_type: z
 		.enum(ProcessorType)
-		.default(ProcessorType.Stripe)
+		.default(ProcessorType.PayPal)
 		.meta({
 			description: "The billing processor that owns this invoice.",
-			example: "stripe",
+			example: "paypal",
 		}),
 	status: z.string().meta({
 		description: "The status of the invoice",
@@ -34,8 +34,8 @@ export const ApiInvoiceV1Schema = z.object({
 		example: 1759247877000,
 	}),
 	hosted_invoice_url: z.string().nullish().meta({
-		description: "URL to the Stripe-hosted invoice page",
-		example: "https://invoice.stripe.com/i/acct_123/test_456",
+		description: "URL to the processor-hosted invoice page",
+		example: "https://example.com/invoices/in_1234",
 	}),
 });
 

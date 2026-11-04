@@ -7,6 +7,9 @@ Add-ons are plans that can be purchased alongside a customer's existing plan, ra
 
 ## Setting up
 
+
+
+
 Set `addOn: true` on the plan:
 
 ```ts autumn.config.ts
@@ -68,6 +71,10 @@ export default atmn({
 
 Preview with `atmn push`, then apply with `atmn push --yes`.
 
+
+
+
+
 ## How add-ons work
 
 Without the add-on flag, attaching a new plan replaces the customer's current plan (within the same [group](/documentation/concepts/plans#plan-properties)). With the add-on flag:
@@ -83,7 +90,7 @@ When an add-on provides the same feature as the customer's main plan, the balanc
 > **Example** <br />
 > A customer's Pro plan grants 1,000 credits/month. They purchase a one-time top-up of 500 credits. Their total balance is 1,500 credits, tracked as two separate sources.
 
-Autumn uses [deduction order](/documentation/concepts/balances#deduction-order) to consume shorter-interval balances first (monthly before lifetime).
+MeterPal uses [deduction order](/documentation/concepts/balances#deduction-order) to consume shorter-interval balances first (monthly before lifetime).
 
 ## Purchasing add-ons
 

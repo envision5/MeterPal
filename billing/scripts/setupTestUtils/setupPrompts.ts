@@ -2,46 +2,6 @@ import chalk from "chalk";
 import inquirer from "inquirer";
 
 /**
- * Prompts user for Stripe test API key
- */
-export async function setupStripeTestKey(): Promise<string> {
-	console.log(
-		chalk.magentaBright(
-			"\n================ Stripe Test API Key Setup ================\n",
-		),
-	);
-	console.log(
-		chalk.cyan(
-			"This Stripe test API key will be used to link Stripe to your test account.",
-		),
-	);
-	console.log(
-		chalk.cyan(
-			"You can find this in your Stripe Dashboard under Developers > API Keys (Test Mode).\n",
-		),
-	);
-
-	const { stripeTestKey } = await inquirer.prompt([
-		{
-			type: "input",
-			name: "stripeTestKey",
-			message: chalk.cyan("Enter your Stripe test secret key (sk_test_...):"),
-			validate: (input: string) => {
-				if (!input || input.length < 10) {
-					return "Please enter a valid Stripe test key";
-				}
-				if (!input.startsWith("sk_test_")) {
-					return "Stripe test keys should start with 'sk_test_'";
-				}
-				return true;
-			},
-		},
-	]);
-
-	return stripeTestKey;
-}
-
-/**
  * Prompts user for Upstash configuration
  */
 export async function setupUpstash(): Promise<{
@@ -107,7 +67,7 @@ export async function setupTunnelUrl(): Promise<string> {
 	);
 	console.log(
 		chalk.cyan(
-			"You need a tunnel that points to localhost:8080 (your server URL) to receive Stripe webhooks.",
+			"You need a tunnel that points to localhost:8080 (your server URL) to receive webhooks.",
 		),
 	);
 	console.log(

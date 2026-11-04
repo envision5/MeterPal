@@ -482,7 +482,7 @@ export const topUp = plan({
 
 ### Currency
 
-- Currency can be changed in the Autumn dashboard under Developer > Stripe
+- Currency can be changed in the Autumn dashboard settings
 
 ## Previewing and Pushing Changes
 

@@ -22,17 +22,6 @@ export const listPlansPriceDisplaySchema = z.object({
 	secondaryText: z.union([z.string(), z.undefined()]).optional(),
 });
 
-export const listPlansPriceStripeSchema = z.object({
-	priceId: z.string(),
-});
-
-export const listPlansPriceProcessorsSchema = z.object({
-	stripe: z
-		.union([listPlansPriceStripeSchema, z.undefined()])
-		.optional()
-		.nullable(),
-});
-
 export const listPlansItemThresholdBillingSchema = z.object({
 	threshold: z.number(),
 });
@@ -67,17 +56,6 @@ export const listPlansPriceItemTierSchema = z.object({
 	additionalCurrencies: z
 		.union([z.array(listPlansItemTierAdditionalCurrencySchema), z.undefined()])
 		.optional(),
-});
-
-export const listPlansItemStripeSchema = z.object({
-	priceId: z.string(),
-});
-
-export const listPlansItemProcessorsSchema = z.object({
-	stripe: z
-		.union([listPlansItemStripeSchema, z.undefined()])
-		.optional()
-		.nullable(),
 });
 
 export const listPlansItemDisplaySchema = z.object({
@@ -137,13 +115,6 @@ export const listPlansItemMarkupsSchema = z.object({
 		.nullable(),
 });
 
-export const listPlansStripeSchema = z.object({
-	productId: z.string(),
-	additionalProductIds: z
-		.union([z.array(z.string()), z.undefined()])
-		.optional(),
-});
-
 export const listPlansFeatureQuantitySchema = z.object({
 	featureId: z.string(),
 	quantity: z.union([z.number(), z.undefined()]).optional(),
@@ -154,18 +125,6 @@ export const listPlansProductSchema = z.object({
 	featureQuantities: z
 		.union([z.array(listPlansFeatureQuantitySchema), z.undefined()])
 		.optional(),
-});
-
-export const listPlansRevenuecatSchema = z.object({
-	products: z.array(listPlansProductSchema),
-});
-
-export const listPlansProcessorsSchema = z.object({
-	stripe: z.union([listPlansStripeSchema, z.undefined()]).optional().nullable(),
-	revenuecat: z
-		.union([listPlansRevenuecatSchema, z.undefined()])
-		.optional()
-		.nullable(),
 });
 
 export const listPlansConfigSchema = z.object({
@@ -303,9 +262,6 @@ export const listPlansPriceSchema = z.object({
 	interval: listPlansPriceIntervalSchema,
 	intervalCount: z.union([z.number(), z.undefined()]).optional(),
 	display: z.union([listPlansPriceDisplaySchema, z.undefined()]).optional(),
-	processors: z
-		.union([listPlansPriceProcessorsSchema, z.undefined()])
-		.optional(),
 });
 
 export const listPlansTypeSchema = openEnumSchema;
@@ -354,9 +310,6 @@ export const listPlansItemPriceSchema = z.object({
 	billingUnits: z.number(),
 	billingMethod: listPlansItemBillingMethodSchema,
 	maxPurchase: z.number().nullable(),
-	processors: z
-		.union([listPlansItemProcessorsSchema, z.undefined()])
-		.optional(),
 });
 
 export const listPlansItemExpiryDurationTypeSchema = openEnumSchema;

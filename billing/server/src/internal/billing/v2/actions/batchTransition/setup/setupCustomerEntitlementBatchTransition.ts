@@ -4,11 +4,11 @@ import type {
 } from "@autumn/shared";
 import type { AutumnContext } from "@/honoUtils/HonoEnv";
 import { listDistinctEntitlementsByCustomerLicense } from "@/internal/products/entitlements/repos/listDistinctEntitlementsByCustomerLicense";
-import { listDistinctBasePricesByCustomerLicense } from "@/internal/products/prices/repos/listDistinctBasePricesByCustomerLicense";
 import { computeBatchTransitionOperations } from "../compute/operations/computeBatchTransitionOperations";
 import type { ProductTransitions } from "../compute/transitions/computeProductTransitions";
 import { enforceDistinctBasePriceLimit } from "../errors/enforceDistinctBasePriceLimit";
 import { enforceDistinctEntitlementLimit } from "../errors/enforceDistinctEntitlementLimit";
+import { listDistinctBasePricesByCustomerLicense } from "../repos/listDistinctBasePricesByCustomerLicense";
 import type {
 	BatchTransitionContext,
 	BatchTransitionExecutionScope,

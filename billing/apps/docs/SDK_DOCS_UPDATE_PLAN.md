@@ -51,7 +51,7 @@ Update the Documentation section (`mintlify/documentation/`) to match the new v2
 - [ ] Line 353: Change `const { customer } = useCustomer()` → `const { data } = useCustomer()`
 - [ ] Line 359: Change `customer` → `data`
 - [ ] Lines 370-433: Update JSON example:
-  - snake_case → camelCase (`created_at` → `createdAt`, `stripe_id` → `stripeId`, etc.)
+  - snake_case → camelCase (`created_at` → `createdAt`, `processor_invoice_id` → `processorInvoiceId`, etc.)
   - `products` → `subscriptions`
   - `features` → `balances`
 - [ ] Lines 444-470: Remove `checkout` method with `CheckoutDialog` - replace with `attach()` flow
@@ -239,7 +239,7 @@ created_at     → createdAt
 updated_at     → updatedAt
 started_at     → startedAt
 canceled_at    → canceledAt
-stripe_id      → stripeId
+processor_invoice_id → processorInvoiceId
 included_usage → includedUsage
 next_reset_at  → nextResetAt
 checkout_url   → checkoutUrl

@@ -88,7 +88,7 @@ export type ListPlansPriceVariantDetailsUpsertLicenseInterval = OpenEnum<
 
 export type ListPlansVariantDetailsUpsertLicenseAdditionalCurrency = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -162,7 +162,7 @@ export type ListPlansVariantDetailsUpsertLicenseReset = {
 
 export type ListPlansVariantDetailsUpsertLicenseAddItemAdditionalCurrency = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -175,7 +175,7 @@ export type ListPlansVariantDetailsUpsertLicensePriceTo = number | string;
 
 export type ListPlansVariantDetailsUpsertLicenseTierAdditionalCurrency = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -881,7 +881,7 @@ export type ListPlansPriceLicenseInterval = OpenEnum<
 
 export type ListPlansLicenseAdditionalCurrency = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -953,7 +953,7 @@ export type ListPlansLicenseReset = {
 
 export type ListPlansLicenseAddItemAdditionalCurrency = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -966,7 +966,7 @@ export type ListPlansLicensePriceTo = number | string;
 
 export type ListPlansLicenseTierAdditionalCurrency = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -1627,7 +1627,7 @@ export type ListPlansPriceVariantCustomizeInterval = OpenEnum<
 
 export type ListPlansVariantCustomizeAdditionalCurrency = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -1701,7 +1701,7 @@ export type ListPlansVariantAddItemReset = {
 
 export type ListPlansVariantAddItemAdditionalCurrency = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -1714,7 +1714,7 @@ export type ListPlansVariantAddItemPriceTo = number | string;
 
 export type ListPlansVariantAddItemTierAdditionalCurrency = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**

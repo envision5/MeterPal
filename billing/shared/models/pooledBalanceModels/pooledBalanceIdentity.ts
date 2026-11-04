@@ -8,7 +8,7 @@ export type PooledBalanceIdentity = {
 	intervalCount: number;
 	resetCycleAnchor: number | null;
 	resetMode: PooledBalanceResetMode;
-	stripeSubscriptionId: string | null;
+	processorSubscriptionId: string | null;
 	customerLicenseLinkId: string | null;
 	rolloverSignature: string;
 };

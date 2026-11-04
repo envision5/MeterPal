@@ -27,12 +27,12 @@ export const billingPlanToAttachPreview = async ({
 	});
 
 	const willRedirectToCheckout =
-		billingContext.checkoutMode === "stripe_checkout" ||
+		billingContext.checkoutMode === "processor_checkout" ||
 		billingContext.checkoutMode === "autumn_checkout";
 
 	const checkoutType =
-		billingContext.checkoutMode === "stripe_checkout"
-			? "stripe_checkout"
+		billingContext.checkoutMode === "processor_checkout"
+			? "processor_checkout"
 			: billingContext.checkoutMode === "autumn_checkout"
 				? "autumn_checkout"
 				: null;

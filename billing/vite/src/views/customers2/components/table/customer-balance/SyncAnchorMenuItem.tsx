@@ -16,15 +16,14 @@ export function SyncAnchorMenuItem({
 	const { mutate, isPending } = useSyncCustomerEntitlementAnchors();
 	const canSyncAnchor = customerEntitlements.some(
 		(customerEntitlement) =>
-			!!customerEntitlement.pooled_balance?.stripe_subscription_id ||
-			(!!customerEntitlement.customer_product &&
-				!isCustomerProductOneOff(customerEntitlement.customer_product) &&
-				!isBooleanEntitlement({
-					entitlement: customerEntitlement.entitlement,
-				}) &&
-				!isLifetimeEntitlement({
-					entitlement: customerEntitlement.entitlement,
-				})),
+			!!customerEntitlement.customer_product &&
+			!isCustomerProductOneOff(customerEntitlement.customer_product) &&
+			!isBooleanEntitlement({
+				entitlement: customerEntitlement.entitlement,
+			}) &&
+			!isLifetimeEntitlement({
+				entitlement: customerEntitlement.entitlement,
+			}),
 	);
 
 	if (!canSyncAnchor) return null;

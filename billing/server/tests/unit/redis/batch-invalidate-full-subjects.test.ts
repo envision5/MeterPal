@@ -1,8 +1,8 @@
 import { afterAll, describe, expect, mock, test } from "bun:test";
 import { type AppEnv, type Feature, withTimeout } from "@autumn/shared";
 import type { Redis } from "ioredis";
-import { BATCH_MIGRATION_DEFERRED_OPERATION_TIMEOUT_MS } from "@/internal/migrations/v2/batchOperations/execute/utils/batchMigrationExecutionConstants.js";
-
+/** Same 5-minute budget the batch-migration executor used for deferred cache invalidation. */
+const BATCH_INVALIDATE_TIMEOUT_MS = 5 * 60_000;
 // The freshness mark is a real Postgres write; keep this suite hermetic.
 const marksModulePath =
 	"@/internal/customers/customerLsns/markCustomerUpdatedAt.js";
@@ -147,7 +147,7 @@ describe("batchInvalidateCachedFullSubjects", () => {
 			});
 			const bounded = withTimeout({
 				fn: () => invalidation,
-				timeoutMs: BATCH_MIGRATION_DEFERRED_OPERATION_TIMEOUT_MS / timeScale,
+				timeoutMs: BATCH_INVALIDATE_TIMEOUT_MS / timeScale,
 				timeoutMessage: "cache deadline exceeded",
 			});
 			if (pipelineLatencyMs === 9_000) {

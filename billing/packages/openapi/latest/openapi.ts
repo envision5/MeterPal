@@ -17,13 +17,10 @@ import {
 	CustomerDataSchema,
 	CustomerExpandEnum,
 	CustomerIdSchema,
-	DfuFlashParamsSchema,
 	GetCustomerParamsV1Schema,
 	InsertInvoicesParamsSchema,
 	LATEST_VERSION,
 	PreviewUpdateSubscriptionResponseSchema,
-	SetupPaymentParamsV1Schema,
-	SetupPaymentResponseV1Schema,
 	TrackParamsSchema,
 	TrackResponseV3Schema,
 	TrackTokensParamsSchema,
@@ -92,7 +89,6 @@ async function generateOpenApiDocument({
 	registerInternalSchemas(GetCustomerParamsV1Schema);
 	registerInternalSchemas(AttachParamsV1Schema);
 	registerInternalSchemas(UpdateSubscriptionV1ParamsSchema);
-	registerInternalSchemas(SetupPaymentParamsV1Schema);
 	registerInternalSchemas(CreateBalanceParamsV0Schema);
 	registerInternalSchemas(UpdateBalanceParamsV0Schema);
 	registerInternalSchemas(CheckParamsSchema);
@@ -101,7 +97,6 @@ async function generateOpenApiDocument({
 	registerInternalSchemas(BillingResponseSchema);
 	registerInternalSchemas(AttachPreviewResponseSchema);
 	registerInternalSchemas(PreviewUpdateSubscriptionResponseSchema);
-	registerInternalSchemas(SetupPaymentResponseV1Schema);
 	registerInternalSchemas(SuccessResponseSchema);
 	registerInternalSchemas(ApiCustomerV5Schema);
 	registerInternalSchemas(ApiBalanceV1Schema);
@@ -111,7 +106,6 @@ async function generateOpenApiDocument({
 	registerInternalSchemas(TrackResponseV3Schema);
 	registerInternalSchemas(CustomerDataSchema);
 	registerInternalSchemas(ApiEventsListV2_3ParamsSchema);
-	registerInternalSchemas(DfuFlashParamsSchema);
 	registerInternalSchemas(InsertInvoicesParamsSchema);
 	if (!stripInternal) {
 		registerInternalSchemas(UpdateCatalogParamsSchema, { mappingOnly: true });

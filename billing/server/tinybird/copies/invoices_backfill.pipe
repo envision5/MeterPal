@@ -12,7 +12,7 @@ SQL >
         arrayMap(x -> assumeNotNull(x), internal_product_ids)          AS internal_product_ids,
         assumeNotNull(internal_customer_id)                             AS internal_customer_id,
         internal_entity_id,
-        assumeNotNull(stripe_id)                                        AS stripe_id,
+        assumeNotNull(processor_invoice_id)                             AS processor_invoice_id,
         assumeNotNull(status)                                           AS status,
         hosted_invoice_url,
         total::Float64                                                  AS total,

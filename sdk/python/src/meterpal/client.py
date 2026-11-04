@@ -277,7 +277,7 @@ class MeterPalClient:
     ) -> Any:
         """Create a plan/product.  `items` carries prices + entitlement grants.
 
-        The server skips Stripe catalog creation when no Stripe keys are
+        The server skips processor catalog creation when no PayPal credentials are
         configured, so plans work PayPal-only out of the box.
         """
         body: dict[str, Any] = {"id": plan_id, "name": name, **extra}

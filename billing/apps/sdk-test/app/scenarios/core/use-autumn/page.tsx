@@ -365,7 +365,7 @@ export default function UseAutumnScenarioPage() {
                 className="min-h-28 w-full rounded-md border border-zinc-200 bg-white px-3 py-2 font-mono text-xs text-zinc-900 outline-none transition focus:border-zinc-400 focus:ring-0"
               />
               <p className="text-[11px] leading-tight text-zinc-500">
-                Passed through to Stripe checkout session creation.
+                Passed through to the checkout session creation.
               </p>
             </div>
             <Button

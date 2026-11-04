@@ -16,12 +16,9 @@ import { handleGetProductsByPriceIds } from "@/internal/products/internalHandler
 import { handleCopyEnvironment } from "./handlers/handleCopyEnvironment/handleCopyEnvironment.js";
 import { handleListPlanVariants } from "./handlers/handleListPlanVariants.js";
 import { handleGetFeatures } from "./internalHandlers/handleGetFeatures.js";
-import { handleGetMigrations } from "./internalHandlers/handleGetMigrations.js";
 import { handleGetProductCount } from "./internalHandlers/handleGetProductCount.js";
 import { handleGetProductCounts } from "./internalHandlers/handleGetProductCounts.js";
 import { handleGetProductInternal } from "./internalHandlers/handleGetProductInternal.js";
-import { handleGetRewards } from "./internalHandlers/handleGetRewards.js";
-import { handleGetStripeCoupons } from "./internalHandlers/handleGetStripeCoupons.js";
 
 // Hono router for internal/dashboard product routes
 export const internalProductRouter = new Hono<HonoEnv>();
@@ -34,9 +31,6 @@ internalProductRouter.get(
 );
 internalProductRouter.get("/product_counts", ...handleGetProductCounts);
 internalProductRouter.get("/features", ...handleGetFeatures);
-internalProductRouter.get("/rewards", ...handleGetRewards);
-internalProductRouter.get("/stripe_coupons", ...handleGetStripeCoupons);
-internalProductRouter.get("/migrations", ...handleGetMigrations);
 
 // SINGLE PRODUCT ENDPOINTS
 internalProductRouter.get("/:productId/count", ...handleGetProductCount);

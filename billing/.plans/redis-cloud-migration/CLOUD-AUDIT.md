@@ -7,7 +7,7 @@ Cloud is a superset repo: `autumn` submodule (pinned to `staging`, currently `0f
 | Symbol | Cloud consumers | Resolution |
 |---|---|---|
 | `deleteCachedFullCustomer` | 154 files (trigger `firecrawl-billing-controls.ts:507`, migration-server, admin handlers, lib services, ~120 scripts) | KEEP export + full signature. **`skipGuard` is passed by 2 callers** (`scripts-v2/runs/firecrawl/warm-fullsubject-cache/steps/warm-fullsubject-cache.ts:41`, `scripts-v2/runs/oneprep/unlimited-features/set-unlimited-features.ts:74`); `entityId`/`flushBalances` unused by cloud. Body → fullSubject invalidation only. |
-| `updateCachedCustomerData` | migration-server `customerMiddleware.ts:94` (deployed), `scripts/src/firecrawl/fill-missing-customer-emails.ts:193`, `scripts-v2/.../sync-stripe-identity/utils/update-queue.ts:47` | KEEP as deprecated no-op stub. |
+| `updateCachedCustomerData` | migration-server `customerMiddleware.ts:94` (deployed), `scripts/src/firecrawl/fill-missing-customer-emails.ts:193`, `scripts-v2/.../sync-processor-identity/utils/update-queue.ts:47` | KEEP as deprecated no-op stub. |
 | `batchDeleteCachedFullCustomers` | `scripts/src/mintlify/import/workflow.ts:88,121` | KEEP as deprecated no-op stub (return 0). |
 | `updateCusEntDbAndCache` | `scripts/src/mintlify/import/periodUsage.ts:569` | Live function anyway — only its legacy cache leg is removed. |
 | `warmupRegionalRedis` | **13 files**, incl. boot paths `lib/src/createScriptContext.ts:140` (every scripts-v2 run) and `apps/admin/server/index.ts:81` | KEEP export name; reimplement as single-client warmup that still chains `warmupRedisV2()`. |

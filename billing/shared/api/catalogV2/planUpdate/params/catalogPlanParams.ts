@@ -1,5 +1,4 @@
 import { FreeTrialParamsV1Schema } from "@api/common/freeTrial/freeTrialParamsV1.js";
-import { ApiPlanProcessorsSchema } from "@api/products/components/processors.js";
 import { PlanLicenseParamsSchema } from "@api/products/crud/licenses/planLicenseParams.js";
 import { MigrationParamsSchema } from "@api/products/crud/migrationParams.js";
 import { CustomerBillingControlsParamsSchema } from "@models/cusModels/billingControls/customerBillingControls.js";
@@ -64,10 +63,6 @@ export const UpdateCatalogPlanParamsSchema = z
 			description:
 				"Take the active pointer. On `new_version`, omit to mint a draft; `true` promotes the minted row immediately.",
 		}),
-		processors: ApiPlanProcessorsSchema.optional().meta({
-			description:
-				"Payment processors this plan is connected to. Omit to keep.",
-		}),
 		price: CatalogBasePriceParamsSchema.nullable().optional().meta({
 			description:
 				"Base recurring price. Omit to leave unchanged; null removes it.",
@@ -117,9 +112,9 @@ export const UpdateCatalogPlanParamsSchema = z
 			description:
 				"When draft is true, create a migration for customers on this plan after an in-place / all_versions update. Rejected with new_version — minting a version opts out of propagating to existing customers.",
 		}),
-		create_in_stripe: z.boolean().optional().meta({
+		create_in_processor: z.boolean().optional().meta({
 			internal: true,
-			description: "When false, skip Stripe product/price creation on create.",
+			description: "When false, skip processor product/price creation on create.",
 		}),
 
 		// ── Variants & licenses ───────────────────────────────────────────────

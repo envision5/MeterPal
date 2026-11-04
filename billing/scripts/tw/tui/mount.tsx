@@ -27,7 +27,7 @@ type Root = ReturnType<typeof createRoot>;
 let renderer: Renderer | undefined;
 let root: Root | undefined;
 
-// Stray `console.*` calls (the @vercel/sandbox SDK, server modules, Stripe retry
+// Stray `console.*` calls (the @vercel/sandbox SDK, server modules, retry
 // warnings) would otherwise corrupt the TUI or get swallowed by opentui's debug
 // console overlay. While mounted, redirect them through the log sink so they land
 // (ANSI-stripped) in the logs pane. Restored on unmount.

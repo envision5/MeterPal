@@ -23,14 +23,9 @@ export const invoiceLineItems = pgTable(
 		created_at: numeric({ mode: "number" }).notNull().default(sqlNow),
 		invoice_id: text("invoice_id"), // Nullable for deferred/pending line items
 
-		// Stripe identifiers
-		stripe_id: text("stripe_id"), // Stripe invoice line item ID (il_xxx)
-		stripe_invoice_id: text("stripe_invoice_id"), // Stripe invoice ID
-		stripe_invoice_item_id: text("stripe_invoice_item_id"), // Original Stripe invoice item ID (ii_xxx) for linking deferred items
-		stripe_subscription_item_id: text("stripe_subscription_item_id"), // Groups tiered line items
-		stripe_product_id: text("stripe_product_id"),
-		stripe_price_id: text("stripe_price_id"),
-		stripe_discountable: boolean("stripe_discountable").notNull().default(true),
+		// Processor identifiers (PayPal does not write line items; kept for
+		// idempotent upserts of externally-sourced line items)
+		processor_id: text("processor_id"),
 
 		// Amounts
 		amount: numeric({ mode: "number" }).notNull(), // Pre-discount amount
@@ -38,13 +33,13 @@ export const invoiceLineItems = pgTable(
 		currency: text("currency").notNull().default("usd"),
 
 		// Quantities
-		stripe_quantity: numeric({ mode: "number" }), // Raw Stripe quantity
-		total_quantity: numeric({ mode: "number" }), // Total usage (stripe_quantity * billing_units)
+		raw_quantity: numeric({ mode: "number" }), // Raw quantity before billing units
+		total_quantity: numeric({ mode: "number" }), // Total usage (raw_quantity * billing_units)
 		paid_quantity: numeric({ mode: "number" }), // Quantity being charged (overage)
 
 		// Description & metadata
 		description: text("description").notNull(),
-		description_source: text("description_source"), // "stripe" or "autumn" - where description came from
+		description_source: text("description_source"), // "processor" or "autumn" - where description came from
 		direction: text("direction").notNull(), // "charge" or "refund"
 		billing_timing: text("billing_timing"), // "in_advance" or "in_arrear"
 		prorated: boolean("prorated").notNull().default(false),
@@ -90,24 +85,16 @@ export const invoiceLineItems = pgTable(
 			foreignColumns: [invoices.id],
 			name: "invoice_line_items_invoice_id_fkey",
 		}).onDelete("cascade"),
-		// Unique partial index on stripe_id for upsert support
-		unique("invoice_line_items_stripe_id_unique").on(table.stripe_id),
+		// Unique partial index on processor_id for upsert support
+		unique("invoice_line_items_processor_id_unique").on(table.processor_id),
 		// GIN index for jsonb containment / array-overlap lookups by customer product
 		index("idx_invoice_line_items_customer_product_ids").using(
 			"gin",
 			table.customer_product_ids,
 		),
-		index("idx_invoice_line_items_stripe_invoice_id")
-			.on(table.stripe_invoice_id)
-			.where(sql`${table.stripe_invoice_id} IS NOT NULL`)
-			.concurrently(),
 		index("idx_invoice_line_items_invoice_id")
 			.on(table.invoice_id)
 			.where(sql`${table.invoice_id} IS NOT NULL`)
-			.concurrently(),
-		index("idx_invoice_line_items_stripe_invoice_item_id")
-			.on(table.stripe_invoice_item_id)
-			.where(sql`${table.stripe_invoice_item_id} IS NOT NULL`)
 			.concurrently(),
 	],
 );

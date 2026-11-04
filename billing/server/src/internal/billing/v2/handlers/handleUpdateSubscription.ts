@@ -43,7 +43,7 @@ export const handleUpdateSubscription = createRoute({
 		const body = c.req.valid("json");
 
 		// PayPal-billed customers: cancel / uncancel run through the PayPal
-		// subscriptions API (the v2 pipeline drives Stripe).  Plan changes
+		// subscriptions API (the v2 pipeline drives the processor).  Plan changes
 		// without a cancel_action still use the pipeline below.
 		if (body.cancel_action) {
 			const paypal = await handlePaypalSubscriptionCancelAction({
@@ -54,13 +54,13 @@ export const handleUpdateSubscription = createRoute({
 			});
 			if (paypal.handled && paypal.customer) {
 				// The mapper only reads the customer identity off the context —
-				// the PayPal cancel carries no Stripe invoice or checkout URL.
+				// the PayPal cancel carries no processor invoice or checkout URL.
 				return c.json(
 					billingResultToResponse({
 						billingContext: {
 							fullCustomer: paypal.customer,
 						} as unknown as BillingContext,
-						billingResult: { stripe: {} },
+						billingResult: { processor: {} },
 					}),
 					200,
 				);

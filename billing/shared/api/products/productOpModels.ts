@@ -123,7 +123,7 @@ export const CreateProductV2ParamsSchema = z
 			description: descriptions.metadata,
 		}),
 
-		create_in_stripe: z.boolean().optional().meta({
+		create_in_processor: z.boolean().optional().meta({
 			internal: true,
 		}),
 

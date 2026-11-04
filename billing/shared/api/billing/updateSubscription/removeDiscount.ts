@@ -3,7 +3,7 @@ import { z } from "zod/v4";
 export const RemoveDiscountSchema = z
 	.strictObject({
 		reward_id: z.string().meta({
-			description: "The ID of the reward (or Stripe coupon) to remove.",
+			description: "The ID of the reward to remove.",
 		}),
 	})
 	.meta({

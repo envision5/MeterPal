@@ -1,7 +1,6 @@
 import {
 	ACTIVE_STATUSES,
 	type BillingAutoTopupSucceededInvoice,
-	type BillingResult,
 	fullCustomerToCustomerEntitlements,
 	fullCustomerToTags,
 	getApiBalance,
@@ -13,25 +12,16 @@ import { CusService } from "@/internal/customers/CusService.js";
 import { generateId } from "@/utils/genUtils.js";
 import type { AutoTopupAttemptContext } from "../autoTopupContext.js";
 
-const getInvoicePayload = ({
-	billingResult,
-}: {
-	billingResult: BillingResult;
-}): BillingAutoTopupSucceededInvoice | null => {
-	const stripeInvoice = billingResult.stripe.stripeInvoice;
-	if (!stripeInvoice) return null;
-
-	return {
-		stripe_id: stripeInvoice.id,
-		status: stripeInvoice.status,
-		total: stripeInvoice.total,
-		currency: stripeInvoice.currency,
-		hosted_invoice_url: stripeInvoice.hosted_invoice_url,
-	};
+export type AutoTopupInvoicePayload = {
+	/** Processor invoice id recorded for this charge (PayPal: pp-cap-...). */
+	processor_invoice_id: string;
+	total: number;
+	currency: string;
+	hosted_invoice_url?: string | null;
 };
 
-// Refetches because executeBillingPlan applied the rebalance via SQL increments;
-// the in-memory autoTopupContext.customerEntitlement is now stale.
+// Refetches because the executor applies the grant via its own writes;
+// the in-memory autoTopupContext.customerEntitlement may be stale.
 const getBalanceAfter = async ({
 	ctx,
 	autoTopupContext,
@@ -66,14 +56,13 @@ const getBalanceAfter = async ({
 export const sendAutoTopupSucceededWebhook = async ({
 	ctx,
 	autoTopupContext,
-	billingResult,
+	invoice,
 }: {
 	ctx: AutumnContext;
 	autoTopupContext: AutoTopupAttemptContext;
-	billingResult: BillingResult;
+	invoice?: AutoTopupInvoicePayload;
 }) => {
 	try {
-		const invoice = getInvoicePayload({ billingResult });
 		if (!invoice) {
 			ctx.logger.warn(
 				"[sendAutoTopupSucceededWebhook] Missing invoice, skipping webhook",
@@ -85,6 +74,14 @@ export const sendAutoTopupSucceededWebhook = async ({
 			autoTopupContext.fullCustomer.id ??
 			autoTopupContext.fullCustomer.internal_id;
 		const balanceAfter = await getBalanceAfter({ ctx, autoTopupContext });
+
+		const invoicePayload: BillingAutoTopupSucceededInvoice = {
+			processor_invoice_id: invoice.processor_invoice_id,
+			status: "paid",
+			total: invoice.total,
+			currency: invoice.currency,
+			hosted_invoice_url: invoice.hosted_invoice_url ?? null,
+		};
 
 		await sendSvixEvent({
 			ctx,
@@ -100,7 +97,7 @@ export const sendAutoTopupSucceededWebhook = async ({
 				threshold: autoTopupContext.autoTopupConfig.threshold,
 				balance_after: balanceAfter,
 				invoice_mode: Boolean(autoTopupContext.invoiceMode),
-				invoice,
+				invoice: invoicePayload,
 			},
 			tags: fullCustomerToTags({
 				fullCustomer: autoTopupContext.fullCustomer,

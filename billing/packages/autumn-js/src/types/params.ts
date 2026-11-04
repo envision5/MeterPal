@@ -12,7 +12,6 @@ import type {
 	PreviewMultiAttachParams,
 	PreviewUpdateParams,
 	RedeemReferralCodeParams,
-	SetupPaymentParams,
 	UpdateSubscriptionParams,
 } from "@useautumn/sdk";
 
@@ -110,14 +109,6 @@ export type ClientPreviewMultiAttachParams = Omit<
 	PreviewMultiAttachParams,
 	ProtectedFields
 >;
-
-/** Setup payment params without protected fields (for frontend use) */
-export type ClientSetupPaymentParams = Omit<
-	SetupPaymentParams,
-	ProtectedFields
-> & {
-	openInNewTab?: boolean;
-};
 
 /** Get entity params without protected fields (for frontend use) */
 export type ClientGetEntityParams = Prettify<

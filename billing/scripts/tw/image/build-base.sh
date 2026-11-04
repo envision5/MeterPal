@@ -196,7 +196,6 @@ Local:
     - Name: autumn.fifo
     - Name: autumn-track.fifo
     - Name: autumn-track-async
-    - Name: autumn-stripe-webhook.fifo
 EOF
 log "Wrote goaws config to $GOAWS_CONF (autumn.fifo + autumn-track.fifo + autumn-track-async, dedup on)"
 
@@ -335,7 +334,7 @@ log "bun install at repo root ($REPO_ROOT)"
 ( cd "$REPO_ROOT" && bun install --frozen-lockfile )
 
 # ---------------------------------------------------------------------------
-# 9. Playwright Chromium for browser tests (Stripe checkout / setup-payment).
+# 9. Playwright Chromium for browser tests (processor checkout / setup-payment).
 #    ~68 test files drive a browser. With USE_KERNEL_BROWSER unset the server
 #    uses the LOCAL Playwright path (`chromium.launch()`), which resolves the
 #    binary via playwright-core's `chromium.executablePath()` — so we bake the

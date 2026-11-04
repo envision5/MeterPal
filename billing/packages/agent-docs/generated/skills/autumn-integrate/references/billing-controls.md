@@ -125,7 +125,9 @@ You can also use `overageAllowed` to **block** overage on a feature that would n
 > **Example** <br />
 > A customer's plan includes 1,000 API calls with pay-per-use overage at $1/1,000 calls. You set `overageAllowed: false` for `api_calls`. The customer is now blocked at 1,000 total calls — no overage charges will occur.
 
+
 Setting `overageAllowed: false` is a hard override. It takes precedence over usage-based pricing on the plan. The customer will be blocked at zero remaining balance regardless of whether overage pricing exists.
+
 
 #### How it interacts with spend limits
 
@@ -195,7 +197,9 @@ curl -X POST "https://api.useautumn.com/v1/customers/update" \
 | `enabled` | boolean | Whether the spend limit is active |
 | `overage_limit` | number | Maximum overage units beyond the included amount |
 
+
 The `overage_limit` is measured in feature units, not dollars. An `overage_limit` of 5,000 on "API calls" means 5,000 additional API calls beyond the included allowance.
+
 
 When both a spend limit and a plan-level max purchase exist for the same feature, the **spend limit takes precedence**. This lets you use max purchase as a default for all customers, then selectively raise or lower the cap per-customer.
 
@@ -209,7 +213,9 @@ Once usage reaches the cap inside the active window, `check` returns `allowed: f
 
 Usage limits cap *total usage* of a feature within a period: a sub-limit within an existing balance. They sit on top of the plan's allowance and apply even when there's balance remaining and even when the feature has no overage pricing.
 
+
 `set_usage` sets a feature's balance but never touches usage-window counters. A capped feature stays capped: after `set_usage`, a customer whose window is exhausted still gets `allowed: false` until the window resets. To count usage against a window (including limits with conditions, which match on event properties), record usage normally with `track`.
+
 
 The consumed counter belongs to the window, not to the limit's configuration — editing the limit never resets what's already been counted. To unblock a capped customer mid-window: **disable** the limit (`enabled: false`) to stop it gating while keeping its configuration, **raise** the limit (headroom becomes the new limit minus usage already counted), or **delete** it.
 
@@ -286,7 +292,7 @@ When a feature is part of a [credit system](/documentation/modelling-pricing/cre
 > **Example — per-feature cap inside a credit system** <br />
 > Your `credits` system is spent by `images`, `transcriptions`, and `exports`. Customers can spend credits freely across all three, but you cap `exports` at **10 per day** so one feature can't drain the whole balance. A check or track on `exports` is blocked at 10/day even if plenty of credits remain.
 
-When more than one cap applies to a check (the cap on the evaluated feature and a cap on its parent credit system), Autumn enforces the **tightest** one — the remaining headroom is the minimum across all armed caps.
+When more than one cap applies to a check (the cap on the evaluated feature and a cap on its parent credit system), MeterPal enforces the **tightest** one — the remaining headroom is the minimum across all armed caps.
 
 ## Usage Alerts
 
@@ -386,7 +392,7 @@ curl -X POST "https://api.useautumn.com/v1/customers/update" \
 
 Each alert fires **once** per threshold crossing. It won't re-fire unless usage drops below the threshold and crosses it again.
 
-When triggered, Autumn sends a `balances.usage_alert_triggered` [webhook](/documentation/webhooks). See the [webhook schema](/api-reference/webhooks/balancesUsageAlertTriggered) for the full payload.
+When triggered, MeterPal sends a `balances.usage_alert_triggered` [webhook](/documentation/webhooks). See the [webhook schema](/api-reference/webhooks/balancesUsageAlertTriggered) for the full payload.
 
 For more details and examples, see [Spend Limits & Usage Alerts](/documentation/modelling-pricing/spend-limits#usage-alerts).
 
@@ -395,7 +401,7 @@ For more details and examples, see [Spend Limits & Usage Alerts](/documentation/
 Auto top-ups automatically replenish a customer's prepaid balance when it drops below a configured threshold. This prevents service interruptions for customers who don't want to manually manage their credits.
 
 > **Example** <br />
-> A customer gets 5,000 credits per month. When their balance drops below 500, Autumn automatically purchases 1,000 more credits using the plan's one-off prepaid price.
+> A customer gets 5,000 credits per month. When their balance drops below 500, MeterPal automatically purchases 1,000 more credits using the plan's one-off prepaid price.
 
 Auto top-ups require a plan with a [one-off prepaid](/documentation/modelling-pricing/one-off-purchases) item for the feature, and the customer must have a payment method on file.
 
@@ -585,7 +591,9 @@ curl -X POST "https://api.useautumn.com/v1/entities/update" \
 
 </CodeGroup>
 
+
 Auto top-ups are customer-level only because they create invoices and charge a payment method, which is tied to the customer account — not individual entities.
+
 
 ## Plan-Level Defaults
 

@@ -66,7 +66,7 @@ export function TopUpModal({
   const [inPageActive, setInPageActive] = useState(false);
   const buttonsRef = useRef<HTMLDivElement | null>(null);
   const pendingProductId = useRef<string | null>(null);
-  // The PayPal order is FIXED at pack-click time (Stripe-session parity):
+  // The PayPal order is FIXED at pack-click time (checkout-session parity):
   // createOrder hands PayPal this exact order and never mints a new one.
   // Re-clicks and sandbox overlay loops re-approve the same order, whose
   // capture is idempotent server-side — one click can never double-charge.

@@ -88,7 +88,7 @@ Unit-test the mapper (the tier/billing-unit math is where bugs hide):
 
 **Design centerpiece.** PRD bullets 248–250: quantities are billable units *exclusive of
 included usage*, then Autumn applies billing-unit rounding and tiers; bullets 288–294 warn
-Stripe price mappings carry their own included tiers. The operator cannot predict the
+Processor price mappings carry their own included tiers. The operator cannot predict the
 amount from the number typed. So:
 
 - preview lives **beside** the form permanently, not behind a Review step
@@ -159,8 +159,8 @@ errors removed by the extraction), with zero in any touched file.
 
 - `cd server && bun ts` after any shared-type touch; vite typecheck; pinned Biome on
   touched files only (never repo-wide).
-- Unit-test the mapper (Step 2) — no Stripe needed.
-- **End-to-end is not verifiable here**: needs a dev stack + Stripe. Treat first run as
+- Unit-test the mapper (Step 2) — no processor needed.
+- **End-to-end is not verifiable here**: needs a dev stack + PayPal. Treat first run as
   unverified until clicked through.
 - All three PRs (#3468/#3469/#3475) have **zero human review** — cubic bot only, and
   #3475 already diverges from its own PRD. The contract may move under this UI.

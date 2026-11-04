@@ -56,7 +56,7 @@ claude.ai/code → cloud icon above the message box → Add cloud environment.
    bun.sh
    app.infisical.com
    executor.sh
-   *.stripe.com
+   *.paypal.com
    apt.postgresql.org
    ppa.launchpadcontent.net
    www.postgresql.org
@@ -131,9 +131,9 @@ Run on the DEFAULT environment (no allowlist) via a one-off routine:
 - postgres 16 and redis 7 are preinstalled as services and start fine
   (`service postgresql start` → accepting connections; redis → PONG). Plain
   redis is NOT enough for Autumn (Lua needs RedisJSON → redis-stack), and
-  clickhouse/stripe/cloudflared/infisical binaries are missing.
+  clickhouse/paypal/cloudflared/infisical binaries are missing.
 - **Default egress 403s everything else**: bun.sh, app.infisical.com,
-  executor.sh, api.stripe.com, apt.postgresql.org, packages.redis.io,
+  executor.sh, api.paypal.com, apt.postgresql.org, packages.redis.io,
   packages.clickhouse.com, api.cloudflare.com, and all third-party apt PPAs
   (`CONNECT tunnel failed, response 403`). Ubuntu's own mirrors work
   (`apt-get update` 12s, exit 0 with PPA warnings). This is exactly why the
@@ -159,13 +159,13 @@ network policy, setup script, and MCP connection:
 - Repository hook verification:
   exact source files were uploaded to a disposable checkout because they
   were not yet on `dev`. The final hook exited successfully in four seconds
-  with no warnings. Stripe and Cloudflare credentials were fetched from
+  with no warnings. Processor and Cloudflare credentials were fetched from
   Infisical and cached with mode 600. Native `claude mcp list` confirmed
   `executor-cloud` connected through the real headers helper.
 - Private `ai` submodule cloning and sync generated 88 skills, four commands,
   and `.mcp.json`. Bun resolved to the repository pin, 1.3.14.
 - The fresh session had Redis Stack, ClickHouse 26.8.2.7, PostgreSQL client
-  16.13, Stripe CLI 1.33.0, Infisical 0.43.120, and cloudflared 2026.8.2.
+  16.13, Infisical 0.43.120, and cloudflared 2026.8.2.
   Environment preparation to Claude launch took about two minutes, with no
   setup failure or timeout markers. The Redis probe left no running service.
 - The real headers helper completed in about 1.6 seconds per call, under

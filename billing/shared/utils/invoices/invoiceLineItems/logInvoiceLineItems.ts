@@ -3,12 +3,12 @@ import type { DbInvoiceLineItem } from "../../..";
 /** Logs invoice line items in a compact tree format for debugging. */
 export const logInvoiceLineItems = ({
 	lineItems,
-	stripeInvoiceId,
+	processorInvoiceId,
 }: {
 	lineItems: DbInvoiceLineItem[];
-	stripeInvoiceId: string;
+	processorInvoiceId: string;
 }) => {
-	console.log(`\n📄 ${stripeInvoiceId} (${lineItems.length} items)`);
+	console.log(`\n📄 ${processorInvoiceId} (${lineItems.length} items)`);
 
 	const grouped = new Map<string, DbInvoiceLineItem[]>();
 	for (const li of lineItems) {

@@ -2,18 +2,20 @@
 
 Typically, your users should get access to different features and usage limits, depending on their plan.
 
-Autumn handles your customer's payments and grants them the features defined in your plan configuration. There are 2 functions you need to enforce limits and gating:
+MeterPal handles your customer's payments and grants them the features defined in your plan configuration. There are 2 functions you need to enforce limits and gating:
 
 - `check` for feature access, before allowing a user to do something
-- `track` the usage in Autumn afterwards (if needed)
+- `track` the usage in MeterPal afterwards (if needed)
 
 This example will continue from before: a 2-tier pricing model for a chatbot.
 
+
 This guide shows an asynchronous approach to checking and tracking. You can also [check and reserve](/documentation/customers/check#checking-and-reserving-usage) balance in a single, atomic API call for concurrent events.
+
 
 ### Checking feature access
 
-Check if a user has enough remaining balance of messages, before executing the action. The `feature_id` used here is defined by you when you create the feature in Autumn.
+Check if a user has enough remaining balance of messages, before executing the action. The `feature_id` used here is defined by you when you create the feature in MeterPal.
 
 <CodeGroup>
 
@@ -68,11 +70,13 @@ curl -X POST 'https://api.useautumn.com/v1/check' \
 
 </CodeGroup>
 
+
 You can also use `check` to [gate boolean features](/documentation/customers/check#checking-boolean-features) (non-metered features), such as access to "premium AI models".
+
 
 ### Tracking usage
 
-After the user has successfully used a chatbot message, you can record the usage in Autumn. This will decrement the user's message balance.
+After the user has successfully used a chatbot message, you can record the usage in MeterPal. This will decrement the user's message balance.
 
 <CodeGroup>
 
@@ -122,7 +126,8 @@ curl -X POST 'https://api.useautumn.com/v1/track' \
 
 </CodeGroup>
 
-Once you send usage events, you can verify their receipt in the Autumn dashboard, on the [customer](https://app.useautumn.com/customers) detail page.
+Once you send usage events, you can verify their receipt in the MeterPal dashboard, on the [customer](https://app.useautumn.com/customers) detail page.
+
 
 You should always handle access checks and usage tracking server-side for security. Users can manipulate client-side code using devtools.
 
@@ -132,4 +137,5 @@ You should always handle access checks and usage tracking server-side for securi
 
 Now, whenever your customers change their plan, they will automatically have the correct access and limits. Next, build a billing page for your customers.
 
-Display plan, balance and usage information to your customers using Autumn's `customer` state
+
+Display plan, balance and usage information to your customers using MeterPal's `customer` state

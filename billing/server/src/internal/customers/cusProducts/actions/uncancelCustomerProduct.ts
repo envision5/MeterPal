@@ -17,7 +17,7 @@ import { CusProductService } from "@/internal/customers/cusProducts/CusProductSe
  * 2. Updates the FullCustomer in memory
  * 3. Sends products_updated + billing.updated webhooks
  *
- * Used by RevenueCat uncancellation webhooks.
+ * Used by processor uncancellation webhooks and any external uncancellation flow.
  */
 export const uncancelCustomerProduct = async ({
 	ctx,

@@ -9,8 +9,8 @@ import {
 	constructFeatureItem,
 } from "@/utils/scriptUtils/constructItem.js";
 import { constructProduct } from "@/utils/scriptUtils/createTestProducts.js";
-import { initCustomerV3 } from "@/utils/scriptUtils/testUtils/initCustomerV3.js";
-import { initProductsV0 } from "@/utils/scriptUtils/testUtils/initProductsV0.js";
+import { initTestCustomer } from "@tests/utils/testInitUtils/initTestCustomer.js";
+import { initTestProducts } from "@tests/utils/testInitUtils/initTestProducts.js";
 
 /**
  * Test: Prepaid monthly messages + Pay-per-use monthly messages from different products
@@ -51,14 +51,12 @@ describe(`${chalk.yellowBright("check-breakdown5: prepaid monthly + pay-per-use 
 	const autumnV2: AutumnInt = new AutumnInt({ version: ApiVersion.V2_0 });
 
 	beforeAll(async () => {
-		await initCustomerV3({
+		await initTestCustomer({
 			ctx,
 			customerId,
-			attachPm: "success", // Required for pay-per-use
-			withTestClock: false,
 		});
 
-		await initProductsV0({
+		await initTestProducts({
 			ctx,
 			products: [prepaidProd, payPerUseProd],
 			prefix: testCase,

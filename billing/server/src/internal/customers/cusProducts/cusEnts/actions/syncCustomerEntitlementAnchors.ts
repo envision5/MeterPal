@@ -7,10 +7,8 @@ import {
 	isLifetimeEntitlement,
 	PooledBalanceResetMode,
 	pooledBalances,
-	secondsToMs,
 } from "@autumn/shared";
 import { eq } from "drizzle-orm";
-import { createStripeCli } from "@/external/connect/createStripeCli";
 import type { AutumnContext } from "@/honoUtils/HonoEnv";
 import { invalidateCachedFullSubject } from "@/internal/customers/cache/fullSubject/index.js";
 import { deleteCachedFullCustomer } from "@/internal/customers/cusUtils/fullCustomerCacheUtils/deleteCachedFullCustomer";
@@ -24,20 +22,8 @@ type SyncedAnchor = {
 	resetCycleAnchor?: number;
 };
 
-const getStripeBillingCycleAnchor = async ({
-	ctx,
-	subscriptionId,
-}: {
-	ctx: AutumnContext;
-	subscriptionId: string;
-}) => {
-	const stripeCli = createStripeCli({ org: ctx.org, env: ctx.env });
-	const subscription = await stripeCli.subscriptions.retrieve(subscriptionId);
-	return secondsToMs(subscription.billing_cycle_anchor);
-};
-
-/** Pooled balances have no customer product, so anchor them to the pool's
- * Stripe subscription instead. */
+/** Pooled balances have no customer product, so anchor them to the pool's own
+ *  reset cycle anchor. */
 const getSyncedPooledAnchor = async ({
 	ctx,
 	customerEntitlement,
@@ -53,15 +39,12 @@ const getSyncedPooledAnchor = async ({
 	if (
 		!pooledBalance ||
 		pooledBalance.reset_mode !== PooledBalanceResetMode.Subscription ||
-		!pooledBalance.stripe_subscription_id
+		!pooledBalance.reset_cycle_anchor
 	) {
 		return null;
 	}
 
-	const anchor = await getStripeBillingCycleAnchor({
-		ctx,
-		subscriptionId: pooledBalance.stripe_subscription_id,
-	});
+	const anchor = pooledBalance.reset_cycle_anchor;
 
 	return {
 		nextResetAt: getCycleEnd({
@@ -112,11 +95,7 @@ const getSyncedNextResetAt = async ({
 		return null;
 	}
 
-	const subscriptionId = customerProduct.subscription_ids?.[0];
-	let anchor = customerProduct.starts_at;
-	if (subscriptionId) {
-		anchor = await getStripeBillingCycleAnchor({ ctx, subscriptionId });
-	}
+	const anchor = customerProduct.billing_cycle_anchor ?? customerProduct.starts_at;
 	if (anchor == null) return null;
 
 	return {

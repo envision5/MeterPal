@@ -1,15 +1,16 @@
 import type { DeferredAutumnBillingPlanData } from "@autumn/shared";
-import { type Metadata, MetadataType, metadata } from "@autumn/shared";
-import { addDays } from "date-fns";
+import {
+	InvoiceStatus,
+	invoices,
+	type Metadata,
+	MetadataType,
+	metadata,
+} from "@autumn/shared";
 import { and, asc, eq, isNotNull, lt, or, sql } from "drizzle-orm";
-import type { Stripe } from "stripe";
 import { withStatementTimeout } from "@/db/withStatementTimeout.js";
 import { resolveRedisV2 } from "@/external/redis/resolveRedisV2.js";
-import { expirePendingPlanAtDueDate } from "@/internal/billing/v2/actions/expirePendingPlan/expirePendingPlanAtDueDate";
 import { expirePendingCustomerProducts } from "@/internal/billing/v2/execute/pendingCustomerProducts/expirePendingCustomerProducts";
 import { OrgService } from "@/internal/orgs/OrgService";
-import { createStripeCli } from "../../external/connect/createStripeCli";
-import { stripeInvoiceToStripeSubscriptionId } from "../../external/stripe/invoices/utils/convertStripeInvoice";
 import type { AttachParams } from "../../internal/customers/cusProducts/AttachParams";
 import { MetadataService } from "../../internal/metadata/MetadataService";
 import type { CronContext } from "../utils/CronContext";
@@ -43,6 +44,17 @@ const getOrgAndCustomerFromMetadata = async ({
 	return { org: undefined, customer: undefined };
 };
 
+/**
+ * Cleans up invoice-related metadata rows whose expiry has passed.
+ *
+ * The processor invoice is read from the DB mirror (`invoices`), not from the
+ * processor: a paid invoice keeps its metadata row (the customer was billed),
+ * an unpaid one is cleaned up together with the plan it was holding.
+ *
+ * Covers the checkout-invoice, invoice-action-required and deferred-invoice
+ * metadata rows: all of them hold a pending plan that must be released when
+ * the invoice is never collected.
+ */
 export const handleVoidInvoiceCron = async ({
 	ctx,
 	metadata,
@@ -58,32 +70,9 @@ export const handleVoidInvoiceCron = async ({
 	});
 	if (!org || !customer) return;
 
-	const stripeCli = createStripeCli({ org, env: customer.env });
+	const processorInvoiceId = metadata.processor_invoice_id;
+	if (!processorInvoiceId) return;
 
-	if (!metadata.stripe_invoice_id) return;
-
-	let invoice: Stripe.Invoice | undefined;
-	try {
-		invoice = await stripeCli.invoices.retrieve(metadata.stripe_invoice_id);
-	} catch {
-		logger.warn(`Failed to retrieve invoice ${metadata.stripe_invoice_id}`);
-		return;
-	}
-
-	if (metadata.type === MetadataType.DeferredInvoice) {
-		await expirePendingPlanAtDueDate({
-			ctx,
-			orgId: org.id,
-			env: customer.env,
-			stripeCli,
-			metadata,
-			stripeInvoice: invoice,
-		});
-		return;
-	}
-
-	const subId = stripeInvoiceToStripeSubscriptionId(invoice);
-	const voidSub = metadata.type === MetadataType.InvoiceCheckout;
 	const expirePendingRows = async () => {
 		try {
 			await expirePendingCustomerProducts({
@@ -101,66 +90,27 @@ export const handleVoidInvoiceCron = async ({
 		}
 	};
 
+	const [invoice] = await db
+		.select({ status: invoices.status })
+		.from(invoices)
+		.where(eq(invoices.processor_invoice_id, processorInvoiceId))
+		.limit(1);
+
 	console.log(
-		`Invoice: ${metadata.stripe_invoice_id} for customer ${customer.id} (org: ${org.slug}) - status: ${invoice.status}`,
+		`Invoice: ${processorInvoiceId} for customer ${customer.id} (org: ${org.slug}) - status: ${invoice?.status ?? "unknown"}`,
 	);
 
-	if (invoice.status === "open") {
-		try {
-			await stripeCli.invoices.voidInvoice(metadata.stripe_invoice_id);
-			logger.info(
-				`voided invoice ${metadata.stripe_invoice_id} for customer ${customer.id} (org: ${org.slug})`,
-			);
+	// A paid invoice was collected — leave the metadata row alone.
+	if (invoice?.status === InvoiceStatus.Paid) return;
 
-			if (voidSub && subId) {
-				logger.info(`Voiding sub ${subId} [created through invoice checkout]`);
-				try {
-					await stripeCli.subscriptions.cancel(subId);
-				} catch (error) {
-					logger.warn(`Error voiding sub ${subId}: ${error}`);
-				}
-			}
-
-			await expirePendingRows();
-			await MetadataService.delete({
-				db,
-				id: metadata.id,
-			});
-		} catch (error) {
-			if (
-				error instanceof Error &&
-				error.message.includes("pending payments waiting to clear")
-			) {
-				await MetadataService.update({
-					db,
-					id: metadata.id,
-					updates: { expires_at: addDays(Date.now(), 1).getTime() },
-				});
-				logger.info(
-					`Invoice ${metadata.stripe_invoice_id} has a pending payment; retrying cleanup in 24 hours`,
-				);
-				return;
-			}
-
-			logger.error(`Error voiding invoice: ${error}`);
-			if (
-				error instanceof Error &&
-				error.message.includes("cannot be voided")
-			) {
-				await MetadataService.delete({
-					db,
-					id: metadata.id,
-				});
-				return;
-			}
-		}
-	} else if (invoice.status === "void" || invoice.status === "uncollectible") {
-		await expirePendingRows();
-		await MetadataService.delete({
-			db,
-			id: metadata.id,
-		});
-	}
+	await expirePendingRows();
+	await MetadataService.delete({
+		db,
+		id: metadata.id,
+	});
+	logger.info(
+		`Cleaned up unpaid invoice ${processorInvoiceId} for customer ${customer.id} (org: ${org.slug})`,
+	);
 };
 
 export const getExpiredInvoiceMetadata = async ({
@@ -189,7 +139,7 @@ export const getExpiredInvoiceMetadata = async ({
 					),
 					isNotNull(metadata.expires_at),
 					lt(metadata.expires_at, now),
-					isNotNull(metadata.stripe_invoice_id),
+					isNotNull(metadata.processor_invoice_id),
 					cursor
 						? sql`(${metadata.expires_at}, ${metadata.id} COLLATE "C") > (${cursor.expiresAt}, ${cursor.id})`
 						: undefined,

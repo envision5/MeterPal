@@ -40,12 +40,12 @@ export const ApiCusProductV3Schema = z.object({
 		description: "Version of the product",
 		example: 1,
 	}),
-	stripe_subscription_ids: z
+	processor_subscription_ids: z
 		.array(z.string())
 		.nullish()
 		.meta({
 			description:
-				"List of Stripe subscription IDs associated with this product, if any",
+				"List of processor subscription IDs associated with this product, if any",
 			example: ["sub_1Nc0JzBAbcxyz", "sub_1Nc0xyBAnopq"],
 		}),
 	current_period_start: z.number().nullish().meta({

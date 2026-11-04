@@ -22,11 +22,6 @@ type FeatureDisplay = {
 	plural: string;
 };
 
-export type FeatureStripeMeter = {
-	id: string;
-	event_name: string;
-};
-
 export const features = pgTable(
 	"features",
 	{
@@ -43,8 +38,6 @@ export const features = pgTable(
 		archived: boolean("archived").notNull().default(false),
 		event_names: text("event_names").array().default([]),
 		model_markups: jsonb().$type<ModelMarkups>().default(sql`null`),
-		stripe_meter: jsonb().$type<FeatureStripeMeter>().default(sql`null`),
-		stripe_product_id: text("stripe_product_id"),
 	},
 	(table) => [
 		foreignKey({

@@ -39,18 +39,18 @@ export class MetadataService {
 		return hydrateMetadataRow(data[0] as Metadata);
 	}
 
-	static async getByStripeInvoiceId({
+	static async getByProcessorInvoiceId({
 		db,
-		stripeInvoiceId,
+		processorInvoiceId,
 		type,
 	}: {
 		db: DrizzleCli;
-		stripeInvoiceId: string;
+		processorInvoiceId: string;
 		type?: MetadataType;
 	}) {
 		const meta = await db.query.metadata.findFirst({
 			where: and(
-				eq(metadata.stripe_invoice_id, stripeInvoiceId),
+				eq(metadata.processor_invoice_id, processorInvoiceId),
 				type ? eq(metadata.type, type) : undefined,
 			),
 		});
@@ -85,35 +85,6 @@ export class MetadataService {
 			.returning({ id: metadata.id });
 
 		return claimedRows.length > 0;
-	}
-
-	/**
-	 * Repoints a deferred row from one Stripe invoice to its replacement.
-	 * Returns false when another writer already moved (or removed) the row.
-	 */
-	static async swapStripeInvoiceId({
-		db,
-		id,
-		fromStripeInvoiceId,
-		toStripeInvoiceId,
-	}: {
-		db: DrizzleCli;
-		id: string;
-		fromStripeInvoiceId: string;
-		toStripeInvoiceId: string;
-	}): Promise<boolean> {
-		const swappedRows = await db
-			.update(metadata)
-			.set({ stripe_invoice_id: toStripeInvoiceId })
-			.where(
-				and(
-					eq(metadata.id, id),
-					eq(metadata.stripe_invoice_id, fromStripeInvoiceId),
-				),
-			)
-			.returning({ id: metadata.id });
-
-		return swappedRows.length > 0;
 	}
 
 	static async delete({ db, id }: { db: DrizzleCli; id: string }) {

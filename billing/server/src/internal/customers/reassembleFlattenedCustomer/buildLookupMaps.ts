@@ -10,7 +10,7 @@ import type {
 export type LookupMaps = {
 	entitlementById: Map<string, FlatEntitlement>;
 	freeTrialById: Map<string, FlatFreeTrial>;
-	subscriptionByStripeId: Map<string, FlatSubscription>;
+	subscriptionByProcessorId: Map<string, FlatSubscription>;
 	rolloversByCeId: Map<string, FlatRollover[]>;
 	replaceablesByCeId: Map<string, FlatReplaceable[]>;
 	customerPricesByCpId: Map<string, FlatCustomerPrice[]>;
@@ -43,7 +43,7 @@ export const buildLookupMaps = (flat: {
 }): LookupMaps => ({
 	entitlementById: indexBy(flat.entitlements, (e) => e.id),
 	freeTrialById: indexBy(flat.free_trials, (ft) => ft.id),
-	subscriptionByStripeId: indexBy(flat.subscriptions, (s) => s.stripe_id),
+	subscriptionByProcessorId: indexBy(flat.subscriptions, (s) => s.processor_id),
 	rolloversByCeId: groupBy(flat.rollovers, (r) => r.cus_ent_id),
 	replaceablesByCeId: groupBy(flat.replaceables, (r) => r.cus_ent_id),
 	customerPricesByCpId: groupBy(

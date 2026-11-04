@@ -11,7 +11,7 @@ import {
 	expectDbPlansAbsent,
 	expectDbPlansCorrect,
 } from "../utils/expectCatalogPlans.js";
-import { seedVersionableCustomer } from "../migrations/utils/seedVersionableCustomer.js";
+import { seedVersionableCustomer } from "../utils/seedVersionableCustomer.js";
 import {
 	messagesItem,
 	withCatalogPlans,

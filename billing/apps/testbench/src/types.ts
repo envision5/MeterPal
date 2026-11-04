@@ -50,8 +50,6 @@ export type Snapshot = {
 	/** Latest non-empty log line in any phase (activity ticker). */
 	activity: string;
 	fanout: {
-		stripeDone: number;
-		stripeTotal: number;
 		workersReady: number;
 		workersTotal: number;
 		workersFailed: number;
@@ -59,8 +57,6 @@ export type Snapshot = {
 	teardown: {
 		sandboxesDone: number;
 		sandboxesTotal: number;
-		accountsDone: number;
-		accountsTotal: number;
 	};
 	run: {
 		total: number;

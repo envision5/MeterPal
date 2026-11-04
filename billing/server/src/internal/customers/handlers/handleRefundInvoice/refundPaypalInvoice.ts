@@ -1,6 +1,6 @@
 // billing/server/src/internal/customers/handlers/handleRefundInvoice/refundPaypalInvoice.ts
 //
-// The PayPal branch of POST /v1/customers/:customer_id/invoices/:stripe_invoice_id/refund.
+// The PayPal branch of POST /v1/customers/:customer_id/invoices/:processor_invoice_id/refund.
 //
 // PayPal invoices are recorded with namespaced external ids (pp-cap-... /
 // pp-sale-... / pp-inv-...), and the instrument named there is what gets
@@ -57,7 +57,7 @@ export const refundPaypalInvoice = async ({
 		});
 	}
 
-	const instrument = paypalInvoiceInstrument(invoice.stripe_id);
+	const instrument = paypalInvoiceInstrument(invoice.processor_invoice_id);
 	if (!instrument || instrument.instrument === "invoice") {
 		// PayPal Invoicing API payments are refunded through PayPal's invoice
 		// flows (INVOICING.*), not the payments refund endpoints.
@@ -132,7 +132,7 @@ export const refundPaypalInvoice = async ({
 
 	if (grantApplied) {
 		await incrementPaypalInvoiceRefund({
-			externalId: invoice.stripe_id,
+			externalId: invoice.processor_invoice_id,
 			amountUsd: refundAmount,
 		});
 	}

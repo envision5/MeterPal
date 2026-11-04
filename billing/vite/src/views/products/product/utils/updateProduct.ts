@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import type { ZodError } from "zod";
 import { ProductService } from "@/services/products/ProductService";
 import { getBackendErr } from "@/utils/genUtils";
-import { stripEditorFields } from "@/utils/product/productItemUtils";
+import { removeEditorFields } from "@/utils/product/productItemUtils";
 import { normalizeItemCurrencies } from "../../plan/utils/currencyUtils";
 import { validateItemsBeforeSave } from "../../plan/utils/validateItemsBeforeSave";
 
@@ -49,7 +49,7 @@ export const updateProduct = async ({
 					normalizeItemCurrencies({ item, orgCurrency }),
 				)
 			: product.items;
-		const sortedItems = stripEditorFields({
+		const sortedItems = removeEditorFields({
 			items: sortPlanItems({ items }),
 		});
 		const { base_id, ...productUpdates } = product;

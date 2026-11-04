@@ -9,7 +9,7 @@ type PooledBalanceIdentityLifecycle = Pick<
 	PooledBalanceLifecycle,
 	| "resetCycleAnchor"
 	| "resetMode"
-	| "stripeSubscriptionId"
+	| "processorSubscriptionId"
 	| "customerLicenseLinkId"
 >;
 
@@ -25,6 +25,6 @@ export const initCustomerEntitlementPooledIdentity = ({
 	}),
 	resetCycleAnchor: lifecycle.resetCycleAnchor,
 	resetMode: lifecycle.resetMode,
-	stripeSubscriptionId: lifecycle.stripeSubscriptionId,
+	processorSubscriptionId: lifecycle.processorSubscriptionId,
 	customerLicenseLinkId: lifecycle.customerLicenseLinkId,
 });

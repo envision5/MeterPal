@@ -38,7 +38,7 @@ export const pooledBalances = pgTable(
 
 		reset_cycle_anchor: numeric({ mode: "number" }),
 		reset_mode: text().$type<PooledBalanceResetMode>().notNull(),
-		stripe_subscription_id: text(),
+		processor_subscription_id: text(),
 		customer_license_link_id: text(),
 		rollover_signature: text().notNull().default("none"),
 		customer_entitlement_id: text().notNull(),
@@ -78,7 +78,7 @@ export const pooledBalances = pgTable(
 				table.interval_count,
 				table.reset_cycle_anchor,
 				table.reset_mode,
-				table.stripe_subscription_id,
+				table.processor_subscription_id,
 				table.customer_license_link_id,
 				table.rollover_signature,
 				table.expires_at,
@@ -103,9 +103,9 @@ export const pooledBalances = pgTable(
 		index("idx_pooled_balances_feature")
 			.on(table.internal_feature_id)
 			.concurrently(),
-		index("idx_pooled_balances_stripe_subscription")
-			.on(table.internal_customer_id, table.stripe_subscription_id)
-			.where(sql`${table.stripe_subscription_id} IS NOT NULL`)
+		index("idx_pooled_balances_processor_subscription")
+			.on(table.internal_customer_id, table.processor_subscription_id)
+			.where(sql`${table.processor_subscription_id} IS NOT NULL`)
 			.concurrently(),
 		index("idx_pooled_balances_customer_license")
 			.on(table.internal_customer_id, table.customer_license_link_id)

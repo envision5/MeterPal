@@ -46,7 +46,7 @@ Read `autumn://docs/concepts` to understand Autumn's model: Customer, Entity, Pl
 - If the plan prices a feature as prepaid, a bare amount for that feature ("put them on 4.5k credits") means `feature_quantities` — NOT an item customization. Never remove or replace a prepaid item to set how many units a customer gets; customize the item only when the user explicitly changes its pricing or included allowance.
 - The word "included" means free allowance, not a purchase: "N included credits" sets `included: N` on the item via `customize` (carrying the rest of the item over unchanged) and does NOT add `feature_quantities`. Only combine both when the user asks for extra prepaid units on top of the new allowance.
 - Before any trial action, re-read the Trials section in `autumn://docs/concepts`.
-- Adding a trial for a customer who already has a paid subscription resets the Stripe billing cycle; warn the user and offer the `on_end: "revert"` flow, then let them choose.
+- Adding a trial for a customer who already has a paid subscription resets the processor billing cycle; warn the user and offer the `on_end: "revert"` flow, then let them choose.
 - To end a revert trial early, cancel it with `updateSubscription` and `cancel_action: "cancel_immediately"`; Autumn restores the previous plan. Do not remove `free_trial` (that converts the trial to paid) or re-attach the old plan.
 
 ## Target resolution
@@ -77,7 +77,7 @@ Read `autumn://docs/concepts` to understand Autumn's model: Customer, Entity, Pl
 - One-off plans are always attached because each purchase/top-up is a new purchase.
 - `attach` handles transitions: switching main plans expires the replaced plan, while add-ons are additive.
 - Autumn determines upgrade vs downgrade from normalized base and prepaid prices.
-- By default, `attach` tries to add the new plan to an existing Stripe subscription when possible; mid-cycle changes on that subscription can charge or credit prorations.
+- By default, `attach` tries to add the new plan to an existing processor subscription when possible; mid-cycle changes on that subscription can charge or credit prorations.
 - Downgrades default to end-of-cycle scheduling through `plan_schedule`; upgrades usually apply immediately.
 
 ### updateSubscription
@@ -215,7 +215,7 @@ Carry the whole ladder over; don't replace it with just the custom tier or a fla
 - To attach now, explicitly set `plan_schedule: "immediate"`; omitting it can schedule a lower- or zero-base-price plan for end of cycle.
 - A downgrade (incoming base price genuinely lower than the current plan's) should be flagged to the user, asking whether to schedule it for end of cycle. A no-base-price plan (e.g. Enterprise/custom, priced per customer) is not a downgrade.
 - Use `starts_at` for single-plan backdates or future starts; do not use `createSchedule` just for this.
-- Backdating is only allowed when the customer has no existing Stripe subscription. If the API rejects it, explain that constraint.
+- Backdating is only allowed when the customer has no existing processor subscription. If the API rejects it, explain that constraint.
 - For future billing start with immediate access, set future `starts_at` and `enable_plan_immediately: true`; otherwise the user's plan is created with `scheduled` status in Autumn and access starts on the specified `starts_at`.
 - Use `ends_at` only when the user gives an explicit end date or duration.
 
@@ -245,7 +245,7 @@ Carry the whole ladder over; don't replace it with just the custom tier or a fla
 
 - Default operator-led billing actions to invoice mode: `invoice_mode.enabled: true` and `invoice_mode.finalize: false`, and grant access now (see Enable plan immediately for which field).
 - Use invoice mode even when the immediate charge is $0, unless the user asks for checkout, self-serve, or direct charging.
-- This grants access now while creating a draft Stripe invoice that the operator can review, edit, and send.
+- This grants access now while creating a draft processor invoice that the operator can review, edit, and send.
 - Use explicit net terms from the user or contract in `invoice_mode.net_terms_days`; otherwise do not ask just to set net terms.
 - If the customer has no email, ask for it and update the customer before previewing invoice or checkout flows.
 
@@ -286,8 +286,7 @@ Carry the whole ladder over; don't replace it with just the custom tier or a fla
 
 - After the billing action succeeds, respond as concisely as possible: say the action completed successfully.
 - Surface any returned customer-facing URL, especially `payment_url` or `invoice.hosted_invoice_url`, as a markdown link so it is clickable: `[Checkout link](url)`, `[Invoice](url)`.
-- If an `invoice` is returned, mention its `status`, `stripe_id`, and hosted URL when present.
-- If `invoice.hosted_invoice_url` is missing but `invoice.stripe_id` exists, surface the Stripe dashboard invoice URL: sandbox `https://dashboard.stripe.com/test/invoices/{stripe_id}`, live `https://dashboard.stripe.com/invoices/{stripe_id}`.
+- If an `invoice` is returned, mention its `status`, `processor_invoice_id`, and hosted URL when present.
 - If `required_action` is returned, explain the required payment action and include `payment_url` if present.
 - If the action fails, state that it failed and quote the server error/status clearly.
 - Do not re-summarize the full preview after completion unless the user asks.

@@ -20,7 +20,7 @@ export const expectLicenseDefinitionCorrect = async ({
 	ctx: TestContext;
 	customerId: string;
 	parentPlanId: string;
-	/** When set, the parent customer product must be linked to this Stripe sub. */
+	/** When set, the parent customer product must be linked to this subscription. */
 	subscriptionId?: string;
 	isCustom: boolean;
 	isCustomized?: boolean;
@@ -28,8 +28,6 @@ export const expectLicenseDefinitionCorrect = async ({
 		amount: number;
 		interval: BillingInterval;
 		isCustom?: boolean;
-		stripePriceId?: string;
-		stripeProductId?: string;
 	};
 }): Promise<FullCustomerLicense> => {
 	const fullCustomer = await CusService.getFull({
@@ -69,25 +67,6 @@ export const expectLicenseDefinitionCorrect = async ({
 		expect(licenseBasePrice?.config.interval).toBe(basePrice.interval);
 		if (basePrice.isCustom !== undefined) {
 			expect(licenseBasePrice?.is_custom).toBe(basePrice.isCustom);
-		}
-		if (basePrice.stripePriceId) {
-			expect(licenseBasePrice?.config.stripe_price_id).toBe(
-				basePrice.stripePriceId,
-			);
-		}
-		if (basePrice.stripeProductId) {
-			expect(licenseBasePrice?.config.stripe_product_id).toBe(
-				basePrice.stripeProductId,
-			);
-			expect(licenseBasePrice?.config.stripe_price_id).toBeDefined();
-			const stripePrice = await ctx.stripeCli.prices.retrieve(
-				licenseBasePrice!.config.stripe_price_id!,
-			);
-			const actualStripeProductId =
-				typeof stripePrice.product === "string"
-					? stripePrice.product
-					: stripePrice.product.id;
-			expect(actualStripeProductId).toBe(basePrice.stripeProductId);
 		}
 	}
 

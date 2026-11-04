@@ -2,7 +2,6 @@ import { CopyButton } from "@autumn/ui";
 import { FingerprintIcon } from "@phosphor-icons/react";
 import { CustomerActions } from "./CustomerActions";
 import { useCustomerContext } from "./CustomerContext";
-import { AppliedCouponChip } from "./components/AppliedCouponChip";
 
 const mutedDivClassName =
 	"py-0.5 px-1.5 rounded-lg text-tertiary-foreground text-tiny flex items-center gap-2 h-6 max-w-48 truncate bg-muted text-tiny-id";
@@ -44,7 +43,6 @@ export const CustomerPageDetails = () => {
 						</span>
 					</div>
 				)}
-				<AppliedCouponChip className={mutedDivClassName} />
 			</div>
 			<CustomerActions />
 		</div>

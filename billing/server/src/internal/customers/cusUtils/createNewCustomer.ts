@@ -5,13 +5,10 @@ import {
 	CreateCustomerSchema,
 	type Customer,
 	ErrCode,
-	type FeatureOptions,
-	type FullCustomer,
 	type FullProduct,
 	isPrepaidPrice,
 	priceToEnt,
 } from "@autumn/shared";
-import { createStripeCli } from "@/external/connect/createStripeCli.js";
 import { ProductService } from "@/internal/products/ProductService.js";
 import { getNextStartOfMonthUnix } from "@/internal/products/prices/billingIntervalUtils.js";
 import { isDefaultTrialFullProduct } from "@/internal/products/productUtils/classifyProduct.js";
@@ -20,14 +17,8 @@ import RecaseError from "@/utils/errorUtils.js";
 import { generateId } from "@/utils/genUtils.js";
 import type { AutumnContext } from "../../../honoUtils/HonoEnv.js";
 import { createFullCusProduct } from "../add-product/createFullCusProduct.js";
-import { handleAddProduct } from "../attach/attachFunctions/addProductFlow/handleAddProduct.js";
-import {
-	newCusToAttachParams,
-	newCusToInsertParams,
-} from "../attach/attachUtils/attachParams/convertToParams.js";
-import { getDefaultAttachConfig } from "../attach/attachUtils/getAttachConfig.js";
 import { CusService } from "../CusService.js";
-import { initStripeCusAndProducts } from "../handlers/handleCreateCustomer.js";
+import { newCusToInsertParams } from "../cusProducts/cusProductUtils/customerProductInsertParams.js";
 import { assertCustomerCurrencyAllowed } from "./initCustomer.js";
 
 const getGroupToDefaultProd = async ({
@@ -109,20 +100,8 @@ export const createNewCustomer = async ({
 		org_id: org.id,
 		created_at: createdAt ?? Date.now(),
 		env,
-		processors: parsedCustomer.processors ?? null,
-		processor: parsedCustomer.stripe_id
-			? {
-					id: parsedCustomer.stripe_id,
-					type: "stripe",
-				}
-			: undefined,
 		currency: parsedCustomer.currency?.toLowerCase() || null,
 	};
-
-	// Check if stripeCli exists
-	if (nonFreeProds.length > 0) {
-		createStripeCli({ org, env });
-	}
 
 	const newCustomer = await CusService.insert({
 		db,
@@ -155,64 +134,27 @@ export const createNewCustomer = async ({
 			`[createNewCustomer] Creating default product with ID: ${defaultProd?.id}`,
 		);
 
-		if (!isFreeProduct(defaultProd.prices)) {
-			const stripeCli = createStripeCli({ org, env });
-			await initStripeCusAndProducts({
+		// The billing engine is DB-only: the customer product and its
+		// entitlements are written here, and the processor subscription comes
+		// from the PayPal checkout flow.
+		await createFullCusProduct({
+			db,
+			attachParams: newCusToInsertParams({
 				ctx,
-				customer: newCustomer,
-				products: nonFreeProds,
-			});
-
-			const optionsList = defaultProd.prices
-				.filter((x) => isPrepaidPrice(x))
-				.map((x) => {
-					const ent = priceToEnt({
-						price: x,
-						entitlements: defaultProd.entitlements,
-					});
-					return {
-						feature_id: ent?.feature.id,
-						internal_feature_id:
-							ent?.feature.internal_id || ent?.internal_feature_id,
-						quantity: 0,
-					};
-				}) as FeatureOptions[];
-
-			await handleAddProduct({
-				ctx,
-				config: {
-					...getDefaultAttachConfig(),
-					requirePaymentMethod: false,
-				},
-				attachParams: newCusToAttachParams({
-					ctx,
-					newCus: newCustomer as FullCustomer,
-					products: [defaultProd],
-					stripeCli,
-					freeTrial: defaultProd.free_trial || null,
-					optionsList: optionsList as FeatureOptions[],
-				}),
-			});
-		} else {
-			await createFullCusProduct({
-				db,
-				attachParams: newCusToInsertParams({
-					ctx,
-					newCus: newCustomer,
-					product: defaultProd,
-					freeTrial: defaultProd?.free_trial || null,
-				}),
-				nextResetAt,
-				anchorToUnix: org.config.anchor_start_of_month
-					? getNextStartOfMonthUnix({
-							interval: BillingInterval.Month,
-							intervalCount: 1,
-						})
-					: undefined,
-				scenario: AttachScenario.New,
-				logger,
-			});
-		}
+				newCus: newCustomer,
+				product: defaultProd,
+				freeTrial: defaultProd?.free_trial || null,
+			}),
+			nextResetAt,
+			anchorToUnix: org.config.anchor_start_of_month
+				? getNextStartOfMonthUnix({
+						interval: BillingInterval.Month,
+						intervalCount: 1,
+					})
+				: undefined,
+			scenario: AttachScenario.New,
+			logger,
+		});
 	}
 
 	return newCustomer;

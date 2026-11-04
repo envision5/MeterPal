@@ -23,7 +23,6 @@ import {
 	isPriceItem,
 } from "../../product-items/productItemUtils/getItemType.js";
 import { isFreeProduct } from "../../productUtils.js";
-import { updateStripeProductNames } from "../../stripeResourceUtils/updateStripeProductNames.js";
 
 const productDetailsSame = (prod1: Product, prod2: UpdateProduct) => {
 	if (notNullish(prod2.id) && prod1.id !== prod2.id) {
@@ -210,23 +209,6 @@ export const handleUpdateProductDetails = async ({
 			...pickBillingControlColumns(newProduct.billing_controls),
 		},
 	});
-
-	// Update product-owned Stripe names.
-	if (
-		!curProduct.base_internal_product_id &&
-		curProduct.name !== newProduct.name &&
-		notNullish(newProduct.name)
-	) {
-		logger.info(
-			`Updating product (${curProduct.id}) name in Stripe to ${newProduct.name}`,
-		);
-		await updateStripeProductNames({
-			org,
-			curProduct,
-			newName: newProduct.name!,
-			logger,
-		});
-	}
 
 	curProduct.name = newProduct.name || curProduct.name;
 	if (newProduct.description !== undefined) {

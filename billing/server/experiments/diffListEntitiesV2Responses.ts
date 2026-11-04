@@ -59,7 +59,7 @@ const sortByKey = (rows: Record<string, unknown>[], key: string) =>
 const UNORDERED_FIELDS: Record<string, string> = {
 	customer_entitlements: "id",
 	customer_prices: "id",
-	subscriptions: "stripe_id",
+	subscriptions: "processor_id",
 	entitlements: "id",
 	rollovers: "id",
 	replaceables: "id",

@@ -27,10 +27,6 @@ export const PlanCardHeader = () => {
 				key: "Price ID",
 				value: basePrice?.price_id || "N/A",
 			},
-			{
-				key: "Stripe Price ID",
-				value: basePrice?.price_config?.stripe_price_id || "N/A",
-			},
 		];
 	};
 

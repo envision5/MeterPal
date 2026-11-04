@@ -673,9 +673,6 @@ paths:
                         type: string
                       additionalProperties: {}
                     - type: "null"
-                stripe_id:
-                  description: Stripe customer ID if you already have one
-                  type: string
               required:
                 - id
       responses:
@@ -930,11 +927,6 @@ paths:
                     - type: object
                       propertyNames: {}
                       additionalProperties: {}
-                    - type: "null"
-                stripe_id:
-                  description: Stripe customer ID.
-                  anyOf:
-                    - type: string
                     - type: "null"
       responses:
         "200":
@@ -3565,8 +3557,8 @@ paths:
               type: object
               properties:
                 configuration_id:
-                  description: Stripe billing portal configuration ID. Create configurations in
-                    your Stripe dashboard.
+                  description: Billing portal configuration ID. Optional for processors
+                    that support hosted portal configurations.
                   type: string
                 return_url:
                   description: URL to redirect to when back button is clicked in the billing
@@ -4749,10 +4741,6 @@ components:
           anyOf:
             - type: string
             - type: "null"
-        stripe_id:
-          anyOf:
-            - type: string
-            - type: "null"
         env:
           type: string
           enum:
@@ -5754,8 +5742,8 @@ components:
                 type: array
                 items:
                   type: string
-              stripe_id:
-                description: The Stripe invoice ID
+              processor_invoice_id:
+                description: The processor invoice ID
                 example: in_1A2B3C4D5E6F7G8H
                 type: string
               status:
@@ -5775,14 +5763,13 @@ components:
                 example: 1759247877000
                 type: number
               hosted_invoice_url:
-                description: URL to the Stripe-hosted invoice page
-                example: https://invoice.stripe.com/i/acct_123/test_456
+                description: URL to the processor-hosted invoice page
+                example: https://billing.example.com/invoice/in_123
                 anyOf:
                   - type: string
                   - type: "null"
             required:
               - plan_ids
-              - stripe_id
               - status
               - total
               - currency
@@ -5917,7 +5904,7 @@ components:
                           - type: number
                           - type: "null"
                       subscription_id:
-                        description: The Stripe subscription ID this discount is applied to
+                        description: The processor subscription ID this discount is applied to
                         example: sub_1A2B3C4D5E6F7G8H
                         anyOf:
                           - type: string
@@ -5982,7 +5969,6 @@ components:
         - email
         - created_at
         - fingerprint
-        - stripe_id
         - env
         - metadata
         - subscriptions
@@ -6007,10 +5993,6 @@ components:
         created_at:
           type: number
         fingerprint:
-          anyOf:
-            - type: string
-            - type: "null"
-        stripe_id:
           anyOf:
             - type: string
             - type: "null"
@@ -7008,7 +6990,6 @@ components:
         - email
         - created_at
         - fingerprint
-        - stripe_id
         - env
         - metadata
         - subscriptions
@@ -8045,8 +8026,8 @@ components:
                 type: array
                 items:
                   type: string
-              stripe_id:
-                description: The Stripe invoice ID
+              processor_invoice_id:
+                description: The processor invoice ID
                 example: in_1A2B3C4D5E6F7G8H
                 type: string
               status:
@@ -8066,14 +8047,13 @@ components:
                 example: 1759247877000
                 type: number
               hosted_invoice_url:
-                description: URL to the Stripe-hosted invoice page
-                example: https://invoice.stripe.com/i/acct_123/test_456
+                description: URL to the processor-hosted invoice page
+                example: https://billing.example.com/invoice/in_123
                 anyOf:
                   - type: string
                   - type: "null"
             required:
               - plan_ids
-              - stripe_id
               - status
               - total
               - currency

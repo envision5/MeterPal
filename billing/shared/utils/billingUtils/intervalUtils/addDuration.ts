@@ -1,9 +1,8 @@
-import type { StartingAfterDuration } from "@api/billing/createSchedule/createScheduleParamsV0";
 import type { EntitlementDuration } from "@models/productModels/entModels/entModels";
 import type { FreeTrialDuration } from "@models/productModels/freeTrialModels/freeTrialEnums";
 import { addDays, addMonths, addWeeks, addYears } from "date-fns";
 
-type DurationType = FreeTrialDuration | EntitlementDuration | StartingAfterDuration;
+type DurationType = FreeTrialDuration | EntitlementDuration;
 
 export const addDuration = ({
 	now,

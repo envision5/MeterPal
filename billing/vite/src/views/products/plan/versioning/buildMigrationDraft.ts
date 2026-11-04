@@ -10,14 +10,17 @@ import type {
 import {
 	diffPlanV1,
 	itemToBillingInterval,
-	priceConfigToPriceProcessors,
 	productItemsToPlanItemsV1,
 	productV2ToBasePrice,
 	productV2ToFeatureItems,
 	productV2ToFrontendProduct,
 	sortProductItems,
 } from "@autumn/shared";
-import { migrationUid } from "@/views/migrations/migration/shared/operationUtils";
+
+/** Short id suffix for a migration draft. */
+function migrationUid(): string {
+	return Date.now().toString(36).slice(-3);
+}
 
 export interface MigrationDraft {
 	id: string;
@@ -41,12 +44,6 @@ export function frontendProductToApiPlanV1(
 		features,
 	});
 
-	// Mirrors what productItemsToPlanItemsV1 does for feature prices, so a base
-	// price mapping survives the save rather than being dropped here.
-	const baseProcessors = basePriceItem
-		? priceConfigToPriceProcessors({ config: basePriceItem.price_config })
-		: undefined;
-
 	const basePrice: ApiPlanV1["price"] = basePriceItem
 		? {
 				amount: basePriceItem.price,
@@ -58,7 +55,6 @@ export function frontendProductToApiPlanV1(
 				typeof basePriceItem.interval_count === "number"
 					? { interval_count: basePriceItem.interval_count }
 					: {}),
-				...(baseProcessors ? { processors: baseProcessors } : {}),
 			}
 		: null;
 

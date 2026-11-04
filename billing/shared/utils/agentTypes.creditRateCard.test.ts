@@ -40,7 +40,6 @@ describe("pricing-agent credit rate cards", () => {
 			archived: false,
 			event_names: [],
 			model_markups: null,
-			stripe_meter: null,
 		};
 
 		const agentFeature = featureToAgentFeature(feature);

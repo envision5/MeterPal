@@ -16,8 +16,8 @@ import {
 	constructProduct,
 	constructRawProduct,
 } from "@/utils/scriptUtils/createTestProducts.js";
-import { initCustomerV3 } from "@/utils/scriptUtils/testUtils/initCustomerV3.js";
-import { initProductsV0 } from "@/utils/scriptUtils/testUtils/initProductsV0.js";
+import { initTestCustomer } from "@tests/utils/testInitUtils/initTestCustomer.js";
+import { initTestProducts } from "@tests/utils/testInitUtils/initTestProducts.js";
 
 const pro = constructProduct({
 	type: "pro",
@@ -62,14 +62,12 @@ describe(`${chalk.yellowBright("track-race-condition1: sync should not wipe out 
 	beforeAll(async () => {
 		await waitForRedisReady(ctx.redisV2, "customer-redis", 5000);
 
-		await initCustomerV3({
+		await initTestCustomer({
 			ctx,
 			customerId,
-			withTestClock: true,
-			attachPm: "success",
 		});
 
-		await initProductsV0({
+		await initTestProducts({
 			ctx,
 			products: [pro, oneOffCredits],
 			prefix: testCase,

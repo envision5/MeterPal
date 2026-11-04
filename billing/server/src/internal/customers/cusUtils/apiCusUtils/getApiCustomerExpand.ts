@@ -1,18 +1,12 @@
 import {
 	ApiBaseEntitySchema,
 	CustomerExpand,
-	type FullCusProduct,
 	type FullCustomer,
 	filterExpand,
 } from "@autumn/shared";
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
 import { CusService } from "../../CusService.js";
 import { getCusAutoTopupPurchaseLimits } from "../cusResponseUtils/getCusAutoTopupPurchaseLimits.js";
-import { getCusBillingDetailsRes } from "../cusResponseUtils/getCusBillingDetailsRes.js";
-import { getCusInvoicePreviews } from "../cusResponseUtils/getCusInvoicePreviews.js";
-import { getCusPaymentMethodRes } from "../cusResponseUtils/getCusPaymentMethodRes.js";
-import { getCusReferrals } from "../cusResponseUtils/getCusReferrals.js";
-import { getCusRewards } from "../cusResponseUtils/getCusRewards.js";
 import { getCusTrialsUsed } from "../cusResponseUtils/getCusTrialsUsed.js";
 import type { ApiCustomerExpandResult } from "./getApiCustomerExpandV2.js";
 
@@ -25,7 +19,7 @@ export const getApiCustomerExpand = async ({
 	customerId?: string;
 	fullCus?: FullCustomer;
 }): Promise<ApiCustomerExpandResult> => {
-	const { org, env, db, expand } = ctx;
+	const { expand } = ctx;
 
 	// Filter out synthetic nested expand paths handled within sub-builders.
 	const filteredExpand = filterExpand({
@@ -59,35 +53,7 @@ export const getApiCustomerExpand = async ({
 
 	const cusExpand = expand as CustomerExpand[];
 
-	const [
-		rewards,
-		referrals,
-		paymentMethod,
-		trialsUsed,
-		autoTopupsWithLimits,
-		invoicePreviews,
-		billingDetails,
-	] = await Promise.all([
-		getCusRewards({
-			org,
-			env,
-			fullCus,
-			subIds: fullCus.customer_products.flatMap(
-				(cp: FullCusProduct) => cp.subscription_ids || [],
-			),
-			expand: cusExpand,
-		}),
-		getCusReferrals({
-			db,
-			fullCus,
-			expand: cusExpand,
-		}),
-		getCusPaymentMethodRes({
-			org,
-			env,
-			fullCus,
-			expand: cusExpand,
-		}),
+	const [trialsUsed, autoTopupsWithLimits] = await Promise.all([
 		getCusTrialsUsed({
 			ctx,
 			fullCus,
@@ -99,26 +65,11 @@ export const getApiCustomerExpand = async ({
 			autoTopupsConfig: fullCus.auto_topups,
 			expand: cusExpand,
 		}),
-		getCusInvoicePreviews({
-			ctx,
-			fullCus,
-			expand: cusExpand,
-		}),
-		getCusBillingDetailsRes({
-			ctx,
-			customer: fullCus,
-			expand: cusExpand,
-		}),
 	]);
 
 	return {
 		trials_used: trialsUsed ?? undefined,
 		entities: getApiCusEntities() ?? undefined,
-		rewards: rewards ?? undefined,
-		invoice_previews: invoicePreviews ?? undefined,
-		referrals: referrals ?? undefined,
-		payment_method: paymentMethod ?? undefined,
-		billing_details: billingDetails,
 		billing_controls_override: autoTopupsWithLimits
 			? { auto_topups: autoTopupsWithLimits }
 			: undefined,

@@ -1,6 +1,6 @@
 // billing/server/src/internal/billing/paypal/runPaypalCheckout.ts
 //
-// The PayPal branch of the checkout flow.  Mirrors the Stripe path in
+// The PayPal branch of the checkout flow.  Mirrors the hosted path in
 // `../checkout/runCheckout.ts`: given the same AttachParams, it returns a
 // `checkout_url` — either a PayPal Orders v2 approval link (one-off credit
 // packs) or a PayPal Subscriptions approval link (recurring plans) — so every
@@ -465,7 +465,7 @@ async function abandonOtherIntents({
 
 /**
  * PayPal checkout: returns the buyer-approval URL, same contract as the
- * Stripe path's `checkout_url`.
+ * hosted path's `checkout_url`.
  */
 export async function runPaypalCheckout({
 	attachParams,

@@ -9,15 +9,14 @@
  *                        for that run, then drop the entry.
  *   - `killAll()`      — same for every current-owner non-`completed` run. Refuses
  *                        to touch other owners' runs unless `--all-users`.
- *   - `killOrphans()`  — tag-sweep fallback: delete stale Stripe sub-accounts
- *                        (helpers/stripe.sweepOrphans) + sandboxes by the owner
+ *   - `killOrphans()`  — tag-sweep fallback: delete stale sandboxes by the owner
  *                        tag (Vercel/Modal-V1; Modal-V2 sandboxes self-expire).
  *
  * Sandbox teardown runs through the provider seam: each registry entry records
  * the backend it ran on (`entry.provider`), so `kill` selects it via
  * `setProvider` and `deleteSandbox` resolves by id (Modal `fromId`) or name
  * (Vercel). The sequence mirrors `run.ts` exactly (plan §9a teardown #4):
- * Stripe sub-account → (svix) app → sandbox → drop the registry record.
+ * (svix) app → sandbox → drop the registry record.
  */
 
 import chalk from "chalk";
@@ -28,15 +27,6 @@ import {
 	setProvider,
 } from "../helpers/provider.ts";
 import * as registry from "../helpers/registry.ts";
-import {
-	deleteConnectWebhook,
-	deleteSubAccount,
-	sweepOrphans,
-} from "../helpers/stripe.ts";
-import {
-	keyIndexFromWebhookTag,
-	stripeKeyByIndex,
-} from "../helpers/stripeKeyPool.ts";
 import { sweepOrphanSvixApps } from "../helpers/svix.ts";
 import type { RegistryEntry } from "../types.ts";
 import { deleteSvixApp } from "./run.ts";
@@ -80,13 +70,13 @@ const timeBoxed = async (
 };
 
 /**
- * Tear down every resource recorded for one run entry (Stripe → Svix → Vercel),
- * then drop the registry record. Idempotent: every step tolerates "already
- * deleted". This is the same sequence `run.ts` runs at natural end (plan §9a #4).
+ * Tear down every resource recorded for one run entry (Svix → Vercel), then drop
+ * the registry record. Idempotent: every step tolerates "already deleted". This is
+ * the same sequence `run.ts` runs at natural end (plan §9a #4).
  */
 const teardownEntry = async (entry: RegistryEntry): Promise<void> => {
 	log(
-		`killing run ${entry.runId} (${entry.subAccounts.length} sub-account(s), ${entry.sandboxes.length} sandbox(es)${
+		`killing run ${entry.runId} (${entry.sandboxes.length} sandbox(es)${
 			registry.getSvixAppIds(entry).length
 				? `, ${registry.getSvixAppIds(entry).length} svix app(s)`
 				: ""
@@ -98,23 +88,6 @@ const teardownEntry = async (entry: RegistryEntry): Promise<void> => {
 	// name). Entries written before the `provider` field existed default to vercel
 	// (the only backend back then).
 	await setProvider(entry.provider ?? "vercel");
-
-	for (const accountId of entry.subAccounts) {
-		await timeBoxed(`delete sub-account ${accountId}`, () =>
-			deleteSubAccount(accountId),
-		);
-	}
-
-	// The shared platform Connect webhook is NOT cascade-deleted by sub-account
-	// deletion, so drop recorded webhooks explicitly (matches run.ts teardown, §9a).
-	for (const webhook of entry.webhooks) {
-		const webhookKey = stripeKeyByIndex(
-			keyIndexFromWebhookTag(webhook.accountId),
-		);
-		await timeBoxed(`delete connect webhook ${webhook.webhookId}`, () =>
-			deleteConnectWebhook(webhook.webhookId, webhookKey),
-		);
-	}
 
 	for (const appId of registry.getSvixAppIds(entry)) {
 		await timeBoxed(`delete svix app ${appId}`, () => deleteSvixApp(appId));
@@ -185,8 +158,7 @@ export const killAll = async ({
 
 /**
  * Tag-sweep fallback for SIGKILL'd runs that never reached the registry (plan
- * §9a `kill --orphans`): delete stale Stripe sub-accounts (by
- * `metadata.autumn_tw_owner`) and Vercel sandboxes (by `owner` tag / name
+ * §9a `kill --orphans`): delete stale Vercel sandboxes (by `owner` tag / name
  * prefix) older than the cutoff. Owner-scoped so a teammate's swarm is untouched.
  *
  * Also sweeps orphaned Svix test apps older than the cutoff. Those carry no
@@ -200,15 +172,6 @@ export const killOrphans = async ({
 } = {}): Promise<void> => {
 	const owner = getOwner();
 	log(`sweeping orphans for "${owner}" older than ${olderThanMs}ms`);
-
-	// Stripe sub-accounts (tag + age guarded in the helper).
-	const deletedAccounts = await sweepOrphans({ owner, olderThanMs }).catch(
-		(error) => {
-			warn(`stripe sweep failed: ${(error as Error).message}`);
-			return [] as string[];
-		},
-	);
-	log(`stripe: deleted ${deletedAccounts.length} orphan sub-account(s)`);
 
 	// Sandboxes (owner tag / name prefix). This tag-sweep only recovers backends
 	// that support list-by-owner: Vercel (and Modal V1 tags). Modal V2 can't list

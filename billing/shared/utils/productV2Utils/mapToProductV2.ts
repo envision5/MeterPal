@@ -97,7 +97,6 @@ export const mapToProductV2 = ({
 		env: product.env,
 
 		items: items,
-		stripe_id: product.processor?.id || null,
 		archived: product.archived || false,
 		config: product.config ?? undefined,
 		billing_controls: billingControlsFromColumns(product),

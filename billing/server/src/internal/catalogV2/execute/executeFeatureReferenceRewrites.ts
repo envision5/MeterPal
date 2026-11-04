@@ -125,14 +125,9 @@ const priceConfigSetSql = ({
 		const shouldProrate =
 			rewrites.usageTypeChange.nextUsageType === FeatureUsageType.Continuous;
 		configExpr = sql`jsonb_set(
-			jsonb_set(
-				${configExpr},
-				'{should_prorate}',
-				to_jsonb(${shouldProrate}::boolean),
-				true
-			),
-			'{stripe_price_id}',
-			'null'::jsonb,
+			${configExpr},
+			'{should_prorate}',
+			to_jsonb(${shouldProrate}::boolean),
 			true
 		)`;
 	}

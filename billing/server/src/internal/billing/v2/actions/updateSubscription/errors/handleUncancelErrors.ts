@@ -5,7 +5,6 @@ import { CusProductStatus, RecaseError } from "@autumn/shared";
  * Validates uncancel operation and throws appropriate errors.
  * - Cannot uncancel a scheduled product
  * - Cannot uncancel an expired product
- * - Cannot uncancel onto a subscription Stripe has already canceled
  * - Uncanceling an already active (non-canceling) product is a no-op (not an error)
  */
 export const handleUncancelErrors = ({
@@ -17,7 +16,7 @@ export const handleUncancelErrors = ({
 		return;
 	}
 
-	const { customerProduct, canceledStripeSubscriptionId } = billingContext;
+	const { customerProduct } = billingContext;
 
 	if (customerProduct.status === CusProductStatus.Scheduled) {
 		throw new RecaseError({
@@ -29,15 +28,6 @@ export const handleUncancelErrors = ({
 	if (customerProduct.status === CusProductStatus.Expired) {
 		throw new RecaseError({
 			message: "Cannot uncancel a subscription that has expired",
-			statusCode: 400,
-		});
-	}
-
-	// There is no subscription left to resume, so the plan would come back
-	// active and permanently unbilled.
-	if (canceledStripeSubscriptionId) {
-		throw new RecaseError({
-			message: `Subscription ${canceledStripeSubscriptionId} is already canceled in Stripe and cannot be uncanceled; attach the plan again to start a new subscription.`,
 			statusCode: 400,
 		});
 	}

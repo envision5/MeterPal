@@ -177,7 +177,7 @@ wait_for "PostgreSQL" "pg_isready -h localhost -p $PG_PORT" 60 "$LOG_DIR/pg.log"
 wait_for "Dragonfly" "redis-cli -p $DRAGONFLY_PORT PING" 60 "$LOG_DIR/dragonfly.log"
 wait_for "goaws" "$goaws_ready_probe" 120 "$LOG_DIR/goaws.log"
 # Cached base images may predate queues added to the worker environment.
-for queue_name in autumn-track-async autumn-stripe-webhook.fifo; do
+for queue_name in autumn-track-async; do
   queue_attributes=""
   if [[ "$queue_name" == *.fifo ]]; then
     queue_attributes="&Attribute.1.Name=FifoQueue&Attribute.1.Value=true"

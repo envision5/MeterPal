@@ -3,7 +3,6 @@ import {
 	type FullSubject,
 	fullSubjectToCustomerEntitlements,
 	fullSubjectToFullCustomer,
-	isUsageBasedAllocatedCustomerEntitlement,
 	notNullish,
 } from "@autumn/shared";
 import type { Redis } from "ioredis";
@@ -15,7 +14,6 @@ import {
 	TRACK_V3_IDEMPOTENCY_TTL_MS,
 } from "@/internal/balances/idempotency/trackQueueIdempotency.js";
 import { fireTrackWebhooks } from "@/internal/balances/trackWebhooks/fireTrackWebhooks.js";
-import { createAllocatedInvoice } from "@/internal/balances/utils/allocatedInvoice/createAllocatedInvoice.js";
 import { buildDeductFromSubjectBalancesKeys } from "@/internal/customers/cache/fullSubject/builders/buildDeductFromSubjectBalancesKeys.js";
 import { buildFullSubjectKey } from "@/internal/customers/cache/fullSubject/builders/buildFullSubjectKey.js";
 import { FULL_SUBJECT_CACHE_TTL_SECONDS } from "@/internal/customers/cache/fullSubject/config/fullSubjectCacheConfig.js";
@@ -358,10 +356,6 @@ export const executeRedisDeductionV2 = async ({
 			syncState.modifiedCusEntIdsByFeatureId,
 		);
 
-		const oldFullCustomer = fullSubjectToFullCustomer({
-			fullSubject: currentSegmentOldFullSubject,
-		});
-
 		try {
 			applyRolloverUpdatesToFullSubject({
 				fullSubject,
@@ -380,15 +374,6 @@ export const executeRedisDeductionV2 = async ({
 				);
 
 				if (!customerEntitlement) continue;
-
-				if (isUsageBasedAllocatedCustomerEntitlement(customerEntitlement)) {
-					await createAllocatedInvoice({
-						ctx,
-						customerEntitlement,
-						oldFullCustomer,
-						update,
-					});
-				}
 
 				applyDeductionUpdateToFullSubject({
 					fullSubject,

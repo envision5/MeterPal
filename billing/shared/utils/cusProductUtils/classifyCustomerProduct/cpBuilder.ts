@@ -12,8 +12,7 @@ import {
 	isCustomerProductFree,
 	isCustomerProductMain,
 	isCustomerProductOneOff,
-	isCustomerProductOnStripeSubscription,
-	isCustomerProductOnStripeSubscriptionSchedule,
+	isCustomerProductOnProcessorSubscription,
 	isCustomerProductPaid,
 	isCustomerProductPaidRecurring,
 	isCustomerProductRecurring,
@@ -33,8 +32,8 @@ type Predicate = (cp: FullCusProduct) => boolean;
  * if (cp(customerProduct).paid().recurring().valid) { ... }
  *
  * @example
- * // OR conditions (left-to-right: free OR onStripeSub OR onStripeSchedule)
- * if (cp(customerProduct).free().or.onStripeSubscription({...}).or.onStripeSchedule({...}).valid) { ... }
+ * // OR conditions (left-to-right: free OR onProcessorSub)
+ * if (cp(customerProduct).free().or.onProcessorSubscription({...}).valid) { ... }
  *
  * @example
  * // Mixed: ((a AND b) OR c) AND d
@@ -171,7 +170,7 @@ class CustomerProductChecker {
 		return this;
 	}
 
-	/** Product is a trial that reverts on end — Autumn-only, never on Stripe */
+	/** Product is a trial that reverts on end — Autumn-only, never on the processor */
 	revertingTrial() {
 		this.pendingPredicates.push(isCustomerProductRevertingTrial);
 		return this;
@@ -185,7 +184,7 @@ class CustomerProductChecker {
 		return this;
 	}
 
-	/** Product has a Stripe subscription attached */
+	/** Product has a processor subscription attached */
 	hasSubscription() {
 		this.pendingPredicates.push((cp) =>
 			cusProductHasSubscription({ cusProduct: cp }),
@@ -193,7 +192,7 @@ class CustomerProductChecker {
 		return this;
 	}
 
-	/** Product has a Stripe subscription schedule attached */
+	/** Product has a processor subscription schedule attached */
 	hasSchedule() {
 		this.pendingPredicates.push((cp) =>
 			customerProductHasSubscriptionSchedule({ cusProduct: cp }),
@@ -201,33 +200,17 @@ class CustomerProductChecker {
 		return this;
 	}
 
-	/** Product is on a specific Stripe subscription */
-	onStripeSubscription({
-		stripeSubscriptionId,
+	/** Product is on a specific processor subscription */
+	onProcessorSubscription({
+		processorSubscriptionId,
 	}: {
-		stripeSubscriptionId: string;
+		processorSubscriptionId: string;
 	}) {
 		this.pendingPredicates.push(
 			(cp) =>
-				!!isCustomerProductOnStripeSubscription({
+				!!isCustomerProductOnProcessorSubscription({
 					customerProduct: cp,
-					stripeSubscriptionId,
-				}),
-		);
-		return this;
-	}
-
-	/** Product is on a specific Stripe subscription schedule */
-	onStripeSchedule({
-		stripeSubscriptionScheduleId,
-	}: {
-		stripeSubscriptionScheduleId: string | undefined;
-	}) {
-		this.pendingPredicates.push(
-			(cp) =>
-				!!isCustomerProductOnStripeSubscriptionSchedule({
-					customerProduct: cp,
-					stripeSubscriptionScheduleId,
+					processorSubscriptionId,
 				}),
 		);
 		return this;
@@ -269,7 +252,7 @@ class CustomerProductChecker {
  *
  * @example
  * // OR conditions
- * if (cp(customerProduct).free().or.onStripeSubscription({ stripeSubscriptionId }).valid) { ... }
+ * if (cp(customerProduct).free().or.onProcessorSubscription({ processorSubscriptionId }).valid) { ... }
  */
 export const cp = (customerProduct: FullCusProduct | undefined) =>
 	new CustomerProductChecker(customerProduct);

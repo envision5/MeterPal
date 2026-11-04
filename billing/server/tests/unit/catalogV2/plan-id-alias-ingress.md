@@ -8,8 +8,8 @@ Mechanisms:
 | Mechanism | Where | Notes |
 |---|---|---|
 | `planAliasMiddleware` | `/v1/*` (`apiRouter`), `/webhooks/vercel/:orgId/:env/*` | Body via `rewritePlanIdAliasValues`; path via `rewritePlanIdAliasParams` |
-| Manual rewrite | Stripe `checkout.session.completed` metadata | `setupCheckoutSessionCompletedContext.ts` |
-| None | `internalRouter`, Stripe/RevenueCat webhooks (except above), `publicRouter`, `cliRouter` | See intentional skips |
+| Manual rewrite | Processor checkout-completed metadata | `setupCheckoutSessionCompletedContext.ts` |
+| None | `internalRouter`, processor webhooks (except above), `publicRouter`, `cliRouter` | See intentional skips |
 
 Rewrite keys: `planIdAliasRewriteKeys.ts` (`PLAN_ID_ALIAS_REWRITE_KEYS`).
 
@@ -119,9 +119,6 @@ Create-plan skip keys (body only): `plan_id`, `id`, `product_id` on
 
 | # | Route | Field | Key |
 |---|---|---|---|
-| 70 | `POST /organization/revenuecat/sync` | `product_ids` | `product_ids` |
-| 71 | `POST /organization/revenuecat/mappings` | `mappings[].autumn_product_id` | `autumn_product_id` |
-| 72 | `POST /platform.sync_revenuecat` | `product_ids` | `product_ids` |
 
 ### Customers (nested on billing attach / create)
 
@@ -145,7 +142,7 @@ Create-plan skip keys (body only): `plan_id`, `id`, `product_id` on
 | 76 | PATCH installation `handleUpdateBillingPlan` | `billingPlanId` | `billingPlanId` |
 | 77 | POST resource `handleCreateResource` | `billingPlanId` | `billingPlanId` |
 | 78 | PATCH resource `handleUpdateResource` | `billingPlanId` | `billingPlanId` |
-| 79 | Marketplace invoice handlers | `billingPlanId` in provisioning | set server-side from Stripe metadata |
+| 79 | Marketplace invoice handlers | `billingPlanId` in provisioning | set server-side from processor metadata |
 
 Vercel `productId` path/body = marketplace resource id → **not** rewritten.
 
@@ -155,9 +152,8 @@ Vercel `productId` path/body = marketplace resource id → **not** rewritten.
 
 | # | Source | Field | Rewrite |
 |---|---|---|---|
-| 80 | Stripe checkout completed | metadata `data.plan_id` / attach payload | **manual** `rewritePlanIdAliasValues` in `setupCheckoutSessionCompletedContext` |
-| 81 | RevenueCat webhooks | `event.product_id` | **intentionally skipped** — RevenueCat store id, mapped via `revenuecat_mappings` |
-| 82 | Stripe setup-payment deferred attach | metadata `plan_id` | flows through checkout metadata rewrite |
+| 80 | Processor checkout completed | metadata `data.plan_id` / attach payload | **manual** `rewritePlanIdAliasValues` in `setupCheckoutSessionCompletedContext` |
+| 82 | Processor deferred attach | metadata `plan_id` | flows through checkout metadata rewrite |
 | 83 | Vercel marketplace POST `/:orgId/:env/*` | invoice payloads | no public plan id in request body |
 
 ---
@@ -173,9 +169,8 @@ Vercel `productId` path/body = marketplace resource id → **not** rewritten.
 | `new_plan_id` | Rename **target**, not alias lookup |
 | Create-plan identity: `plan_id`, `id`, `product_id` | Minting a plan may intentionally use an old alias string as the new id |
 | `customer_id` path/body | Never a plan id |
-| Stripe price ids, `internal_id`, `base_internal_product_id` | Not public plan ids |
+| Processor price ids, `internal_id`, `base_internal_product_id` | Not public plan ids |
 | Vercel `productId` (marketplace) | Foreign namespace |
-| RevenueCat `product_id` | Store sku, not Autumn plan id |
 | Copy-product body `id` | New id in target environment |
 | Query strings | No plan-id query params found in public API |
 

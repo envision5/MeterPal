@@ -1,23 +1,9 @@
 import { user as userTable } from "@autumn/shared";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
-import { handleGetRCMappings } from "@/external/revenueCat/handlers/handleGetRevenuecatMappings.js";
-import { handleGetRevenueCatProducts } from "@/external/revenueCat/handlers/handleGetRevenuecatProducts.js";
-import {
-	handleCreateRevenueCatProject,
-	handleGetRevenueCatProjects,
-} from "@/external/revenueCat/handlers/handleGetRevenuecatProjects.js";
-import { handlePreflightRevenueCatSync } from "@/external/revenueCat/handlers/handlePreflightRevenueCatSync.js";
-import { handleSaveRCMappings } from "@/external/revenueCat/handlers/handleSaveRevenuecatMappings.js";
-import { handleSyncRevenueCatProducts } from "@/external/revenueCat/handlers/handleSyncRevenueCatProducts.js";
 import type { HonoEnv } from "@/honoUtils/HonoEnv.js";
 import { organizationSsoRouter } from "@/internal/auth/sso/ssoRouter.js";
 import { setupRouter } from "@/internal/setup/setupRouter.js";
-import { handleDisconnectRevenueCat } from "@/internal/orgs/handlers/revenueCatHandlers/handleDisconnectRevenueCat.js";
-import {
-	handleGetRevenueCatWebhook,
-	handleRegisterRevenueCatWebhook,
-} from "@/internal/orgs/handlers/revenueCatHandlers/handleRevenueCatWebhook.js";
 import { handleDeleteOrg } from "./handlers/crudHandlers/handleDeleteOrg.js";
 import { handleGetOrg } from "./handlers/crudHandlers/handleGetOrg.js";
 import {
@@ -34,36 +20,18 @@ import {
 	handleUpdateRedisMigration,
 	handleUpsertRedisConfig,
 } from "./handlers/handleRedisConfig.js";
-import { handleResetDefaultAccount } from "./handlers/handleResetDefaultAccount.js";
-import {
-	handleGetRevenueCatConfig,
-	handleUpsertRevenueCatConfig,
-} from "./handlers/handleRevenueCatConfig.js";
 import {
 	handleGetTransitionRules,
 	handleUpdateTransitionRules,
 } from "./handlers/handleTransitionRules.js";
 import { handleUpdateOrg } from "./handlers/handleUpdateOrg.js";
 import { handleUpdateOrgConfig } from "./handlers/handleUpdateOrgConfig.js";
-import {
-	handleGetVercelSink,
-	handleUpsertVercelConfig,
-} from "./handlers/handleVercelConfig.js";
 import { handleGetInvites } from "./handlers/memberHandlers/handleGetInvites.js";
 import { handleGetOrgMembers } from "./handlers/memberHandlers/handleGetOrgMembers.js";
 import { handleRemoveMember } from "./handlers/memberHandlers/handleRemoveMember.js";
 import { handleConnectPaypal } from "./handlers/paypalHandlers/handleConnectPaypal.js";
 import { handleDeletePaypal } from "./handlers/paypalHandlers/handleDeletePaypal.js";
 import { handleGetPaypalConfig } from "./handlers/paypalHandlers/handleGetPaypalConfig.js";
-import { handleGetRevenueCatOAuthUrl } from "./handlers/revenueCatHandlers/handleGetRevenueCatOAuthUrl.js";
-import { handleConnectStripe } from "./handlers/stripeHandlers/handleConnectStripe.js";
-import { handleDeleteStripe } from "./handlers/stripeHandlers/handleDeleteStripe.js";
-import { handleGetOAuthUrl } from "./handlers/stripeHandlers/handleGetOAuthUrl.js";
-import { handleGetStripeAccount } from "./handlers/stripeHandlers/handleGetStripeAccount.js";
-import { handleGetStripePaymentMethodTypes } from "./handlers/stripeHandlers/handleGetStripePaymentMethodTypes.js";
-import { handleResolveStripeProducts } from "./handlers/stripeHandlers/handleResolveStripeProducts.js";
-import { handleSearchStripePrices } from "./handlers/stripeHandlers/handleSearchStripePrices.js";
-import { handleSearchStripeProducts } from "./handlers/stripeHandlers/handleSearchStripeProducts.js";
 
 export const internalOrgRouter = new Hono<HonoEnv>();
 
@@ -80,10 +48,6 @@ internalOrgRouter.get("/upload_url", ...handleGetUploadUrl);
 internalOrgRouter.delete("/logo", ...handleDeleteOrgLogo);
 internalOrgRouter.post("/logo/fetch", ...handleFetchOrgLogo);
 internalOrgRouter.get("/invites", ...handleGetInvites);
-internalOrgRouter.get(
-	"/stripe/payment_method_types",
-	...handleGetStripePaymentMethodTypes,
-);
 // Mounted under /organization, so this resolves to
 // POST /organization/onboardingStatus.
 internalOrgRouter.post("/onboardingStatus", ...handleGetOnboardingStatus);
@@ -134,37 +98,12 @@ honoOrgRouter.get("/custom-buttons", ...handleGetCustomButtons);
 honoOrgRouter.patch("/custom-buttons", ...handleUpdateCustomButtons);
 honoOrgRouter.get("/transition_rules", ...handleGetTransitionRules);
 honoOrgRouter.patch("/transition_rules", ...handleUpdateTransitionRules);
-honoOrgRouter.get("/stripe", ...handleGetStripeAccount);
-honoOrgRouter.get("/stripe/products/search", ...handleSearchStripeProducts);
-honoOrgRouter.post("/stripe/products/resolve", ...handleResolveStripeProducts);
-honoOrgRouter.get("/stripe/prices/search", ...handleSearchStripePrices);
-honoOrgRouter.delete("/stripe", ...handleDeleteStripe);
-honoOrgRouter.post("/stripe", ...handleConnectStripe);
-honoOrgRouter.get("/stripe/oauth_url", ...handleGetOAuthUrl);
 
 // PayPal: the org's own PayPal account, per environment.
 honoOrgRouter.get("/paypal", ...handleGetPaypalConfig);
 honoOrgRouter.post("/paypal", ...handleConnectPaypal);
 honoOrgRouter.delete("/paypal", ...handleDeletePaypal);
-honoOrgRouter.post("/reset_default_account", ...handleResetDefaultAccount);
 
 honoOrgRouter.patch("/redis", ...handleUpsertRedisConfig);
 honoOrgRouter.delete("/redis", ...handleDeleteRedisConfig);
 honoOrgRouter.patch("/redis/migration", ...handleUpdateRedisMigration);
-
-honoOrgRouter.patch("/vercel", ...handleUpsertVercelConfig);
-honoOrgRouter.get("/vercel_sink", ...handleGetVercelSink);
-
-honoOrgRouter.get("/revenuecat", ...handleGetRevenueCatConfig);
-honoOrgRouter.patch("/revenuecat", ...handleUpsertRevenueCatConfig);
-honoOrgRouter.get("/revenuecat/oauth_url", ...handleGetRevenueCatOAuthUrl);
-honoOrgRouter.post("/revenuecat/products", ...handleGetRevenueCatProducts);
-honoOrgRouter.get("/revenuecat/projects", ...handleGetRevenueCatProjects);
-honoOrgRouter.post("/revenuecat/projects", ...handleCreateRevenueCatProject);
-honoOrgRouter.post("/revenuecat/sync", ...handleSyncRevenueCatProducts);
-honoOrgRouter.post("/revenuecat/preflight", ...handlePreflightRevenueCatSync);
-honoOrgRouter.get("/revenuecat/mappings", ...handleGetRCMappings);
-honoOrgRouter.post("/revenuecat/mappings", ...handleSaveRCMappings);
-honoOrgRouter.get("/revenuecat/webhook", ...handleGetRevenueCatWebhook);
-honoOrgRouter.post("/revenuecat/webhook", ...handleRegisterRevenueCatWebhook);
-honoOrgRouter.post("/revenuecat/disconnect", ...handleDisconnectRevenueCat);

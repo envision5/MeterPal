@@ -50,13 +50,6 @@ if [ -f "$WARM_DIR/scripts/setup/agent-bootstrap.sh" ]; then
 	bash "$WARM_DIR/scripts/setup/agent-bootstrap.sh" || log "agent-bootstrap failed"
 fi
 
-# --- Stripe CLI (stripe listen → localhost webhooks) ------------------------
-if [ -f "$WARM_DIR/scripts/setup/install-stripe-cli.sh" ]; then
-	# shellcheck disable=SC1091
-	. "$WARM_DIR/scripts/setup/install-stripe-cli.sh"
-	install_stripe_cli "[claude-cloud-setup]" || log "stripe cli install failed"
-fi
-
 # --- cloudflared (bun dw public URLs — the only way to view the app) --------
 if [ ! -x /usr/local/bin/cloudflared ]; then
 	arch="$(uname -m)"
@@ -100,7 +93,7 @@ HELPER
 chmod +x /usr/local/bin/autumn-infisical-login
 
 # --- shell env for every non-interactive bash (BASH_ENV, set in env vars) ---
-# Auto-exports INFISICAL_TOKEN (30-min cache) and the cached Stripe sandbox
+# Auto-exports INFISICAL_TOKEN (30-min cache) and the cached
 # key so the agent's tool-call shells see them without re-login.
 tee /usr/local/share/autumn-env.sh >/dev/null <<'ENVSH'
 export CLOUD_AGENT=1
@@ -123,10 +116,6 @@ if [ -z "${INFISICAL_TOKEN:-}" ] && [ -n "${INFISICAL_CLIENT_ID:-}" ]; then
 	fi
 	export INFISICAL_TOKEN
 	unset _tok_cache
-fi
-if [ -z "${STRIPE_SANDBOX_SECRET_KEY:-}" ] && [ -s "$HOME/.cache/autumn-stripe-sandbox-secret-key" ]; then
-	STRIPE_SANDBOX_SECRET_KEY="$(cat "$HOME/.cache/autumn-stripe-sandbox-secret-key")"
-	export STRIPE_SANDBOX_SECRET_KEY
 fi
 ENVSH
 chmod 644 /usr/local/share/autumn-env.sh

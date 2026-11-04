@@ -144,7 +144,7 @@ export const getItemId = ({
 };
 
 /** Editor-only fields must not reach the API; strip before building a request. */
-export const stripEditorFields = ({
+export const removeEditorFields = ({
 	items,
 }: {
 	items: ProductItem[] | undefined;

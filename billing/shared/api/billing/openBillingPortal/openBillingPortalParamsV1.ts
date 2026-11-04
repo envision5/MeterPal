@@ -5,7 +5,7 @@ export const OpenCustomerPortalParamsV1Schema = z.object({
 	}),
 	configuration_id: z.string().optional().meta({
 		description:
-			"Stripe billing portal configuration ID. Create configurations in your Stripe dashboard.",
+			"Billing portal configuration ID. Create configurations in your billing processor's dashboard.",
 	}),
 	return_url: z.string().optional().meta({
 		description:

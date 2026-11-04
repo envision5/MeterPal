@@ -61,9 +61,6 @@ export function planItemV1ToV0({
 			: null,
 		price: price
 			? {
-					stripe_price_id:
-						"stripe_price_id" in price ? price.stripe_price_id : undefined,
-					processors: "processors" in price ? price.processors : undefined,
 					amount: price.amount,
 					tiers: internalTiers,
 					tier_behavior: internalTiers?.length

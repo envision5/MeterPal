@@ -275,7 +275,7 @@ const { data } = await autumn.checkout({
 });
 
 if (data.url) {
-  // Redirect user to Stripe checkout URL
+  // Redirect user to the processor checkout URL
 } else {
   // Show purchase preview to user
 }
@@ -298,7 +298,7 @@ async def main():
     )
     
     if response.url:
-        # Redirect user to Stripe checkout URL
+        # Redirect user to the processor checkout URL
         pass
     else:
         # Show purchase preview to user
@@ -397,7 +397,7 @@ curl -X POST "https://api.useautumn.com/v1/checkout" \
   },
   "total": 20,
   "currency": "usd",
-  "url": "https://checkout.stripe.com/c/pay/.......",
+  "url": "https://example.com/checkout/.......",
   "has_prorations": false
 }
 ```

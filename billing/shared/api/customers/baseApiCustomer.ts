@@ -22,9 +22,6 @@ export const BaseApiCustomerSchema = z.object({
 		description:
 			"A unique identifier (eg. serial number) to de-duplicate customers across devices or browsers. For example: apple device ID.",
 	}),
-	stripe_id: z.string().nullable().meta({
-		description: "Stripe customer ID.",
-	}),
 	env: z.enum(AppEnv).meta({
 		description: "The environment this customer was created in.",
 	}),

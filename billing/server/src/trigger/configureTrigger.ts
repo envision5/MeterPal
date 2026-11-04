@@ -8,9 +8,7 @@ import { configure } from "@trigger.dev/sdk/v3";
  * never collide in a shared shell — the SDK's default `TRIGGER_SECRET_KEY`
  * is left to autumn-cloud.
  *
- * Module side-effect: this `configure` call runs once on first import.
- * Anything that triggers tasks server-side imports from
- * `@/trigger/migrations/...`, which re-exports from this file's siblings,
+ * Module side-effect: this `configure` call runs once on first import,
  * so the configure happens before any `.trigger()` call.
  */
 if (process.env.TRIGGER_SERVER_SECRET_KEY) {

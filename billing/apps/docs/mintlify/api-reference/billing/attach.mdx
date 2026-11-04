@@ -51,7 +51,7 @@ const response = await autumn.billing.attach({
 });
 ```
 
-```typescript Pass metadata to Stripe subscription
+```typescript Pass metadata to the processor subscription
 const response = await autumn.billing.attach({
     customerId: "cus_123",
     planId: "pro_plan",
@@ -68,11 +68,11 @@ const response = await autumn.billing.attach({
 
 </CodeGroup>
 
-### Stripe checkout session params
+### Checkout session params
 
-Use `checkoutSessionParams` to pass additional data to the Stripe checkout session. Values you provide are deep-merged with MeterPal's internal parameters, so your fields are preserved alongside ones MeterPal sets automatically (like `trial_end` or internal metadata).
+Use `checkoutSessionParams` to pass additional data to the processor checkout session. Values you provide are deep-merged with MeterPal's internal parameters, so your fields are preserved alongside ones MeterPal sets automatically (like `trial_end` or internal metadata).
 
-This is useful for attaching custom metadata to the Stripe subscription created during checkout — for example, linking subscriptions to internal user IDs or tracking the source of the purchase.
+This is useful for attaching custom metadata to the processor subscription created during checkout — for example, linking subscriptions to internal user IDs or tracking the source of the purchase.
 
 ### Currency
 
@@ -160,7 +160,7 @@ A customer who has paid is locked to their currency: passing a different one, or
           Base price amounts in additional currencies. The base 'amount' is in the org's default currency.
           <Expandable title="properties">
             <DynamicParamField body="currency" type="string" required>
-              Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+              Three-letter currency code (e.g. 'eur', 'gbp').
             </DynamicParamField>
 
             <DynamicParamField body="amount" type="number" required>
@@ -225,7 +225,7 @@ A customer who has paid is locked to their currency: passing a different one, or
               Amounts in additional currencies for this flat price. The base 'amount' is in the org's default currency. Only valid with 'amount', not 'tiers'.
               <Expandable title="properties">
                 <DynamicParamField body="currency" type="string" required>
-                  Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                  Three-letter currency code (e.g. 'eur', 'gbp').
                 </DynamicParamField>
 
                 <DynamicParamField body="amount" type="number" required>
@@ -248,7 +248,7 @@ A customer who has paid is locked to their currency: passing a different one, or
                   Per-currency amounts for this tier. Tier boundaries ('to') are shared across all currencies.
                   <Expandable title="properties">
                     <DynamicParamField body="currency" type="string" required>
-                      Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                      Three-letter currency code (e.g. 'eur', 'gbp').
                     </DynamicParamField>
 
                     <DynamicParamField body="amount" type="number">
@@ -507,7 +507,7 @@ A customer who has paid is locked to their currency: passing a different one, or
               Amounts in additional currencies for this flat price. The base 'amount' is in the org's default currency. Only valid with 'amount', not 'tiers'.
               <Expandable title="properties">
                 <DynamicParamField body="currency" type="string" required>
-                  Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                  Three-letter currency code (e.g. 'eur', 'gbp').
                 </DynamicParamField>
 
                 <DynamicParamField body="amount" type="number" required>
@@ -530,7 +530,7 @@ A customer who has paid is locked to their currency: passing a different one, or
                   Per-currency amounts for this tier. Tier boundaries ('to') are shared across all currencies.
                   <Expandable title="properties">
                     <DynamicParamField body="currency" type="string" required>
-                      Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                      Three-letter currency code (e.g. 'eur', 'gbp').
                     </DynamicParamField>
 
                     <DynamicParamField body="amount" type="number">
@@ -856,7 +856,7 @@ A customer who has paid is locked to their currency: passing a different one, or
             </DynamicParamField>
 
             <DynamicParamField body="skip_overage_billing" type="boolean">
-              When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally.
+              When true, overage for this feature is not posted to the payment processor. Usage tracking and balance resets still behave normally.
             </DynamicParamField>
 
           </Expandable>
@@ -983,7 +983,7 @@ A customer who has paid is locked to their currency: passing a different one, or
                   Base price amounts in additional currencies. The base 'amount' is in the org's default currency.
                   <Expandable title="properties">
                     <DynamicParamField body="currency" type="string" required>
-                      Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                      Three-letter currency code (e.g. 'eur', 'gbp').
                     </DynamicParamField>
 
                     <DynamicParamField body="amount" type="number" required>
@@ -1047,7 +1047,7 @@ A customer who has paid is locked to their currency: passing a different one, or
                       Amounts in additional currencies for this flat price. The base 'amount' is in the org's default currency. Only valid with 'amount', not 'tiers'.
                       <Expandable title="properties">
                         <DynamicParamField body="currency" type="string" required>
-                          Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                          Three-letter currency code (e.g. 'eur', 'gbp').
                         </DynamicParamField>
 
                         <DynamicParamField body="amount" type="number" required>
@@ -1070,7 +1070,7 @@ A customer who has paid is locked to their currency: passing a different one, or
                           Per-currency amounts for this tier. Tier boundaries ('to') are shared across all currencies.
                           <Expandable title="properties">
                             <DynamicParamField body="currency" type="string" required>
-                              Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                              Three-letter currency code (e.g. 'eur', 'gbp').
                             </DynamicParamField>
 
                             <DynamicParamField body="amount" type="number">
@@ -1322,10 +1322,10 @@ A customer who has paid is locked to their currency: passing a different one, or
 </DynamicParamField>
 
 <DynamicParamField body="invoice_mode" type="object">
-  Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses Stripe's send_invoice collection method.
+  Invoice mode creates a draft or open invoice and sends it to the customer, instead of charging their card immediately. This uses the processor's send_invoice collection method.
   <Expandable title="properties">
     <DynamicParamField body="enabled" type="boolean" required>
-      When true, creates an invoice and sends it to the customer instead of charging their card immediately. Uses Stripe's send_invoice collection method.
+      When true, creates an invoice and sends it to the customer instead of charging their card immediately. Uses the processor's send_invoice collection method.
     </DynamicParamField>
 
     <DynamicParamField body="enable_plan_immediately" type="boolean">
@@ -1341,7 +1341,7 @@ A customer who has paid is locked to their currency: passing a different one, or
     </DynamicParamField>
 
     <DynamicParamField body="net_terms_days" type="integer">
-      Number of days the customer has to pay the invoice before it is due (Stripe days_until_due).
+      Number of days the customer has to pay the invoice before it is due (processor days_until_due).
     </DynamicParamField>
 
   </Expandable>
@@ -1360,7 +1360,7 @@ A customer who has paid is locked to their currency: passing a different one, or
 </DynamicParamField>
 
 <DynamicParamField body="discounts" type="object[]">
-  List of discounts to apply. Each discount can be an MeterPal reward ID, Stripe coupon ID, or Stripe promotion code.
+  List of discounts to apply. Each discount can be a MeterPal reward ID or a promotion code.
   <Expandable title="properties">
     <DynamicParamField body="reward_id" type="string">
       The ID of the reward to apply as a discount.
@@ -1378,7 +1378,7 @@ A customer who has paid is locked to their currency: passing a different one, or
 </DynamicParamField>
 
 <DynamicParamField body="new_billing_subscription" type="boolean">
-  Only applicable when the customer has an existing Stripe subscription. If true, creates a new separate subscription instead of merging into the existing one.
+  Only applicable when the customer has an existing processor subscription. If true, creates a new separate subscription instead of merging into the existing one.
 </DynamicParamField>
 
 <DynamicParamField body="billing_cycle_anchor" type="any">
@@ -1398,11 +1398,11 @@ A customer who has paid is locked to their currency: passing a different one, or
 </DynamicParamField>
 
 <DynamicParamField body="checkout_session_params" type="object">
-  Additional parameters to pass into the creation of the Stripe checkout session.
+  Additional parameters to pass into the creation of the processor checkout session.
 </DynamicParamField>
 
 <DynamicParamField body="long_lived_checkout" type="boolean">
-  If true, returns an MeterPal-hosted checkout link that can create a fresh Stripe checkout session when opened.
+  If true, returns an MeterPal-hosted checkout link that can create a fresh processor checkout session when opened.
 </DynamicParamField>
 
 <DynamicParamField body="custom_line_items" type="object[]">
@@ -1420,7 +1420,7 @@ A customer who has paid is locked to their currency: passing a different one, or
 </DynamicParamField>
 
 <DynamicParamField body="processor_subscription_id" type="string">
-  The processor subscription ID to link. Use this to attach an existing Stripe subscription instead of creating a new one.
+  The processor subscription ID to link. Use this to attach an existing processor subscription instead of creating a new one.
 </DynamicParamField>
 
 <DynamicParamField body="carry_over_balances" type="object">
@@ -1466,7 +1466,7 @@ A customer who has paid is locked to their currency: passing a different one, or
 </DynamicParamField>
 
 <DynamicParamField body="metadata.{key}" type="string">
-  Key-value metadata to attach to the Stripe subscription, invoice, and checkout session created during this attach flow. Keys prefixed with 'autumn_' are reserved and will be stripped.
+  Key-value metadata to attach to the processor subscription, invoice, and checkout session created during this attach flow. Keys prefixed with 'autumn_' are reserved and will be stripped.
 </DynamicParamField>
 
 <DynamicParamField body="no_billing_changes" type="boolean">
@@ -1474,11 +1474,11 @@ A customer who has paid is locked to their currency: passing a different one, or
 </DynamicParamField>
 
 <DynamicParamField body="enable_plan_immediately" type="boolean">
-  If true, the customer's plan is activated immediately even when payment is deferred (invoice mode) or pending (Stripe checkout). For Stripe checkout, the customer_product is inserted before the customer completes the hosted form. Set it here rather than on `invoice_mode`, which only covers the invoice-unpaid case.
+  If true, the customer's plan is activated immediately even when payment is deferred (invoice mode) or pending (processor checkout). For processor checkout, the customer_product is inserted before the customer completes the hosted form. Set it here rather than on `invoice_mode`, which only covers the invoice-unpaid case.
 </DynamicParamField>
 
 <DynamicParamField body="tax_rate_id" type="string">
-  Stripe tax rate ID (txr_...) to apply as the default tax rate on the created subscription, invoice, or checkout session line items.
+  Processor tax rate ID to apply as the default tax rate on the created subscription, invoice, or checkout session line items.
 </DynamicParamField>
 
 <DynamicParamField body="currency" type="string">
@@ -1493,7 +1493,7 @@ A customer who has paid is locked to their currency: passing a different one, or
   Discounts to remove from the subscription, by reward ID. Discounts not listed are left unchanged.
   <Expandable title="properties">
     <DynamicParamField body="reward_id" type="string" required>
-      The ID of the reward (or Stripe coupon) to remove.
+      The ID of the reward to remove.
     </DynamicParamField>
 
   </Expandable>
@@ -1517,8 +1517,8 @@ A customer who has paid is locked to their currency: passing a different one, or
       The status of the invoice (e.g., 'paid', 'open', 'draft').
     </DynamicResponseField>
 
-    <DynamicResponseField name="stripe_id" type="string">
-      The Stripe invoice ID.
+    <DynamicResponseField name="processor_invoice_id" type="string">
+      The processor invoice ID.
     </DynamicResponseField>
 
     <DynamicResponseField name="total" type="number">
@@ -1559,7 +1559,7 @@ A customer who has paid is locked to their currency: passing a different one, or
 ```json 200
 {
   "customer_id": "cus_123",
-  "payment_url": "https://checkout.stripe.com/..."
+  "payment_url": "https://example.com/checkout/..."
 }
 ```
 </ResponseExample>

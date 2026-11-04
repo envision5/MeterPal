@@ -56,7 +56,6 @@ export const toCopyReadyProductsV2 = ({
 					price_id: _price_id,
 					entitlement_id: _ent_id,
 					price_config: _price_config,
-					stripe_price_id: _stripe_price_id,
 					...rest
 				} = item;
 				return rest;
@@ -96,7 +95,6 @@ export const upsertCopiedPlan = ({
 			? {
 					...conformedProduct,
 					base_internal_product_id: targetBase.internalId,
-					create_in_stripe: false,
 				}
 			: conformedProduct,
 	});

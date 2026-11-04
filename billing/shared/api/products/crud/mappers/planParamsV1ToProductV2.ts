@@ -59,9 +59,9 @@ export function planParamsV1ToProductV2({
 			? params.metadata
 			: undefined;
 
-	const createInStripe =
-		"create_in_stripe" in params && params.create_in_stripe !== undefined
-			? params.create_in_stripe
+	const createInProcessor =
+		"create_in_processor" in params && params.create_in_processor !== undefined
+			? params.create_in_processor
 			: undefined;
 
 	const isDefault: boolean | undefined =
@@ -102,8 +102,8 @@ export function planParamsV1ToProductV2({
 	if ("base_plan_id" in params && params.base_plan_id !== undefined) {
 		result.base_plan_id = params.base_plan_id;
 	}
-	if (createInStripe !== undefined)
-		Object.assign(result, { create_in_stripe: createInStripe });
+	if (createInProcessor !== undefined)
+		Object.assign(result, { create_in_processor: createInProcessor });
 
 	return result;
 }

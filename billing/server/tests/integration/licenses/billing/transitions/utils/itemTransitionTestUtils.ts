@@ -5,7 +5,6 @@ import type {
 	ProductItem,
 } from "@autumn/shared";
 import { expectCustomerProducts } from "@tests/integration/billing/utils/expectCustomerProductCorrect";
-import { expectStripeSubscriptionCorrect } from "@tests/integration/billing/utils/expectStripeSubCorrect";
 import { listLicenseAssignments } from "@tests/integration/licenses/licenseTestUtils";
 import { expectAssignmentsAnchoredToParent } from "@tests/integration/licenses/utils/expectAssignmentsAnchoredToParent";
 import { expectCustomerLicenses } from "@tests/integration/licenses/utils/expectCustomerLicenses";
@@ -122,7 +121,6 @@ export const setupItemTransitionScenario = async ({
 			),
 		],
 	});
-	await expectStripeSubscriptionCorrect({ ctx: scenario.ctx, customerId });
 
 	return {
 		...scenario,
@@ -210,6 +208,5 @@ export const completeImmediateItemTransition = async ({
 		parentPlanId: toParent.id,
 		count: ITEM_TRANSITION_ENTITY_COUNT,
 	});
-	await expectStripeSubscriptionCorrect({ ctx, customerId });
 	return assignmentsAfter;
 };

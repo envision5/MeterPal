@@ -141,9 +141,11 @@ export const mergeEntityAndCustomerSubjectRows = ({
 		),
 		subscriptions: dedupeBy(
 			[...entityRow.subscriptions, ...customerRow.subscriptions],
-			(s) => s.stripe_id ?? "",
+			(s) => s.processor_id ?? "",
 		).filter(
-			(s) => s.stripe_id !== null && keptRefs.subscriptionIds.has(s.stripe_id),
+			(s) =>
+				s.processor_id !== null &&
+				keptRefs.subscriptionIds.has(s.processor_id),
 		),
 	};
 };

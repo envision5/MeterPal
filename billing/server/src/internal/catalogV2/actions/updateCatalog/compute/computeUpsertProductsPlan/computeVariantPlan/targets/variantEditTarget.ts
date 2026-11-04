@@ -10,8 +10,6 @@ export type VariantEditTarget = {
 	/** Nested `base_variant_id: null` — clear the pointer. */
 	unlink?: boolean;
 	customize?: CatalogVariantParams["customize"];
-	/** Stated `processors` on the variant entry — an override of the base's. */
-	processors?: CatalogVariantParams["processors"];
 	archived?: boolean;
 	newVersionSlug?: string;
 };

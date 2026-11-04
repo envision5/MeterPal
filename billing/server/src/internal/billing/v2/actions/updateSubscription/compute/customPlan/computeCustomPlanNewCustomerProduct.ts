@@ -26,8 +26,6 @@ export const computeCustomPlanNewCustomerProduct = ({
 	const {
 		customerProduct,
 		fullCustomer,
-		stripeSubscription,
-		stripeSubscriptionSchedule,
 		resetCycleAnchorMs,
 		currentEpochMs,
 		featureQuantities,
@@ -88,10 +86,8 @@ export const computeCustomPlanNewCustomerProduct = ({
 				requestedBillingCycleAnchor:
 					updateSubscriptionContext.requestedBillingCycleAnchor,
 			}),
-			subscriptionId: stripeSubscription?.id, // don't populate if it's starting in the future.
-			subscriptionScheduleId:
-				stripeSubscriptionSchedule?.id ??
-				currentCustomerProduct.scheduled_ids?.[0],
+			subscriptionId: currentCustomerProduct.subscription_ids?.[0], // don't populate if it's starting in the future.
+			subscriptionScheduleId: currentCustomerProduct.scheduled_ids?.[0],
 			externalId: currentCustomerProduct.external_id ?? undefined,
 			startsAt: currentCustomerProduct.starts_at ?? undefined,
 			...cancelFields,

@@ -198,7 +198,7 @@ export const getCursorPaginatedFullCusQuery = ({
 					SELECT DISTINCT s.*
 					FROM cps_ranked cps
 					CROSS JOIN LATERAL unnest(cps.subscription_ids) AS sub_id_t(sub_id)
-					JOIN subscriptions s ON s.stripe_id = sub_id_t.sub_id
+					JOIN subscriptions s ON s.processor_id = sub_id_t.sub_id
 					WHERE cps.subscription_ids IS NOT NULL
 				) s
 			) AS subscriptions`

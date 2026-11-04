@@ -96,7 +96,6 @@ export const V1_2_CustomerChange = defineVersionChange({
 			email: input.email,
 			created_at: input.created_at,
 			fingerprint: input.fingerprint,
-			stripe_id: input.stripe_id,
 			env: input.env,
 			metadata: input.metadata,
 			send_email_receipts: input.send_email_receipts,

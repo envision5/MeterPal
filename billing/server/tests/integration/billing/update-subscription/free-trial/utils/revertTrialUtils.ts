@@ -10,14 +10,11 @@ import {
 	type TrialOnEnd,
 	type UpdateSubscriptionV1ParamsInput,
 } from "@autumn/shared";
-import { expectStripeSubscriptionNotTrialing } from "@tests/integration/billing/utils/stripe/expectStripeSubscriptionNotTrialing";
-import { expectStripeSubscriptionUnchanged } from "@tests/integration/billing/utils/stripe/expectStripeSubscriptionUnchanged";
 import { TestFeature } from "@tests/setup/v2Features";
 import { items } from "@tests/utils/fixtures/items";
 import { products } from "@tests/utils/fixtures/products";
 import type { TestContext } from "@tests/utils/testInitUtils/createTestContext";
 import { initScenario, s } from "@tests/utils/testInitUtils/initScenario";
-import type Stripe from "stripe";
 import { expireTrialProductsForCustomer } from "@/cron/productCron/expireTrialProductsForCustomer";
 import type { AutumnInt } from "@/external/autumn/autumnCli";
 import { CusService } from "@/internal/customers/CusService";
@@ -129,12 +126,8 @@ export const startRevertTrial = async ({
 			pausedProductId: pro.id,
 			entityId,
 		});
-	const subscriptionBefore =
-		await scenario.ctx.stripeCli.subscriptions.retrieve(
-			pausedCustomerProduct.subscription_ids![0],
-		);
 
-	return { trialCustomerProduct, pausedCustomerProduct, subscriptionBefore };
+	return { trialCustomerProduct, pausedCustomerProduct };
 };
 
 export const attachRevertTrial = ({
@@ -210,63 +203,6 @@ export const getRevertTrialCustomerProducts = async ({
 		trialCustomerProduct: trialCustomerProduct!,
 		pausedCustomerProduct: pausedCustomerProduct!,
 	};
-};
-
-export const expectSharedSubscriptionUntouched = async ({
-	ctx,
-	subscriptionBefore,
-}: {
-	ctx: TestContext;
-	subscriptionBefore: Stripe.Subscription;
-}) => {
-	const subscriptionAfter = await ctx.stripeCli.subscriptions.retrieve(
-		subscriptionBefore.id,
-	);
-	expectStripeSubscriptionNotTrialing({ subscription: subscriptionAfter });
-	expectStripeSubscriptionUnchanged({
-		before: subscriptionBefore,
-		after: subscriptionAfter,
-	});
-};
-
-export const expectRevertTrialAfterUpdate = async ({
-	ctx,
-	customerId,
-	trialProductId,
-	pausedProductId,
-	subscriptionBefore,
-	expectedTrialEndsAt,
-	entityId,
-}: {
-	ctx: TestContext;
-	customerId: string;
-	trialProductId: string;
-	pausedProductId: string;
-	subscriptionBefore: Stripe.Subscription;
-	expectedTrialEndsAt: number;
-	entityId?: string;
-}) => {
-	await expectSharedSubscriptionUntouched({ ctx, subscriptionBefore });
-
-	const { trialCustomerProduct, pausedCustomerProduct } =
-		await getRevertTrialCustomerProducts({
-			ctx,
-			customerId,
-			trialProductId,
-			pausedProductId,
-			entityId,
-		});
-
-	expect(pausedCustomerProduct.status).toBe(CusProductStatus.Paused);
-	expect(trialCustomerProduct.on_trial_end).toBe("revert");
-	expect(trialCustomerProduct.previous_customer_product_id).toBe(
-		pausedCustomerProduct.id,
-	);
-	expect(
-		Math.abs(trialCustomerProduct.trial_ends_at! - expectedTrialEndsAt),
-	).toBeLessThan(ms.hours(1));
-
-	return { trialCustomerProduct, pausedCustomerProduct };
 };
 
 export const extendRevertTrial = ({

@@ -102,7 +102,7 @@ export type CustomerDataSpendLimit = {
    */
   overageLimit?: number | undefined;
   /**
-   * When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally.
+   * When true, overage for this feature is not posted to the billing processor. Usage tracking and balance resets still behave normally.
    */
   skipOverageBilling?: boolean | undefined;
 };
@@ -287,7 +287,7 @@ export type CustomerDataConfig = {
    */
   disablePooledBalance?: boolean | undefined;
   /**
-   * Stops Autumn from posting usage-overage line items to Stripe for this customer. Check/track and balance resets still behave normally. When set, this overrides the organization-level disable_overage_billing setting.
+   * Stops Autumn from posting usage-overage line items for this customer. Check/track and balance resets still behave normally. When set, this overrides the organization-level disable_overage_billing setting.
    */
   disableOverageBilling?: boolean | undefined;
 };
@@ -312,15 +312,7 @@ export type CustomerData = {
    * Additional metadata for the customer
    */
   metadata?: { [k: string]: any } | null | undefined;
-  /**
-   * Stripe customer ID if you already have one
-   */
-  stripeId?: string | null | undefined;
-  /**
-   * Whether to create the customer in Stripe
-   */
-  createInStripe?: boolean | undefined;
-  /**
+      /**
    * The ID of the free plan to auto-enable for the customer
    */
   autoEnablePlanId?: string | undefined;
@@ -775,8 +767,6 @@ export type CustomerData$Outbound = {
   email?: string | null | undefined;
   fingerprint?: string | null | undefined;
   metadata?: { [k: string]: any } | null | undefined;
-  stripe_id?: string | null | undefined;
-  create_in_stripe?: boolean | undefined;
   auto_enable_plan_id?: string | undefined;
   send_email_receipts?: boolean | undefined;
   currency?: string | null | undefined;
@@ -794,8 +784,6 @@ export const CustomerData$outboundSchema: z.ZodMiniType<
     email: z.optional(z.nullable(z.string())),
     fingerprint: z.optional(z.nullable(z.string())),
     metadata: z.optional(z.nullable(z.record(z.string(), z.any()))),
-    stripeId: z.optional(z.nullable(z.string())),
-    createInStripe: z.optional(z.boolean()),
     autoEnablePlanId: z.optional(z.string()),
     sendEmailReceipts: z.optional(z.boolean()),
     currency: z.optional(z.nullable(z.string())),
@@ -806,8 +794,6 @@ export const CustomerData$outboundSchema: z.ZodMiniType<
   }),
   z.transform((v) => {
     return remap$(v, {
-      stripeId: "stripe_id",
-      createInStripe: "create_in_stripe",
       autoEnablePlanId: "auto_enable_plan_id",
       sendEmailReceipts: "send_email_receipts",
       billingControls: "billing_controls",

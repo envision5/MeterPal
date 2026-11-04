@@ -10,7 +10,6 @@ import type { User } from "better-auth";
 import type { Redis } from "ioredis";
 import type { DrizzleCli } from "@/db/initDrizzle.js";
 import type { Logger } from "@/external/logtail/logtailUtils.js";
-import type { OidcClaims } from "@/external/vercel/misc/vercelAuth.js";
 import type { LogRequestContext } from "@/utils/logging/loggerTypes.js";
 
 export type RolloutSnapshot = {
@@ -110,14 +109,6 @@ export type RequestContext = {
 		eventId?: string;
 		keepInternalFields?: boolean;
 		useReplica?: boolean;
-		mockVercelApi?: boolean;
-		allowVercelTestOidc?: boolean;
-		mockRevenueCat?: boolean;
-		revenueCat?: {
-			subscriptions?: unknown[];
-			purchases?: unknown[];
-			products?: unknown[];
-		};
 	};
 };
 
@@ -127,6 +118,5 @@ export type HonoEnv = {
 	Variables: {
 		ctx: AutumnContext;
 		validated: boolean;
-		vercelClaims?: OidcClaims;
 	};
 };

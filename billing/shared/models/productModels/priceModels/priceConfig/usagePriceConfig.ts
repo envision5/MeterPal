@@ -42,16 +42,10 @@ export const UsageTierSchema = z
 export type UsageTier = z.infer<typeof UsageTierSchema>;
 
 // Per-currency amount overrides stored in `config.currencies` (keyed by lowercase
-// currency). The base amount/usage_tiers stay in `base_currency`; Phase 2 adds
-// per-currency Stripe id slots here.
+// currency). The base amount/usage_tiers stay in `base_currency`.
 export const PriceCurrencyConfigSchema = z.object({
 	amount: z.number().nullish(),
 	usage_tiers: z.array(UsageTierSchema).nullish(),
-
-	stripe_price_id: z.string().nullish(),
-	stripe_empty_price_id: z.string().nullish(),
-	stripe_placeholder_price_id: z.string().nullish(),
-	stripe_prepaid_price_v2_id: z.string().nullish(),
 });
 
 export type PriceCurrencyConfig = z.infer<typeof PriceCurrencyConfigSchema>;
@@ -76,16 +70,6 @@ export const UsagePriceConfigSchema = z.object({
 	currencies: z.record(z.string(), PriceCurrencyConfigSchema).nullish(),
 
 	// For usage in arrear
-	stripe_meter_id: z.string().nullish(),
-	stripe_price_id: z.string().nullish(),
-	stripe_empty_price_id: z.string().nullish(),
-	stripe_product_id: z.string().nullish(),
-	stripe_placeholder_price_id: z.string().nullish(),
-	stripe_event_name: z.string().nullish(),
-
-	// V2 prepaid price
-	stripe_prepaid_price_v2_id: z.string().nullish(),
-
 	should_prorate: z.boolean().optional(),
 	allocated_billing_behavior: z.enum(AllocatedBillingBehavior).optional(),
 });

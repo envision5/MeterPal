@@ -1,7 +1,7 @@
 // billing/server/src/internal/billing/portal/portalRouter.ts
 //
 // Self-hosted billing portal for PayPal customers (PayPal has no hosted
-// portal equivalent to Stripe's). Mounted on the public router — no secret-key
+// portal of its own). Mounted on the public router — no secret-key
 // or session auth. Every route takes a signed, short-lived portal token that
 // the billing portal session URL embeds (see utils/portalTokenUtils.ts); the
 // token names the org/env/customer, so possession of the link is the

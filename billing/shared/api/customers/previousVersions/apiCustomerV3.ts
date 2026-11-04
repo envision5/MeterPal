@@ -16,7 +16,6 @@ export const API_CUSTOMER_V3_EXAMPLE = {
 	name: "John Doe",
 	email: "john@doe.com",
 	fingerprint: null,
-	stripe_id: "cus_J8A5c31A8tlpwN",
 	env: "sandbox",
 	metadata: {},
 	products: [
@@ -97,7 +96,6 @@ const cusDescriptions = {
 	email: "The email address of the customer.",
 	fingerprint:
 		"A unique identifier (eg. serial number) to de-duplicate customers across devices or browsers. For example: apple device ID.",
-	stripe_id: "Stripe customer ID.",
 	env: "The environment this customer was created in.",
 	metadata: "The metadata for the customer.",
 	products: "The products the customer has access to.",
@@ -118,7 +116,7 @@ const cusDescriptions = {
 	upcoming_invoice:
 		"The upcoming invoice for the customer. Returned only if upcoming_invoice is provided in the expand parameter.",
 	payment_method:
-		"The payment method for the customer on Stripe. Returned only if payment_method is provided in the expand parameter.",
+		"The customer's default payment method. Returned only if payment_method is provided in the expand parameter.",
 };
 
 export const ApiCusExpandV3Schema = z.object({
@@ -165,9 +163,6 @@ export const ApiCustomerV3Schema = z.object({
 	}),
 	fingerprint: z.string().nullable().meta({
 		description: cusDescriptions.fingerprint,
-	}),
-	stripe_id: z.string().nullable().default(null).meta({
-		description: cusDescriptions.stripe_id,
 	}),
 	env: z.enum(AppEnv).meta({
 		description: cusDescriptions.env,

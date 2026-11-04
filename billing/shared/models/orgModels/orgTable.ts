@@ -1,4 +1,3 @@
-import type { ProcessorConfigs } from "@models/genModels/processorSchemas.js";
 import type { PendingMigration } from "@models/migrationV2Models/pendingMigrationModel.js";
 import { sql } from "drizzle-orm";
 import {
@@ -20,17 +19,6 @@ export type SvixConfig = {
 	live_app_id: string;
 };
 
-export type StripeConfig = {
-	test_api_key?: string | null;
-	live_api_key?: string | null;
-	test_webhook_secret?: string | null;
-	live_webhook_secret?: string | null;
-	sandbox_success_url?: string;
-	success_url?: string;
-
-	test_connect_webhook_secret?: string | null;
-	live_connect_webhook_secret?: string | null;
-};
 export interface VersionConfig {
 	sandbox?: string;
 	live?: string;
@@ -38,20 +26,12 @@ export interface VersionConfig {
 	// live_webhooks: string;
 }
 
-export type StripeConnectConfig = {
-	default_account_id?: string;
-	account_id?: string;
-	master_org_id?: string;
-	connected_at?: number;
-	revoked_account_id?: string;
-};
-
 /**
  * One PayPal environment's connection for an org.
  *
  * `client_secret_enc` holds the secret encrypted with the repo's
- * `encryptData()` (ENCRYPTION_PASSWORD / ENCRYPTION_IV) — the same treatment
- * the Stripe keys on this table get.  It is never returned by an API.
+ * `encryptData()` (ENCRYPTION_PASSWORD / ENCRYPTION_IV).  It is never
+ * returned by an API.
  */
 export type PaypalEnvConfig = {
 	client_id: string;
@@ -70,7 +50,7 @@ export type PaypalEnvConfig = {
  *
  * A PayPal REST app is per-environment: the sandbox app and the live app have
  * different client ids and secrets, so an org keeps one connection per
- * environment — the same shape the Stripe keys on this table use.
+ * environment.
  *
  * An org with no `paypal_config` falls back to the PAYPAL_* environment
  * variables, so the single-tenant deployment keeps working unchanged.  Once an
@@ -127,26 +107,8 @@ export const organizations = pgTable(
 		createdAt: timestamp("createdAt", { withTimezone: true }).notNull(),
 		metadata: text("metadata"),
 
-		// Stripe
+		// Billing currency for this org's customers
 		default_currency: text("default_currency").default("usd"),
-
-		stripe_connected: boolean("stripe_connected").default(false),
-		stripe_config: jsonb("stripe_config").$type<StripeConfig>(),
-
-		test_stripe_connect: jsonb("test_stripe_connect")
-			.$type<StripeConnectConfig>()
-			.default({} as StripeConnectConfig),
-
-		live_stripe_connect: jsonb("live_stripe_connect")
-			.$type<StripeConnectConfig>()
-			.default({} as StripeConnectConfig),
-
-		// stripe_connect: jsonb("stripe_connect")
-		// 	.$type<StripeConnectConfig>()
-		// 	.default({} as StripeConnectConfig)
-		// 	.notNull(),
-
-		processor_configs: jsonb("processor_configs").$type<ProcessorConfigs>(),
 
 		// PayPal
 		paypal_connected: boolean("paypal_connected").default(false),
@@ -198,20 +160,6 @@ export const organizations = pgTable(
 			.on(table.claim_expires_at)
 			.where(sql`${table.claim_state} = 'pending'`),
 		unique("organizations_claim_token_hash_key").on(table.claim_token_hash),
-		// Stripe Connect webhooks resolve an org by external account id. Without
-		// these, the three OR'd ->> predicates in OrgService.getByAccountId force a
-		// seq scan; Postgres turns them into a BitmapOr instead. The table is only
-		// ~531 rows but its wide jsonb columns bloat it to ~37MB, so a scan cost
-		// ~20ms per webhook.
-		index("idx_orgs_test_connect_default_account")
-			.on(sql`(${table.test_stripe_connect}->>'default_account_id')`)
-			.concurrently(),
-		index("idx_orgs_test_connect_account")
-			.on(sql`(${table.test_stripe_connect}->>'account_id')`)
-			.concurrently(),
-		index("idx_orgs_live_connect_account")
-			.on(sql`(${table.live_stripe_connect}->>'account_id')`)
-			.concurrently(),
 		unique("organizations_test_pkey_key").on(table.test_pkey),
 		unique("organizations_live_pkey_key").on(table.live_pkey),
 	],
@@ -224,9 +172,3 @@ export type Organization = typeof organizations.$inferSelect & {
 	planAliases?: Record<string, string>;
 };
 
-// Multi tenancy flow <-> stripe connect...
-// Create org in Autumn, don't need stripe connect key, we create an Autumn connect account for them.
-// Connect own stripe to sandbox / prod
-// 1. OAuth to link their stripe account (?) -> need to use access token though
-// 2. Paste in their secret key
-// 3. Onboard onto Stripe connect (?)

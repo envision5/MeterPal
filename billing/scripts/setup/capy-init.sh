@@ -19,7 +19,6 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 COMPOSE_FILE="$REPO_ROOT/scripts/setup/dw.compose.yml"
 TRIGGER_COMPOSE_FILE="$REPO_ROOT/scripts/setup/trigger.compose.yml"
 . "$SCRIPT_DIR/capy-trigger-image.sh"
-. "$SCRIPT_DIR/install-stripe-cli.sh"
 
 command -v bun >/dev/null 2>&1 || die "bun is required"
 docker info >/dev/null 2>&1 || die "Docker Engine is required (use a Capy v2 VM)"
@@ -81,11 +80,6 @@ if [ -f "$REPO_ROOT/ai/package.json" ]; then
   fi
   log "repo skills ready at .agents/skills"
 fi
-
-log "installing Stripe CLI (stripe listen → localhost webhooks)"
-install_stripe_cli "[capy-init]"
-command -v stripe >/dev/null 2>&1 || die "stripe installation did not put a binary on PATH"
-stripe version >/dev/null
 
 # Bun workspace deps. Frozen-lockfile so a stale node_modules from a
 # Capy snapshot is repaired without churn.

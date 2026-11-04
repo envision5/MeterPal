@@ -7,7 +7,6 @@ import {
 	type FullCustomer,
 	getStartingBalance,
 } from "@autumn/shared";
-import { createStripeCli } from "@/external/connect/createStripeCli.js";
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
 import { getEntOptions } from "@/internal/products/prices/priceUtils.js";
 import { attachToInsertParams } from "@/internal/products/productUtils.js";
@@ -29,8 +28,7 @@ export const handleDecreaseAndTransfer = async ({
 	toEntity?: Entity | null;
 }) => {
 	// 1. Create new cus product for entity...
-	const { org, env, db, logger, features } = ctx;
-	const stripeCli = createStripeCli({ org, env });
+	const { org, db, logger, features } = ctx;
 	const product = cusProductToProduct({ cusProduct });
 
 	// Decrease quantity of cus product...
@@ -89,8 +87,6 @@ export const handleDecreaseAndTransfer = async ({
 				prices: product.prices,
 				entitlements: product.entitlements,
 				org,
-				stripeCli: stripeCli,
-				paymentMethod: null,
 				freeTrial: cusProduct.free_trial || null,
 				optionsList: cusProduct.options,
 				scenario: AttachScenario.New,

@@ -16,7 +16,6 @@ import {
 } from "@/db/resolveSubjectReadDb.js";
 import { withStatementTimeout } from "@/db/withStatementTimeout.js";
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
-import { checkPendingMigrationsForCustomer } from "@/internal/migrations/v2/lazy/checkPendingMigrationsForCustomer.js";
 import { getRuntimeFullSubjectGateConfig } from "@/internal/misc/fullSubjectGateEdgeConfig/fullSubjectGateEdgeConfigStore.js";
 import { lazyResetSubjectEntitlements } from "../../actions/resetCustomerEntitlementsV2/lazyResetSubjectEntitlements.js";
 import { lazyResetSubjectUsageWindows } from "../../actions/resetUsageWindows/lazyResetSubjectUsageWindows.js";
@@ -248,10 +247,6 @@ export async function getFullSubject({
 
 	await lazyResetSubjectEntitlements({ ctx, fullSubject });
 	await lazyResetSubjectUsageWindows({ ctx, fullSubject });
-	await checkPendingMigrationsForCustomer({
-		ctx,
-		fullCustomer: fullSubjectToFullCustomer({ fullSubject }),
-	});
 	return fullSubject;
 }
 
@@ -310,10 +305,6 @@ export async function getFullSubjectNormalized({
 	} else if (runLazyResets) {
 		await lazyResetSubjectEntitlements({ ctx, fullSubject, normalized });
 		await lazyResetSubjectUsageWindows({ ctx, fullSubject, normalized });
-		await checkPendingMigrationsForCustomer({
-			ctx,
-			fullCustomer: fullSubjectToFullCustomer({ fullSubject }),
-		});
 	}
 
 	return { normalized, fullSubject };

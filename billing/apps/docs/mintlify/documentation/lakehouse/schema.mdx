@@ -177,12 +177,10 @@ Who your plans apply to: customers and entities (sub-customers).
 | `email` | string | |
 | `created_at` | number (epoch ms) | |
 | `fingerprint` | string | |
-| `stripe_id` | string | Stripe customer id |
 | `metadata` | json (string) | |
 | `send_email_receipts` | boolean | |
 | `billing_controls` | json (string) | auto_topups, spend_limits, usage_alerts, overage_allowed |
 | `config` | json (string) | |
-| `processors` | json (string) | stripe / vercel / revenuecat links |
 
 </Accordion>
 <Accordion title="v2_3_entities — sub-customers scoped to a feature">
@@ -427,15 +425,15 @@ Invoices and their line items.
 | `internal_entity_id` | string | 🔗 → `v2_3_entities.internal_id` (null = customer-scoped) |
 | `plan_ids` | string[] | external plan ids |
 | `internal_product_ids` | string[] | 🔗 → `v2_3_plans.internal_id` |
-| `stripe_id` | string | Stripe invoice id |
-| `processor_type` | string | stripe / … |
+| `processor_invoice_id` | string | Processor invoice id |
+| `processor_type` | string | paypal |
 | `status` | string | paid / open / void / draft |
 | `total` | number | invoice total |
 | `amount_paid` | number | |
 | `refunded_amount` | number | |
 | `currency` | string | ISO 4217 code |
 | `created_at` | number (epoch ms) | |
-| `hosted_invoice_url` | string | raw Stripe URL |
+| `hosted_invoice_url` | string | raw processor URL |
 | `discounts` | json[] (string) | array of discount objects |
 
 </Accordion>

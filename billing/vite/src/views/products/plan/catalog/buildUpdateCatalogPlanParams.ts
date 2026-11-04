@@ -18,15 +18,6 @@ import {
 	variantRelationshipPlanParams,
 } from "./variantRelationshipChange";
 
-const omitStripePriceId = <T extends object>(
-	value: T,
-): Omit<T, "stripe_price_id"> => {
-	const { stripe_price_id: _stripePriceId, ...rest } = value as T & {
-		stripe_price_id?: unknown;
-	};
-	return rest;
-};
-
 const planItemsToCatalogParams = (
 	items: ApiPlanV1["items"],
 ): NonNullable<UpdateCatalogPlanParamsInput["items"]> =>
@@ -41,9 +32,9 @@ const planItemsToCatalogParams = (
 			expiry,
 			...item
 		}) => ({
-			...omitStripePriceId(item),
+			...item,
 			...(reset ? { reset } : {}),
-			...(price ? { price: omitStripePriceId(price) } : {}),
+			...(price ? { price } : {}),
 			...(proration ? { proration } : {}),
 			...(expiry ? { expiry } : {}),
 			...(rollover
@@ -162,7 +153,7 @@ export const buildUpdateCatalogPlanParams = ({
 		archived: plan.archived,
 		...(includeContent
 			? {
-					price: plan.price ? omitStripePriceId(plan.price) : plan.price,
+					price: plan.price,
 					items: planItemsToCatalogParams(plan.items),
 					free_trial: plan.free_trial ?? null,
 				}

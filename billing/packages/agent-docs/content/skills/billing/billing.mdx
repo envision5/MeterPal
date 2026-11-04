@@ -51,7 +51,7 @@ Use this resource for billing actions: attaching plans, updating subscriptions, 
 - If the plan prices a feature as prepaid, a bare amount for that feature ("put them on 4.5k credits") means `feature_quantities` — NOT an item customization. Never remove or replace a prepaid item to set how many units a customer gets; customize the item only when the user explicitly changes its pricing or included allowance.
 - The word "included" means free allowance, not a purchase: "N included credits" sets `included: N` on the item via `customize` (carrying the rest of the item over unchanged) and does NOT add `feature_quantities`. Only combine both when the user asks for extra prepaid units on top of the new allowance.
 - Before any trial action, re-read the Trials section in `autumn://docs/concepts`.
-- Adding a trial for a customer who already has a paid subscription resets the Stripe billing cycle; warn the user and offer the `on_end: "revert"` flow, then let them choose.
+- Adding a trial for a customer who already has a paid subscription resets the processor billing cycle; warn the user and offer the `on_end: "revert"` flow, then let them choose.
 - To end a revert trial early, cancel it with `updateSubscription` and `cancel_action: "cancel_immediately"`; Autumn restores the previous plan. Do not remove `free_trial` (that converts the trial to paid) or re-attach the old plan.
 
 ## Target resolution
@@ -188,8 +188,7 @@ Carry the whole ladder over; don't replace it with just the custom tier or a fla
 
 - After the billing action succeeds, respond as concisely as possible: say the action completed successfully.
 - Surface any returned customer-facing URL, especially `payment_url` or `invoice.hosted_invoice_url`, as a markdown link so it is clickable: `[Checkout link](url)`, `[Invoice](url)`.
-- If an `invoice` is returned, mention its `status`, `stripe_id`, and hosted URL when present.
-- If `invoice.hosted_invoice_url` is missing but `invoice.stripe_id` exists, surface the Stripe dashboard invoice URL: sandbox `https://dashboard.stripe.com/test/invoices/{stripe_id}`, live `https://dashboard.stripe.com/invoices/{stripe_id}`.
+- If an `invoice` is returned, mention its `status`, `processor_invoice_id`, and hosted URL when present.
 - If `required_action` is returned, explain the required payment action and include `payment_url` if present.
 - If the action fails, state that it failed and quote the server error/status clearly.
 - Do not re-summarize the full preview after completion unless the user asks.

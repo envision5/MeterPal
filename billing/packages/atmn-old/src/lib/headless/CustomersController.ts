@@ -287,8 +287,8 @@ export class CustomersController
 			lines.push(`  Name: ${selected.name ?? "-"}`);
 			lines.push(`  Email: ${selected.email ?? "-"}`);
 			lines.push(`  Created: ${new Date(selected.created_at * 1000).toISOString()}`);
-			if (selected.stripe_id) {
-				lines.push(`  Stripe ID: ${selected.stripe_id}`);
+			if (selected.processor_id) {
+				lines.push(`  Processor ID: ${selected.processor_id}`);
 			}
 		}
 

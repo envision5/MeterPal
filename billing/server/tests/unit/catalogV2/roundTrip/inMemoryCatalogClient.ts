@@ -43,8 +43,7 @@ const contextFor = ({
 			name: "Test Organization",
 			slug: "test-org",
 			default_currency: "usd",
-			stripe_account_id: "acct_test",
-			config: { multi_currency: multiCurrency },
+				config: { multi_currency: multiCurrency },
 		} as never,
 	});
 

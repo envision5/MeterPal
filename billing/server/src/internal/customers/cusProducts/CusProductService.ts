@@ -246,24 +246,23 @@ export class CusProductService {
 		}));
 	}
 
-	static async getByStripeSubId({
+	static async getByProcessorSubId({
 		db,
-		stripeSubId,
+		processorSubId,
 		orgId,
 		env,
 		inStatuses,
 	}: {
 		db: DrizzleCli;
-		stripeSubId: string;
+		processorSubId: string;
 		orgId: string;
 		env: AppEnv;
 		inStatuses?: string[];
 	}) {
-		// sql`${customerProducts.subscription_ids} @> ${sql`ARRAY[${stripeSubId}]`}`,
 		const data = await db.query.customerProducts.findMany({
 			where: (_table, { and, or, inArray }) =>
 				and(
-					or(arrayContains(customerProducts.subscription_ids, [stripeSubId])),
+					or(arrayContains(customerProducts.subscription_ids, [processorSubId])),
 					inStatuses ? inArray(customerProducts.status, inStatuses) : undefined,
 				),
 
@@ -287,44 +286,6 @@ export class CusProductService {
 					},
 				},
 				free_trial: true,
-			},
-		});
-
-		const cusProducts = data as FullCusProduct[];
-
-		return filterByOrgAndEnv({
-			cusProducts,
-			orgId,
-			env,
-		});
-	}
-
-	static async getByStripeCheckoutSessionId({
-		db,
-		stripeCheckoutSessionId,
-		orgId,
-		env,
-		inStatuses,
-	}: {
-		db: DrizzleCli;
-		stripeCheckoutSessionId: string;
-		orgId: string;
-		env: AppEnv;
-		inStatuses?: string[];
-	}) {
-		const data = await db.query.customerProducts.findMany({
-			where: (_table, { and, eq: dEq, inArray }) =>
-				and(
-					dEq(
-						customerProducts.stripe_checkout_session_id,
-						stripeCheckoutSessionId,
-					),
-					inStatuses ? inArray(customerProducts.status, inStatuses) : undefined,
-				),
-			with: {
-				product: true,
-				customer: true,
-				...getFullCusProdRelations(),
 			},
 		});
 
@@ -360,61 +321,6 @@ export class CusProductService {
 				product: true,
 				customer: true,
 				...getFullCusProdRelations(),
-			},
-		});
-
-		const cusProducts = data as FullCusProduct[];
-
-		return filterByOrgAndEnv({
-			cusProducts,
-			orgId,
-			env,
-		});
-	}
-
-	static async getByStripeScheduledId({
-		db,
-		stripeScheduledId,
-		orgId,
-		env,
-	}: {
-		db: DrizzleCli;
-		stripeScheduledId: string;
-		orgId: string;
-		env: AppEnv;
-	}) {
-		const data = await db.query.customerProducts.findMany({
-			where: (customerProducts, { and, or, eq, sql }) =>
-				and(
-					or(
-						eq(
-							sql`${customerProducts.processor}->>'subscription_schedule_id'`,
-							stripeScheduledId,
-						),
-						sql`${customerProducts.scheduled_ids} @> ${sql`ARRAY[${stripeScheduledId}]`}`,
-					),
-				),
-
-			with: {
-				product: true,
-				customer: true,
-				customer_entitlements: {
-					with: {
-						entitlement: {
-							with: {
-								feature: true,
-							},
-						},
-						replaceables: true,
-						rollovers: true,
-					},
-				},
-				customer_prices: {
-					with: {
-						price: true,
-					},
-				},
-				free_trial: true,
 			},
 		});
 
@@ -508,8 +414,8 @@ export class CusProductService {
 		return results;
 	}
 
-	// Deliberately no freshness mark: the Stripe webhook refresh-cache middleware
-	// invalidation chokepoint already stamps every customer this touches.
+	// Deliberately no freshness mark: the processor webhook refresh-cache
+	// middleware invalidation chokepoint already stamps every customer this touches.
 	static async expireIfPending({
 		ctx,
 		cusProductId,
@@ -544,15 +450,15 @@ export class CusProductService {
 		return results.length > 0;
 	}
 
-	static async updateByStripeSubId({
+	static async updateByProcessorSubId({
 		db,
-		stripeSubId,
+		processorSubId,
 		updates,
 		inStatuses = RELEVANT_STATUSES,
 		notInStatuses,
 	}: {
 		db: DrizzleCli;
-		stripeSubId: string;
+		processorSubId: string;
 		updates: Partial<InsertCustomerProduct>;
 		inStatuses?: string[];
 		notInStatuses?: string[];
@@ -562,7 +468,7 @@ export class CusProductService {
 			.set({ ...updates, updated_at: Date.now() })
 			.where(
 				and(
-					arrayContains(customerProducts.subscription_ids, [stripeSubId]),
+					arrayContains(customerProducts.subscription_ids, [processorSubId]),
 					inStatuses ? inArray(customerProducts.status, inStatuses) : undefined,
 					notInStatuses
 						? not(inArray(customerProducts.status, notInStatuses))
@@ -589,13 +495,13 @@ export class CusProductService {
 
 		// return fullUpdated as FullCusProduct[];
 	}
-	static async updateByStripeScheduledId({
+	static async updateByProcessorScheduledId({
 		db,
-		stripeScheduledId,
+		processorScheduledId,
 		updates,
 	}: {
 		db: DrizzleCli;
-		stripeScheduledId: string;
+		processorScheduledId: string;
 		updates: Partial<InsertCustomerProduct>;
 	}) {
 		const updated = await db
@@ -603,7 +509,7 @@ export class CusProductService {
 			.set({ ...updates, updated_at: Date.now() })
 			.where(
 				and(
-					arrayContains(customerProducts.scheduled_ids, [stripeScheduledId]),
+					arrayContains(customerProducts.scheduled_ids, [processorScheduledId]),
 					or(
 						eq(customerProducts.status, CusProductStatus.Active),
 						eq(customerProducts.status, CusProductStatus.PastDue),

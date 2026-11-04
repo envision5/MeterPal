@@ -25,18 +25,13 @@ import { BillingUsageAlertsFeatureSheet } from "../components/sheets/BillingUsag
 import { BillingUsageLimitSheet } from "../components/sheets/BillingUsageLimitSheet";
 import { CheckBalanceSheet } from "../components/sheets/CheckBalanceSheet";
 import { CreateInvoiceSheet } from "../components/sheets/CreateInvoiceSheet";
-import { CreateScheduleSheet } from "../components/sheets/CreateScheduleSheet";
 import { CustomerConfigSheet } from "../components/sheets/CustomerConfigSheet";
 import { InvoiceDetailSheet } from "../components/sheets/InvoiceDetailSheet";
 import { LicenseDetailSheet } from "../components/sheets/LicenseDetailSheet";
 import { LicensePoolDetailSheet } from "../components/sheets/LicensePoolDetailSheet";
 import { RecordUsageSheet } from "../components/sheets/RecordUsageSheet";
-import { ReissueInvoiceSheet } from "../components/sheets/ReissueInvoiceSheet";
 import { SubscriptionDetailSheet } from "../components/sheets/SubscriptionDetailSheet";
 import { UpcomingInvoiceSheet } from "../components/sheets/UpcomingInvoiceSheet";
-import { SyncStripeSheet } from "../components/sync-stripe/SyncStripeSheet";
-import { SyncStripeSheetV2 } from "../components/sync-stripe-v2/SyncStripeSheetV2";
-import { VerifyStripeSheet } from "../components/verify-stripe/VerifyStripeSheet";
 
 export function CustomerSheets() {
 	const sheetType = useSheetStore((s) => s.type);
@@ -86,8 +81,6 @@ export function CustomerSheets() {
 				if (!invoice) return null;
 				return <InvoiceDetailSheet invoice={invoice} lineItems={lineItems} />;
 			}
-			case "invoice-reissue":
-				return <ReissueInvoiceSheet />;
 			case "create-invoice":
 				return <CreateInvoiceSheet />;
 			case "upcoming-invoice-detail": {
@@ -95,12 +88,6 @@ export function CustomerSheets() {
 				if (!preview) return null;
 				return <UpcomingInvoiceSheet preview={preview} />;
 			}
-			case "sync-stripe":
-				return <SyncStripeSheet />;
-			case "sync-stripe-v2":
-				return <SyncStripeSheetV2 />;
-			case "verify-stripe":
-				return <VerifyStripeSheet />;
 			case "customer-config-edit":
 				return <CustomerConfigSheet />;
 			case "billing-auto-topup-add":
@@ -126,11 +113,6 @@ export function CustomerSheets() {
 				return <RecordUsageSheet />;
 			case "check-balance":
 				return <CheckBalanceSheet />;
-			case "create-schedule":
-			case "create-schedule-review":
-			case "create-schedule-send-invoice":
-			case "create-schedule-checkout":
-				return <CreateScheduleSheet />;
 			default:
 				return null;
 		}

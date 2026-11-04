@@ -1,4 +1,3 @@
-import type { AppEnv } from "@autumn/shared";
 import { Button, Input, PanelButton } from "@autumn/ui";
 import { ArrowLeft, HourglassIcon, LightningIcon } from "@phosphor-icons/react";
 import { format } from "date-fns";
@@ -11,7 +10,6 @@ import {
 } from "@/components/v2/sheets/SharedSheetComponents";
 import { useOrg } from "@/hooks/common/useOrg";
 import { useAxiosInstance } from "@/services/useAxiosInstance";
-import { getStripeInvoiceLink } from "@/utils/linkUtils";
 import { useCusQuery } from "@/views/customers/customer/hooks/useCusQuery";
 import {
 	DEFAULT_NET_TERMS_DAYS,
@@ -118,7 +116,6 @@ export function SendInvoiceStage({
 	isPending,
 	onBack,
 	onSubmit,
-	getInvoiceUrl,
 	previewQuery,
 	scheduledStartDate,
 }: {
@@ -126,10 +123,9 @@ export function SendInvoiceStage({
 	isPending: boolean;
 	onBack: () => void;
 	onSubmit: (params: SendInvoiceSubmitParams) => Promise<{
-		stripeId: string | undefined;
+		processorId: string | undefined;
 		hostedInvoiceUrl: string | null | undefined;
 	}>;
-	getInvoiceUrl: (invoiceStripeId: string) => string;
 	previewQuery: PreviewSectionQuery;
 	scheduledStartDate?: number | null;
 }) {
@@ -151,6 +147,7 @@ export function SendInvoiceStage({
 	const [completedDraftUrl, setCompletedDraftUrl] = useState<string | null>(
 		null,
 	);
+	const [drafted, setDrafted] = useState(false);
 	const [activeAction, setActiveAction] = useState<"draft" | "finalize" | null>(
 		null,
 	);
@@ -193,12 +190,12 @@ export function SendInvoiceStage({
 	const handleDraft = async () => {
 		setActiveAction("draft");
 		try {
-			const { stripeId } = await onSubmit(buildSubmitParams(false));
-			if (stripeId) {
-				const invoiceUrl = getInvoiceUrl(stripeId);
-				window.open(invoiceUrl, "_blank");
-				setCompletedDraftUrl(invoiceUrl);
+			const { hostedInvoiceUrl } = await onSubmit(buildSubmitParams(false));
+			if (hostedInvoiceUrl) {
+				window.open(hostedInvoiceUrl, "_blank");
+				setCompletedDraftUrl(hostedInvoiceUrl);
 			}
+			setDrafted(true);
 		} finally {
 			setActiveAction(null);
 		}
@@ -207,13 +204,9 @@ export function SendInvoiceStage({
 	const handleFinalize = async () => {
 		setActiveAction("finalize");
 		try {
-			const { hostedInvoiceUrl, stripeId } = await onSubmit(
-				buildSubmitParams(true),
-			);
+			const { hostedInvoiceUrl } = await onSubmit(buildSubmitParams(true));
 			if (hostedInvoiceUrl) {
 				setCompletedInvoiceUrl(hostedInvoiceUrl);
-			} else if (stripeId) {
-				setCompletedInvoiceUrl(getInvoiceUrl(stripeId));
 			}
 		} finally {
 			setActiveAction(null);
@@ -222,18 +215,18 @@ export function SendInvoiceStage({
 
 	const needsEmail = !customer?.email && !emailSaved;
 
-	if (completedDraftUrl) {
+	if (drafted) {
 		return (
 			<UrlSuccessView
 				title="Invoice Drafted"
 				description={
 					productName
-						? `Draft invoice for ${productName} created in Stripe`
-						: "Draft invoice created in Stripe"
+						? `Draft invoice for ${productName} created`
+						: "Draft invoice created"
 				}
-				message="Stripe should have opened in a new tab. If it was blocked, use the link below."
-				buttonLabel="Open in Stripe"
-				url={completedDraftUrl}
+				message="The invoice should have opened in a new tab. If it was blocked, use the link below."
+				buttonLabel="Open invoice"
+				url={completedDraftUrl ?? undefined}
 			/>
 		);
 	}
@@ -248,7 +241,7 @@ export function SendInvoiceStage({
 						: "Invoice has been finalized and sent"
 				}
 				message="The invoice has been finalized and sent to the customer."
-				buttonLabel="View Stripe invoice"
+				buttonLabel="View invoice"
 				url={completedInvoiceUrl}
 			/>
 		);
@@ -328,7 +321,7 @@ export function SendInvoiceStage({
 						isLoading={activeAction === "draft"}
 						disabled={needsEmail || isPending}
 					>
-						Draft and edit in Stripe
+						Draft invoice
 					</Button>
 					<Button
 						variant="primary"
@@ -350,8 +343,6 @@ export function SendInvoiceStageWithPreview({
 	previewQuery,
 	isPending,
 	onSubmit,
-	stripeAccount,
-	env,
 	onBack,
 	scheduledStartDate,
 }: {
@@ -359,25 +350,13 @@ export function SendInvoiceStageWithPreview({
 	previewQuery: PreviewSectionQuery;
 	isPending: boolean;
 	onSubmit: (params: SendInvoiceSubmitParams) => Promise<{
-		stripeId: string | undefined;
+		processorId: string | undefined;
 		hostedInvoiceUrl: string | null | undefined;
 	}>;
-	stripeAccount: { id?: string } | undefined;
-	env: AppEnv;
 	onBack: () => void;
 	scheduledStartDate?: number | null;
 }) {
 	const effectiveScheduledStartDate = scheduledStartDate ?? null;
-
-	const getInvoiceUrl = useCallback(
-		(invoiceStripeId: string) =>
-			getStripeInvoiceLink({
-				stripeInvoice: invoiceStripeId,
-				env,
-				accountId: stripeAccount?.id,
-			}),
-		[env, stripeAccount?.id],
-	);
 
 	return (
 		<SendInvoiceStage
@@ -385,7 +364,6 @@ export function SendInvoiceStageWithPreview({
 			isPending={isPending}
 			onBack={onBack}
 			onSubmit={onSubmit}
-			getInvoiceUrl={getInvoiceUrl}
 			previewQuery={previewQuery}
 			scheduledStartDate={effectiveScheduledStartDate}
 		/>

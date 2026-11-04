@@ -303,7 +303,7 @@ describe("buildUpdateCatalogPlanParams", () => {
 		);
 	});
 
-	test("strips stripe_price_id off price and items", () => {
+	test("passes price and items through untouched", () => {
 		const params = buildUpdateCatalogPlanParams({
 			baseProduct,
 			editedProduct: {
@@ -313,16 +313,12 @@ describe("buildUpdateCatalogPlanParams", () => {
 						price: 20,
 						interval: ProductItemInterval.Month,
 						interval_count: 1,
-						stripe_price_id: "price_base_stale",
-						price_config: { stripe_price_id: "price_base_stale" },
 					},
 					{
 						feature_id: "messages",
 						included_usage: 500,
 						interval: ProductItemInterval.Month,
 						interval_count: 1,
-						stripe_price_id: "price_messages_stale",
-						price_config: { stripe_price_id: "price_messages_stale" },
 					},
 				],
 			},
@@ -330,11 +326,12 @@ describe("buildUpdateCatalogPlanParams", () => {
 		});
 		const body = JSON.parse(JSON.stringify(params));
 
-		expect(body.price?.stripe_price_id).toBeUndefined();
-		for (const item of body.items ?? []) {
-			expect(item.stripe_price_id).toBeUndefined();
-			expect(item.price?.stripe_price_id).toBeUndefined();
-		}
+		expect(body.price?.amount).toBe(20);
+		expect(body.items).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ feature_id: "messages", included_usage: 500 }),
+			]),
+		);
 	});
 
 	/** Red: legacy max 0 is rejected on save. Green: serialize it as uncapped rollover. */

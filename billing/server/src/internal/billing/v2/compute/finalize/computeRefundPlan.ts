@@ -33,23 +33,11 @@ export const computeRefundPlan = async ({
 		(li) => li.context.direction !== "refund",
 	);
 
-	const { stripeSubscription } = billingContext;
-	if (!stripeSubscription) {
-		return { lineItems: filteredLineItems, refundPlan: undefined };
-	}
-
-	const latestInvoiceId =
-		typeof stripeSubscription.latest_invoice === "string"
-			? stripeSubscription.latest_invoice
-			: stripeSubscription.latest_invoice?.id;
-
-	if (!latestInvoiceId) {
-		return { lineItems: filteredLineItems, refundPlan: undefined };
-	}
-
-	const autumnInvoice = await InvoiceService.getByStripeId({
+	// The invoice the refund is taken against is the customer's most recent one.
+	const [autumnInvoice] = await InvoiceService.list({
 		db: ctx.db,
-		stripeId: latestInvoiceId,
+		internalCustomerId: billingContext.fullCustomer.internal_id,
+		limit: 1,
 	});
 
 	if (!autumnInvoice) {
@@ -79,7 +67,7 @@ export const computeRefundPlan = async ({
 		refundPlan: {
 			amount: refundAmount,
 			invoice: {
-				stripe_id: autumnInvoice.stripe_id,
+				processor_invoice_id: autumnInvoice.processor_invoice_id,
 				total: autumnInvoice.total,
 				current_refunded_amount: alreadyRefunded,
 				currency: autumnInvoice.currency,

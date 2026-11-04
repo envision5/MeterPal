@@ -1,5 +1,3 @@
-import type { FullCusProduct } from "@autumn/shared";
-import { AppEnv, ProcessorType } from "@autumn/shared";
 import {
 	Button,
 	Dialog,
@@ -12,7 +10,6 @@ import {
 } from "@autumn/ui";
 import {
 	ArrowSquareOutIcon,
-	ArrowsClockwiseIcon,
 	BroomIcon,
 	CaretDownIcon,
 	ClockIcon,
@@ -24,14 +21,11 @@ import {
 } from "@phosphor-icons/react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { useOrg } from "@/hooks/common/useOrg";
 import { useSheetStore } from "@/hooks/stores/useSheetStore";
 import { cn } from "@/lib/utils";
 import { CusService } from "@/services/customers/CusService";
 import { useAxiosInstance } from "@/services/useAxiosInstance";
-import { useEnv } from "@/utils/envUtils";
 import { getBackendErr } from "@/utils/genUtils";
-import { getRevenueCatCusLink } from "@/utils/linkUtils";
 import { useAdmin } from "@/views/admin/hooks/useAdmin";
 import { DeleteCustomerDialog } from "@/views/customers/customer/components/DeleteCustomerDialog";
 import UpdateCustomerDialog from "@/views/customers/customer/components/UpdateCustomerDialog";
@@ -49,13 +43,9 @@ export function CustomerActions() {
 	const [actionsOpen, setActionsOpen] = useState(false);
 	const [clearCacheLoading, setClearCacheLoading] = useState(false);
 	const { customer, testClockFrozenTimeMs, refetch } = useCusQuery();
-	const { org } = useOrg({ skipSandbox: false });
 	const { isAdmin } = useAdmin();
 	const setSheet = useSheetStore((s) => s.setSheet);
-	const env = useEnv();
 	const axiosInstance = useAxiosInstance();
-
-	const stripeCustomerId = customer?.processor?.id;
 
 	// Open dropdown with "a" key
 	useDropdownShortcut({
@@ -151,20 +141,6 @@ export function CustomerActions() {
 						<TicketIcon />
 						Add coupon
 					</DropdownMenuItem>
-					{stripeCustomerId &&
-						customer?.processor?.type === ProcessorType.Stripe && (
-							<DropdownMenuItem
-								onClick={() => {
-									setSheet({ type: "sync-stripe-v2" });
-									setActionsOpen(false);
-								}}
-								className="flex gap-2"
-								shortcut="y"
-							>
-								<ArrowsClockwiseIcon />
-								Sync from Stripe
-							</DropdownMenuItem>
-						)}
 					{testClockFrozenTimeMs != null && (
 						<DropdownMenuItem
 							onClick={async () => {
@@ -206,38 +182,6 @@ export function CustomerActions() {
 						>
 							<BroomIcon />
 							{clearCacheLoading ? "Clearing..." : "Clear cache"}
-						</DropdownMenuItem>
-					)}
-					{((customer?.processor?.id &&
-						customer.processor.type === ProcessorType.RevenueCat) ||
-						customer?.customer_products?.some(
-							(cp: FullCusProduct) =>
-								cp.processor?.type === ProcessorType.RevenueCat,
-						)) && (
-						<DropdownMenuItem
-							onClick={() => {
-								window.open(
-									getRevenueCatCusLink({
-										customerId: customer.id,
-										projectId:
-											env === AppEnv.Live
-												? (org?.processor_configs?.revenuecat?.project_id?.replace(
-														"proj",
-														"",
-													) ?? "")
-												: (org?.processor_configs?.revenuecat?.sandbox_project_id?.replace(
-														"proj",
-														"",
-													) ?? ""),
-									}),
-									"_blank",
-								);
-							}}
-							className="flex gap-2"
-							shortcut="r"
-						>
-							<ArrowSquareOutIcon className="size-3.5" />
-							Open in RevenueCat
 						</DropdownMenuItem>
 					)}
 					<DropdownMenuSeparator />

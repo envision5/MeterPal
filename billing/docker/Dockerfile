@@ -47,7 +47,6 @@ COPY packages/openapi/package.json packages/openapi/
 COPY packages/render/package.json packages/render/
 COPY packages/ducklake/package.json packages/ducklake/
 COPY packages/sdk/package.json packages/sdk/
-COPY packages/stripe-sync/package.json packages/stripe-sync/
 COPY packages/ui/package.json packages/ui/
 COPY apps/sso-test-idp/package.json apps/sso-test-idp/
 

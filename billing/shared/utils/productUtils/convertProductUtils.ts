@@ -99,14 +99,14 @@ export const entToOptions = ({
 	);
 };
 
-export const productToStripeId = ({
+export const productToProcessorId = ({
 	product,
 }: {
 	product: Product | FullProduct;
 }): string | null => product.processor?.id ?? null;
 
-/** Primary + alias Stripe product ids (legacy products mapped to this plan). */
-export const productToStripeIds = ({
+/** Primary + alias processor product ids (legacy products mapped to this plan). */
+export const productToProcessorIds = ({
 	product,
 }: {
 	product: Product | FullProduct;

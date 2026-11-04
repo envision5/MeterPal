@@ -26,7 +26,7 @@ modality (MCP resources, skills, llms.txt, in-app prompts), so revisions happen
 
 ## 2. Research (industry)
 
-- Vercel / Cloudflare / Stripe all converge on **one canonical content source →
+- Vercel / Cloudflare / PayPal all converge on **one canonical content source →
   many generated outputs** (llms.txt, per-page markdown, MCP, skills).
 - **MCP vs Skills are complementary**, not competing: MCP = *capability* (do things,
   live/auth'd); Skills + llms.txt = *judgment/reference* (how to write integration code).

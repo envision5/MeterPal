@@ -225,11 +225,6 @@ const PaneA = ({ state }: { state: TuiState }) => (
 		{state.phase === "fanout" ? (
 			<box style={{ flexDirection: "column", flexShrink: 0 }}>
 				<ProgressBar
-					done={state.stripeDone}
-					label="stripe"
-					total={state.stripeTotal}
-				/>
-				<ProgressBar
 					color={COLOR.cyan}
 					done={state.workersReady}
 					label="workers"
@@ -255,12 +250,6 @@ const PaneA = ({ state }: { state: TuiState }) => (
 					done={state.sandboxesDone}
 					label="sandboxes"
 					total={state.sandboxesTotal}
-				/>
-				<ProgressBar
-					color={COLOR.yellow}
-					done={state.accountsDone}
-					label="accounts"
-					total={state.accountsTotal}
 				/>
 			</box>
 		) : null}

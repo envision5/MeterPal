@@ -4,11 +4,9 @@ import { CheckIcon } from "lucide-react";
 import {
 	buildDiscountOptions,
 	type DiscountOption,
-	stripeCouponAppliesToProduct,
 } from "@/components/forms/attach-v2/utils/discountOptionUtils";
 import type { FormDiscount } from "@/components/forms/attach-v2/utils/discountUtils";
 import { useRewardsQuery } from "@/hooks/queries/useRewardsQuery";
-import { useStripeCouponsQuery } from "@/hooks/queries/useStripeCouponsQuery";
 import { useDiscountSearch } from "@/hooks/useDiscountSearch";
 
 export function DiscountRow({
@@ -30,11 +28,9 @@ export function DiscountRow({
 	excludedRewardIds?: string[];
 }) {
 	const { rewards, rewardPrograms } = useRewardsQuery();
-	const { stripeCoupons } = useStripeCouponsQuery();
 
 	const discount = discounts[index];
 
-	// Codes the bulk listing didn't reach are looked up in Stripe on demand.
 	const {
 		options: allOptions,
 		setSearch,
@@ -43,11 +39,8 @@ export function DiscountRow({
 		options: buildDiscountOptions({
 			rewards,
 			rewardPrograms,
-			stripeCoupons,
 			productId,
 		}),
-		isCouponAllowed: (coupon) =>
-			stripeCouponAppliesToProduct({ coupon, productId }),
 	});
 
 	if (!discount) return null;

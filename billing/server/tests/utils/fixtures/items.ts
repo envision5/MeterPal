@@ -451,7 +451,7 @@ const prepaidUsers = ({
 /**
  * Tiered prepaid messages - graduated pricing with tiers.
  * Default tiers: 0-500 units at $10/pack, 501+ at $5/pack (100 units/pack).
- * IMPORTANT: Last tier MUST have `to: "inf"` - Stripe requires a catch-all tier.
+ * IMPORTANT: Last tier MUST have `to: "inf"` - the processor requires a catch-all tier.
  */
 const tieredPrepaidMessages = ({
 	includedUsage = 0,
@@ -479,7 +479,7 @@ const tieredPrepaidMessages = ({
  * Volume-priced prepaid messages — the entire purchased quantity is charged at
  * the rate of whichever tier it falls into (not split across tiers).
  * Default tiers: 0-500 units at $10/pack, 501+ at $5/pack (100 units/pack).
- * IMPORTANT: Last tier MUST have `to: "inf"` - Stripe requires a catch-all tier.
+ * IMPORTANT: Last tier MUST have `to: "inf"` - the processor requires a catch-all tier.
  */
 const volumePrepaidMessages = ({
 	includedUsage = 0,
@@ -587,7 +587,7 @@ const oneOffStorage = ({
  * - 0-500 units: $10/pack (100 units/pack)
  * - 501+ units: $5/pack
  *
- * IMPORTANT: Last tier MUST have `to: "inf"` - Stripe requires a catch-all tier.
+ * IMPORTANT: Last tier MUST have `to: "inf"` - the processor requires a catch-all tier.
  *
  * @param includedUsage - Free units (default: 0)
  * @param billingUnits - Units per pack (default: 100)
@@ -616,7 +616,7 @@ const tieredOneOffMessages = ({
 /**
  * Volume-priced one-off messages — the whole purchased quantity is charged at
  * the rate of the single tier it lands in (no recurring charges).
- * IMPORTANT: Last tier MUST have `to: "inf"` - Stripe requires a catch-all tier.
+ * IMPORTANT: Last tier MUST have `to: "inf"` - the processor requires a catch-all tier.
  */
 const volumeOneOffMessages = ({
 	includedUsage = 0,
@@ -743,7 +743,7 @@ const consumableWords = ({
 /**
  * Tiered consumable messages - graduated pricing with tiers (pay-per-use).
  * Default tiers: 0-500 units at $0.10/unit, 501+ at $0.05/unit.
- * IMPORTANT: Last tier MUST have `to: "inf"` - Stripe requires a catch-all tier.
+ * IMPORTANT: Last tier MUST have `to: "inf"` - the processor requires a catch-all tier.
  * Note: tier_behavior is undefined, defaulting to graduated pricing.
  */
 const tieredConsumableMessages = ({

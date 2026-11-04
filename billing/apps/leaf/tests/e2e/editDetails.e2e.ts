@@ -39,7 +39,7 @@ if (GROUP_SIZE > 1) {
 		await executeAutumnMcpTool({
 			args: {
 				request: {
-					create_in_stripe: true,
+					create_in_processor: true,
 					customer_id: id,
 					email: `${id}@example.com`,
 					name: id,

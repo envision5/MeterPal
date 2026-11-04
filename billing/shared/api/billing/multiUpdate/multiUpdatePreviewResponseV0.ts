@@ -8,7 +8,7 @@ const planIdsField = z.array(z.string()).meta({
 	description: "The IDs of the plans updated on this subscription.",
 });
 
-/** The core billing preview, scoped to ONE Stripe subscription group. */
+/** The core billing preview, scoped to ONE processor subscription group. */
 export const MultiUpdateSubscriptionPreviewV0Schema =
 	BillingPreviewResponseSchema.extend({
 		plan_ids: planIdsField,
@@ -35,7 +35,7 @@ const multiUpdatePreviewBase = {
 
 const subscriptionsMeta = {
 	description:
-		"One preview per affected Stripe subscription. Updates to plans without a subscription (free plans) produce no entry.",
+		"One preview per affected processor subscription. Updates to plans without a subscription (free plans) produce no entry.",
 };
 
 export const ExtMultiUpdatePreviewResponseV0Schema = z.object({

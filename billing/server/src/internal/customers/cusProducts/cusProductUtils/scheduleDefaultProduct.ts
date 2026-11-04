@@ -6,9 +6,9 @@ import {
 } from "@autumn/shared";
 import type { AutumnContext } from "@/honoUtils/HonoEnv";
 import { createFullCusProduct } from "@/internal/customers/add-product/createFullCusProduct";
-import { productToInsertParams } from "@/internal/customers/attach/attachUtils/attachParams/convertToParams";
 import { ProductService } from "@/internal/products/ProductService";
 import { isDefaultTrialFullProduct } from "@/internal/products/productUtils/classifyProduct";
+import { productToInsertParams } from "./customerProductInsertParams.js";
 
 /**
  * Schedules a default product for a product group to start at a future time.

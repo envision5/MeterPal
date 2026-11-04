@@ -95,7 +95,7 @@ export type PreviewMultiUpdateParams = {
    */
   refundLastPayment?: PreviewMultiUpdateRefundLastPayment | undefined;
   /**
-   * Additional parameters to pass into the Stripe subscription update or cancel call.
+   * Additional parameters to pass into the processor subscription update or cancel call.
    */
   subscriptionParams?: { [k: string]: any } | undefined;
   /**
@@ -417,7 +417,7 @@ export type MultiUpdatePreviewResponse = {
    */
   total: number;
   /**
-   * One preview per affected Stripe subscription. Updates to plans without a subscription (free plans) produce no entry.
+   * One preview per affected processor subscription. Updates to plans without a subscription (free plans) produce no entry.
    */
   subscriptions: Array<PreviewMultiUpdateSubscription>;
 };

@@ -7,7 +7,6 @@ import type { AutumnContext } from "@/honoUtils/HonoEnv";
 import { handleProrationBehaviorErrors } from "@/internal/billing/v2/common/errors/handleBillingBehaviorErrors";
 import { handleRevertTrialErrors } from "@/internal/billing/v2/common/errors/handleRevertTrialErrors";
 import { handleSubscriptionIdErrors } from "@/internal/billing/v2/common/errors/handleSubscriptionIdErrors";
-import { handleStripeBillingPlanErrors } from "@/internal/billing/v2/providers/stripe/errors/handleStripeBillingPlanErrors";
 import { handleMultiAttachBillingCycleAnchorErrors } from "./handleMultiAttachBillingCycleAnchorErrors";
 import { handleMultiAttachCurrentProductErrors } from "./handleMultiAttachCurrentProductErrors";
 import { handleMultiAttachRedirectErrors } from "./handleMultiAttachRedirectErrors";
@@ -33,7 +32,9 @@ export const handleMultiAttachErrors = async ({
 
 	handleMultiAttachRedirectErrors({
 		redirectMode,
-		stripeSubscription: billingContext.stripeSubscription,
+		hasExistingSubscription: billingContext.fullCustomer.customer_products.some(
+			(customerProduct) => customerProduct.subscription_ids?.length,
+		),
 	});
 
 	handleRevertTrialErrors({ billingContext });
@@ -58,5 +59,4 @@ export const handleMultiAttachBillingPlanErrors = ({
 	billingPlan: BillingPlan;
 }) => {
 	handleProrationBehaviorErrors({ billingContext, billingPlan });
-	handleStripeBillingPlanErrors({ ctx, billingContext, billingPlan });
 };

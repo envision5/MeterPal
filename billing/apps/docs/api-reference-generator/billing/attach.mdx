@@ -51,7 +51,7 @@ const response = await autumn.billing.attach({
 });
 ```
 
-```typescript Pass metadata to Stripe subscription
+```typescript Pass metadata to the processor subscription
 const response = await autumn.billing.attach({
     customerId: "cus_123",
     planId: "pro_plan",
@@ -68,11 +68,11 @@ const response = await autumn.billing.attach({
 
 </CodeGroup>
 
-### Stripe checkout session params
+### Checkout session params
 
-Use `checkoutSessionParams` to pass additional data to the Stripe checkout session. Values you provide are deep-merged with Autumn's internal parameters, so your fields are preserved alongside ones Autumn sets automatically (like `trial_end` or internal metadata).
+Use `checkoutSessionParams` to pass additional data to the processor checkout session. Values you provide are deep-merged with Autumn's internal parameters, so your fields are preserved alongside ones Autumn sets automatically (like `trial_end` or internal metadata).
 
-This is useful for attaching custom metadata to the Stripe subscription created during checkout — for example, linking subscriptions to internal user IDs or tracking the source of the purchase.
+This is useful for attaching custom metadata to the processor subscription created during checkout — for example, linking subscriptions to internal user IDs or tracking the source of the purchase.
 
 ### Currency
 

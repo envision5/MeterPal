@@ -47,7 +47,7 @@ export const AllowedPaymentMethodsSubsection = () => {
 			if (option.value === method) return checked;
 			return selected.includes(option.value);
 		}).map((option) => option.value);
-		// An empty array would break invoice finalization at Stripe.
+		// An empty array would break invoice finalization.
 		mutate(next.length > 0 ? next : null);
 	};
 
@@ -56,7 +56,7 @@ export const AllowedPaymentMethodsSubsection = () => {
 			label="Payment methods"
 			description={
 				allowedMethods === null
-					? "Unset — invoices use your Stripe account's default payment methods"
+					? "Unset — invoices use your PayPal account's default payment methods"
 					: "Only these payment methods are offered on invoices MeterPal creates"
 			}
 		>
@@ -70,7 +70,7 @@ export const AllowedPaymentMethodsSubsection = () => {
 						className="font-medium shrink-0"
 					>
 						{allowedMethods === null
-							? "Stripe defaults"
+							? "PayPal defaults"
 							: `${selected.length} selected`}
 					</IconButton>
 				</DropdownMenuTrigger>

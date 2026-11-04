@@ -56,10 +56,6 @@ export const deriveVariantCreates = ({
 						...(target.newVersionSlug
 							? { new_version_slug: target.newVersionSlug }
 							: {}),
-						// Variant creates inherit the base's Stripe creation opt-out.
-						...(upsert.createInStripe !== undefined
-							? { create_in_stripe: upsert.createInStripe }
-							: {}),
 					},
 					source: "variant_link" as const,
 					baseInternalProductId: upsert.row.nextFullProduct.internal_id,

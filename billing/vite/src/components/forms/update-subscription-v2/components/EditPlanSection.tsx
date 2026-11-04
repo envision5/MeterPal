@@ -159,7 +159,6 @@ export function EditPlanSection() {
 					priceChange={priceChange}
 					showEditButton={!hasLicenseRows}
 					adminIds={{
-						stripe_product_id: product?.stripe_id ?? null,
 						internal_product_id: product?.internal_id ?? null,
 					}}
 				/>

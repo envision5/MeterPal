@@ -181,22 +181,8 @@ export const buildSearchPredicates = ({
 			search
 				? sql`(${customers.id} ILIKE ${`%${search}%`} OR ${customers.name} ILIKE ${`%${search}%`} OR ${customers.email} ILIKE ${`%${search}%`})`
 				: null,
-			filters?.processor?.length
-				? sql`(${sql.join(
-						filters.processor
-							.map((proc) => {
-								if (proc === "stripe")
-									return sql`(${customers.processor}->>'id' IS NOT NULL)`;
-								if (proc === "revenuecat")
-									return sql`EXISTS (SELECT 1 FROM customer_products cp_p WHERE cp_p.internal_customer_id = ${customers.internal_id} AND cp_p.processor->>'type' = 'revenuecat')`;
-								if (proc === "vercel")
-									return sql`(${customers.processors}->>'vercel' IS NOT NULL)`;
-								return null;
-							})
-							.filter((c): c is NonNullable<typeof c> => c !== null),
-						sql` OR `,
-					)})`
-				: null,
+			// PayPal is the only processor, so the legacy `processor` filter has
+			// no column to match on and does not narrow the result set.
 			filters?.created_at_range?.start !== undefined
 				? sql`${customers.created_at} >= ${filters.created_at_range.start}`
 				: null,

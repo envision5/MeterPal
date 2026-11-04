@@ -5,11 +5,7 @@ import { type Context, Hono } from "hono";
 import { cors } from "hono/cors";
 import { db } from "./db/initDrizzle.js";
 import { autumnWebhookRouter } from "./external/autumn/autumnWebhookRouter.js";
-import { revenuecatWebhookRouter } from "./external/revenueCat/revenuecatWebhookRouter.js";
-import { stripeWebhookRouter } from "./external/stripe/stripeWebhookRouter.js";
 import { paypalWebhookRouter } from "./external/paypal/webhookRouter.js";
-import { vercelTestApiRouter } from "./external/vercel/vercelTestApiRouter.js";
-import { vercelWebhookRouter } from "./external/vercel/vercelWebhookRouter.js";
 import { baseMiddleware } from "./honoMiddlewares/baseMiddleware.js";
 import { errorMiddleware } from "./honoMiddlewares/errorMiddleware.js";
 import { inFlightTrackingMiddleware } from "./honoMiddlewares/inFlightTrackingMiddleware.js";
@@ -22,8 +18,6 @@ import { handleListAuthOrganizations } from "./internal/auth/handleListAuthOrgan
 import { oauthRouter } from "./internal/auth/oauth/oauthRouter.js";
 import { withTrustedSsoOrigin } from "./internal/auth/sso/ssoTrustedOrigins.js";
 import { cliRouter } from "./internal/dev/cli/cliRouter.js";
-import { handleRevenueCatOAuthCallback } from "./internal/orgs/handlers/revenueCatHandlers/handleRevenueCatOAuthCallback.js";
-import { handleOAuthCallback } from "./internal/orgs/handlers/stripeHandlers/handleOAuthCallback.js";
 import { inferenceRouter } from "./internal/inference/inferenceRouter.js";
 import { slackUnfurlRouter } from "./internal/slackUnfurl/slackUnfurlRouter.js";
 import { apiRouter } from "./routers/apiRouter.js";
@@ -119,8 +113,6 @@ export const createHonoApp = () => {
 	// OAuth callback (needs to be before middleware)
 	// Health check endpoint for AWS/ECS load balancer
 
-	app.get("/stripe/oauth_callback", handleOAuthCallback);
-	app.get("/revenuecat/oauth_callback", handleRevenueCatOAuthCallback);
 	app.get("/ready/:token", handleReadyCheck);
 	app.get("/", handleHealthCheck);
 
@@ -151,17 +143,8 @@ export const createHonoApp = () => {
 	});
 
 	// Webhook routes
-	app.route("", stripeWebhookRouter);
 	app.route("", paypalWebhookRouter);
 	app.route("/webhooks/autumn", autumnWebhookRouter);
-	app.route("/webhooks/vercel", vercelWebhookRouter);
-	app.route("/webhooks/revenuecat", revenuecatWebhookRouter);
-
-	// Vercel SDK test mock — mounted in dev/test, used only when
-	// `ctx.testOptions.mockVercelApi` points the SDK at this route.
-	if (process.env.NODE_ENV !== "production") {
-		app.route("/__test/vercel/api", vercelTestApiRouter);
-	}
 
 	// Public routes (no auth required)
 	app.route("", publicRouter);

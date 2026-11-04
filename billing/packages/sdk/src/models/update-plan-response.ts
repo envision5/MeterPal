@@ -34,8 +34,6 @@ import {
   UpdatePlanPlanItemFilterResponse$inboundSchema,
   UpdatePlanPlanItemResponse,
   UpdatePlanPlanItemResponse$inboundSchema,
-  UpdatePlanProcessors,
-  UpdatePlanProcessors$inboundSchema,
   UpdatePlanUpsertLicenseBasePriceResponse,
   UpdatePlanUpsertLicenseBasePriceResponse$inboundSchema,
   UpdatePlanUpsertLicenseProrationResponse,
@@ -572,11 +570,7 @@ export type UpdatePlanResponse = {
    * Feature configurations included in this plan. Each item defines included units, pricing, and reset behavior for a feature.
    */
   items: Array<UpdatePlanItem>;
-  /**
-   * Payment processors this plan is connected to. Omitted when unset.
-   */
-  processors?: UpdatePlanProcessors | undefined;
-  /**
+    /**
    * Free trial configuration. If set, new customers can try this plan before being charged.
    */
   freeTrial?: UpdatePlanFreeTrial | undefined;
@@ -1628,7 +1622,6 @@ export const UpdatePlanResponse$inboundSchema: z.ZodMiniType<
     auto_enable: types.boolean(),
     price: types.nullable(UpdatePlanPriceResponse$inboundSchema),
     items: z.array(UpdatePlanItem$inboundSchema),
-    processors: types.optional(UpdatePlanProcessors$inboundSchema),
     free_trial: types.optional(UpdatePlanFreeTrial$inboundSchema),
     created_at: types.number(),
     env: UpdatePlanEnv$inboundSchema,

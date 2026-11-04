@@ -2,7 +2,7 @@
 
 Autumn is a database for your application billing state: features, plans, customers, subscriptions, purchases, balances, flags, and billing controls. It helps you iterate on pricing, manage credit access and usage, control overage, and keep billing behavior connected to product access.
 
-Autumn is a layer above Stripe; Stripe still handles subscription management, invoicing, and payment processing. Autumn provisions and updates Stripe subscriptions, schedules, invoices, and related billing objects for you.
+Autumn is a layer above the payment processor; the processor still handles subscription management, invoicing, and payment processing. Autumn provisions and updates processor subscriptions, schedules, invoices, and related billing objects for you.
 
 ## Object graph
 
@@ -533,15 +533,15 @@ Change prepaid to usage-based:
 
 If the customer the customer is NOT on a paid plan (free plan or no plan at all). 2 options:
 
-- No-card trial (default to this): attach with `free_trial` and set `card_required` false. The subscription starts with no card and ends at trial end if none is added. While on it, the customer cannot upgrade or attach another plan until they add a card via the Stripe billing portal.
+- No-card trial (default to this): attach with `free_trial` and set `card_required` false. The subscription starts with no card and ends at trial end if none is added. While on it, the customer cannot upgrade or attach another plan until they add a card via the processor billing portal.
 - No-card trials cannot be combined with `invoice_mode` (attach rejects it). If an invoice is needed, use `card_required: true`.
 - Card-required trial: attach with `free_trial` and `card_required: true` and `long_lived_checkout` If the customer has no payment method, the attach returns a checkout URL to collect a card; they are charged when the trial ends. This should be done with a long-lived checkout URL param.
 
-The customer already has an active (Stripe) subscription — common in sales-led trials.
+The customer already has an active (processor) subscription — common in sales-led trials.
 
-- On end: revert (default to this): attach the new plan with `on_end: "revert"` . This grants the plan in Autumn without touching the Stripe subscription; at trial end Autumn moves the customer back to their original plan, preserving the existing billing cycle.
+- On end: revert (default to this): attach the new plan with `on_end: "revert"` . This grants the plan in Autumn without touching the processor subscription; at trial end Autumn moves the customer back to their original plan, preserving the existing billing cycle.
 - To end a revert trial early, cancel it with `updateSubscription` and `cancel_action: "cancel_immediately"`; Autumn restores the previous plan. Do not remove `free_trial` (that converts the trial to paid) or re-attach the old plan.
-- On end: bill -- attaching a plan with a trial (or updating the subscription to add one) resets the Stripe billing anchor/cycle. This can be undesired so warn the user if they request this.
+- On end: bill -- attaching a plan with a trial (or updating the subscription to add one) resets the processor billing anchor/cycle. This can be undesired so warn the user if they request this.
 - Card required param is ignored if there is already an active sub.
 
 Updating or ending a trial
@@ -722,35 +722,7 @@ In `autumn.config.ts` the same shape goes through the `billingControls()` builde
 
 </useful-docs>
 
-### Billing Details
-
-- Billing details are the tax and invoicing fields on the customer's linked Stripe customer: billing address, tax IDs (VAT, GST…), tax exemption, and invoice custom fields (e.g. a PO number). Autumn doesn't store them — writes go straight to Stripe and reads come back live.
-- Set them with `billing_details` on `customers.create` or `customers.update`; read them with `expand: ["billing_details"]` on `customers.get` (`null` when no Stripe customer is linked).
-- Update requires a linked Stripe customer. Create makes the Stripe customer if needed.
-
-</intro>
-
-<fields>
-
-- `address`: `{ line1, line2, city, state, postal_code, country }`. **Replaces the whole address**, as Stripe does — to change one line, send the full address. `null` clears it.
-- `tax_ids`: `{ add?: [{ type, value }], remove?: [{ type, value }] }`. IDs not listed are kept; adding one that exists or removing one that doesn't is a no-op. Stripe tax IDs can't be edited — to change a VAT number, remove the old one and add the new one in the same call. `type` is Stripe's tax ID type (`eu_vat`, `gb_vat`, `us_ein`, …).
-- `tax_exempt`: `none`, `exempt`, or `reverse` (reverse charge).
-- `invoice_settings.custom_fields`: up to 4 `{ name, value }` pairs printed on every invoice (name ≤ 40 chars, value ≤ 140). **Replaces the whole list** — to add one, send the existing ones too. `null` clears it.
-
-</fields>
-
-<gotchas>
-
-- Address and custom fields replace; tax IDs don't. Before changing an address line or adding a custom field, read the current values with the expand and send them back alongside the change.
-- Invalid values (a malformed VAT number) fail with Stripe's error, and the request leaves nothing half-applied — no tax ID, address, or email change from that call lands.
-
-</gotchas>
-
-<useful-docs>
-
-- Billing details: https://docs.useautumn.com/documentation/customers/managing-customers#billing-details
-
-</useful-docs>
+Billing details (address, tax IDs, tax exemption, invoice custom fields) are not supported. They live on the billing processor's customer record, and the processor has no equivalent store — the server rejects `billing_details` on `customers.create` and `customers.update` with a 400.
 
 # Licenses
 

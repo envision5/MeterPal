@@ -29,14 +29,12 @@
 			"packages/autumn-js",
 			"packages/openapi",
 			"packages/ksuid",
-			"packages/stripe-sync",
 			"packages/gateway",
 			"packages/render",
 			"packages/ui",
 			"packages/ducklake"
 		],
 		"catalog": {
-			"stripe": "19.3.0-beta.1",
 			"drizzle-orm": "0.43.1",
 			"drizzle-kit": "^0.31.1",
 			"@typescript/native-preview": "7.0.0-dev.20260220.1",
@@ -119,7 +117,6 @@
 		"atmn-test": "echo 'deprecated: v1 atmn integration — use bun atl (nightly). see packages/atmn-old/test/integration/DEPRECATED.md' && exit 0",
 		"atest": "echo 'deprecated: v1 atmn integration — use bun atl (nightly). see packages/atmn-old/test/integration/DEPRECATED.md' && exit 0",
 		"tw": "ENV_FILE=.env bun scripts/withSecrets.ts --env=dev -- bun scripts/tw/index.ts",
-		"tw:pk": "ENV_FILE=.env bun scripts/withSecrets.ts --env=dev -- bun scripts/tw/probe-stripe-keys.ts",
 		"tw:list": "ENV_FILE=.env bun scripts/withSecrets.ts --env=dev -- bun scripts/tw/index.ts list",
 		"tw:kill": "ENV_FILE=.env bun scripts/withSecrets.ts --env=dev -- bun scripts/tw/index.ts kill",
 		"tw:kill-all": "ENV_FILE=.env bun scripts/withSecrets.ts --env=dev -- bun scripts/tw/index.ts kill-all",
@@ -149,7 +146,6 @@
 		"contracts": "bun scripts/withSecrets.ts --env=dev -- bun scripts/s3/contracts.ts",
 		"setup:s3-admin": "bun scripts/setup/setupS3Admin.ts",
 		"setup:test": "bun scripts/withSecrets.ts --env=dev -- bun scripts/setup/setup-test.ts",
-		"stripe:link-test": "ENV_FILE=.env bun scripts/withSecrets.ts --env=dev -- bun scripts/setup/link-test-stripe-account.ts",
 		"agent:bootstrap": "bash scripts/setup/agent-bootstrap.sh",
 		"capy": "bun scripts/capy/index.ts",
 		"migrate-functions": "bun scripts/withSecrets.ts --env=dev -- bun scripts/migrations/migrate-functions.ts",
@@ -199,9 +195,7 @@
 		"js:publish": "bun js:build && cd packages/autumn-js && npm publish",
 		"js:publish-beta": "bun js:build && cd packages/autumn-js && npm publish --tag beta",
 		"js:publish-dry": "bun js:build && cd packages/autumn-js && npm publish --dry-run",
-		"js:version": "git fetch --tags origin && git tag -l 'autumn-js-v*' --sort=-v:refname | head -1",
-		"stripe-sync:migrate": "bun packages/stripe-sync/scripts/migrate.ts",
-		"stripe-sync:migrate:prod": "NODE_ENV=production infisical run --env=prod --recursive -- bun packages/stripe-sync/scripts/migrate.ts"
+		"js:version": "git fetch --tags origin && git tag -l 'autumn-js-v*' --sort=-v:refname | head -1"
 	},
 	"dependencies": {
 		"@aws-sdk/client-sqs": "^3.985.0",

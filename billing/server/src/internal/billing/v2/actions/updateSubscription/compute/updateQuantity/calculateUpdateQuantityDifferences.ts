@@ -3,10 +3,10 @@ import { Decimal } from "decimal.js";
 import { notNullish } from "@/utils/genUtils";
 
 /**
- * Calculates quantity differences for both entitlements and Stripe subscription items.
+ * Calculates quantity differences for both entitlements and processor subscription items.
  *
  * Entitlement difference is based on actual current vs new quantity.
- * Stripe difference accounts for upcoming_quantity to prevent double-billing when scheduled changes exist.
+ * The processor difference accounts for upcoming_quantity to prevent double-billing when scheduled changes exist.
  *
  * @param previousOptions - Current feature options with current and upcoming quantities
  * @param updatedOptions - Desired feature options with new quantity
@@ -21,7 +21,7 @@ export const calculateUpdateQuantityDifferences = ({
 }): {
 	isUpgrade: boolean;
 	quantityDifferenceForEntitlements: number;
-	stripeSubscriptionItemQuantityDifference: number;
+	processorSubscriptionItemQuantityDifference: number;
 } => {
 	const isUpgrade = updatedOptions.quantity > previousOptions.quantity;
 
@@ -35,7 +35,7 @@ export const calculateUpdateQuantityDifferences = ({
 		? previousOptions.upcoming_quantity
 		: previousOptions.quantity;
 
-	const stripeSubscriptionItemQuantityDifference = new Decimal(
+	const processorSubscriptionItemQuantityDifference = new Decimal(
 		updatedOptions.quantity,
 	)
 		.minus(upcomingQuantityToConsider)
@@ -44,6 +44,6 @@ export const calculateUpdateQuantityDifferences = ({
 	return {
 		isUpgrade,
 		quantityDifferenceForEntitlements,
-		stripeSubscriptionItemQuantityDifference,
+		processorSubscriptionItemQuantityDifference,
 	};
 };

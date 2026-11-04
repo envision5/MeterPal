@@ -5,7 +5,7 @@ info:
   description: |
     **Private Preview** - Contact hey@useautumn.com to get access.
 
-    The Platform API allows you to manage organizations and Stripe Connect accounts on behalf of your tenants. All endpoints require platform feature access.
+    The Platform API allows you to manage organizations and users on behalf of your tenants. All endpoints require platform feature access.
 servers:
   - url: https://api.useautumn.com/v1
 security:
@@ -98,106 +98,6 @@ paths:
             curl -X GET 'https://api.useautumn.com/v1/platform/organizations?limit=20&offset=0' \
             -H 'Authorization: Bearer am_sk_test_...'
 
-  /platform/oauth_url:
-    post:
-      summary: Generate Stripe OAuth URL
-      operationId: generateOAuthURL
-      description: Generates a Stripe Connect OAuth URL for a platform organization. Use this to allow your tenants to connect their Stripe accounts.
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GenerateOAuthURLRequest'
-      responses:
-        '200':
-          description: OAuth URL generated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GenerateOAuthURLResponse'
-        '400':
-          description: Invalid request parameters
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: Forbidden
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Organization not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-      x-code-samples:
-        - lang: curl
-          source: |
-            curl -X POST 'https://api.useautumn.com/v1/platform/oauth_url' \
-            -H 'Authorization: Bearer am_sk_test_...' \
-            -H 'Content-Type: application/json' \
-            -d '{
-              "organization_slug": "tenant-org",
-              "env": "test",
-              "redirect_url": "https://yourapp.com/stripe/callback"
-            }'
-
-  /platform/organizations/stripe:
-    post:
-      summary: Update Connected Stripe Account
-      operationId: updateStripeConfig
-      description: Updates a platform organization's Stripe Connect configuration. Associates a Stripe account ID with the organization using your master Stripe credentials.
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateStripeConfigRequest'
-      responses:
-        '200':
-          description: Stripe configuration updated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UpdateStripeConfigResponse'
-        '400':
-          description: Invalid request parameters or validation failed
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: Forbidden
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Organization not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-      x-code-samples:
-        - lang: curl
-          source: |
-            curl -X POST 'https://api.useautumn.com/v1/platform/organizations/stripe' \
-            -H 'Authorization: Bearer am_sk_test_...' \
-            -H 'Content-Type: application/json' \
-            -d '{
-              "organization_slug": "tenant-org",
-              "test_account_id": "acct_1234567890",
-              "live_account_id": "acct_0987654321"
-            }'
-
   /platform/users:
     get:
       summary: List Users
@@ -287,66 +187,6 @@ components:
           type: string
           nullable: true
           description: Autumn live API key for the organization (if env is 'live' or 'both').
-
-    GenerateOAuthURLRequest:
-      type: object
-      required:
-        - organization_slug
-        - env
-        - redirect_url
-      properties:
-        organization_slug:
-          type: string
-          description: The slug of the organization.
-        env:
-          type: string
-          enum:
-            - test
-            - live
-          description: "Environment: 'test' or 'live'."
-        redirect_url:
-          type: string
-          format: uri
-          description: URL to redirect to after OAuth completion.
-
-    GenerateOAuthURLResponse:
-      type: object
-      properties:
-        oauth_url:
-          type: string
-          format: uri
-          description: Stripe Connect OAuth URL to redirect the user to.
-
-    UpdateStripeConfigRequest:
-      type: object
-      required:
-        - organization_slug
-      properties:
-        organization_slug:
-          type: string
-          description: The slug of the organization (without the org ID prefix).
-        test_account_id:
-          type: string
-          description: Stripe account ID for test environment (e.g., acct_xxx).
-        live_account_id:
-          type: string
-          description: Stripe account ID for live environment (e.g., acct_xxx).
-
-    UpdateStripeConfigResponse:
-      type: object
-      properties:
-        message:
-          type: string
-          description: Success message.
-        organization:
-          type: object
-          properties:
-            id:
-              type: string
-              description: Internal organization ID.
-            slug:
-              type: string
-              description: Organization slug (without prefix).
 
     ListUsersResponse:
       type: object

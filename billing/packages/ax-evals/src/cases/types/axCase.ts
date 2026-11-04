@@ -13,8 +13,6 @@ export type Scenario = {
 	/** a config pushed into the run org before the agent starts; it stays in
 	 * the workspace with the ids push wrote back (existing-catalog cases) */
 	seedCatalog?: string;
-	/** mint the org with a Stripe sub-account (needed to seed paid subscribers) */
-	withStripe?: boolean;
 	/** subscribers seeded after the catalog, e.g. customers on a live plan */
 	seedCustomers?: SeedCustomerSpec[];
 	/** server-side change made after seeding and before the agent's first

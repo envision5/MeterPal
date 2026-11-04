@@ -4,6 +4,7 @@ Credit systems let you track actions with different credit costs from a single b
 
 A credit system is made up of a list of [features](/documentation/concepts/features) that can draw from it, and a credit cost per unit of usage for each feature.
 
+
 > **Example** <br />
 > You have a Pro plan that gives users `100 basic messages` per month, and `10 premium messages` per month. These 2 balances are separate and independent of each other.
 > To give your users more flexibility, you instead decide to use a credit system, where:
@@ -12,10 +13,18 @@ A credit system is made up of a list of [features](/documentation/concepts/featu
 >
 > Instead of having 2 separate balances for each message type, your Pro plan can have `200 credits` per month. Your users can use the credits in any combination of basic and premium messages they want.
 
+
+
+
 ## Creating a credit system
+
 
   Make sure you have some metered features created before creating a credit
   system.
+
+
+
+
 
 Define metered features, then create a `credit_system` feature with a `creditSchema` that maps each feature to a credit cost:
 
@@ -69,9 +78,16 @@ export default atmn({
 
 Preview with `atmn push`, then apply with `atmn push --yes`.
 
+
+
+
+
+
 **Example**
 
 If each `premium_request` is worth 3 credits, then using 6 premium requests will cost 18 credits.
+
+
 
 Now you can add this credit system to a plan, such as granting 50 credits per month or charging $1 per credit.
 
@@ -125,6 +141,7 @@ curl -X POST "https://api.useautumn.com/v1/check" \
 
 </CodeGroup>
 
+
 The response will contain the balance for the credit system that is being deducted from.
 
 ```json
@@ -144,9 +161,12 @@ The response will contain the balance for the credit system that is being deduct
 }
 ```
 
+
 In this case, we have a balance of 100 credits remaining, so we're allowed to use our 6 "premium requests" feature.
 
+
   If a feature is not defined in the credit system, it will return `allowed: false`
+
 
 #### Tracking usage
 
@@ -192,6 +212,7 @@ curl -X POST "https://api.useautumn.com/v1/track" \
 
 </CodeGroup>
 
+
 ```json
 {
   "customerId": "user_123",
@@ -207,6 +228,7 @@ curl -X POST "https://api.useautumn.com/v1/track" \
   }
 }
 ```
+
 
 Since the customer started with a balance of 100 credits, and used 18 credits, their remaining balance is 82 credits.
 
@@ -285,15 +307,19 @@ Property values are compared as strings, so `{ size: 1 }` and `{ size: '1' }` ma
 
 Usage is attributed per dimension, so graduated dimensions progress through their own tiers, and invoice credit line items are broken down by feature and dimension.
 
+
   A plan item can override its credit system's rate card for customers on that plan via `featureOverride: { creditSchema: [...] }`. The override replaces the rate card entirely, dimensions included.
+
 
 ## Itemized invoice credits
 
-When a plan bills a credit system **pay-per-use at exactly one currency unit per credit** (for example `$1` per credit, or `$100` per 100 credits), Autumn treats the balance as invoice credits: every tracked usage is attributed to the feature that spent it, and the invoice lists one line per feature ("Premium messages, 40 units … $8") plus a "Credits applied" line for the credits the plan included. Balances like this can only be moved by tracked usage and cycle resets, so the invoice always matches the ledger.
+When a plan bills a credit system **pay-per-use at exactly one currency unit per credit** (for example `$1` per credit, or `$100` per 100 credits), MeterPal treats the balance as invoice credits: every tracked usage is attributed to the feature that spent it, and the invoice lists one line per feature ("Premium messages, 40 units … $8") plus a "Credits applied" line for the credits the plan included. Balances like this can only be moved by tracked usage and cycle resets, so the invoice always matches the ledger.
 
 Any other price shape (a fractional price per credit, prepaid packs, included-only or pooled items) bills as an ordinary overage. The decision is made per customer when the plan is attached, so changing a plan's price later never rewrites an existing customer's invoices.
 
+
   There is no switch to turn this on. The plan item's price decides, so a credit system can itemize on one plan and bill plainly on another.
+
 
 ## Stacking with direct balances
 
@@ -301,9 +327,11 @@ A feature can have both a direct balance **and** belong to a credit system. When
 
 > **Example** <br />
 > A customer's plan grants `10 premium messages` per month directly, plus `200 credits` per month from a credit system (where each premium message costs 10 credits). <br /><br />
-> When the customer sends a premium message, Autumn deducts from the direct premium message balance first. Once those 10 direct messages are used up, subsequent premium messages draw from the credit pool instead.
+> When the customer sends a premium message, MeterPal deducts from the direct premium message balance first. Once those 10 direct messages are used up, subsequent premium messages draw from the credit pool instead.
+
 
   The `check` endpoint accounts for both balances. If the customer has 5 direct premium messages remaining plus 100 credits (enough for 10 more premium messages), `check` will report that the customer is allowed.
+
 
 ## Monetary credits
 
@@ -319,11 +347,17 @@ You may want your credit system to represent a monetary value: eg, $10 of credit
 
 3. When charging for the credits, set the cost of each credit to 1 cent
 
+
 See the credits pricing guide for a more detailed example of setting up a monetary credits system
+
+
 
 ## AI Credit Systems
 
 For AI applications that need to track token usage with per-model pricing, you can create an AI credit system. This lets you define markup percentages for each model and automatically calculate costs based on input/output tokens.
+
+
+
 
 Markups are optional. `defaultMarkup` applies to every model unless overridden — by `providerMarkups` (keyed by the first segment of the model ID, e.g. `openrouter`), or by `modelMarkups` for a specific model, which takes highest priority. With no markups set, models are billed at their Models.dev base cost.
 
@@ -382,6 +416,10 @@ export default atmn({ features: [aiCredits], plans: [pro] });
 ```
 
 Preview with `atmn push`, then apply with `atmn push --yes`.
+
+
+
+
 
 ### Model ID Format
 

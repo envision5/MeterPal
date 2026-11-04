@@ -10,6 +10,17 @@ import type { ZodType } from "zod/v4";
 import { resolveVersionedEntry, type VersionedMap } from "./versionResolver.js";
 
 /**
+ * The schema type `@hono/zod-validator` accepts.
+ *
+ * The workspace resolves two zod copies: this package's `zod/v4` comes from
+ * zod@3.25.x while the validator's `zod/v4/core` comes from zod@4, so the two
+ * `$ZodType` declarations are structurally incompatible. The validator is
+ * runtime-version-agnostic (it only calls `safeParseAsync`), so the cast is
+ * type-level only.
+ */
+type ZodValidatorSchema = Parameters<typeof zValidator>[1];
+
+/**
  * Version-aware validator middleware
  *
  * Flow:
@@ -105,12 +116,16 @@ export const versionedValidator = ({
 			c.req.addValidatedData(target, validatedData);
 		} else {
 			// For other targets (param, header, form), use zValidator
-			const validatorMiddleware = zValidator(target, schema, (result, _c) => {
-				if (!result.success) {
-					// Validation errors reference fields from user's version ✅
-					throw result.error;
-				}
-			});
+			const validatorMiddleware = zValidator(
+				target,
+				schema as unknown as ZodValidatorSchema,
+				(result, _c) => {
+					if (!result.success) {
+						// Validation errors reference fields from user's version ✅
+						throw result.error;
+					}
+				},
+			);
 
 			// Run validation
 			await validatorMiddleware(c, async () => {});

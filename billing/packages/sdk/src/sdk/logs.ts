@@ -9,7 +9,7 @@ import { unwrapAsync } from "../types/fp.js";
 
 export class Logs extends ClientSDK {
   /**
-   * Search API requests and incoming Stripe webhooks for your organization and environment.
+   * Search API requests and incoming processor webhooks for your organization and environment.
    */
   async search(
     request: models.SearchRequestLogsParams,

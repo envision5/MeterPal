@@ -115,9 +115,7 @@ export const initIntegrationEval = ({
 		await assertBackendReachable(backendUrl);
 		await sweepStaleWorkspaces();
 		const orgRunId = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-		// Integration orgs always get a Stripe sub-account: billing flows
-		// (paid attach, checkout) are the whole point. Catalog orgs never do.
-		const org = await createEvalOrg({ runId: orgRunId, withStripe: true });
+		const org = await createEvalOrg({ runId: orgRunId });
 		const workspace = await createFixtureWorkspace({
 			label: `${integrationCase.name}-${arm}`,
 			fixture: integrationCase.fixture,

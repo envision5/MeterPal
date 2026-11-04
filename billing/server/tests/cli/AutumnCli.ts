@@ -1,4 +1,3 @@
-import type { CreateReward } from "@autumn/shared";
 import RecaseError from "@/utils/errorUtils.js";
 import { getAxiosInstance } from "../utils/setup.js";
 
@@ -14,12 +13,6 @@ const handleAxiosError = (error: any) => {
 };
 
 export class AutumnCli {
-	static async initStripeProducts() {
-		const axiosInstance = getAxiosInstance();
-		const { data } = await axiosInstance.post(`/v1/products/all/init_stripe`);
-		return data;
-	}
-
 	static async getCustomer(customerId: string, params?: any) {
 		try {
 			const axiosInstance = getAxiosInstance();
@@ -211,12 +204,6 @@ export class AutumnCli {
 	static async getProducts() {
 		const axiosInstance = getAxiosInstance();
 		const { data } = await axiosInstance.get(`/v1/products?v1_schema=true`);
-		return data;
-	}
-
-	static async createCoupon(coupon: CreateReward) {
-		const axiosInstance = getAxiosInstance();
-		const { data } = await axiosInstance.post(`/v1/coupons`, coupon);
 		return data;
 	}
 }

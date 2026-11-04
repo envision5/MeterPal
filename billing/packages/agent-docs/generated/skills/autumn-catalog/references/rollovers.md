@@ -7,6 +7,9 @@ Rollovers let unused feature balances carry forward to the next billing cycle in
 
 ## Setting up
 
+
+
+
 Add a `rollover` config to a plan item:
 
 ```ts autumn.config.ts
@@ -44,6 +47,10 @@ export default atmn({ features: [credits], plans: [pro] });
 
 Preview with `atmn push`, then apply with `atmn push --yes`.
 
+
+
+
+
 ## Rollover configuration
 
 | Field | Description |
@@ -56,7 +63,7 @@ Preview with `atmn push`, then apply with `atmn push --yes`.
 
 At the end of each billing cycle, when a feature's balance resets:
 
-1. Autumn checks how much unused balance remains
+1. MeterPal checks how much unused balance remains
 2. If rollovers are configured, the unused balance is saved as a **rollover balance**
 3. The feature resets to its granted amount, and the rollover is added on top
 4. If a `max` cap is set, the oldest rollover balances are trimmed first (FIFO)
@@ -65,6 +72,7 @@ At the end of each billing cycle, when a feature's balance resets:
 ## Viewing rollover balances
 
 Rollover balances appear in the `breakdown` array when you retrieve a customer's balances. Each rollover entry has its own expiry date:
+
 
 ```json
 {
@@ -96,17 +104,20 @@ Rollover balances appear in the `breakdown` array when you retrieve a customer's
 }
 ```
 
+
 ## Deduction order
 
-Rollovers are deducted **before** a customer's main balances for the same feature. Within the rollover pool, balances are consumed in `expires_at` order: soonest-expiring first, with rollovers that never expire going last. Only once all rollover balances are drained does Autumn fall through to the regular [deduction order](/documentation/concepts/balances#deduction-order) over the main entitlements.
+Rollovers are deducted **before** a customer's main balances for the same feature. Within the rollover pool, balances are consumed in `expires_at` order: soonest-expiring first, with rollovers that never expire going last. Only once all rollover balances are drained does MeterPal fall through to the regular [deduction order](/documentation/concepts/balances#deduction-order) over the main entitlements.
 
 This means carried-over balance is used up before fresh monthly allocation, so rollovers you're about to lose to expiry get spent first.
 
 > **Example** <br />
 > A customer has a 1,000 credits/month balance that just reset, plus a 400 credits rollover from last month. They use 300 credits. <br />
-> Autumn deducts all 300 from the rollover, leaving 100 credits in rollover and the full 1,000 credits monthly untouched.
+> MeterPal deducts all 300 from the rollover, leaving 100 credits in rollover and the full 1,000 credits monthly untouched.
+
 
 Rollovers are only available on `consumable` features with a reset interval. Non-consumable features (like seats) don't reset and therefore don't support rollovers.
+
 
 ## Entity rollovers
 

@@ -60,7 +60,7 @@ Preview with `atmn push`, then apply with `atmn push --yes`.
 2. Under **Plan Settings**, toggle on **Free Trial**
 3. Set the **duration** (e.g., 14 days)
 4. Choose whether a **card is required**:
-   - **Card required**: customer goes through Stripe Checkout, but isn't charged until the trial ends
+   - **Card required**: customer goes through the processor's checkout, but isn't charged until the trial ends
    - **Card not required**: no checkout needed — the plan can be attached directly
 5. Save your changes
 
@@ -69,7 +69,7 @@ Preview with `atmn push`, then apply with `atmn push --yes`.
 
 ## Card required trials
 
-When `cardRequired` is `true`, the customer must provide payment information to start the trial. Stripe creates a subscription with a trial period — no charge occurs until the trial ends.
+When `cardRequired` is `true`, the customer must provide payment information to start the trial. The processor creates a subscription with a trial period — no charge occurs until the trial ends.
 
 <CodeGroup>
 
@@ -83,7 +83,7 @@ const { data } = await autumn.checkout({
   plan_id: "pro",
 });
 
-// Returns Stripe Checkout URL — customer adds card and starts trial
+// Returns the checkout URL — customer adds card and starts trial
 ```
 
 ```python Python
@@ -95,7 +95,7 @@ response = await autumn.checkout(
     customer_id="user_123",
     plan_id="pro",
 )
-# Returns Stripe Checkout URL
+# Returns the checkout URL
 ```
 
 ```bash cURL
@@ -442,7 +442,7 @@ Trial extensions are **replacement**, not additive. If a customer is 5 days into
 
 ## Trials with shared subscriptions
 
-When using [entities](/documentation/modelling-pricing/entity-plans) or add-ons, trial state is shared across the same Stripe subscription. This is because Stripe manages trials at the subscription level.
+When using [entities](/documentation/modelling-pricing/entity-plans) or add-ons, trial state is shared across the same processor subscription. This is because the processor manages trials at the subscription level.
 
 <Tip>
 You can pass in `newBillingSubscription: true` to create a new subscription for each plan, rather than merging into the existing subscription.

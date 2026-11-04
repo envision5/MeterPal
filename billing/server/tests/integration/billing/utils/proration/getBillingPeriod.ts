@@ -1,13 +1,14 @@
 /**
- * Fetches billing period directly from Stripe subscription for proration calculations.
+ * Fetches the billing period for proration calculations.
  *
- * Handles:
- * - Single subscription
- * - Multiple subscriptions (filter by interval)
+ * The billing engine keeps the period boundaries in the database
+ * (`subscriptions.current_period_start` / `current_period_end`), so this reads
+ * them straight from the customer product's subscription rows.
  */
 
+import { customerProducts, subscriptions } from "@autumn/shared";
+import { eq, inArray } from "drizzle-orm";
 import ctx from "@tests/utils/testInitUtils/createTestContext.js";
-import { createStripeCli } from "@/external/connect/createStripeCli.js";
 import { CusService } from "@/internal/customers/CusService.js";
 
 export type BillingPeriod = {
@@ -26,7 +27,7 @@ export type GetBillingPeriodResult = {
 };
 
 /**
- * Get billing period directly from Stripe subscription.
+ * Get billing period for a customer.
  *
  * @param customerId - The Autumn customer ID
  * @param interval - Optional: filter by billing interval ("month" or "year")
@@ -45,78 +46,41 @@ export const getBillingPeriod = async ({
 	customerId,
 	interval,
 }: GetBillingPeriodParams): Promise<GetBillingPeriodResult> => {
-	const stripeCli = createStripeCli({ org: ctx.org, env: ctx.env });
-
 	const fullCustomer = await CusService.getFull({
 		ctx,
 		idOrInternalId: customerId,
 	});
 
-	const stripeCustomerId =
-		fullCustomer.processor?.id || fullCustomer.processor?.processor_id;
-
-	if (!stripeCustomerId) {
-		throw new Error(`Missing Stripe customer ID for customer "${customerId}"`);
+	const internalCustomerId = fullCustomer.internal_id;
+	if (!internalCustomerId) {
+		throw new Error(`Missing customer record for customer "${customerId}"`);
 	}
 
-	const subscriptions = await stripeCli.subscriptions.list({
-		customer: stripeCustomerId,
-		status: "all",
-	});
+	const cusProducts = await ctx.db
+		.select({ subscription_ids: customerProducts.subscription_ids })
+		.from(customerProducts)
+		.where(eq(customerProducts.internal_customer_id, internalCustomerId));
 
-	if (subscriptions.data.length === 0) {
+	const subscriptionIds = Array.from(
+		new Set(cusProducts.flatMap((row) => row.subscription_ids ?? [])),
+	);
+
+	if (subscriptionIds.length === 0) {
 		throw new Error(`No subscriptions found for customer "${customerId}"`);
 	}
 
-	// Find an active subscription (not canceled)
-	let matchingSubs = subscriptions.data.filter(
-		(sub) => sub.status === "active" || sub.status === "trialing",
-	);
+	const rows = await ctx.db
+		.select()
+		.from(subscriptions)
+		.where(inArray(subscriptions.id, subscriptionIds));
 
-	if (matchingSubs.length === 0) {
-		matchingSubs = subscriptions.data;
+	if (rows.length === 0) {
+		throw new Error(`No subscriptions found for customer "${customerId}"`);
 	}
 
-	// Filter by interval if specified
-	if (interval) {
-		const intervalSubs = matchingSubs.filter((sub) => {
-			const firstItem = sub.items.data[0];
-			if (!firstItem?.price?.recurring?.interval) return false;
-			return firstItem.price.recurring.interval === interval;
-		});
-
-		if (intervalSubs.length === 0) {
-			const availableIntervals = [
-				...new Set(
-					matchingSubs.map(
-						(sub) => sub.items.data[0]?.price?.recurring?.interval ?? "unknown",
-					),
-				),
-			];
-			throw new Error(
-				`No subscription with interval "${interval}" found. Available intervals: ${availableIntervals.join(", ")}`,
-			);
-		}
-
-		matchingSubs = intervalSubs;
-	}
-
-	const subscription = matchingSubs[0];
-
-	// Get billing period from the first subscription item
-	// Stripe stores current_period_start/end on each item, not the subscription itself
-	const firstItem = subscription.items.data[0];
-	if (!firstItem) {
-		throw new Error("No subscription items found");
-	}
-
-	const itemData = firstItem as unknown as {
-		current_period_start: number;
-		current_period_end: number;
-	};
-
-	const periodStart = itemData.current_period_start;
-	const periodEnd = itemData.current_period_end;
+	const subscription = rows[0];
+	const periodStart = subscription.current_period_start;
+	const periodEnd = subscription.current_period_end;
 
 	if (typeof periodStart !== "number" || typeof periodEnd !== "number") {
 		throw new Error(
@@ -124,11 +88,23 @@ export const getBillingPeriod = async ({
 		);
 	}
 
+	if (interval) {
+		const monthsInPeriod = Math.round(
+			(periodEnd - periodStart) / (1000 * 60 * 60 * 24 * 30),
+		);
+		const matches = interval === "year" ? monthsInPeriod >= 11 : monthsInPeriod <= 1;
+		if (!matches) {
+			throw new Error(
+				`No subscription with interval "${interval}" found for customer "${customerId}"`,
+			);
+		}
+	}
+
 	return {
 		billingPeriod: {
-			start: periodStart * 1000,
-			end: periodEnd * 1000,
+			start: periodStart,
+			end: periodEnd,
 		},
-		billingAnchorMs: subscription.billing_cycle_anchor * 1000,
+		billingAnchorMs: (subscription.billing_cycle_anchor_seconds ?? 0) * 1000,
 	};
 };

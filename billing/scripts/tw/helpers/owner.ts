@@ -1,10 +1,9 @@
 /**
  * Ownership + run-identity tagging for the `bun tw` cloud test swarm.
  *
- * Every resource the swarm creates (Vercel sandbox, Stripe sub-account, Svix
- * app) is stamped with the OS user + a per-invocation `runId` so teammates
- * sharing the Vercel project and the single Stripe platform account never step
- * on each other, and so a machine that dies mid-run leaves everything
+ * Every resource the swarm creates (Vercel sandbox, Svix app) is stamped with the
+ * OS user + a per-invocation `runId` so teammates sharing the Vercel project never
+ * step on each other, and so a machine that dies mid-run leaves everything
  * recoverable via tags. See bun-tw-plan.md §9a.
  *
  * This module runs in the orchestrator (a normal node/bun process), NOT in a
@@ -87,28 +86,6 @@ export const vercelTags = (
 	owner,
 	run: runId,
 	kind: "bun-tw",
-});
-
-/**
- * Stripe sub-account metadata. Extends the §6a GC tag (`autumn_test`) with the
- * owner/run/org provenance used by `kill --orphans` and `list`. Plan §9a.
- */
-export const stripeMetadata = (
-	owner: string,
-	runId: string,
-	orgId: string,
-): {
-	autumn_test: "true";
-	autumn_tw_owner: string;
-	autumn_tw_run: string;
-	autumn_org_id: string;
-	autumn_created_at: string;
-} => ({
-	autumn_test: "true",
-	autumn_tw_owner: owner,
-	autumn_tw_run: runId,
-	autumn_org_id: orgId,
-	autumn_created_at: String(Date.now()),
 });
 
 /** Svix app metadata stamped on the single dedicated Svix shard's app. Plan §9a. */

@@ -4,14 +4,11 @@ import {
 	type Reward,
 	type RewardProgram,
 	RewardType,
-	type StripeCouponWithPromoCodes,
 } from "@autumn/shared";
 import {
 	buildDiscountOptions,
 	filterDiscountRewards,
-	formatCouponDiscount,
 	rewardToOption,
-	stripeCouponToOption,
 } from "@/components/forms/attach-v2/utils/discountOptionUtils";
 
 function makeReward(overrides: Partial<Reward> & { id: string }): Reward {
@@ -28,29 +25,6 @@ function makeReward(overrides: Partial<Reward> & { id: string }): Reward {
 		created_at: Date.now(),
 		...overrides,
 	};
-}
-
-function makeStripeCoupon(
-	overrides: Partial<StripeCouponWithPromoCodes> & { id: string },
-): StripeCouponWithPromoCodes {
-	return {
-		object: "coupon",
-		promotion_codes: [],
-		created: Math.floor(Date.now() / 1000),
-		livemode: false,
-		metadata: {},
-		name: null,
-		percent_off: null,
-		amount_off: null,
-		currency: null,
-		duration: "once",
-		duration_in_months: null,
-		valid: true,
-		max_redemptions: null,
-		redeem_by: null,
-		times_redeemed: 0,
-		...overrides,
-	} as StripeCouponWithPromoCodes;
 }
 
 function makeRewardProgram(
@@ -126,55 +100,6 @@ describe("rewardToOption", () => {
 	});
 });
 
-describe("formatCouponDiscount", () => {
-	test("should format percent_off", () => {
-		const coupon = makeStripeCoupon({ id: "c1", percent_off: 25 });
-		expect(formatCouponDiscount(coupon)).toBe("25% off");
-	});
-
-	test("should format amount_off in cents to currency display", () => {
-		const coupon = makeStripeCoupon({
-			id: "c1",
-			amount_off: 1000,
-			currency: "usd",
-		});
-		expect(formatCouponDiscount(coupon)).toBe("$10.00 off");
-	});
-
-	test("should default to USD when no currency", () => {
-		const coupon = makeStripeCoupon({ id: "c1", amount_off: 500 });
-		expect(formatCouponDiscount(coupon)).toBe("$5.00 off");
-	});
-
-	test("should return empty string when no discount values set", () => {
-		const coupon = makeStripeCoupon({ id: "c1" });
-		expect(formatCouponDiscount(coupon)).toBe("");
-	});
-});
-
-describe("stripeCouponToOption", () => {
-	test("should use coupon name as label", () => {
-		const coupon = makeStripeCoupon({
-			id: "c1",
-			name: "Holiday Sale",
-			percent_off: 15,
-		});
-		const option = stripeCouponToOption(coupon);
-		expect(option).toEqual({
-			id: "c1",
-			label: "Holiday Sale",
-			sublabel: "15% off",
-			source: "stripe",
-			searchTerms: [],
-		});
-	});
-
-	test("should fall back to id when name is null", () => {
-		const coupon = makeStripeCoupon({ id: "c1", name: null });
-		expect(stripeCouponToOption(coupon).label).toBe("c1");
-	});
-});
-
 describe("buildDiscountOptions", () => {
 	test("should return autumn rewards mapped to options", () => {
 		const rewards = [
@@ -193,7 +118,6 @@ describe("buildDiscountOptions", () => {
 		const result = buildDiscountOptions({
 			rewards,
 			rewardPrograms: [],
-			stripeCoupons: [],
 			productId: undefined,
 		});
 		expect(result).toHaveLength(1);
@@ -202,97 +126,6 @@ describe("buildDiscountOptions", () => {
 			label: "10% Off",
 			sublabel: undefined,
 			source: "autumn",
-			searchTerms: [],
-		});
-	});
-
-	test("should return stripe-only coupons mapped to options", () => {
-		const stripeCoupons = [
-			makeStripeCoupon({ id: "sc1", name: "Stripe Deal", percent_off: 20 }),
-		];
-		const result = buildDiscountOptions({
-			rewards: [],
-			rewardPrograms: [],
-			stripeCoupons,
-			productId: undefined,
-		});
-		expect(result).toHaveLength(1);
-		expect(result[0]).toEqual({
-			id: "sc1",
-			label: "Stripe Deal",
-			sublabel: "20% off",
-			source: "stripe",
-			searchTerms: [],
-		});
-	});
-
-	test("should deduplicate stripe coupons that match autumn reward IDs", () => {
-		const rewards = [
-			makeReward({
-				id: "shared_id",
-				name: "Autumn Discount",
-				type: RewardType.PercentageDiscount,
-				discount_config: {
-					discount_value: 10,
-					duration_type: CouponDurationType.OneOff,
-					duration_value: 0,
-					apply_to_all: true,
-				},
-			}),
-		];
-		const stripeCoupons = [
-			makeStripeCoupon({
-				id: "shared_id",
-				name: "Same Coupon In Stripe",
-				percent_off: 10,
-			}),
-			makeStripeCoupon({
-				id: "stripe_only",
-				name: "Stripe Only",
-				percent_off: 30,
-			}),
-		];
-		const result = buildDiscountOptions({
-			rewards,
-			rewardPrograms: [],
-			stripeCoupons,
-			productId: undefined,
-		});
-		expect(result).toHaveLength(2);
-		// First should be the Autumn reward version
-		expect(result[0].id).toBe("shared_id");
-		expect(result[0].source).toBe("autumn");
-		// Second should be the stripe-only coupon
-		expect(result[1].id).toBe("stripe_only");
-		expect(result[1].source).toBe("stripe");
-	});
-
-	test("should keep stripe coupon when matching autumn reward is not a discount", () => {
-		const rewards = [
-			makeReward({
-				id: "free_reward_id",
-				type: RewardType.FreeProduct,
-			}),
-		];
-		const stripeCoupons = [
-			makeStripeCoupon({
-				id: "free_reward_id",
-				name: "Coupon",
-				percent_off: 5,
-			}),
-		];
-		const result = buildDiscountOptions({
-			rewards,
-			rewardPrograms: [],
-			stripeCoupons,
-			productId: undefined,
-		});
-		expect(result).toHaveLength(1);
-		expect(result[0]).toEqual({
-			id: "free_reward_id",
-			label: "Coupon",
-			sublabel: "5% off",
-			source: "stripe",
 			searchTerms: [],
 		});
 	});
@@ -315,7 +148,6 @@ describe("buildDiscountOptions", () => {
 		const result = buildDiscountOptions({
 			rewards,
 			rewardPrograms: [],
-			stripeCoupons: [],
 			productId: undefined,
 		});
 		expect(result).toHaveLength(1);
@@ -356,7 +188,6 @@ describe("buildDiscountOptions", () => {
 		const result = buildDiscountOptions({
 			rewards,
 			rewardPrograms,
-			stripeCoupons: [],
 			productId: "prod_target",
 		});
 		// Only the apply_to_all reward should pass; the specific one is linked to prod_other
@@ -364,114 +195,10 @@ describe("buildDiscountOptions", () => {
 		expect(result[0].id).toBe("all_products");
 	});
 
-	test("should keep stripe coupon when matching autumn reward is not eligible for the product", () => {
-		const rewards = [
-			makeReward({
-				id: "shared_id",
-				name: "Autumn Discount",
-				type: RewardType.PercentageDiscount,
-				discount_config: {
-					discount_value: 10,
-					duration_type: CouponDurationType.OneOff,
-					duration_value: 0,
-					apply_to_all: false,
-				},
-			}),
-		];
-		const rewardPrograms = [
-			makeRewardProgram({
-				internal_reward_id: "rew_shared_id",
-				product_ids: ["prod_other"],
-			}),
-		];
-		const stripeCoupons = [
-			makeStripeCoupon({
-				id: "shared_id",
-				name: "Stripe Deal",
-				percent_off: 10,
-			}),
-		];
-		const result = buildDiscountOptions({
-			rewards,
-			rewardPrograms,
-			stripeCoupons,
-			productId: "prod_target",
-		});
-		expect(result).toEqual([
-			{
-				id: "shared_id",
-				label: "Stripe Deal",
-				sublabel: "10% off",
-				source: "stripe",
-				searchTerms: [],
-			},
-		]);
-	});
-
-	test("should filter stripe coupons by applies_to when productId is provided", () => {
-		const stripeCoupons = [
-			makeStripeCoupon({
-				id: "all_products",
-				name: "All Products",
-				percent_off: 10,
-			}),
-			makeStripeCoupon({
-				id: "matching_product",
-				name: "Matching Product",
-				percent_off: 20,
-				applies_to: { products: ["prod_target"] },
-			}),
-			makeStripeCoupon({
-				id: "other_product",
-				name: "Other Product",
-				percent_off: 30,
-				applies_to: { products: ["prod_other"] },
-			}),
-		];
+	test("should return empty array when there are no rewards", () => {
 		const result = buildDiscountOptions({
 			rewards: [],
 			rewardPrograms: [],
-			stripeCoupons,
-			productId: "prod_target",
-		});
-		expect(result.map((option) => option.id)).toEqual([
-			"all_products",
-			"matching_product",
-		]);
-	});
-
-	test("should place autumn options before stripe options", () => {
-		const rewards = [
-			makeReward({
-				id: "autumn1",
-				name: "A",
-				type: RewardType.PercentageDiscount,
-				discount_config: {
-					discount_value: 10,
-					duration_type: CouponDurationType.OneOff,
-					duration_value: 0,
-					apply_to_all: true,
-				},
-			}),
-		];
-		const stripeCoupons = [
-			makeStripeCoupon({ id: "stripe1", name: "B", percent_off: 5 }),
-		];
-		const result = buildDiscountOptions({
-			rewards,
-			rewardPrograms: [],
-			stripeCoupons,
-			productId: undefined,
-		});
-		expect(result[0].source).toBe("autumn");
-		expect(result[1].source).toBe("stripe");
-	});
-
-	test("should return empty array when no rewards or coupons", () => {
-		const result = buildDiscountOptions({
-			rewards: [],
-			rewardPrograms: [],
-			stripeCoupons: [],
 			productId: undefined,
 		});
 		expect(result).toHaveLength(0);

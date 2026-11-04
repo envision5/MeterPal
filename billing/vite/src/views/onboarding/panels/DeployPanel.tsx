@@ -2,7 +2,7 @@ import { Button, MiniCopyButton } from "@autumn/ui";
 import { ArrowRightIcon, CheckCircleIcon } from "@phosphor-icons/react";
 import type { ReactNode } from "react";
 import {
-	useConnectStripe,
+	useConnectPaypal,
 	useCopyPlansToProd,
 	useCreateProdApiKey,
 	useGoToProduction,
@@ -50,7 +50,7 @@ function DoneLabel({ children }: { children: ReactNode }) {
 /** The production checklist in the page's row grammar, plus the final switch —
  * the same actions the deploy dialog runs, via shared hooks. */
 export function DeployPanel() {
-	const stripe = useConnectStripe({ isActive: true });
+	const paypal = useConnectPaypal();
 	const plans = useCopyPlansToProd();
 	const apiKey = useCreateProdApiKey();
 	const production = useGoToProduction();
@@ -60,20 +60,19 @@ export function DeployPanel() {
 			<div className="divide-y rounded-lg border bg-interactive-secondary">
 				<DeployRow
 					index={1}
-					title="Connect your Stripe account"
-					description="Connect your live Stripe account to accept real payments"
+					title="Connect your PayPal account"
+					description="Connect your live PayPal account to accept real payments"
 					action={
-						stripe.isConnected ? (
+						paypal.isConnected ? (
 							<DoneLabel>Connected</DoneLabel>
 						) : (
 							<Button
 								variant="secondary"
 								size="sm"
 								className={ACTION_WIDTH}
-								onClick={stripe.connect}
-								isLoading={stripe.isConnecting}
+								onClick={paypal.connect}
 							>
-								Connect Stripe
+								Connect PayPal
 							</Button>
 						)
 					}

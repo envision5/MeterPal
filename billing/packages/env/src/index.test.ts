@@ -68,7 +68,6 @@ describe("Autumn environment", () => {
 	test("does not use a legacy webhook URL when AUTUMN_PUBLIC_API_URL is missing", () => {
 		const env = createAutumnEnv({
 			AUTUMN_API_URL: validEnv.AUTUMN_API_URL,
-			STRIPE_WEBHOOK_URL: validEnv.AUTUMN_PUBLIC_API_URL,
 			NGROK_URL: validEnv.AUTUMN_PUBLIC_API_URL,
 		});
 

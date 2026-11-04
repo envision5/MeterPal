@@ -63,7 +63,6 @@ console.log(\`acme-notes-api listening on :\${port}\`);
 			name: "Ada Lovelace",
 			email: fixtureUser.email,
 		},
-		paymentMethod: true,
 		attach: [{ plan_id: "transactional_pro" }, { plan_id: "automations" }],
 		track: [{ feature_id: "automation_runs", value: 3500 }],
 	},

@@ -41,20 +41,6 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
               Number of intervals per billing cycle. Defaults to 1.
             </DynamicParamField>
 
-            <DynamicParamField body="processors" type="object">
-              Bill this line under an existing Stripe price instead of an inline one.
-              <Expandable title="properties">
-                <DynamicParamField body="stripe" type="object | null">
-                  <Expandable title="properties">
-                    <DynamicParamField body="price_id" type="string" required>
-                      Stripe price ID. For prepaid with included > 0 this is the V2 price.
-                    </DynamicParamField>
-
-                  </Expandable>
-                </DynamicParamField>
-
-              </Expandable>
-            </DynamicParamField>
 
           </Expandable>
         </DynamicParamField>
@@ -86,7 +72,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
                       Per-currency amounts for this tier. Tier boundaries ('to') are shared across all currencies.
                       <Expandable title="properties">
                         <DynamicParamField body="currency" type="string" required>
-                          Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                          Three-letter currency code (e.g. 'eur', 'gbp').
                         </DynamicParamField>
 
                         <DynamicParamField body="amount" type="number">
@@ -121,20 +107,6 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
                   'prepaid' for upfront payment (seats), 'usage_based' for pay-as-you-go.
                 </DynamicParamField>
 
-                <DynamicParamField body="processors" type="object">
-                  Bill this line under an existing Stripe price instead of an inline one.
-                  <Expandable title="properties">
-                    <DynamicParamField body="stripe" type="object | null">
-                      <Expandable title="properties">
-                        <DynamicParamField body="price_id" type="string" required>
-                          Stripe price ID. For prepaid with included > 0 this is the V2 price.
-                        </DynamicParamField>
-
-                      </Expandable>
-                    </DynamicParamField>
-
-                  </Expandable>
-                </DynamicParamField>
 
               </Expandable>
             </DynamicParamField>
@@ -297,20 +269,6 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
                   Number of intervals per billing cycle. Defaults to 1.
                 </DynamicParamField>
 
-                <DynamicParamField body="processors" type="object">
-                  Bill this line under an existing Stripe price instead of an inline one.
-                  <Expandable title="properties">
-                    <DynamicParamField body="stripe" type="object | null">
-                      <Expandable title="properties">
-                        <DynamicParamField body="price_id" type="string" required>
-                          Stripe price ID. For prepaid with included > 0 this is the V2 price.
-                        </DynamicParamField>
-
-                      </Expandable>
-                    </DynamicParamField>
-
-                  </Expandable>
-                </DynamicParamField>
 
               </Expandable>
             </DynamicParamField>
@@ -431,7 +389,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
 </DynamicParamField>
 
 <DynamicParamField body="tax_rate_id" type="string">
-  Stripe tax rate ID (txr_...) applied to every line.
+  Processor tax rate ID applied to every line.
 </DynamicParamField>
 
 <DynamicParamField body="period_start" type="integer">
@@ -456,11 +414,11 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
       Array of plan IDs included in this invoice
     </DynamicResponseField>
 
-    <DynamicResponseField name="stripe_id" type="string">
-      The Stripe invoice ID
+    <DynamicResponseField name="processor_invoice_id" type="string">
+      The processor invoice ID
     </DynamicResponseField>
 
-    <DynamicResponseField name="processor_type" type="'stripe' | 'revenuecat'">
+    <DynamicResponseField name="processor_type" type="'paypal'">
       The billing processor that owns this invoice.
     </DynamicResponseField>
 
@@ -481,7 +439,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
     </DynamicResponseField>
 
     <DynamicResponseField name="hosted_invoice_url" type="string | null">
-      URL to the Stripe-hosted invoice page
+      URL to the processor-hosted invoice page
     </DynamicResponseField>
 
     <DynamicResponseField name="id" type="string">
@@ -505,7 +463,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
     </DynamicResponseField>
 
     <DynamicResponseField name="items" type="object[]">
-      Line items on the invoice, one per line as shown in Stripe. Capped at 100. Empty for invoices recorded before line item storage.
+      Line items on the invoice, one per line as shown in the processor. Capped at 100. Empty for invoices recorded before line item storage.
       <Expandable title="properties">
         <DynamicResponseField name="id" type="string">
           The MeterPal invoice line item ID. Stable across reads, and can be used to reference this line in later calls.
@@ -614,10 +572,10 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
     <DynamicResponseField name="total" type="number" />
 
     <DynamicResponseField name="invoice_credits" type="object">
-      The customer's Stripe credit balance and how much of it this invoice consumes.
+      The customer's credit balance and how much of it this invoice consumes.
       <Expandable title="properties">
         <DynamicResponseField name="balance" type="number">
-          Stripe customer credit balance available, expressed as a positive number in major currency units.
+          Customer credit balance available, expressed as a positive number in major currency units.
         </DynamicResponseField>
 
         <DynamicResponseField name="applied" type="number">
@@ -653,15 +611,15 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
     "plan_ids": [
       "pro_plan"
     ],
-    "stripe_id": "in_1A2B3C4D5E6F7G8H",
-    "processor_type": "stripe",
+    "processor_invoice_id": "in_1A2B3C4D5E6F7G8H",
+    "processor_type": "paypal",
     "status": "open",
     "total": 29.99,
     "amount_paid": 29.99,
     "refunded_amount": 0,
     "currency": "usd",
     "created_at": 1759247877000,
-    "hosted_invoice_url": "https://invoice.stripe.com/i/acct_123/test_456",
+    "hosted_invoice_url": "https://example.com/invoice/123",
     "items": [
       {
         "id": "invoice_li_2b3c4d5e6f7g8h",

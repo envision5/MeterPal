@@ -117,7 +117,7 @@ const TARGET_FIELDS: VirtualField[] = [
 	custom({
 		name: "authType",
 		attr: "auth_type",
-		description: "Auth method (Secret/Publishable/Dashboard/Stripe/Worker)",
+		description: "Auth method (Secret/Publishable/Dashboard/Worker)",
 	}),
 	custom({
 		name: "apiVersion",

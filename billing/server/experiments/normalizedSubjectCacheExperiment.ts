@@ -350,7 +350,7 @@ const generateNormalized = (): NormalizedFullSubject => {
 		subscriptions: customerProducts.map((customerProduct, i) => ({
 			id: `sub_${i}`,
 			customer_id: FAKE_CUSTOMER_ID,
-			processor: "stripe",
+			processor: "paypal",
 			processor_id: `sub_${i}`,
 			status: "active",
 			current_period_start: now,
@@ -364,7 +364,7 @@ const generateNormalized = (): NormalizedFullSubject => {
 		invoices: [
 			{
 				id: nextId("inv"),
-				stripe_id: "in_stripe_1",
+				processor_invoice_id: "in_1",
 				status: "paid",
 				total: 1000,
 				subtotal: 1000,

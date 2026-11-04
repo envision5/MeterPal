@@ -8,7 +8,7 @@ import {
 } from "@autumn/shared";
 import { UTCDate } from "@date-fns/utc";
 import { applyTrialToEntitlement } from "@/internal/products/entitlements/entitlementUtils.js";
-import { freeTrialToStripeTimestamp } from "@/internal/products/free-trials/freeTrialUtils.js";
+import { freeTrialToProcessorTimestamp } from "@/internal/products/free-trials/freeTrialUtils.js";
 import { getNextEntitlementReset } from "@/utils/timeUtils.js";
 
 export const initNextResetAt = ({
@@ -43,7 +43,7 @@ export const initNextResetAt = ({
 	const trialEndTimestamp = trialEndsAt
 		? Math.round(trialEndsAt / 1000)
 		: freeTrial
-			? freeTrialToStripeTimestamp({ freeTrial, now })
+			? freeTrialToProcessorTimestamp({ freeTrial, now })
 			: null;
 
 	const shouldApplyTrial = applyTrialToEntitlement(

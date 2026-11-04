@@ -7,11 +7,6 @@ import { isTransientDbError } from "@/db/dbUtils.js";
 import type { DrizzleCli } from "@/db/initDrizzle.js";
 import { logger } from "@/external/logtail/logtailUtils.js";
 import { isTransientRedisError } from "@/external/redis/utils/isTransientRedisError.js";
-import {
-	runStripeWebhookReplay,
-	StripeWebhookReplayInFlightError,
-} from "@/external/stripe/webhookReplay/runStripeWebhookReplay.js";
-import { stripeWebhookErrorWouldRedeliver } from "@/external/stripe/webhookReplay/stripeWebhookErrorWouldRedeliver.js";
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
 import { runActionHandlerTask } from "@/internal/analytics/runActionHandlerTask.js";
 import { batchResetCustomerEntitlementsV2 } from "@/internal/balances/batchReset/batchResetCustomerEntitlementsV2.js";
@@ -25,19 +20,13 @@ import { refreshEntityAggregateCache } from "@/internal/balances/utils/refreshEn
 import { syncItemV4 } from "@/internal/balances/utils/sync/syncItemV4.js";
 import { syncItemV5 } from "@/internal/balances/utils/sync/syncItemV5.js";
 import { persistPublishedBalanceTransitions } from "@/internal/billing/v2/publish/persistPublishedBalanceTransitions.js";
-import { grantCheckoutReward } from "@/internal/billing/v2/workflows/grantCheckoutReward/grantCheckoutReward.js";
 import { sendProductsUpdated } from "@/internal/billing/v2/workflows/sendProductsUpdated/sendProductsUpdated.js";
-import { storeDeferredInvoiceLineItems } from "@/internal/billing/v2/workflows/storeDeferredInvoiceLineItems/storeDeferredInvoiceLineItems.js";
-import { storeInvoiceLineItems } from "@/internal/billing/v2/workflows/storeInvoiceLineItems/storeInvoiceLineItems.js";
 import { batchResetCustomerEntitlements } from "@/internal/customers/actions/resetCustomerEntitlements/batchResetCustomerEntitlements.js";
 import { replayFailedCustomerCreation } from "@/internal/customers/recovery/replayFailedCustomerCreation.js";
 import { runClearCreditSystemCacheTask } from "@/internal/features/featureActions/runClearCreditSystemCacheTask.js";
 import { generateFeatureDisplay } from "@/internal/features/workflows/generateFeatureDisplay.js";
-import { runMigrationTask } from "@/internal/migrations/runMigrationTask.js";
-import { runRewardMigrationTask } from "@/internal/migrations/runRewardMigrationTask.js";
 import { isBatchResetEnabled } from "@/internal/misc/batchReset/batchResetConfigStore.js";
 import { detectBaseVariant } from "@/internal/products/productUtils/detectProductVariant.js";
-import { runTriggerCheckoutReward } from "@/internal/rewards/actions/triggerCheckoutReward.js";
 import { generateId } from "@/utils/genUtils.js";
 import { addWorkflowToLogs } from "@/utils/logging/addContextToLogs.js";
 import { logContextExtras } from "@/utils/logging/logContextExtras.js";
@@ -101,13 +90,6 @@ export const shouldRetrySqsJobError = ({
 		case JobName.AutoTopUp:
 			return (
 				error instanceof RecaseError && error.code === ErrCode.LockAlreadyExists
-			);
-		case JobName.StoreInvoiceLineItems:
-			return isTransientDbError({ error });
-		case JobName.StripeWebhookReplay:
-			return (
-				error instanceof StripeWebhookReplayInFlightError ||
-				stripeWebhookErrorWouldRedeliver({ error })
 			);
 		default:
 			return false;
@@ -210,15 +192,6 @@ export const processMessage = async ({
 			});
 		}
 
-		if (job.name === JobName.Migration) {
-			if (!ctx) {
-				workerLogger.error("No context found for migration job");
-				return;
-			}
-			await runMigrationTask({ ctx, payload: job.data });
-			return;
-		}
-
 		if (job.name === JobName.CustomerCreationRecovery) {
 			if (!ctx) {
 				throw new Error("No context found for customer creation recovery job");
@@ -226,19 +199,6 @@ export const processMessage = async ({
 			await replayFailedCustomerCreation({
 				ctx,
 				payload: job.data,
-			});
-			return;
-		}
-
-		if (job.name === JobName.StripeWebhookReplay) {
-			if (!ctx) {
-				workerLogger.error("No context found for stripe webhook replay job");
-				return;
-			}
-			await runStripeWebhookReplay({
-				ctx,
-				payload: job.data,
-				receiveCount: Number.isFinite(receiveCount) ? receiveCount : 1,
 			});
 			return;
 		}
@@ -274,15 +234,6 @@ export const processMessage = async ({
 				ctx,
 				jobName: job.name as JobName,
 				payload: job.data,
-			});
-			return;
-		}
-
-		if (job.name === JobName.RewardMigration) {
-			await runRewardMigrationTask({
-				db,
-				payload: job.data,
-				logger: workerLogger,
 			});
 			return;
 		}
@@ -361,29 +312,6 @@ export const processMessage = async ({
 			return;
 		}
 
-		if (job.name === JobName.TriggerCheckoutReward) {
-			if (!ctx) {
-				workerLogger.error("No context found for trigger checkout reward job");
-				return;
-			}
-			await runTriggerCheckoutReward({
-				ctx,
-				payload: job.data,
-			});
-		}
-
-		if (job.name === JobName.GrantCheckoutReward) {
-			if (!ctx) {
-				workerLogger.error("No context found for grant checkout reward job");
-				return;
-			}
-			await grantCheckoutReward({
-				ctx,
-				payload: job.data,
-			});
-			return;
-		}
-
 		if (job.name === JobName.BatchResetCusEnts) {
 			if (!ctx) {
 				workerLogger.error("No context found for batch reset cus ents job");
@@ -402,32 +330,6 @@ export const processMessage = async ({
 				return;
 			}
 			await runBalanceReplenishment({
-				ctx,
-				payload: job.data,
-			});
-			return;
-		}
-
-		if (job.name === JobName.StoreInvoiceLineItems) {
-			if (!ctx) {
-				workerLogger.error("No context found for store invoice line items job");
-				return;
-			}
-			await storeInvoiceLineItems({
-				ctx,
-				payload: job.data,
-			});
-			return;
-		}
-
-		if (job.name === JobName.StoreDeferredInvoiceLineItems) {
-			if (!ctx) {
-				workerLogger.error(
-					"No context found for store deferred invoice line items job",
-				);
-				return;
-			}
-			await storeDeferredInvoiceLineItems({
 				ctx,
 				payload: job.data,
 			});

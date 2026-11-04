@@ -5,7 +5,6 @@ import type { PlanLicenseWithPlanIds } from "@/internal/licenses/repos/planLicen
 import { ProductService } from "@/internal/products/ProductService.js";
 import {
 	copyProduct,
-	initProductInStripe,
 	type PlanCopySource,
 } from "@/internal/products/productUtils.js";
 import { listExistingTargetPlanIds } from "./listExistingTargetPlanIds.js";
@@ -82,11 +81,6 @@ export const copyLicenseLinksForPlanCopy = async ({
 		env: toEnv,
 		inIds: [...copiedPlanIds, ...presentIds, ...copiedLicensePlanIds],
 	});
-
-	for (const product of toProducts) {
-		if (!copiedLicensePlanIds.has(product.id)) continue;
-		await initProductInStripe({ ctx: toContext, product });
-	}
 
 	await copyPlanLicenseLinks({ ctx: toContext, links, toProducts });
 };

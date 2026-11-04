@@ -3,9 +3,11 @@ import type {
 	ApiListInvoiceV1,
 	CreateInvoiceParamsInput,
 	CreateInvoiceResponse,
+	InvoiceDiscount,
 } from "@autumn/shared";
+import { invoices } from "@autumn/shared";
+import { eq } from "drizzle-orm";
 import type { initScenario } from "@tests/utils/testInitUtils/initScenario";
-import type Stripe from "stripe";
 
 type Client = Awaited<ReturnType<typeof initScenario>>["autumnV2_3"];
 type Ctx = Awaited<ReturnType<typeof initScenario>>["ctx"];
@@ -27,7 +29,7 @@ type ExpectedLine = {
 };
 
 /**
- * Asserts a created invoice against the Stripe invoice it produced and the
+ * Asserts a created invoice against the invoice row it produced and the
  * Autumn row. `lines` are matched in order of the preview.
  */
 export const expectCreatedInvoiceCorrect = async ({
@@ -36,19 +38,17 @@ export const expectCreatedInvoiceCorrect = async ({
 	lines,
 	total,
 	status = "open",
-	footer,
 	dueInDays,
-	stripeDiscountTotal,
+	discountTotal,
 }: {
 	ctx: Ctx;
 	response: CreateInvoiceResponse;
 	lines: ExpectedLine[];
 	total: number;
 	status?: "open" | "paid";
-	footer?: string;
 	dueInDays?: number;
-	stripeDiscountTotal?: number;
-}): Promise<{ stripeInvoice: Stripe.Invoice; invoice: ApiListInvoiceV1 }> => {
+	discountTotal?: number;
+}): Promise<{ invoice: ApiListInvoiceV1 }> => {
 	const { invoice, preview } = response;
 	expect(invoice).not.toBeNull();
 	if (!invoice) throw new Error("no invoice");
@@ -72,29 +72,33 @@ export const expectCreatedInvoiceCorrect = async ({
 	expect(invoice.status).toBe(status);
 	expect(invoice.total).toBeCloseTo(total, 2);
 
-	const stripeInvoice = await ctx.stripeCli.invoices.retrieve(
-		invoice.stripe_id,
-		{
-			expand: ["total_discount_amounts"],
-		},
-	);
-	expect(stripeInvoice.status).toBe(status);
-	expect(stripeInvoice.collection_method).toBe("send_invoice");
-	expect(stripeInvoice.auto_advance).toBe(true);
-	expect(stripeInvoice.total / 100).toBeCloseTo(total, 2);
-	expect(stripeInvoice.lines.data.length).toBe(lines.length);
-	if (footer !== undefined) expect(stripeInvoice.footer).toBe(footer);
-	if (dueInDays !== undefined && stripeInvoice.due_date) {
-		const days = (stripeInvoice.due_date * 1000 - Date.now()) / 86_400_000;
+	if (dueInDays !== undefined) {
+		expect(preview.due_date).not.toBeNull();
+		const days = ((preview.due_date ?? 0) - Date.now()) / 86_400_000;
 		expect(Math.round(days)).toBe(dueInDays);
 	}
-	if (stripeDiscountTotal !== undefined) {
-		const discounted = (stripeInvoice.total_discount_amounts ?? []).reduce(
-			(sum, discount) => sum + discount.amount,
+
+	// The invoice row is the source of truth for what was billed.
+	const rows = await ctx.db
+		.select()
+		.from(invoices)
+		.where(eq(invoices.processor_invoice_id, invoice.processor_invoice_id));
+
+	expect(rows.length, `no invoice row for ${invoice.processor_invoice_id}`).toBe(
+		1,
+	);
+	const row = rows[0];
+	expect(row.status).toBe(status);
+	expect(row.total).toBeCloseTo(total, 2);
+
+	if (discountTotal !== undefined) {
+		const discounts = (row.discounts ?? []) as InvoiceDiscount[];
+		const discounted = discounts.reduce(
+			(sum, discount) => sum + discount.amount_off,
 			0,
 		);
-		expect(discounted / 100).toBeCloseTo(stripeDiscountTotal, 2);
+		expect(discounted).toBeCloseTo(discountTotal, 2);
 	}
 
-	return { stripeInvoice, invoice };
+	return { invoice };
 };

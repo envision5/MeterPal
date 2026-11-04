@@ -1,7 +1,6 @@
 import type { Reward } from "@autumn/shared";
-import { RewardType } from "@autumn/shared";
 import { SmallSpinner, ToolbarButton } from "@autumn/ui";
-import { ArrowSquareOut, Trash } from "@phosphor-icons/react";
+import { Trash } from "@phosphor-icons/react";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
@@ -10,19 +9,14 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@autumn/ui";
-import { useOrgStripeQuery } from "@/hooks/queries/useOrgStripeQuery";
 import { useRewardsQuery } from "@/hooks/queries/useRewardsQuery";
 import { RewardService } from "@/services/products/RewardService";
 import { useAxiosInstance } from "@/services/useAxiosInstance";
-import { useEnv } from "@/utils/envUtils";
 import { getBackendErr } from "@/utils/genUtils";
-import { getStripeCouponLink } from "@/utils/linkUtils";
 
 export const RewardRowToolbar = ({ reward }: { reward: Reward }) => {
 	const { refetch } = useRewardsQuery();
-	const { stripeAccount } = useOrgStripeQuery();
 	const axiosInstance = useAxiosInstance();
-	const env = useEnv();
 	const [deleteLoading, setDeleteLoading] = useState(false);
 	const [dropdownOpen, setDropdownOpen] = useState(false);
 
@@ -43,40 +37,12 @@ export const RewardRowToolbar = ({ reward }: { reward: Reward }) => {
 		setDropdownOpen(false);
 	};
 
-	const handleOpenInStripe = () => {
-		if (!reward.id) return;
-		window.open(
-			getStripeCouponLink({
-				couponId: reward.id,
-				env,
-				accountId: stripeAccount?.id,
-			}),
-			"_blank",
-		);
-	};
-
-	const isDiscountReward = reward.type !== RewardType.FreeProduct;
-
 	return (
 		<DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
 			<DropdownMenuTrigger asChild>
 				<ToolbarButton />
 			</DropdownMenuTrigger>
 			<DropdownMenuContent className="text-muted-foreground" align="end">
-				{isDiscountReward && reward.id && (
-					<DropdownMenuItem
-						className="flex items-center"
-						onClick={(e) => {
-							e.stopPropagation();
-							handleOpenInStripe();
-						}}
-					>
-						<div className="flex items-center justify-between w-full gap-2">
-							Open in Stripe
-							<ArrowSquareOut size={12} className="text-tertiary-foreground" />
-						</div>
-					</DropdownMenuItem>
-				)}
 				<DropdownMenuItem
 					className="flex items-center"
 					onClick={async (e) => {

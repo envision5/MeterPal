@@ -14,12 +14,10 @@ import type { TransitionConfig } from "@models/billingModels/context/transitionC
 import type { DbInvoiceLineItem } from "@models/cusModels/invoiceModels/invoiceLineItemTable";
 import { InvoicePaymentMethodSchema } from "@models/orgModels/orgConfig";
 import type { EntInterval } from "@models/productModels/intervals/entitlementInterval";
-import type Stripe from "stripe";
 import { z } from "zod/v4";
 import type { FullCustomer } from "../../cusModels/fullCusModel";
 import type { FullProduct } from "../../productModels/productModels";
 import type { CustomerLicenseQuantity } from "../customerLicenseQuantity";
-import type { StripeDiscountWithCoupon } from "../stripe/stripeDiscountWithCoupon";
 import type { CustomerLicenseBillingContext } from "./customerLicenseBillingContext";
 
 const InvoiceModeSchema = z.object({
@@ -75,22 +73,6 @@ export interface BillingContext {
 	requestedBillingCycleAnchor?: number | "now";
 	requestedProrationBehavior?: BillingBehavior;
 
-	// Stripe context
-	stripeCustomer?: Stripe.Customer;
-	stripeSubscription?: Stripe.Subscription;
-	/** The subscription linked to the target customer product exists but is
-	 * canceled, so `stripeSubscription` is absent. Each action decides what that
-	 * means: updateSubscription blocks billing changes, attach buys fresh. */
-	canceledStripeSubscriptionId?: string;
-	/** The linked Stripe subscription belongs to a different Stripe customer, so
-	 * this context must not write to Stripe. Only set for flows allowed to
-	 * proceed past that fault (immediate cancel). */
-	mismatchedStripeSubscriptionId?: string;
-	stripeSubscriptionSchedule?: Stripe.SubscriptionSchedule;
-	stripeDiscounts?: StripeDiscountWithCoupon[];
-	stripeTaxRate?: Stripe.TaxRate;
-	paymentMethod?: Stripe.PaymentMethod;
-
 	// Unforunately, need to add custom prices, custom entitlements and free trial here, because it's determined in the setup step.
 	// Optional - only needed for custom plan flows
 	customPrices?: Price[];
@@ -114,18 +96,16 @@ export interface BillingContext {
 	taxRateId?: string;
 
 	skipBillingChanges?: boolean;
-	dryRunStripe?: boolean;
 
 	checkoutMode?: CheckoutMode;
 
-	// When true, the cusProduct is activated immediately even if a Stripe checkout
-	// session is required. Mirrors invoice-mode enable_plan_immediately for the
-	// stripe_checkout flow.
+	// When true, the cusProduct is activated immediately even if a processor
+	// checkout is required. Mirrors invoice-mode enable_plan_immediately.
 	enablePlanImmediately?: boolean;
 	// When set, Autumn access starts at this time while billing may start later.
 	accessStartsAt?: number;
-	/** Identifies the Autumn action driving this billing context. Stamped onto Stripe
-	 * subscription metadata so downstream webhook handlers can recognise Autumn-driven
+	/** Identifies the Autumn action driving this billing context. Stamped onto
+	 * subscription records so downstream handlers can recognise Autumn-driven
 	 * subscription mutations and skip auto-sync. */
 	actionSource?: string;
 	/** Names the customer product an action settles, so a paid invoice resolves

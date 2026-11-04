@@ -24,12 +24,12 @@ const bodySchema = z.object({
 
 const invalidDomainError = () =>
 	new RecaseError({
-		message: "Enter a valid website URL, e.g. stripe.com",
+		message: "Enter a valid website URL, e.g. example.com",
 		code: ErrCode.InvalidRequest,
 		statusCode: 400,
 	});
 
-/** Accepts "stripe.com", "https://www.stripe.com/pricing", etc. and returns "stripe.com". */
+/** Accepts "example.com", "https://www.example.com/pricing", etc. and returns "example.com". */
 const toDomain = (input: string) => {
 	const withProtocol = /^[a-z][a-z0-9+.-]*:\/\//i.test(input)
 		? input

@@ -7,7 +7,6 @@ import {
 	CheckoutAction,
 	CheckoutStatus,
 	type ConfirmCheckoutResponse,
-	type CreateScheduleParamsV0,
 	ErrCode,
 	InternalError,
 	RecaseError,
@@ -19,7 +18,7 @@ import type { AutumnContext } from "@/honoUtils/HonoEnv";
 import { billingActions } from "@/internal/billing/v2/actions";
 import { billingResultToResponse } from "@/internal/billing/v2/utils/billingResult/billingResultToResponse";
 import { invalidateCachedFullSubject } from "@/internal/customers/cache/fullSubject/index.js";
-import { toSuccessUrl } from "@/internal/orgs/orgUtils/convertOrgUtils";
+import { orgToReturnUrl } from "@autumn/shared";
 import { updateCheckoutDbAndCache } from "./updateDbAndCache";
 
 const buildConfirmCheckoutResponse = ({
@@ -50,7 +49,7 @@ export const confirmCheckout = async ({
 }: {
 	ctx: AutumnContext;
 	checkout: Checkout;
-	params: AttachParamsV1 | CreateScheduleParamsV0 | UpdateSubscriptionV1Params;
+	params: AttachParamsV1 | UpdateSubscriptionV1Params;
 }): Promise<ConfirmCheckoutResponse> => {
 	if (checkout.status === CheckoutStatus.ActionRequired) {
 		throw new RecaseError({
@@ -106,36 +105,6 @@ export const confirmCheckout = async ({
 			productId = checkoutResult.billingContext.customerProduct.product.id;
 			break;
 		}
-		case CheckoutAction.CreateSchedule: {
-			const checkoutResult = await billingActions.createSchedule({
-				ctx,
-				params: params as CreateScheduleParamsV0,
-				skipAutumnCheckout: true,
-			});
-
-			const [immediatePhase] = (params as CreateScheduleParamsV0).phases;
-			const [firstPlan] = immediatePhase?.plans ?? [];
-
-			if (!firstPlan) {
-				throw new InternalError({
-					message:
-						"Create schedule checkout confirmation requires an immediate plan",
-				});
-			}
-
-			response = {
-				customer_id: checkoutResult.customer_id,
-				entity_id: checkoutResult.entity_id ?? undefined,
-				invoice: checkoutResult.invoice,
-				payment_url: checkoutResult.payment_url,
-				required_action: checkoutResult.required_action,
-			};
-			successUrl =
-				(params as CreateScheduleParamsV0).success_url ??
-				toSuccessUrl({ org: ctx.org, env: ctx.env });
-			productId = firstPlan.plan_id;
-			break;
-		}
 		default:
 			throw new RecaseError({
 				message: "Unsupported checkout action",
@@ -166,13 +135,13 @@ export const confirmCheckout = async ({
 		});
 	}
 	const invoiceId =
-		billingResult?.stripe.stripeInvoice?.id ??
-		confirmedResponse.invoice?.stripe_id ??
+		billingResult?.processor?.autumnInvoice?.id ??
+		confirmedResponse.invoice?.processor_invoice_id ??
 		null;
 	const confirmedSuccessUrl =
 		successUrl ??
 		billingContext?.successUrl ??
-		toSuccessUrl({ org: ctx.org, env: ctx.env });
+		orgToReturnUrl({ org: ctx.org, env: ctx.env });
 
 	const newCheckoutStatus = confirmedResponse.required_action
 		? CheckoutStatus.ActionRequired
@@ -184,7 +153,6 @@ export const confirmCheckout = async ({
 		updates: {
 			status: newCheckoutStatus,
 			response: confirmedResponse,
-			stripe_invoice_id: invoiceId,
 			completed_at:
 				newCheckoutStatus === CheckoutStatus.Completed ? Date.now() : null,
 		},
@@ -192,7 +160,7 @@ export const confirmCheckout = async ({
 
 	if (
 		newCheckoutStatus === CheckoutStatus.Completed &&
-		billingResult?.stripe.deferred !== true &&
+		billingResult?.processor?.deferred !== true &&
 		!ctx.skipSubjectCacheDeletion
 	) {
 		await invalidateCachedFullSubject({

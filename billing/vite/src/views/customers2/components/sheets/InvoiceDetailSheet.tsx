@@ -10,9 +10,6 @@ import {
 	Button,
 	InfoRow,
 	MiniCopyButton,
-	Tooltip,
-	TooltipContent,
-	TooltipTrigger,
 } from "@autumn/ui";
 import {
 	ArrowCounterClockwiseIcon,
@@ -20,7 +17,6 @@ import {
 	CalendarBlankIcon,
 	CreditCardIcon,
 	HashIcon,
-	PaperPlaneTiltIcon,
 	ProhibitIcon,
 } from "@phosphor-icons/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -32,24 +28,12 @@ import { ProcessorIcon } from "@/components/v2/icons/ProcessorIcon";
 import { SheetHeader, SheetSection } from "@/components/v2/sheets/InlineSheet";
 import { useQueryKeyFactory } from "@/hooks/common/useQueryKeyFactory";
 import { useFeaturesQuery } from "@/hooks/queries/useFeaturesQuery";
-import { useOrgStripeQuery } from "@/hooks/queries/useOrgStripeQuery";
 import { useProductsQuery } from "@/hooks/queries/useProductsQuery";
 import { useSheetStore } from "@/hooks/stores/useSheetStore";
 import { cn } from "@/lib/utils";
 import { useAxiosInstance } from "@/services/useAxiosInstance";
-import { useEnv } from "@/utils/envUtils";
 import { getBackendErr } from "@/utils/genUtils";
-import {
-	getStripeConnectViewAsLink,
-	getStripeInvoiceLink,
-} from "@/utils/linkUtils";
-import { useAdmin } from "@/views/admin/hooks/useAdmin";
-import { useMasterStripeAccount } from "@/views/admin/hooks/useMasterStripeAccount";
 import { useCusQuery } from "@/views/customers/customer/hooks/useCusQuery";
-import {
-	resolveInvoiceProcessor,
-	useInvoiceMetadataQuery,
-} from "@/views/customers2/hooks/useInvoiceMetadataQuery";
 import { CustomerInvoiceStatus } from "../table/customer-invoices/CustomerInvoiceStatus";
 import { RefundInvoiceDialog } from "./RefundInvoiceDialog";
 
@@ -92,7 +76,6 @@ export function InvoiceDetailSheet({
 	taxedAmount: taxedAmountProp,
 }: InvoiceDetailSheetProps = {}) {
 	const sheetData = useSheetStore((s) => s.data);
-	const setSheet = useSheetStore((s) => s.setSheet);
 	const snapshotInvoice =
 		invoiceProp ?? (sheetData?.invoice as Invoice | undefined);
 	const { customer } = useCusQuery();
@@ -105,12 +88,8 @@ export function InvoiceDetailSheet({
 	const taxedAmount =
 		taxedAmountProp ?? (sheetData?.taxedAmount as number | undefined);
 
-	const { stripeAccount } = useOrgStripeQuery();
 	const { features } = useFeaturesQuery();
 	const { products } = useProductsQuery();
-	const env = useEnv();
-	const { isAdmin } = useAdmin();
-	const { masterStripeAccount } = useMasterStripeAccount();
 	const [refundDialogOpen, setRefundDialogOpen] = useState(false);
 	const axiosInstance = useAxiosInstance();
 	const queryClient = useQueryClient();
@@ -137,18 +116,6 @@ export function InvoiceDetailSheet({
 		},
 	});
 
-	const invoiceIsStripe =
-		(invoice?.processor_type ?? ProcessorType.Stripe) === ProcessorType.Stripe;
-	const {
-		metadata: invoiceMetadata,
-		isLoading: metadataLoading,
-		isError: metadataError,
-	} = useInvoiceMetadataQuery({
-		customerId: customer?.id || customer?.internal_id,
-		stripeInvoiceId: invoice?.stripe_id,
-		enabled: invoiceIsStripe && invoice?.status === InvoiceStatus.Paid,
-	});
-
 	const productGroups = useMemo(() => {
 		// Bucket line items by product_id, then group within each bucket.
 		const byProduct = new Map<string, InvoiceLineItem[]>();
@@ -167,7 +134,7 @@ export function InvoiceDetailSheet({
 			const groups = new Map<string, LineItemGroup>();
 
 			for (const item of items) {
-				const groupKey = item.stripe_subscription_item_id ?? item.id;
+				const groupKey = item.processor_id ?? item.id;
 				const isBasePrice = !item.feature_id;
 				const chargedAmount = item.amount_after_discounts ?? item.amount;
 
@@ -225,61 +192,24 @@ export function InvoiceDetailSheet({
 
 	if (!invoice) return null;
 
-	const invoiceProcessor = resolveInvoiceProcessor({
-		processorType: invoice.processor_type,
-		metadata: invoiceMetadata,
-	});
-	const processorLabel =
-		invoiceProcessor === ProcessorType.RevenueCat
-			? "RevenueCat"
-			: invoiceProcessor === ProcessorType.PayPal
-				? "PayPal"
-				: invoiceProcessor === "vercel"
-					? "Vercel"
-					: "Stripe";
-	// Vercel invoices are still Stripe-ledgered, so the id stays a Stripe id.
-	const idLabel =
-		invoiceProcessor === "vercel" ? "Stripe ID" : `${processorLabel} ID`;
+	const invoiceProcessor = invoice?.processor_type ?? ProcessorType.PayPal;
+	const processorLabel = "PayPal";
+	const idLabel = `${processorLabel} ID`;
 	const invoiceIsPayPal = invoiceProcessor === ProcessorType.PayPal;
 	const refundableAmount = Math.abs(invoice.amount_paid ?? invoice.total);
 	const isFullyRefunded =
 		invoice.refunded_amount > 0 && invoice.refunded_amount >= refundableAmount;
-	// Vercel invoices before the mapping existed can't be refunded from Autumn.
-	const vercelRefundBlocked =
-		invoiceProcessor === "vercel" && !invoiceMetadata.vercel_invoice_id;
 	// PayPal invoices are refunded through MeterPal directly — the pp-cap /
-	// pp-sale external id names the instrument, so no Stripe metadata gates.
+	// pp-sale external id names the instrument, so no processor metadata gates.
 	const canRefund =
-		(invoiceIsStripe || invoiceIsPayPal) &&
+		invoiceIsPayPal &&
 		invoice.status === InvoiceStatus.Paid &&
-		!isFullyRefunded &&
-		!metadataLoading &&
-		!metadataError &&
-		!vercelRefundBlocked;
+		!isFullyRefunded;
 	const canVoid =
-		invoiceIsStripe &&
+		invoiceIsPayPal &&
 		(invoice.status === InvoiceStatus.Open ||
 			invoice.status === InvoiceStatus.Uncollectible);
-	// An open invoice is voided and replaced; a paid one is credited and replaced.
-	// An uncollectible one is rejected.
-	const canReissue =
-		invoiceIsStripe &&
-		(invoice.status === InvoiceStatus.Open ||
-			(invoice.status === InvoiceStatus.Paid && !isFullyRefunded));
-	const stripeConnectViewAsInvoiceLink =
-		invoiceIsStripe && isAdmin && masterStripeAccount?.id && stripeAccount?.id
-			? getStripeConnectViewAsLink({
-					masterAccountId: masterStripeAccount.id,
-					connectedAccountId: stripeAccount.id,
-					env,
-					path: `invoices/${invoice.stripe_id}`,
-				})
-			: null;
-	const canOpenInvoice = Boolean(
-		invoice.hosted_invoice_url ||
-			stripeConnectViewAsInvoiceLink ||
-			invoiceIsStripe,
-	);
+	const canOpenInvoice = Boolean(invoice.hosted_invoice_url);
 
 	const formatAmount = (amount: number, currency: string) => {
 		const absAmount = Math.abs(amount);
@@ -309,25 +239,8 @@ export function InvoiceDetailSheet({
 	};
 
 	const handleViewInvoice = () => {
-		if (stripeConnectViewAsInvoiceLink) {
-			window.open(stripeConnectViewAsInvoiceLink, "_blank");
-			return;
-		}
-
 		if (invoice.hosted_invoice_url) {
 			window.open(invoice.hosted_invoice_url, "_blank");
-			return;
-		}
-
-		if (invoiceIsStripe) {
-			window.open(
-				getStripeInvoiceLink({
-					stripeInvoice: invoice.stripe_id,
-					env,
-					accountId: stripeAccount?.id,
-				}),
-				"_blank",
-			);
 		}
 	};
 
@@ -449,7 +362,7 @@ export function InvoiceDetailSheet({
 						label={idLabel}
 						value={
 							<MiniCopyButton
-								text={invoice.stripe_id}
+								text={invoice.processor_invoice_id}
 								innerClassName="text-sm text-foreground font-mono"
 							/>
 						}
@@ -486,37 +399,6 @@ export function InvoiceDetailSheet({
 					>
 						<ArrowCounterClockwiseIcon size={16} className="mr-1.5" />
 						Refund Invoice
-					</Button>
-				)}
-				{vercelRefundBlocked && !isFullyRefunded && (
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<span className="flex-1">
-								<Button variant="primary" className="w-full" disabled>
-									<ArrowCounterClockwiseIcon size={16} className="mr-1.5" />
-									Refund Invoice
-								</Button>
-							</span>
-						</TooltipTrigger>
-						<TooltipContent className="max-w-64">
-							This Vercel invoice predates refund support in MeterPal. Refund it
-							via Vercel support.
-						</TooltipContent>
-					</Tooltip>
-				)}
-				{canReissue && (
-					<Button
-						variant="primary"
-						className="flex-1"
-						onClick={() =>
-							setSheet({
-								type: "invoice-reissue",
-								data: { invoice, lineItems, taxedAmount },
-							})
-						}
-					>
-						<PaperPlaneTiltIcon size={16} className="mr-1.5" />
-						Reissue
 					</Button>
 				)}
 				{canVoid && (
@@ -575,8 +457,8 @@ function LineItemGroupRow({
 			value: item.id,
 		},
 		{
-			key: "Stripe Line Item ID",
-			value: item.stripe_id ?? "N/A",
+			key: "Processor Line Item ID",
+			value: item.processor_id ?? "N/A",
 		},
 	];
 
@@ -639,15 +521,15 @@ function LineItemGroupRow({
 							<span className="text-sm text-foreground">{group.label}</span>
 							{(!group.isBasePrice && firstItem.total_quantity) ||
 							(group.isBasePrice &&
-								firstItem.stripe_quantity &&
-								firstItem.stripe_quantity > 1) ? (
+								firstItem.raw_quantity &&
+								firstItem.raw_quantity > 1) ? (
 								<Badge
 									variant="muted"
 									className="text-[10px] px-1.5 py-0 text-tertiary-foreground"
 								>
 									Qty:{" "}
 									{group.isBasePrice
-										? firstItem.stripe_quantity
+										? firstItem.raw_quantity
 										: firstItem.total_quantity}
 								</Badge>
 							) : null}
@@ -682,10 +564,7 @@ function LineItemGroupRow({
 					<div className="mt-1 flex flex-wrap gap-1.5">
 						{firstItem.discounts.map((discount) => (
 							<DiscountBadge
-								key={
-									discount.stripe_coupon_id ??
-									`${discount.amount_off}-${discount.percent_off}`
-								}
+								key={`${discount.amount_off}-${discount.percent_off}`}
 								discount={discount}
 								currency={firstItem.currency}
 								formatAmount={formatAmount}
@@ -737,7 +616,6 @@ function DiscountBadge({
 	discount: {
 		amount_off: number;
 		percent_off?: number | null;
-		stripe_coupon_id?: string | null;
 	};
 	currency: string;
 	formatAmount: (amount: number, currency: string) => string;
@@ -749,11 +627,6 @@ function DiscountBadge({
 	return (
 		<span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600">
 			{label}
-			{discount.stripe_coupon_id && (
-				<span className="text-emerald-500/70 font-mono">
-					{discount.stripe_coupon_id}
-				</span>
-			)}
 		</span>
 	);
 }

@@ -9,7 +9,6 @@ import type {
 	FullProduct,
 	InsertPlanLicenseSpec,
 	Price,
-	StripeBillingContextOverride,
 } from "@autumn/shared";
 import type { BillingContext, BillingVersion } from "./billingContext";
 
@@ -75,8 +74,8 @@ export interface UpdateSubscriptionBillingContext extends BillingContext {
 
 	/**
 	 * Set by migrations-v2's `update_plan` operation when `op.proration === true`.
-	 * Lets `evaluateMigrateCustomerStripe` skip its no-charge guard for this
-	 * subscription only — every other migration keeps the guard.
+	 * Lets the migration skip its no-charge guard for this subscription only —
+	 * every other migration keeps the guard.
 	 */
 	allowCharges?: boolean;
 }
@@ -89,7 +88,6 @@ export interface UpdateSubscriptionBillingContextOverrides {
 		customEnts: Entitlement[];
 	};
 
-	stripeBillingContext?: StripeBillingContextOverride;
 
 	billingVersion?: BillingVersion;
 }

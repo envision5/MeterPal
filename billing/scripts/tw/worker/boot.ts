@@ -4,10 +4,10 @@
  * In-sandbox per-worker bring-up (plan §4c, §5, §6a, §9, §9a, §11a).
  *
  * Runs INSIDE a Vercel sandbox forked from the warm snapshot. The warm snapshot
- * already baked: deps, the migrated DB, the seeded unit-test-org (no Stripe), and
- * the clean-stopped native service data dirs. This script makes the worker
- * RUNNABLE, then prints a READY sentinel the orchestrator waits for. It does NOT
- * start the test run — the orchestrator drives `bun test <file>` via runCommand
+ * already baked: deps, the migrated DB, the seeded unit-test-org (no processor
+ * account), and the clean-stopped native service data dirs. This script makes the
+ * worker RUNNABLE, then prints a READY sentinel the orchestrator waits for. It does
+ * NOT start the test run — the orchestrator drives `bun test <file>` via runCommand
  * after READY (plan §8.2).
  *
  * Sequence:
@@ -16,11 +16,10 @@
  *      in-sandbox repo root (process.cwd()).
  *   2. Wait for PG / Dragonfly / elasticmq TCP health.
  *   3. (if NEEDS_SVIX) bind the orchestrator-created Svix app into svix_config (plan §7/§9a).
- *   4. Bind the Stripe sub-account into the localhost DB (plan §6a step 2 / §9a).
- *   5. Start the Autumn server (dev single-process path, NODE_ENV=development)
+ *   4. Start the Autumn server (dev single-process path, NODE_ENV=development)
  *      listening on SERVER_PORT.
- *   6. Wait for the server health endpoint (`GET /`, 200 when ready).
- *   7. Print `TW_WORKER_READY` to stdout.
+ *   5. Wait for the server health endpoint (`GET /`, 200 when ready).
+ *   6. Print `TW_WORKER_READY` to stdout.
  *
  * Fails loud: any service that doesn't come up within its budget throws with a
  * clear message and a non-zero exit so the orchestrator can evict + replace the
@@ -28,7 +27,6 @@
  *
  * Inputs (env, injected at fork by the orchestrator — see plan §11a):
  *   - ORG_ID            (hardcoded unit-test-org id; defaults to TEST_ORG_CONFIG.id)
- *   - STRIPE_ACCOUNT_ID (the `acct_*` the orchestrator minted + recorded; §9a)
  *   - NEEDS_SVIX        (set/truthy on the single dedicated Svix shard; §7)
  *   - SVIX_API_KEY      (only present on the Svix shard; §7/§11a)
  *   - SVIX_APP_ID       (orchestrator-created Svix app id; only on the Svix shard; §9a)
@@ -292,13 +290,6 @@ const main = async (): Promise<void> => {
 		);
 	}
 
-	const stripeAccountId = process.env.STRIPE_ACCOUNT_ID;
-	if (!stripeAccountId) {
-		throw new Error(
-			"[tw-boot] STRIPE_ACCOUNT_ID is required — the orchestrator must inject the sub-account it created (plan §9a)",
-		);
-	}
-
 	// 1 + 2. Native services up, then wait for their ports.
 	await startNativeServices(repoRoot);
 	await Promise.all([
@@ -371,12 +362,7 @@ const main = async (): Promise<void> => {
 		await provisionSvixApp(orgId);
 	}
 
-	// 4. Bind the Stripe sub-account into the localhost DB (§6a step 2 / §9a).
-	log(`binding Stripe sub-account ${stripeAccountId}`);
-	const { bindStripeAccount } = await import("./bindStripeAccount.js");
-	await bindStripeAccount({ orgId, stripeAccountId });
-
-	// 5 + 6. Start the server and wait for health.
+	// 4 + 5. Start the server and wait for health.
 	const serverProc = startServer(repoRoot, serverPort);
 	let serverExited = false;
 	void serverProc.exited.then((code) => {

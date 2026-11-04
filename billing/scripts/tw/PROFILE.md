@@ -19,12 +19,11 @@ warm timings from `[tw-warmup] +Ns`, provider stage lines from `[modal] ✓ (+Xs
 | warm | clean-stop services | <1s | |
 | warm | `snapshotFilesystem` | 15.2s | source + PGDATA diff (node_modules lives in the base layer) |
 | **warm total** | *(every run pre-cache)* | **~104s** | plus 330s on a lockfile change |
-| fan-out | Stripe sub-accounts (pool of 11 keys, conc 20) | 5s all | parallel with nothing (serialized before each worker's fork) |
 | fan-out | `experimentalCreate` from warm image | ~1s/worker | no pacing needed at this width; prior benchmark: ~41s for 100-wide all-READY |
 | fan-out | tunnel resolve (restore wait) | ~0s | |
 | boot | exec start → `boot.ts` first log | 4.2s | Modal exec round-trip + bun loading boot.ts |
 | boot | PG + Dragonfly + goaws up | ~1s | clean-stopped PGDATA, fsync off |
-| boot | svix/stripe DB binds | <1s | |
+| boot | svix DB bind | <1s | |
 | boot | **bun server module-load → health 200** | **6.6–12.6s** | the boot long-pole at 2 vCPU |
 | **boot total** | fork→READY | avg 19s · min 16s · max 22s | |
 | run | 2 files | 1m08s wall | test time itself |
@@ -87,19 +86,16 @@ finish well within a normal test run.
 
 ### 40-wide validation (fan-out empirics)
 
-`core --max=40 --per-worker=1 --fanout-bench`, exact warm hit: Stripe accounts
-all created in 11s (conc 20, 11 pool keys) · fork ~1s/worker (V2, no pacing, no
-429s) · restore ~0s · boot avg 14s (12–18s) · **40/40 READY in 29s from fan-out
-start**, zero provision failures. No pacing needed at this width.
+`core --max=40 --per-worker=1 --fanout-bench`, exact warm hit: fork ~1s/worker
+(V2, no pacing, no 429s) · restore ~0s · boot avg 14s (12–18s) · **40/40 READY in
+29s from fan-out start**, zero provision failures. No pacing needed at this width.
 
 ### Expected 200-wide timeline (invocation → tests executing)
 
 | Stage | Cached/typical | Notes |
 |---|---|---|
-| resolve + preflight + key-pool probe | ~5-10s | |
+| resolve + preflight | ~5-10s | |
 | warm lookup | ~1s | published-image hit (exact or stale) |
-| ingress + Connect webhooks | ~15s | |
-| Stripe sub-accounts ×200 | ~15-20s | conc 20 across 11 pool keys |
 | fork ×200 (V2, no pacing) | ~1s each, parallel | 40-wide measured: all READY in 29s; prior 100-wide ~41s |
 | boot ×200 (parallel) | ~12-20s each | stale adds ~6s ff |
 | **invocation → tests executing** | **~60-90s** | was ~3-4 min (warm rebuild every run) |

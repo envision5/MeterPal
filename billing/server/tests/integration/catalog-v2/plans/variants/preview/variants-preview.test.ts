@@ -26,7 +26,7 @@ import {
 	dashboardItem,
 	messagesItem,
 } from "../../licenses/utils/seedLicensePlans.js";
-import { seedVersionableCustomer } from "../../migrations/utils/seedVersionableCustomer.js";
+import { seedVersionableCustomer } from "../../utils/seedVersionableCustomer.js";
 import {
 	expectPlanPreviewRowCorrect,
 	parsePlanPreview,

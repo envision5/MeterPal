@@ -18,8 +18,8 @@ import { AutumnInt } from "@/external/autumn/autumnCli.js";
 import { CusEntService } from "@/internal/customers/cusProducts/cusEnts/CusEntitlementService.js";
 import { constructFeatureItem } from "@/utils/scriptUtils/constructItem.js";
 import { constructProduct } from "@/utils/scriptUtils/createTestProducts.js";
-import { initCustomerV3 } from "@/utils/scriptUtils/testUtils/initCustomerV3.js";
-import { initProductsV0 } from "@/utils/scriptUtils/testUtils/initProductsV0.js";
+import { initTestCustomer } from "@tests/utils/testInitUtils/initTestCustomer.js";
+import { initTestProducts } from "@tests/utils/testInitUtils/initTestProducts.js";
 import { findCustomerEntitlement } from "../utils/findCustomerEntitlement";
 
 const CUTOFF = 10_000_000;
@@ -60,7 +60,7 @@ const seedLooseCusEnt = async ({
 	customerId: string;
 	nextResetAt: number;
 }) => {
-	await initCustomerV3({ ctx, customerId, withTestClock: false });
+	await initTestCustomer({ ctx, customerId });
 	await autumnV1.balances.create({
 		customer_id: customerId,
 		feature_id: TestFeature.Messages,
@@ -100,13 +100,13 @@ const seedProductCusEnt = async ({
 	}) as ProductV2;
 	product.config = { ignore_past_due: ignorePastDue };
 
-	await initProductsV0({
+	await initTestProducts({
 		ctx,
 		products: [product],
 		prefix: customerId,
 		customerId,
 	});
-	await initCustomerV3({ ctx, customerId, withTestClock: false });
+	await initTestCustomer({ ctx, customerId });
 	await autumnV1.attach({ customer_id: customerId, product_id: product.id });
 
 	const cusEnt = await findCustomerEntitlement({

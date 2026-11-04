@@ -1,6 +1,6 @@
 // Dispatches `bun scenario <alloc | ep | epv2 | mini | kp | email | email-v2 | email-mini | knowledge> [flags]` to the matching
 // agent seed. Flags (--count, --concurrency, --attach-plan, --skip-clear,
-// --keep-existing, --skip-stripe-reset) are read from process.argv by each seed and
+// --keep-existing, --skip-processor-reset) are read from process.argv by each seed and
 // pass through.
 import { runAllocatedBillingSeed } from "./allocated-billing.js";
 import { runEmailMiniSeed } from "./email-mini.js";
@@ -30,7 +30,7 @@ const run = async () => {
 	const key = process.argv.slice(2).find(isScenarioKey);
 	if (!key) {
 		console.error(
-			"Usage: bun scenario <alloc | ep | epv2 | mini | kp | invoice | email | email-v2 | email-mini | knowledge> [--count N] [--concurrency N] [--attach-plan trial|enterprise] [--skip-clear] [--keep-existing] [--skip-stripe-reset]",
+			"Usage: bun scenario <alloc | ep | epv2 | mini | kp | invoice | email | email-v2 | email-mini | knowledge> [--count N] [--concurrency N] [--attach-plan trial|enterprise] [--skip-clear] [--keep-existing] [--skip-processor-reset]",
 		);
 		process.exit(1);
 	}

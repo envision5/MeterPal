@@ -125,16 +125,6 @@ pull_infisical() {
 	[ -n "$value" ] && export "$key=$value"
 }
 
-pull_infisical STRIPE_SANDBOX_SECRET_KEY
-if [ -n "${STRIPE_SANDBOX_SECRET_KEY:-}" ]; then
-	umask 077
-	mkdir -p "${HOME}/.cache"
-	printf '%s' "$STRIPE_SANDBOX_SECRET_KEY" >"${HOME}/.cache/autumn-stripe-sandbox-secret-key"
-	chmod 600 "${HOME}/.cache/autumn-stripe-sandbox-secret-key"
-else
-	log "STRIPE_SANDBOX_SECRET_KEY unavailable — unit-test-org seed will fail"
-fi
-
 pull_infisical CLOUDFLARE_TUNNEL_API_TOKEN
 pull_infisical CLOUDFLARE_TUNNEL_ACCOUNT_ID
 if [ -z "${CLOUDFLARE_TUNNEL_API_TOKEN:-}" ]; then
@@ -184,19 +174,18 @@ cat <<'EOF'
 ### Running integration (e2e) tests in Claude cloud
 
 This hook logs in to Infisical (CODING_AGENT_CLIENT_ID/SECRET) and caches the
-token in ~/.cache/autumn-infisical-token; the Stripe sandbox key lands in
-~/.cache/autumn-stripe-sandbox-secret-key. Tokens expire — re-run this hook
+token in ~/.cache/autumn-infisical-token. Tokens expire — re-run this hook
 (`bash scripts/setup/claude-cloud/session-start.sh`) to refresh them.
 
 - `infisical run --env=dev` injects the PlanetScale dev DATABASE_URL, and
   machine-identity tokens need `--projectId`, so plain `bun t` / `bun dw` either
   fail ("Project ID is required") or hit the remote DB. Use the wrapper, which
   adds `--projectId`, re-applies server/.env(.local) so DB/Redis/SQS stay local,
-  exports the Stripe sandbox key + edge-config override, and refuses to run
+  exports the edge-config override, and refuses to run
   when DATABASE_URL is not local:
     bash scripts/setup/claude-cloud/with-env.sh [dir] -- <cmd>
 - 1. Infra (also after a VM restart, check `uptime`), via the wrapper so the
-  unit-test-org seed gets the Stripe sandbox key:
+  unit-test-org seed runs:
     bash scripts/setup/claude-cloud/with-env.sh -- bun scripts/dw/index.ts start
   Starts Postgres/Redis/ClickHouse/ElasticMQ, runs migrations, loads DB
   functions and seeds unit-test-org. Ignore the cloudflared warning.

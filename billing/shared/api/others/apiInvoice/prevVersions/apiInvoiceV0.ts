@@ -5,8 +5,8 @@ export const ApiInvoiceV0Schema = z.object({
 		description: "Array of product IDs included in this invoice",
 		example: ["pro_plan", "addon_feature"],
 	}),
-	stripe_id: z.string().meta({
-		description: "The Stripe invoice ID",
+	processor_invoice_id: z.string().meta({
+		description: "The processor invoice ID",
 		example: "in_1A2B3C4D5E6F7G8H",
 	}),
 	status: z.string().meta({
@@ -26,8 +26,8 @@ export const ApiInvoiceV0Schema = z.object({
 		example: 1759247877000,
 	}),
 	hosted_invoice_url: z.string().nullish().meta({
-		description: "URL to the Stripe-hosted invoice page",
-		example: "https://invoice.stripe.com/i/acct_123/test_456",
+		description: "URL to the processor-hosted invoice page",
+		example: "https://example.com/invoices/in_1234",
 	}),
 });
 

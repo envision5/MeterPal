@@ -1,8 +1,8 @@
 import {
 	type BillingContext,
 	type BillingInterval,
+	type FullCusProduct,
 	getCycleEnd,
-	secondsToMs,
 	truncateMsToSecondPrecision,
 } from "@autumn/shared";
 import { Decimal } from "decimal.js";
@@ -11,8 +11,8 @@ import { Decimal } from "decimal.js";
  * Compute the next cycle start, billing context override, and proration ratio
  * for a scheduled billing cycle anchor reset.
  *
- * When the anchor resets before the current period ends, Stripe charges only
- * the prorated "extra" window that extends beyond the original period end.
+ * When the anchor resets before the current period ends, only the prorated
+ * "extra" window that extends beyond the original period end is charged.
  * When it resets at or after the period end, the next invoice is the normal
  * renewal at the original period end with full amount.
  */
@@ -21,7 +21,10 @@ export const computeScheduledAnchorResetPreview = ({
 	interval,
 	intervalCount,
 }: {
-	billingContext: BillingContext;
+	billingContext: BillingContext & {
+		currentCustomerProduct?: FullCusProduct;
+		customerProduct?: FullCusProduct;
+	};
 	interval: BillingInterval;
 	intervalCount: number;
 }): {
@@ -31,10 +34,11 @@ export const computeScheduledAnchorResetPreview = ({
 } => {
 	const scheduledAnchor = billingContext.requestedBillingCycleAnchor as number;
 
-	const originalAnchorMs = billingContext.stripeSubscription
-		?.billing_cycle_anchor
-		? secondsToMs(billingContext.stripeSubscription.billing_cycle_anchor)
-		: billingContext.currentEpochMs;
+	// The anchor the plan is on today, from the customer product row.
+	const customerProduct =
+		billingContext.currentCustomerProduct ?? billingContext.customerProduct;
+	const originalAnchorMs =
+		customerProduct?.billing_cycle_anchor ?? billingContext.currentEpochMs;
 
 	const originalPeriodEnd = getCycleEnd({
 		anchor: originalAnchorMs,

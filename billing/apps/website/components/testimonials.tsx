@@ -29,7 +29,7 @@ const testimonialsData = [
 	{
 		id: 5,
 		quote:
-			"MeterPal fixed stripe. Trust me. Save you at least a week and potentially months of Stripe integration time. I wish we could have discovered MeterPal earlier.",
+			"MeterPal fixed our billing. Trust me. Save you at least a week and potentially months of billing integration time. I wish we could have discovered MeterPal earlier.",
 		author: "Benny Kok",
 	},
 	{

@@ -3,11 +3,11 @@ import { getDate, getMonth, getYear, isSameDay, min } from "date-fns";
 
 const MIDDAY_HOUR = 12;
 
-/** Midday UTC prints as the same calendar day in nearly every timezone, including Stripe's. */
+/** Midday UTC prints as the same calendar day in nearly every timezone. */
 const toMiddayUtc = (day: Date) =>
 	new UTCDate(getYear(day), getMonth(day), getDate(day), MIDDAY_HOUR);
 
-/** An issue day of today is left to Stripe, which stamps it with its own "now". */
+/** An issue day of today is left to the processor, which stamps it with its own "now". */
 export const invoiceDaysToParams = ({
 	issueDay,
 	dueDay,

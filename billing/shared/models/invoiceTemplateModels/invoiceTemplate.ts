@@ -14,7 +14,7 @@ export const InvoiceTemplateSchema = z.object({
 	}),
 	memo: z.string().optional().meta({
 		description:
-			"Memo shown near the top of the invoice (Stripe invoice description), e.g. a contact line for payment questions.",
+			"Memo shown near the top of the invoice (invoice description), e.g. a contact line for payment questions.",
 	}),
 	net_terms_days: z.number().int().positive().optional().meta({
 		description:

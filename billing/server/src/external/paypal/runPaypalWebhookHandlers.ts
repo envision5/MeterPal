@@ -1,7 +1,7 @@
 // billing/server/src/external/paypal/runPaypalWebhookHandlers.ts
 //
 // Dispatches PayPal webhook events to MeterPal's wallet + entitlement
-// lifecycle.  Mirrors `external/stripe/runStripeWebhookHandlers.ts`.
+// lifecycle.
 //
 // Money-in contract (1 credit = 1 USD against the org's credit feature):
 //   - PAYMENT.CAPTURE.COMPLETED  (one-off credit pack)  -> grant by capture amount
@@ -17,7 +17,7 @@
 //
 // Idempotency: every handler is safe to replay.  PayPal retries up to 25
 // times over 3 days on 5xx; we dedupe by event.id using the
-// `stripe_webhook_events` table (event ids prefixed with "paypal:"), and
+// `webhook_events` table (event ids prefixed with "paypal:"), and
 // every wallet grant dedupes on its own idempotency key.
 
 import {
@@ -30,9 +30,9 @@ import {
 	paypalCatalogMap,
 	paypalOrderIntents,
 	products,
-	stripeWebhookEvents,
 	WebhookEventType,
 	walletLedger,
+	webhookEvents,
 } from "@autumn/shared";
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/db/initDrizzle.js";
@@ -80,11 +80,11 @@ export async function handlePaypalEvent(
 	}
 
 	// Idempotency: skip if we've already processed this event id.
-	// The Stripe-side table is reused; the "paypal:" prefix disambiguates.
+	// The "paypal:" prefix disambiguates PayPal ids from other processors'.
 	const [seen] = await db
-		.select({ eventId: stripeWebhookEvents.event_id })
-		.from(stripeWebhookEvents)
-		.where(eq(stripeWebhookEvents.event_id, `paypal:${event.id}`))
+		.select({ eventId: webhookEvents.event_id })
+		.from(webhookEvents)
+		.where(eq(webhookEvents.event_id, `paypal:${event.id}`))
 		.limit(1);
 	if (seen) {
 		logger.info({ msg: "paypal: event already processed", eventId: event.id });
@@ -107,7 +107,7 @@ export async function handlePaypalEvent(
 		throw error;
 	}
 	await db
-		.insert(stripeWebhookEvents)
+		.insert(webhookEvents)
 		.values({
 			event_id: `paypal:${event.id}`,
 			payload: event as unknown as Record<string, unknown>,
@@ -616,8 +616,8 @@ export async function activatePaypalSubscription(sub: {
 		: [];
 	const planKey = mapRow?.product_id ?? planKeyForPlanId(planId);
 
-	// Trigger provisioning (LiteLLM key + entitlements) via the same
-	// trigger the Stripe path uses.
+	// Trigger provisioning (LiteLLM key + entitlements) via the shared
+	// subscription activation trigger.
 	const { onSubscriptionActive: provisionActive } = await import(
 		"@/internal/keys/litellmWebhookTriggers.js"
 	);
@@ -962,7 +962,7 @@ export async function incrementPaypalInvoiceRefund({
 		.set({
 			refunded_amount: sql`${invoices.refunded_amount} + ${amountUsd}`,
 		})
-		.where(eq(invoices.stripe_id, externalId))
+		.where(eq(invoices.processor_invoice_id, externalId))
 		.returning({ id: invoices.id });
 	if (updated.length === 0) {
 		logger.warn({

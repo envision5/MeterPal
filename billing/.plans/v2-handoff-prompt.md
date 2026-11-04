@@ -41,7 +41,7 @@ Split into two cache objects:
 
 3. **Size cap safety net** — if a serialized entity/customer doc exceeds 500KB, skip caching and fall back to Postgres. This guarantees Redis objects are never unbounded.
 
-4. **Billing actions (attach, updateSubscription) are OUT OF SCOPE** — they need ALL customer products across ALL entities for Stripe subscription merging (`buildStripeSubscriptionItemsUpdate` diffs all products on a subscription). Billing actions will continue to query Postgres directly via `CusService.getFull`. After billing, invalidate all customer + entity caches.
+4. **Billing actions (attach, updateSubscription) are OUT OF SCOPE** — they need ALL customer products across ALL entities for processor subscription merging (the processor subscription item update diffs all products on a subscription). Billing actions will continue to query Postgres directly via `CusService.getFull`. After billing, invalidate all customer + entity caches.
 
 5. **Rolling migration via percentage-based hashing** — cherry-pick `getCustomerBucket(customerId)` and `resolveCustomerId` middleware from `origin/feat/custom-redis`. Use `Bun.hash(customerId) % 100` to deterministically route customers to V1 or V2 cache format. Deploy at 0%, ramp 5 → 10 → 25 → 50 → 75 → 100. Staleness detection (`isCacheStale` pattern) invalidates old-format cache when a customer's routing flips due to percentage change.
 

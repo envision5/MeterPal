@@ -1,11 +1,10 @@
-import type { BillingContext } from "@autumn/shared";
+import type { BillingContext, FullCusProduct } from "@autumn/shared";
 import {
 	type BillingPeriod,
 	getCycleEnd,
 	getCycleStart,
 	isOneOffPrice,
 	type Price,
-	secondsToMs,
 } from "@autumn/shared";
 import { billingContextToFutureTrialEnd } from "@/internal/billing/v2/utils/billingContext/billingContextToFutureTrialEnd";
 
@@ -13,7 +12,7 @@ import { billingContextToFutureTrialEnd } from "@/internal/billing/v2/utils/bill
  * Calculates the billing period (start and end) for a line item based on the billing context.
  *
  * Uses floor constraints to ensure:
- * - Period start is not before the Stripe subscription creation date
+ * - Period start is not before the plan's start date
  * - Period end is not before the billing cycle anchor (e.g., trial end date)
  *
  * @param billingContext - The billing context containing anchors and timestamps
@@ -24,20 +23,22 @@ export const getLineItemBillingPeriod = ({
 	billingContext,
 	price,
 }: {
-	billingContext: BillingContext;
+	billingContext: BillingContext & {
+		currentCustomerProduct?: FullCusProduct;
+		customerProduct?: FullCusProduct;
+	};
 	price: Price;
 }): BillingPeriod | undefined => {
 	if (isOneOffPrice(price)) return undefined;
 
-	const { billingCycleAnchorMs, currentEpochMs, stripeSubscription } =
-		billingContext;
+	const { billingCycleAnchorMs, currentEpochMs } = billingContext;
 
 	const { interval, interval_count: intervalCount } = price.config;
 
-	// Floor for start: subscription creation date (can't bill before subscription existed)
-	const startFloor = stripeSubscription?.created
-		? secondsToMs(stripeSubscription.created)
-		: undefined;
+	// Floor for start: the plan's start date (can't bill before the plan existed)
+	const customerProduct =
+		billingContext.currentCustomerProduct ?? billingContext.customerProduct;
+	const startFloor = customerProduct?.created_at;
 
 	// Floor for end: trial end (can't end billing period before trial ends).
 	// Only used for long trials (>1 interval) where the natural cycle end would land

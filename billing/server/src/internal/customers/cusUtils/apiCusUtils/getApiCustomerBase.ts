@@ -13,7 +13,6 @@ import {
 import { z } from "zod/v4";
 import type { RequestContext } from "@/honoUtils/HonoEnv.js";
 import { invoicesToResponse } from "../../../invoices/invoiceUtils.js";
-import { getCusProcessors } from "../cusResponseUtils/getCusProcessors.js";
 import {
 	fullCustomerWithoutEntityData,
 	shouldAggregateEntityData,
@@ -76,7 +75,6 @@ export const getApiCustomerBase = async ({
 		email: fullCus.email || null,
 		fingerprint: fullCus.fingerprint || null,
 
-		stripe_id: fullCus.processor?.id || null,
 		env: fullCus.env,
 		metadata: fullCus.metadata ?? {},
 
@@ -102,11 +100,6 @@ export const getApiCustomerBase = async ({
 					disable_overage_billing: fullCus.config.disable_overage_billing,
 				}
 			: undefined,
-
-		processors: getCusProcessors({
-			customer: fullCustomer,
-			customer_products: fullCustomer.customer_products,
-		}),
 
 		invoices:
 			fullCus.invoices && ctx.expand.includes(CustomerExpand.Invoices)

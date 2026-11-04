@@ -1,9 +1,8 @@
-import type { FullProduct, RewardProgram } from "@autumn/shared";
+import type { FullProduct } from "@autumn/shared";
 import type { ProductStatesContext } from "@/internal/catalogV2/actions/updateCatalog/types/updateCatalogContext";
 import type { UpsertProductPlan } from "@/internal/catalogV2/actions/updateCatalog/types/upsertProductPlan";
 import type { CustomerProductVersioningFlags } from "@/internal/customers/cusProducts/repos/getVersioningUsage.js";
 import { buildProductStatesContext } from "./buildProductStatesContext";
-import { activeFullProductForPlan } from "./activeFullProductForPlan";
 
 /**
  * Pure projection: product state after `upsertProducts` apply (projectCatalog
@@ -56,29 +55,10 @@ export const projectProductStatesContext = ({
 		]),
 	);
 
-	// Reward programs follow the plan's projected id.
-	const rewardProgramsByPlanId = new Map<string, RewardProgram[]>();
-	for (const [planId, programs] of Object.entries(
-		original.rewardProgramsByPlanId,
-	)) {
-		const latest = activeFullProductForPlan({
-			planId,
-			productStatesContext: original,
-		});
-		const projectedId = latest
-			? (nextRowByInternalId.get(latest.internal_id)?.id ?? latest.id)
-			: planId;
-		rewardProgramsByPlanId.set(projectedId, [
-			...(rewardProgramsByPlanId.get(projectedId) ?? []),
-			...programs,
-		]);
-	}
-
 	return buildProductStatesContext({
 		planIds: [...versionsByPlanId.keys()],
 		versionsByPlanId,
 		usageByInternalId,
-		rewardProgramsByPlanId,
 		maxVersionByPlanId: original.maxVersionByPlanId,
 	});
 };

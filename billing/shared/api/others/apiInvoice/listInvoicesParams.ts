@@ -30,7 +30,7 @@ export const ListInvoicesParamsSchema = z
 
 		processor_types: z.array(z.enum(ProcessorType)).optional().meta({
 			description:
-				"Filter by billing processor (stripe, revenuecat). Invoices recorded before processor tracking count as stripe.",
+				"Filter by billing processor. Invoices recorded before processor tracking count as paypal.",
 		}),
 	})
 	.refine((params) => !params.entity_id || params.customer_id, {

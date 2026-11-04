@@ -111,7 +111,7 @@ export interface ApiEntity {
  */
 export interface ApiInvoice {
 	plan_ids: string[];
-	stripe_id: string;
+	processor_invoice_id: string;
 	status: string;
 	total: number;
 	currency: string;

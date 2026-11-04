@@ -95,8 +95,6 @@ export const list = async (): Promise<void> => {
 					(aliveSandboxes.length > 0
 						? chalk.red(` (${aliveSandboxes.length} still alive)`)
 						: "") +
-					`  sub-accounts: ${run.subAccounts.length}` +
-					`  webhooks: ${run.webhooks.length}` +
 					(getSvixAppIds(run).length
 						? `  svix-apps: ${getSvixAppIds(run).length}`
 						: ""),

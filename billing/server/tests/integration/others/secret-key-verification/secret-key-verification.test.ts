@@ -1,14 +1,15 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { MigrationRunStatus, migrationRuns } from "@autumn/shared";
+import {
+	MigrationRunStatus,
+	migrationRuns,
+	migrations,
+} from "@autumn/shared";
 import ctx from "@tests/utils/testInitUtils/createTestContext.js";
 import { and, eq } from "drizzle-orm";
 import { clearSecretKeyCache } from "@/external/redis/actions/secretKeyCache/secretKeyCache.js";
 import { verifyKey } from "@/internal/dev/apiKeys/actions/verifyKey.js";
 import { hashApiKey } from "@/internal/dev/apiKeys/apiKeyUtils.js";
-import {
-	migrationRepo,
-	migrationRunRepo,
-} from "@/internal/migrations/v2/repos/index.js";
+import { generateId } from "@/utils/genUtils.js";
 
 const MIGRATION_ID = "secret-key-verification-test-migration";
 
@@ -28,7 +29,63 @@ describe("secret-key-verification: verifyKey shape (DB + cache)", () => {
 				),
 			);
 
-		await migrationRepo.delete({ ctx, id: MIGRATION_ID }).catch(() => null);
+		await ctx.db
+			.delete(migrations)
+			.where(
+				and(
+					eq(migrations.org_id, ctx.org.id),
+					eq(migrations.env, ctx.env),
+					eq(migrations.id, MIGRATION_ID),
+				),
+			)
+			.catch(() => null);
+	};
+
+	const seedMigration = async () => {
+		const internalId = generateId("mig");
+		await ctx.db.insert(migrations).values({
+			internal_id: internalId,
+			id: MIGRATION_ID,
+			org_id: ctx.org.id,
+			env: ctx.env,
+			filter: null,
+			operations: {
+				customer: [
+					{
+						type: "update_plan",
+						plan_filter: { plan_id: "noop" },
+						version: 1,
+					},
+				],
+			},
+			archived: false,
+			retry_failed: false,
+			created_at: Date.now(),
+		});
+
+		return internalId;
+	};
+
+	const seedRun = async ({
+		migrationInternalId,
+		lazyRun,
+	}: {
+		migrationInternalId: string;
+		lazyRun: boolean;
+	}) => {
+		const internalId = generateId("mig_run");
+		await ctx.db.insert(migrationRuns).values({
+			internal_id: internalId,
+			migration_internal_id: migrationInternalId,
+			org_id: ctx.org.id,
+			env: ctx.env,
+			status: MigrationRunStatus.Queued,
+			dry_run: false,
+			lazy_run: lazyRun,
+			created_at: Date.now(),
+		});
+
+		return internalId;
 	};
 
 	beforeAll(async () => {
@@ -73,33 +130,11 @@ describe("secret-key-verification: verifyKey shape (DB + cache)", () => {
 	});
 
 	test("after seeding a lazy migration_run, pendingMigrations surfaces it (DB + cache)", async () => {
-		const migration = await migrationRepo.insert({
-			ctx,
-			insert: {
-				id: MIGRATION_ID,
-				filter: null,
-				operations: {
-					customer: [
-						{
-							type: "update_plan",
-							plan_filter: { plan_id: "noop" },
-							version: 1,
-						},
-					],
-				},
-			},
+		const migrationInternalId = await seedMigration();
+		const runInternalId = await seedRun({
+			migrationInternalId,
+			lazyRun: true,
 		});
-
-		const run = await migrationRunRepo.insert({
-			ctx,
-			insert: {
-				migration_internal_id: migration.internal_id,
-				dry_run: false,
-				lazy_run: true,
-			},
-		});
-		expect(run).not.toBeNull();
-		if (!run) throw new Error("failed to insert lazy migration_run");
 
 		// Bust the cached payload so verifyKey re-loads from DB.
 		await clearSecretKeyCache({ hashedKey });
@@ -108,7 +143,7 @@ describe("secret-key-verification: verifyKey shape (DB + cache)", () => {
 		if (!fromDb) throw new Error("verifyKey returned no data");
 
 		expect(fromDb.pendingMigrations).toHaveLength(1);
-		expect(fromDb.pendingMigrations[0]?.internal_id).toBe(run.internal_id);
+		expect(fromDb.pendingMigrations[0]?.internal_id).toBe(runInternalId);
 		expect(fromDb.pendingMigrations[0]?.lazy_run).toBe(true);
 		const status = fromDb.pendingMigrations[0]?.status;
 		expect(
@@ -134,32 +169,8 @@ describe("secret-key-verification: verifyKey shape (DB + cache)", () => {
 		await cleanupDbState();
 		await clearSecretKeyCache({ hashedKey });
 
-		const migration = await migrationRepo.insert({
-			ctx,
-			insert: {
-				id: MIGRATION_ID,
-				filter: null,
-				operations: {
-					customer: [
-						{
-							type: "update_plan",
-							plan_filter: { plan_id: "noop" },
-							version: 1,
-						},
-					],
-				},
-			},
-		});
-
-		const run = await migrationRunRepo.insert({
-			ctx,
-			insert: {
-				migration_internal_id: migration.internal_id,
-				dry_run: false,
-				lazy_run: false,
-			},
-		});
-		expect(run).not.toBeNull();
+		const migrationInternalId = await seedMigration();
+		await seedRun({ migrationInternalId, lazyRun: false });
 
 		const data = await verifyKey({
 			db: ctx.db,

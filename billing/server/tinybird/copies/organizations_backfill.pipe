@@ -13,7 +13,6 @@ SQL >
         createdAt::String                                              AS created_at_ts,
         metadata,
         coalesce(default_currency, 'usd')                             AS default_currency,
-        if(stripe_connected = true, 1, 0)                             AS stripe_connected,
         created_at::Int64                                              AS created_at,
         if(onboarded = true, 1, 0)                                    AS onboarded,
         if(deployed = true, 1, 0)                                     AS deployed,

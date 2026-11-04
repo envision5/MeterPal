@@ -42,7 +42,7 @@ export type PreviewMultiAttachPriceInterval = ClosedEnum<
 
 export type PreviewMultiAttachAdditionalCurrency = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -116,7 +116,7 @@ export type PreviewMultiAttachReset = {
 
 export type PreviewMultiAttachItemAdditionalCurrency = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -129,7 +129,7 @@ export type PreviewMultiAttachPriceTo = number | string;
 
 export type PreviewMultiAttachTierAdditionalCurrency = {
   /**
-   * Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+   * Three-letter ISO currency code (e.g. 'eur', 'gbp').
    */
   currency: string;
   /**
@@ -784,7 +784,7 @@ export type PreviewMultiAttachFreeTrialParams = {
  */
 export type PreviewMultiAttachInvoiceMode = {
   /**
-   * When true, creates an invoice and sends it to the customer instead of charging their card immediately. Uses Stripe's send_invoice collection method.
+   * When true, creates an invoice and sends it to the customer instead of charging their card immediately. Uses the processor's send_invoice collection method.
    */
   enabled: boolean;
   /**
@@ -800,7 +800,7 @@ export type PreviewMultiAttachInvoiceMode = {
    */
   invoiceTemplateId?: string | undefined;
   /**
-   * Number of days the customer has to pay the invoice before it is due (Stripe days_until_due).
+   * Number of days the customer has to pay the invoice before it is due (days_until_due).
    */
   netTermsDays?: number | undefined;
 };
@@ -880,7 +880,7 @@ export type PreviewMultiAttachSpendLimit = {
    */
   overageLimit?: number | undefined;
   /**
-   * When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally.
+   * When true, overage for this feature is not posted to the billing processor. Usage tracking and balance resets still behave normally.
    */
   skipOverageBilling?: boolean | undefined;
 };
@@ -1101,7 +1101,7 @@ export type PreviewMultiAttachParams = {
    */
   invoiceMode?: PreviewMultiAttachInvoiceMode | undefined;
   /**
-   * List of discounts to apply. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code.
+   * List of discounts to apply. Each discount can be an Autumn reward ID or a promotion code.
    */
   discounts?: Array<PreviewMultiAttachAttachDiscount> | undefined;
   /**
@@ -1117,7 +1117,7 @@ export type PreviewMultiAttachParams = {
    */
   successUrl?: string | undefined;
   /**
-   * Additional parameters to pass into the creation of the Stripe checkout session.
+   * Additional parameters to pass into the creation of the processor checkout session.
    */
   checkoutSessionParams?: { [k: string]: any } | undefined;
   /**
@@ -1125,11 +1125,11 @@ export type PreviewMultiAttachParams = {
    */
   redirectMode?: PreviewMultiAttachRedirectMode | undefined;
   /**
-   * Only applicable when the customer has an existing Stripe subscription. If true, creates a new separate subscription instead of merging into the existing one.
+   * Only applicable when the customer has an existing processor subscription. If true, creates a new separate subscription instead of merging into the existing one.
    */
   newBillingSubscription?: boolean | undefined;
   /**
-   * If true, the cusProducts are activated immediately even when payment is pending via Stripe checkout.
+   * If true, the cusProducts are activated immediately even when payment is pending via processor checkout.
    */
   enablePlanImmediately?: boolean | undefined;
   /**
@@ -1389,7 +1389,7 @@ export type PreviewMultiAttachOutgoing = {
 };
 
 export const PreviewMultiAttachCheckoutType = {
-  StripeCheckout: "stripe_checkout",
+  ProcessorCheckout: "processor_checkout",
   AutumnCheckout: "autumn_checkout",
 } as const;
 export type PreviewMultiAttachCheckoutType = OpenEnum<
@@ -1397,21 +1397,21 @@ export type PreviewMultiAttachCheckoutType = OpenEnum<
 >;
 
 /**
- * Calculation status ('complete' when Stripe Tax succeeds or 'incomplete' when Stripe Tax returned 0 or errored).
+ * Calculation status ('complete' when the tax calculation succeeds or 'incomplete' when it returned 0 or errored).
  */
 export const PreviewMultiAttachStatus = {
   Complete: "complete",
   Incomplete: "incomplete",
 } as const;
 /**
- * Calculation status ('complete' when Stripe Tax succeeds or 'incomplete' when Stripe Tax returned 0 or errored).
+ * Calculation status ('complete' when the tax calculation succeeds or 'incomplete' when it returned 0 or errored).
  */
 export type PreviewMultiAttachStatus = OpenEnum<
   typeof PreviewMultiAttachStatus
 >;
 
 /**
- * Tax preview for the immediate charge. Contact us to enable the tax flag on your organisation. Shows only with flag enabled, a Stripe customer exists and has a location.
+ * Tax preview for the immediate charge. Contact us to enable the tax flag on your organisation.
  */
 export type PreviewMultiAttachTax = {
   /**
@@ -1431,17 +1431,17 @@ export type PreviewMultiAttachTax = {
    */
   currency: string;
   /**
-   * Calculation status ('complete' when Stripe Tax succeeds or 'incomplete' when Stripe Tax returned 0 or errored).
+   * Calculation status ('complete' when the tax calculation succeeds or 'incomplete' when it returned 0 or errored).
    */
   status: PreviewMultiAttachStatus;
 };
 
 /**
- * Stripe customer invoice credits preview.
+ * Customer invoice credits preview.
  */
 export type PreviewMultiAttachInvoiceCredits = {
   /**
-   * Stripe customer credit balance available, expressed as a positive number in major currency units.
+   * Customer credit balance available, expressed as a positive number in major currency units.
    */
   balance: number;
   /**
@@ -1504,11 +1504,11 @@ export type PreviewMultiAttachResponse = {
    */
   checkoutType: PreviewMultiAttachCheckoutType | null;
   /**
-   * Tax preview for the immediate charge. Contact us to enable the tax flag on your organisation. Shows only with flag enabled, a Stripe customer exists and has a location.
+   * Tax preview for the immediate charge. Contact us to enable the tax flag on your organisation.
    */
   tax?: PreviewMultiAttachTax | undefined;
   /**
-   * Stripe customer invoice credits preview.
+   * Customer invoice credits preview.
    */
   invoiceCredits?: PreviewMultiAttachInvoiceCredits | undefined;
 };

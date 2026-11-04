@@ -19,7 +19,7 @@ import { constructProduct } from "@server/internal/products/productUtils.js";
 import { JobName } from "@server/queue/JobName.js";
 import { addTaskToQueue } from "@server/queue/queueUtils.js";
 import { and, eq, ne } from "drizzle-orm";
-import { initStripeResourcesForProducts } from "@/internal/billing/v2/providers/stripe/utils/common/initStripeResourcesForProducts.js";
+import { syncPaypalPlanIfConnected } from "@/internal/billing/paypal/paypalCatalogSync.js";
 import { copyPlanLicensesToNewVersion } from "@/internal/licenses/actions/links/copyPlanLicensesToNewVersion.js";
 import {
 	applyPreparedPlanLicenseSync,
@@ -54,7 +54,7 @@ export const handleVersionProductV2 = async ({
 	latestProduct,
 	org,
 	env,
-	skipStripeInit = false,
+	skipProcessorInit = false,
 	baseInternalProductId,
 	preparedPlanLicenseSync,
 }: {
@@ -63,7 +63,7 @@ export const handleVersionProductV2 = async ({
 	latestProduct: FullProduct;
 	org: Organization;
 	env: AppEnv;
-	skipStripeInit?: boolean;
+	skipProcessorInit?: boolean;
 	baseInternalProductId?: string | null;
 	preparedPlanLicenseSync?: PreparedPlanLicenseSync;
 }) => {
@@ -199,19 +199,18 @@ export const handleVersionProductV2 = async ({
 		newVersion: true, // This is a new product version
 	});
 
-	if (skipStripeInit) {
+	if (skipProcessorInit) {
 		return newProduct;
 	}
 
-	await initStripeResourcesForProducts({
+	// Keep the mapped billing plan in step with the new version's price.
+	await syncPaypalPlanIfConnected({
 		ctx,
-		products: [
-			{
-				...newProduct,
-				prices: customPrices,
-				entitlements: getEntsWithFeature({ ents: customEnts, features }),
-			} as FullProduct,
-		],
+		product: {
+			...newProduct,
+			prices: customPrices,
+			entitlements: getEntsWithFeature({ ents: customEnts, features }),
+		} as FullProduct,
 	});
 
 	await addTaskToQueue({

@@ -588,15 +588,15 @@ export const getFullSubjectRowsQuery = ({
 			SELECT
 				cs.subject_key,
 				json_agg(row_to_json(cs.subscription_row))
-					FILTER (WHERE (cs.subscription_row).stripe_id IS NOT NULL) AS items
+					FILTER (WHERE (cs.subscription_row).processor_id IS NOT NULL) AS items
 			FROM (
 				SELECT DISTINCT
 					cp.subject_key,
 					s AS subscription_row
 				FROM cus_products cp
-				JOIN LATERAL unnest(cp.subscription_ids) AS cp_sub(stripe_id) ON true
+				JOIN LATERAL unnest(cp.subscription_ids) AS cp_sub(processor_id) ON true
 				JOIN subscriptions s
-					ON s.stripe_id = cp_sub.stripe_id
+					ON s.processor_id = cp_sub.processor_id
 			) cs
 			GROUP BY cs.subject_key
 		),

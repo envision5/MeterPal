@@ -28,7 +28,7 @@ export function InvoicesSection({ invoices }: InvoicesSectionProps) {
 			</Text>
 			<Box flexDirection="column" paddingLeft={1}>
 				{invoices.slice(0, 5).map((invoice) => (
-					<InvoiceRow key={invoice.stripe_id} invoice={invoice} />
+					<InvoiceRow key={invoice.processor_invoice_id} invoice={invoice} />
 				))}
 				{invoices.length > 5 && (
 					<Text dimColor>...and {invoices.length - 5} more</Text>

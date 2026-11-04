@@ -1,16 +1,6 @@
 export { CreateBalanceParamsV0Schema } from "./balances/create/createBalanceParams.js";
 export { AttachParamsV1Schema } from "./billing/attachV2/attachParamsV1.js";
-export {
-	CreateScheduleParamsV0Schema,
-	CreateSchedulePhaseSchema,
-} from "./billing/createSchedule/createScheduleParamsV0.js";
 export { UpdateSubscriptionV1ParamsSchema } from "./billing/updateSubscription/updateSubscriptionV1Params.js";
-export {
-	CatalogGetMappingsParamsSchema,
-	CatalogGetMappingsResponseSchema,
-	CatalogUpdateMappingsParamsSchema,
-	CatalogUpdateMappingsResponseSchema,
-} from "./catalog/catalogMappingModels.js";
 export { CatalogUpdateParamsSchema } from "./catalog/previewUpdateCatalogParams.js";
 export {
 	CatalogFeaturePreviewSchema,

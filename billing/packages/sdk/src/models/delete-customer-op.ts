@@ -18,11 +18,7 @@ export type DeleteCustomerParams = {
    * ID of the customer to delete
    */
   customerId: string;
-  /**
-   * Whether to also delete the customer in Stripe
-   */
-  deleteInStripe?: boolean | undefined;
-};
+  };
 
 /**
  * OK
@@ -34,7 +30,6 @@ export type DeleteCustomerResponse = {
 /** @internal */
 export type DeleteCustomerParams$Outbound = {
   customer_id: string;
-  delete_in_stripe: boolean;
 };
 
 /** @internal */
@@ -44,12 +39,10 @@ export const DeleteCustomerParams$outboundSchema: z.ZodMiniType<
 > = z.pipe(
   z.object({
     customerId: z.string(),
-    deleteInStripe: z._default(z.boolean(), false),
   }),
   z.transform((v) => {
     return remap$(v, {
       customerId: "customer_id",
-      deleteInStripe: "delete_in_stripe",
     });
   }),
 );

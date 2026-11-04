@@ -13,7 +13,7 @@ import {
 } from "./getBillingPeriod";
 
 export type CalculateProrationParams = GetBillingPeriodParams & {
-	advancedTo: number; // From initScenario - auto-floored to match Stripe
+	advancedTo: number; // From initScenario - auto-floored to match the processor
 	amount: number; // Amount to prorate
 };
 
@@ -33,12 +33,12 @@ export type CalculateBillingCycleAnchorResetNextCycleParams =
 /**
  * Calculate prorated amount for remaining billing period.
  *
- * Fetches billing period directly from Stripe subscription.
+ * Fetches billing period directly from the processor subscription.
  *
  * Formula: (remaining time / total period) * amount
  *
- * Note: `advancedTo` is automatically floored to seconds to match Stripe's
- * frozen_time calculation (Stripe uses seconds, not milliseconds).
+ * Note: `advancedTo` is automatically floored to seconds to match the
+ * frozen_time calculation (the processor uses seconds, not milliseconds).
  *
  * @param customerId - The Autumn customer ID
  * @param advancedTo - The current time (from initScenario's advancedTo)
@@ -77,7 +77,7 @@ export const calculateProration = async ({
 /**
  * Calculate the immediate invoice total for `billing_cycle_anchor: "now"`.
  *
- * Stripe charges the full new amount for the reset period, then applies a
+ * The processor charges the full new amount for the reset period, then applies a
  * prorated credit for the unused portion of the old period.
  */
 export const calculateResetBillingCycleNowTotal = async ({
@@ -100,14 +100,14 @@ export const calculateResetBillingCycleNowTotal = async ({
 		.toNumber();
 };
 
-const floorToStripeSecond = (timestampMs: number) =>
+const floorToProcessorSecond = (timestampMs: number) =>
 	Math.floor(timestampMs / 1000) * 1000;
 
 /**
  * Calculate the first future invoice surfaced in preview for a scheduled
  * billing cycle anchor reset.
  *
- * When the anchor is before the current period end, Stripe's `always_invoice`
+ * When the anchor is before the current period end, the processor's `always_invoice`
  * bills for the "extra" days in the NEW cycle that extend beyond the original
  * period end.
  *
@@ -132,11 +132,11 @@ export const calculateBillingCycleAnchorResetNextCycle = async ({
 		interval,
 	});
 
-	const normalizedAnchorMs = floorToStripeSecond(billingCycleAnchorMs);
+	const normalizedAnchorMs = floorToProcessorSecond(billingCycleAnchorMs);
 
 	if (normalizedAnchorMs < billingPeriod.end) {
 		const newCycleEndMs = addMonths(normalizedAnchorMs, 1).getTime();
-		const originalPeriodEndMs = floorToStripeSecond(billingPeriod.end);
+		const originalPeriodEndMs = floorToProcessorSecond(billingPeriod.end);
 
 		const extraDays = new Decimal(newCycleEndMs - originalPeriodEndMs);
 		const newPeriodLength = new Decimal(newCycleEndMs - normalizedAnchorMs);
@@ -160,7 +160,7 @@ export const calculateBillingCycleAnchorResetNextCycle = async ({
  * Calculate prorated amount using a billing period directly.
  *
  * Useful when you already have the billing period and don't need to fetch
- * from Stripe.
+ * from the processor.
  */
 export const calculateProrationFromPeriod = ({
 	billingPeriod,
@@ -171,8 +171,8 @@ export const calculateProrationFromPeriod = ({
 	advancedTo: number;
 	amount: number;
 }): number => {
-	// Floor to match Stripe's frozen_time calculation (seconds, not ms)
-	const now = new Decimal(floorToStripeSecond(advancedTo));
+	// Floor to match the processor's frozen_time calculation (seconds, not ms)
+	const now = new Decimal(floorToProcessorSecond(advancedTo));
 
 	const start = new Decimal(billingPeriod.start);
 	const end = new Decimal(billingPeriod.end);

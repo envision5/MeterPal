@@ -83,7 +83,7 @@ test(
 			// Force V3 path (executeRedisDeductionV2 → resolveInternalProductIdForEvent).
 			await setOrgRolloutPercent({ orgId, percent: 100 });
 
-			// initProductsV0 mutates each product's `id` in-place to suffix it
+			// initTestProducts mutates each product's `id` in-place to suffix it
 			// with productPrefix (defaults to customerId), so `unlimitedAddon.id`
 			// is already the final stored id.
 			const unlimitedPlanId = unlimitedAddon.id;

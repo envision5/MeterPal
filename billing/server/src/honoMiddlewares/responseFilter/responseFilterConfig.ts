@@ -99,7 +99,7 @@ const filterConfigs = [
 		schema: CustomerEligibilitySchema,
 		omitFields: ["object", "scenario"],
 	}),
-	// The Stripe subscription id stays internal: the dashboard keys previews and
+	// The processor subscription id stays internal: the dashboard keys previews and
 	// deep links off it, but it isn't part of the public contract.
 	createFilterConfig<ApiInvoicePreviewV0>({
 		schema: ApiInvoicePreviewV0Schema,

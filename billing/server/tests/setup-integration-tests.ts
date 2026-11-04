@@ -13,7 +13,6 @@ const loadInfisicalSecrets = async () => {
 	if (
 		process.env.CI ||
 		process.env.UNIT_TESTS ||
-		process.env.STRIPE_TEST_KEY ||
 		process.env.TESTS_ORG
 	)
 		return;
@@ -125,7 +124,7 @@ if (process.env.UNIT_TESTS) await seedMockedModulesForUnitLane();
 // scheduled on this worker.
 if (process.env.TESTS_ORG && !process.env.UNIT_TESTS) {
 	// Dynamic import: createTestContext drags in the server init graph (db,
-	// redis, stripe), which unit-only lanes must never load or connect to.
+	// redis, processor), which unit-only lanes must never load or connect to.
 	const { createTestContext } = await import(
 		"./utils/testInitUtils/createTestContext"
 	);

@@ -8,7 +8,7 @@ import { TestFeature } from "@tests/setup/v2Features.js";
 import ctx from "@tests/utils/testInitUtils/createTestContext.js";
 import chalk from "chalk";
 import { AutumnInt } from "@/external/autumn/autumnCli.js";
-import { initCustomerV3 } from "@/utils/scriptUtils/testUtils/initCustomerV3.js";
+import { initTestCustomer } from "@tests/utils/testInitUtils/initTestCustomer.js";
 import { findCustomerEntitlement } from "../../utils/findCustomerEntitlement.js";
 
 /**
@@ -44,10 +44,9 @@ describe(`${chalk.yellowBright("unlimited-api-invariance: track on unlimited —
 	const autumnV2_3 = new AutumnInt({ version: ApiVersion.V2_3 });
 
 	beforeAll(async () => {
-		await initCustomerV3({
+		await initTestCustomer({
 			ctx,
 			customerId,
-			withTestClock: false,
 		});
 
 		// Loose unlimited balance (infinite included usage)

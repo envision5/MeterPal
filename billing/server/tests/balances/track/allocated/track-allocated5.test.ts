@@ -7,8 +7,8 @@ import chalk from "chalk";
 import { AutumnInt } from "@/external/autumn/autumnCli.js";
 import { constructFeatureItem } from "@/utils/scriptUtils/constructItem.js";
 import { constructProduct } from "@/utils/scriptUtils/createTestProducts.js";
-import { initCustomerV3 } from "@/utils/scriptUtils/testUtils/initCustomerV3.js";
-import { initProductsV0 } from "@/utils/scriptUtils/testUtils/initProductsV0.js";
+import { initTestCustomer } from "@tests/utils/testInitUtils/initTestCustomer.js";
+import { initTestProducts } from "@tests/utils/testInitUtils/initTestProducts.js";
 import { timeout } from "../../../utils/genUtils";
 
 const userItem = constructFeatureItem({
@@ -29,19 +29,17 @@ describe(`${chalk.yellowBright(`${testCase}: Tracking allocated feature with con
 	const autumn: AutumnInt = new AutumnInt({ version: LegacyVersion.v1_4 });
 
 	beforeAll(async () => {
-		await initProductsV0({
+		await initTestProducts({
 			ctx,
 			products: [free],
 			prefix: testCase,
 			customerId,
 		});
 
-		await initCustomerV3({
+		await initTestCustomer({
 			ctx,
 			customerId,
 			customerData: {},
-			attachPm: "success",
-			withTestClock: true,
 		});
 	});
 

@@ -8,7 +8,6 @@ import {
 import type { AutumnContext } from "@/honoUtils/HonoEnv";
 import type { ProductDetailsPlan } from "@/internal/catalogV2/actions/updateCatalog/types/upsertProductPlan";
 import { isExistingRowPromote } from "@/internal/catalogV2/actions/updateCatalog/utils/productStateUtils/isExistingRowPromote";
-import { applyPlanProcessorsToProduct } from "./applyPlanProcessorsToProduct";
 import { diffProductDetails } from "./diffProductDetails";
 import { initProductRow } from "./initProductRow";
 import { planParamsToProductRowPatch } from "./planParamsToProductRowPatch";
@@ -24,7 +23,6 @@ export const computeProductDetailsPlan = ({
 	version,
 	baseFullProduct,
 	baseInternalProductId,
-	baseProcessor,
 	currentActive,
 	latestExistingVersion,
 }: {
@@ -36,8 +34,6 @@ export const computeProductDetailsPlan = ({
 	baseFullProduct?: FullProduct | null;
 	/** Variant pointer. Compute-owned — not a request field. */
 	baseInternalProductId?: string | null;
-	/** Variant create: share the base's Stripe Product. */
-	baseProcessor?: Product["processor"];
 	/** Pre-fold pointer — default follows only when this row is eligible. */
 	currentActive?: FullProduct | null;
 	latestExistingVersion?: number;
@@ -53,7 +49,6 @@ export const computeProductDetailsPlan = ({
 				...(baseInternalProductId !== undefined
 					? { baseInternalProductId }
 					: {}),
-				...(baseProcessor !== undefined ? { baseProcessor } : {}),
 			}),
 		};
 	}
@@ -86,22 +81,17 @@ export const computeProductDetailsPlan = ({
 				}
 			: {}),
 	};
-	const { product: next, changed: processorChanged } =
-		applyPlanProcessorsToProduct({
-			product: patched,
-			processors: planParams.processors,
-		});
 	const previousAttributes = diffProductDetails({
 		current: currentFullProduct,
-		next,
+		next: patched,
 	});
-	if (isEmptyObject(previousAttributes) && !processorChanged) {
+	if (isEmptyObject(previousAttributes)) {
 		return { changed: false, product: currentFullProduct };
 	}
 
 	return {
 		changed: true,
-		product: next,
+		product: patched,
 		...(isEmptyObject(previousAttributes) ? {} : { previousAttributes }),
 	};
 };

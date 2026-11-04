@@ -56,25 +56,14 @@ export const ErrCode = {
 	// Internal
 	InternalError: "internal_error",
 	DuplicateCustomerId: "duplicate_customer_id",
-	StripeKeyNotFound: "stripe_key_not_found",
 	DuplicateCustomerEmail: "duplicate_customer_email",
 
-	// Stripe
-	StripeError: "stripe_error",
-	StripeKeyInvalid: "stripe_key_invalid",
-	StripeAccountMismatch: "stripe_account_mismatch",
-	StripeConfigNotFound: "stripe_config_not_found",
-	StripeDeleteCustomerFailed: "stripe_delete_customer_failed",
-	StripeCreateCustomerFailed: "stripe_create_customer_failed",
-	StripeCreateProductFailed: "stripe_create_product_failed",
-	StripeCancelSubscriptionFailed: "stripe_cancel_subscription_failed",
-	StripeGetPaymentMethodFailed: "stripe_get_payment_method_failed",
-	StripeCardDeclined: "stripe_card_declined",
-	StripeUpdateSubscriptionFailed: "stripe_update_subscription_failed",
-	StripeCancelSubscriptionScheduleFailed:
-		"stripe_cancel_subscription_schedule_failed",
-
-	StripeCreateSubscriptionFailed: "stripe_create_subscription_failed",
+	// Processor
+	ProcessorError: "processor_error",
+	ProcessorConfigNotFound: "processor_config_not_found",
+	DeleteCustomerFailed: "delete_customer_failed",
+	CreateCustomerFailedExternal: "create_customer_failed_external",
+	ProcessorCancelSubscriptionFailed: "processor_cancel_subscription_failed",
 
 	// Price
 	PriceNotFound: "price_not_found",
@@ -84,7 +73,6 @@ export const ErrCode = {
 	InvalidPriceOptions: "invalid_price_options",
 	InvalidPriceConfig: "invalid_price_config",
 	CusPriceNotFound: "cus_price_not_found",
-	StripePriceNotLinked: "stripe_price_not_linked",
 
 	// Customer
 	InvalidCustomer: "invalid_customer",
@@ -99,11 +87,6 @@ export const ErrCode = {
 	MultipleCustomersFound: "multiple_customers_found",
 	InvalidUpdateCustomerParams: "invalid_update_customer_params",
 	CurrencyMismatch: "currency_mismatch",
-
-	// Stripe errors...?
-	CreateStripeProductFailed: "create_stripe_product_failed",
-	DeleteStripeProductFailed: "delete_stripe_product_failed",
-	CreateStripeSubscriptionFailed: "create_stripe_subscription_failed",
 
 	// Cus Product
 	CusProductNotFound: "cus_product_not_found",
@@ -135,10 +118,8 @@ export const ErrCode = {
 
 	// Rewards
 	InvalidReward: "invalid_reward",
-	ProductNotInStripe: "product_not_in_stripe",
 	DuplicateRewardId: "duplicate_reward_id",
 	DuplicatePromoCode: "duplicate_promo_code",
-	PromoCodeAlreadyExistsInStripe: "promo_code_already_exists_in_stripe",
 	PromoCodeFirstTimeOnly: "promo_code_first_time_only",
 
 	// Entity

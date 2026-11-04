@@ -61,7 +61,7 @@ export const reassembleFlattenedCustomer = (
 
 	const subsByCusId = collectSubscriptionsByCustomer({
 		customer_products: flat.customer_products as FlatCustomerProduct[],
-		subscriptionByStripeId: maps.subscriptionByStripeId,
+		subscriptionByProcessorId: maps.subscriptionByProcessorId,
 	});
 
 	const entitiesByCusId = groupByInternalCustomerId(flat.entities);
@@ -125,10 +125,10 @@ const groupByInternalCustomerId = (
 
 const collectSubscriptionsByCustomer = ({
 	customer_products,
-	subscriptionByStripeId,
+	subscriptionByProcessorId,
 }: {
 	customer_products: FlatCustomerProduct[];
-	subscriptionByStripeId: Map<string, FlatSubscription>;
+	subscriptionByProcessorId: Map<string, FlatSubscription>;
 }): Map<string, FlatSubscription[]> => {
 	const subsByCusId = new Map<string, FlatSubscription[]>();
 	const seenByCusId = new Map<string, Set<string>>();
@@ -146,7 +146,7 @@ const collectSubscriptionsByCustomer = ({
 		}
 		for (const subId of cp.subscription_ids) {
 			if (seen!.has(subId)) continue;
-			const sub = subscriptionByStripeId.get(subId);
+			const sub = subscriptionByProcessorId.get(subId);
 			if (sub) {
 				subs.push({ ...sub, internal_customer_id: cusId });
 				seen!.add(subId);

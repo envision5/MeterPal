@@ -29,7 +29,7 @@ money lands.
                     AI providers (or the mock LLM)
 ```
 
-This guide replaces the original Stripe-era plan. PayPal is the only payment
+This guide describes the PayPal-native deployment. PayPal is the only payment
 rail MeterPal needs; the PayPal adapter lives in
 `billing/server/src/external/paypal/`.
 

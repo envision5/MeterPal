@@ -42,7 +42,6 @@ export * from "./convertCusEntUtils/cusEntsToStartingBalance";
 export * from "./convertCusEntUtils/cusEntToBillingObjects";
 export * from "./convertCusEntUtils/cusEntToCusPrice";
 export * from "./convertCusEntUtils/cusEntToKey";
-export * from "./convertCusEntUtils/cusEntToStripeIds";
 export * from "./convertCusEntUtils/customerEntitlementToBillingCycleEnd";
 // Convert utils barrel
 export * from "./convertCusEntUtils/customerEntitlementToOptions";

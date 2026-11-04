@@ -41,7 +41,7 @@ export type ListInvoiceTemplatesList = {
    */
   footer?: string | undefined;
   /**
-   * Memo shown near the top of the invoice (Stripe invoice description), e.g. a contact line for payment questions.
+   * Memo shown near the top of the invoice (invoice description), e.g. a contact line for payment questions.
    */
   memo?: string | undefined;
   /**

@@ -76,7 +76,6 @@ export const productItemToPlanItemParamsV1 = ({
 		reset: planItemV1.reset ?? undefined,
 		price: planItemV1.price
 			? {
-					stripe_price_id: item.stripe_price_id ?? undefined,
 					amount: planItemV1.price.amount,
 					additional_currencies: planItemV1.price.additional_currencies,
 					tiers: planItemV1.price.tiers,

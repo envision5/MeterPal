@@ -48,7 +48,7 @@ export const customerProductToArrearLineItems = ({
 		updateNextResetAt?: boolean;
 		discountable?: boolean;
 		includeZeroAmounts?: boolean;
-		/** Scopes usage line ids to e.g. a Stripe invoice so retries regenerate the same ids. */
+		/** Scopes usage line ids to e.g. an invoice so retries regenerate the same ids. */
 		idempotencyScope?: string;
 		invoiceCredits?: {
 			idempotencyScope?: string;

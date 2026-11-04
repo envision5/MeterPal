@@ -82,8 +82,7 @@ r"""Filter by customer product status. Defaults to active and scheduled."""
 
 
 ListCustomersProcessor = Literal[
-    "stripe",
-    "revenuecat",
+    "paypal",
     "vercel",
 ]
 
@@ -142,7 +141,7 @@ class ListCustomersParamsTypedDict(TypedDict):
     search: NotRequired[str]
     r"""Search customers by id, name, or email."""
     processors: NotRequired[List[ListCustomersProcessor]]
-    r"""Filter by customer processor type (stripe, revenuecat, vercel)."""
+    r"""Filter by customer processor type (paypal)."""
     sort_order: NotRequired[SortOrder]
     r"""Sort by customer creation time. Defaults to desc (newest first)."""
     created_at_range: NotRequired[CreatedAtRangeTypedDict]
@@ -166,7 +165,7 @@ class ListCustomersParams(BaseModel):
     r"""Search customers by id, name, or email."""
 
     processors: Optional[List[ListCustomersProcessor]] = None
-    r"""Filter by customer processor type (stripe, revenuecat, vercel)."""
+    r"""Filter by customer processor type (paypal)."""
 
     sort_order: Optional[SortOrder] = None
     r"""Sort by customer creation time. Defaults to desc (newest first)."""
@@ -425,7 +424,7 @@ class ListCustomersSpendLimitTypedDict(TypedDict):
     overage_limit: NotRequired[float]
     r"""Overage cap for the feature: absolute units, or a percent (e.g. 120) when limit_type is usage_percentage."""
     skip_overage_billing: NotRequired[bool]
-    r"""When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally."""
+    r"""When true, overage for this feature is not billed to the processor. Usage tracking and balance resets still behave normally."""
     source: NotRequired[ListCustomersSpendLimitSource]
     r"""Response-only: whether the entry is a customer-level override or inherited from an attached plan's defaults."""
 
@@ -444,7 +443,7 @@ class ListCustomersSpendLimit(BaseModel):
     r"""Overage cap for the feature: absolute units, or a percent (e.g. 120) when limit_type is usage_percentage."""
 
     skip_overage_billing: Optional[bool] = None
-    r"""When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally."""
+    r"""When true, overage for this feature is not billed to the processor. Usage tracking and balance resets still behave normally."""
 
     source: Optional[ListCustomersSpendLimitSource] = None
     r"""Response-only: whether the entry is a customer-level override or inherited from an attached plan's defaults."""
@@ -1788,63 +1787,8 @@ class ListCustomersDisplay(BaseModel):
         return m
 
 
-class ListCustomersFlagsStripeTypedDict(TypedDict):
-    product_id: NotRequired[str]
-    r"""Stripe product ID this feature's usage prices bill under."""
-    meter_id: NotRequired[str]
-    r"""Stripe meter ID used to create this feature's metered price."""
-
-
-class ListCustomersFlagsStripe(BaseModel):
-    product_id: Optional[str] = None
-    r"""Stripe product ID this feature's usage prices bill under."""
-
-    meter_id: Optional[str] = None
-    r"""Stripe meter ID used to create this feature's metered price."""
-
-    @model_serializer(mode="wrap")
-    def serialize_model(self, handler):
-        optional_fields = set(["product_id", "meter_id"])
-        serialized = handler(self)
-        m = {}
-
-        for n, f in type(self).model_fields.items():
-            k = f.alias or n
-            val = serialized.get(k, serialized.get(n))
-
-            if val != UNSET_SENTINEL:
-                if val is not None or k not in optional_fields:
-                    m[k] = val
-
-        return m
-
-
 class ListCustomersFlagsProcessorsTypedDict(TypedDict):
-    r"""Processor mappings for this feature. Present when a Stripe product or meter is set."""
-
-    stripe: NotRequired[ListCustomersFlagsStripeTypedDict]
-
-
-class ListCustomersFlagsProcessors(BaseModel):
-    r"""Processor mappings for this feature. Present when a Stripe product or meter is set."""
-
-    stripe: Optional[ListCustomersFlagsStripe] = None
-
-    @model_serializer(mode="wrap")
-    def serialize_model(self, handler):
-        optional_fields = set(["stripe"])
-        serialized = handler(self)
-        m = {}
-
-        for n, f in type(self).model_fields.items():
-            k = f.alias or n
-            val = serialized.get(k, serialized.get(n))
-
-            if val != UNSET_SENTINEL:
-                if val is not None or k not in optional_fields:
-                    m[k] = val
-
-        return m
+    r"""Processor mappings for this feature."""
 
 
 class ListCustomersFeatureTypedDict(TypedDict):
@@ -1874,8 +1818,6 @@ class ListCustomersFeatureTypedDict(TypedDict):
     r"""Per-provider default markup percentages for AI credit systems."""
     display: NotRequired[ListCustomersDisplayTypedDict]
     r"""Display names for the feature in billing UI and customer-facing components."""
-    processors: NotRequired[ListCustomersFlagsProcessorsTypedDict]
-    r"""Processor mappings for this feature. Present when a Stripe product or meter is set."""
 
 
 class ListCustomersFeature(BaseModel):
@@ -1914,8 +1856,6 @@ class ListCustomersFeature(BaseModel):
     display: Optional[ListCustomersDisplay] = None
     r"""Display names for the feature in billing UI and customer-facing components."""
 
-    processors: Optional[ListCustomersFlagsProcessors] = None
-    r"""Processor mappings for this feature. Present when a Stripe product or meter is set."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -2014,7 +1954,7 @@ class ListCustomersConfigTypedDict(TypedDict):
     disable_pooled_balance: NotRequired[bool]
     r"""Whether to disable the shared customer-level pool for entities."""
     disable_overage_billing: NotRequired[bool]
-    r"""Stops Autumn from posting usage-overage line items to Stripe for this customer. Check/track and balance resets still behave normally. When set, this overrides the organization-level disable_overage_billing setting."""
+    r"""Stops Autumn from posting usage-overage line items to the processor for this customer. Check/track and balance resets still behave normally. When set, this overrides the organization-level disable_overage_billing setting."""
 
 
 class ListCustomersConfig(BaseModel):
@@ -2024,7 +1964,7 @@ class ListCustomersConfig(BaseModel):
     r"""Whether to disable the shared customer-level pool for entities."""
 
     disable_overage_billing: Optional[bool] = None
-    r"""Stops Autumn from posting usage-overage line items to Stripe for this customer. Check/track and balance resets still behave normally. When set, this overrides the organization-level disable_overage_billing setting."""
+    r"""Stops Autumn from posting usage-overage line items to the processor for this customer. Check/track and balance resets still behave normally. When set, this overrides the organization-level disable_overage_billing setting."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
@@ -2041,20 +1981,6 @@ class ListCustomersConfig(BaseModel):
                     m[k] = val
 
         return m
-
-
-class ListCustomersStripeTypedDict(TypedDict):
-    r"""Stripe processor connection for the customer."""
-
-    id: str
-    r"""Stripe customer ID."""
-
-
-class ListCustomersStripe(BaseModel):
-    r"""Stripe processor connection for the customer."""
-
-    id: str
-    r"""Stripe customer ID."""
 
 
 class ListCustomersVercelTypedDict(TypedDict):
@@ -2076,60 +2002,22 @@ class ListCustomersVercel(BaseModel):
     r"""Vercel account ID associated with the installation."""
 
 
-class ListCustomersRevenuecatTypedDict(TypedDict):
-    r"""RevenueCat processor connection for the customer."""
-
-    id: Nullable[str]
-    r"""Customer's external ID, used as the RevenueCat app user ID. Null if the customer has no external ID set."""
-
-
-class ListCustomersRevenuecat(BaseModel):
-    r"""RevenueCat processor connection for the customer."""
-
-    id: Nullable[str]
-    r"""Customer's external ID, used as the RevenueCat app user ID. Null if the customer has no external ID set."""
-
-    @model_serializer(mode="wrap")
-    def serialize_model(self, handler):
-        serialized = handler(self)
-        m = {}
-
-        for n, f in type(self).model_fields.items():
-            k = f.alias or n
-            val = serialized.get(k, serialized.get(n))
-
-            if val != UNSET_SENTINEL:
-                m[k] = val
-
-        return m
-
-
 class ListCustomersProcessorsTypedDict(TypedDict):
-    r"""Payment processors this customer is connected to (Stripe, Vercel, RevenueCat). Omitted entirely when the customer has not been created in any processor."""
+    r"""Payment processors this customer is connected to. Omitted entirely when the customer has not been created in any processor."""
 
-    stripe: NotRequired[ListCustomersStripeTypedDict]
-    r"""Stripe processor connection for the customer."""
     vercel: NotRequired[ListCustomersVercelTypedDict]
     r"""Vercel processor connection for the customer (public-safe subset)."""
-    revenuecat: NotRequired[ListCustomersRevenuecatTypedDict]
-    r"""RevenueCat processor connection for the customer."""
 
 
 class ListCustomersProcessors(BaseModel):
-    r"""Payment processors this customer is connected to (Stripe, Vercel, RevenueCat). Omitted entirely when the customer has not been created in any processor."""
-
-    stripe: Optional[ListCustomersStripe] = None
-    r"""Stripe processor connection for the customer."""
+    r"""Payment processors this customer is connected to. Omitted entirely when the customer has not been created in any processor."""
 
     vercel: Optional[ListCustomersVercel] = None
     r"""Vercel processor connection for the customer (public-safe subset)."""
 
-    revenuecat: Optional[ListCustomersRevenuecat] = None
-    r"""RevenueCat processor connection for the customer."""
-
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
-        optional_fields = set(["stripe", "vercel", "revenuecat"])
+        optional_fields = set(["vercel"])
         serialized = handler(self)
         m = {}
 
@@ -2155,8 +2043,6 @@ class ListCustomersListTypedDict(TypedDict):
     r"""Timestamp of customer creation in milliseconds since epoch."""
     fingerprint: Nullable[str]
     r"""A unique identifier (eg. serial number) to de-duplicate customers across devices or browsers. For example: apple device ID."""
-    stripe_id: Nullable[str]
-    r"""Stripe customer ID."""
     env: ListCustomersEnv
     r"""The environment this customer was created in."""
     metadata: Dict[str, Any]
@@ -2178,7 +2064,7 @@ class ListCustomersListTypedDict(TypedDict):
     config: NotRequired[ListCustomersConfigTypedDict]
     r"""Configuration for the customer."""
     processors: NotRequired[ListCustomersProcessorsTypedDict]
-    r"""Payment processors this customer is connected to (Stripe, Vercel, RevenueCat). Omitted entirely when the customer has not been created in any processor."""
+    r"""Payment processors this customer is connected to. Omitted entirely when the customer has not been created in any processor."""
 
 
 class ListCustomersList(BaseModel):
@@ -2196,9 +2082,6 @@ class ListCustomersList(BaseModel):
 
     fingerprint: Nullable[str]
     r"""A unique identifier (eg. serial number) to de-duplicate customers across devices or browsers. For example: apple device ID."""
-
-    stripe_id: Nullable[str]
-    r"""Stripe customer ID."""
 
     env: ListCustomersEnv
     r"""The environment this customer was created in."""
@@ -2231,12 +2114,12 @@ class ListCustomersList(BaseModel):
     r"""Configuration for the customer."""
 
     processors: Optional[ListCustomersProcessors] = None
-    r"""Payment processors this customer is connected to (Stripe, Vercel, RevenueCat). Omitted entirely when the customer has not been created in any processor."""
+    r"""Payment processors this customer is connected to. Omitted entirely when the customer has not been created in any processor."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):
         optional_fields = set(["config", "processors"])
-        nullable_fields = set(["id", "name", "email", "fingerprint", "stripe_id"])
+        nullable_fields = set(["id", "name", "email", "fingerprint"])
         serialized = handler(self)
         m = {}
 

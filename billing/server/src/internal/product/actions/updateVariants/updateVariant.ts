@@ -19,7 +19,6 @@ import {
 	validateDirectVariantMigrationDraftUnsupported,
 	variantCustomizeChanged,
 } from "../common/variantUpdateSource.js";
-import { createPlanMigrationDraft } from "../updateProduct/createPlanMigrationDraft.js";
 import { updateOtherProductVersions } from "../updateProduct/updateOtherProductVersions.js";
 import { updateProduct } from "../updateProduct.js";
 
@@ -91,18 +90,8 @@ export const updateVariant = async ({
 		allowVariantSettingsUpdate: true,
 	});
 
-	if (variantUpdate?.migration?.draft && isDirectUpdate && !shouldVersion) {
-		await createPlanMigrationDraft({
-			ctx,
-			current: variant,
-			fromPlan: currentPlan,
-			includeCustom: variantUpdate.migration.include_custom,
-			mode: "version",
-			planId: variant.id,
-			selectedVariantIds: [],
-			toPlan: previewPlan,
-		});
-	}
+	// A migration draft would be created here — the migrations module that
+	// persists drafts is gone, so it cannot be stored.
 
 	if (!allVersions) return;
 

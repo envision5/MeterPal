@@ -7,6 +7,9 @@ One-off purchases are single-charge plans that don't recur. They're used for one
 
 ## Setting up
 
+
+
+
 Set `interval: "one_off"` on the plan's `price`, or on the item price, for a one-time charge:
 
 ```ts autumn.config.ts
@@ -42,15 +45,21 @@ export default atmn({ features: [credits], plans: [creditTopUp] });
 
 Preview with `atmn push`, then apply with `atmn push --yes`.
 
+
+
+
+
 ## How it works
 
 When a customer purchases a one-off plan:
 
-- Autumn creates a Stripe invoice (not a subscription) and charges it immediately
+- MeterPal creates a processor invoice (not a subscription) and charges it immediately
 - The feature balance is provisioned with the purchased quantity
 - The balance has a `one_off` interval — it never resets or expires
 
-One-off purchases don't create Stripe subscriptions. They generate a one-time invoice instead.
+
+One-off purchases don't create processor subscriptions. They generate a one-time invoice instead.
+
 
 ## Purchasing a one-off plan
 
@@ -106,15 +115,18 @@ curl -X POST "https://api.useautumn.com/v1/checkout" \
 
 ## One-off prices within a subscription
 
-A subscription plan can include both recurring and one-off prices. When it does, Autumn splits them at checkout:
+A subscription plan can include both recurring and one-off prices. When it does, MeterPal splits them at checkout:
 
-- **Recurring prices** bill every cycle as part of the Stripe subscription
+- **Recurring prices** bill every cycle as part of the processor subscription
 - **One-off prices** are charged once on the first invoice only
 
 This is useful for setup fees, one-time credit grants, or any charge that should happen once when the customer subscribes.
 
 > **Example** <br />
 > A Pro plan charges $20/month plus a one-time $50 setup fee. The customer's first invoice is $70, and subsequent invoices are $20.
+
+
+
 
 Add a non-consumable feature for the setup fee, then include it as a separate one-off item alongside the recurring base price:
 
@@ -151,9 +163,13 @@ export default atmn({ features: [setupFee], plans: [pro] });
 
 When you attach the plan, you can select a quantity for the setup fee. The $20/month base price recurs on every invoice. The setup fee item is charged once on the first invoice only.
 
+
+
+
+
 ## Balance stacking
 
-One-off balances stack with existing balances from subscriptions. Autumn uses [deduction order](/documentation/concepts/balances#deduction-order) to ensure shorter-interval balances (e.g., monthly) are used before one-off (lifetime) balances.
+One-off balances stack with existing balances from subscriptions. MeterPal uses [deduction order](/documentation/concepts/balances#deduction-order) to ensure shorter-interval balances (e.g., monthly) are used before one-off (lifetime) balances.
 
 ## Use cases
 

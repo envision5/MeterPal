@@ -1,14 +1,9 @@
-import { expect } from "bun:test";
 import {
-	type AppEnv,
 	type FullCusProduct,
 	type Price,
 	type UsagePriceConfig,
-	diffPriceStripeObjects,
 	isFixedPrice,
-	priceStripeObjectsMatch,
 } from "@autumn/shared";
-import type { DrizzleCli } from "@/db/initDrizzle";
 import type { AutumnContext } from "@/honoUtils/HonoEnv";
 import { CusService } from "@/internal/customers/CusService";
 import { ProductService } from "@/internal/products/ProductService";
@@ -85,97 +80,4 @@ export const loadCustomerAndCatalogPrices = async ({
 	};
 };
 
-const formatDiff = (catalog: Price, customer: Price): string => {
-	const diffs = diffPriceStripeObjects({
-		priceA: catalog,
-		priceB: customer,
-	});
-	return diffs
-		.map((diff) => `${diff.field}: catalog=${diff.a ?? "null"}, customer=${diff.b ?? "null"}`)
-		.join("\n  ");
-};
-
-/**
- * Assert every (catalog, customer) price pair shares all Stripe-object IDs.
- * Each catalog price must also have a non-null stripe_price_id so the
- * assertion is meaningful (verifies real reuse, not "both empty").
- */
-export const expectAllStripeIdsReused = ({
-	pairs,
-}: {
-	pairs: { catalog: Price; customer: Price }[];
-}) => {
-	expect(pairs.length).toBeGreaterThan(0);
-	for (const { catalog, customer } of pairs) {
-		const catalogConfig = catalog.config as Record<string, unknown>;
-		expect(catalogConfig.stripe_price_id ?? null).not.toBeNull();
-		const matches = priceStripeObjectsMatch({
-			priceA: catalog,
-			priceB: customer,
-		});
-		if (!matches) {
-			throw new Error(
-				`Expected stripe-object reuse for ${priceMatchKey(catalog)} but got diffs:\n  ${formatDiff(catalog, customer)}`,
-			);
-		}
-	}
-};
-
-/**
- * Assert that the customer price keyed by `featureId` (or fixed base when
- * `featureId` is null) does NOT reuse stripe_price_id from the catalog.
- * Both prices must have non-null stripe_price_id values for the assertion
- * to be meaningful. Falls back to feature-id-only matching when the strict
- * (feature + bill_when) pairing misses (e.g. prepaid → consumable swap).
- */
-export const expectStripePriceIdNotReused = ({
-	pairs,
-	featureId,
-	catalogPrices,
-	customerPrices,
-}: {
-	pairs: { catalog: Price; customer: Price }[];
-	featureId: string | null;
-	catalogPrices?: Price[];
-	customerPrices?: Price[];
-}) => {
-	let catalogPrice: Price | undefined;
-	let customerPrice: Price | undefined;
-
-	if (featureId === null) {
-		const pair = pairs.find(({ catalog }) => isFixedPrice(catalog));
-		catalogPrice = pair?.catalog;
-		customerPrice = pair?.customer;
-	} else {
-		const pair = pairs.find(
-			({ catalog }) => priceFeatureId(catalog) === featureId,
-		);
-		if (pair) {
-			catalogPrice = pair.catalog;
-			customerPrice = pair.customer;
-		} else if (catalogPrices && customerPrices) {
-			catalogPrice = catalogPrices.find(
-				(price) => priceFeatureId(price) === featureId,
-			);
-			customerPrice = customerPrices.find(
-				(price) => priceFeatureId(price) === featureId,
-			);
-		}
-	}
-
-	expect(catalogPrice).toBeDefined();
-	expect(customerPrice).toBeDefined();
-	if (!catalogPrice || !customerPrice) return;
-	const catalogConfig = catalogPrice.config as Record<string, unknown>;
-	const customerConfig = customerPrice.config as Record<string, unknown>;
-	expect(catalogConfig.stripe_price_id ?? null).not.toBeNull();
-	expect(customerConfig.stripe_price_id ?? null).not.toBeNull();
-	expect(customerConfig.stripe_price_id).not.toBe(
-		catalogConfig.stripe_price_id,
-	);
-};
-
 export { priceMatchKey };
-
-// Re-export for callers
-export type { DrizzleCli, AppEnv };

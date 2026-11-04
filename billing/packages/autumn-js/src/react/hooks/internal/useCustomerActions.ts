@@ -11,7 +11,6 @@ import type {
 	PreviewAttachResponse,
 	PreviewMultiAttachResponse,
 	PreviewUpdateResponse,
-	SetupPaymentResponse,
 } from "@useautumn/sdk";
 import { useCallback } from "react";
 import type {
@@ -22,7 +21,6 @@ import type {
 	PreviewAttachParams,
 	PreviewMultiAttachParams,
 	PreviewUpdateSubscriptionParams,
-	SetupPaymentParams,
 	UpdateSubscriptionParams,
 } from "../../../types";
 import type { IAutumnClient } from "../../client/IAutumnClient";
@@ -166,26 +164,6 @@ export const useCustomerActions = ({
 		[client],
 	);
 
-	const setupPayment = useCallback(
-		async (params: SetupPaymentParams = {}): Promise<SetupPaymentResponse> => {
-			const response = await client.setupPayment({
-				...params,
-				successUrl: params.successUrl ?? window.location.href,
-			});
-
-			const redirectUrl = response.url;
-			if (redirectUrl) {
-				redirectToUrl({
-					url: redirectUrl,
-					openInNewTab: params.openInNewTab,
-				});
-			}
-
-			return response;
-		},
-		[client],
-	);
-
 	return {
 		attach,
 		previewAttach,
@@ -195,7 +173,6 @@ export const useCustomerActions = ({
 		previewMultiAttach,
 		check,
 		openCustomerPortal,
-		setupPayment,
 	};
 };
 
@@ -207,6 +184,5 @@ export type {
 	PreviewAttachParams,
 	PreviewMultiAttachParams,
 	PreviewUpdateSubscriptionParams,
-	SetupPaymentParams,
 	UpdateSubscriptionParams,
 };

@@ -13,8 +13,8 @@ import { AutumnInt } from "@/external/autumn/autumnCli.js";
 import { timeout } from "@/utils/genUtils.js";
 import { constructFeatureItem } from "@/utils/scriptUtils/constructItem.js";
 import { constructProduct } from "@/utils/scriptUtils/createTestProducts.js";
-import { initCustomerV3 } from "@/utils/scriptUtils/testUtils/initCustomerV3.js";
-import { initProductsV0 } from "@/utils/scriptUtils/testUtils/initProductsV0.js";
+import { initTestCustomer } from "@tests/utils/testInitUtils/initTestCustomer.js";
+import { initTestProducts } from "@tests/utils/testInitUtils/initTestProducts.js";
 import { resetAndGetCusEnt } from "./rolloverTestUtils.js";
 
 const rolloverConfig = {
@@ -44,19 +44,17 @@ describe(`${chalk.yellowBright(`${testCase}: Testing rollovers for feature item`
 	let customer: Customer;
 
 	beforeAll(async () => {
-		await initProductsV0({
+		await initTestProducts({
 			ctx,
 			products: [free],
 			prefix: testCase,
 			customerId,
 		});
 
-		const res = await initCustomerV3({
+		const res = await initTestCustomer({
 			ctx,
 			customerId,
 			customerData: {},
-			attachPm: "success",
-			withTestClock: true,
 		});
 
 		customer = res.customer;

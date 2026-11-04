@@ -78,10 +78,10 @@ export function CustomerSheet({
 						{displayCustomer.env}
 					</Text>
 				</Text>
-				{displayCustomer.stripe_id && (
+				{displayCustomer.processor_id && (
 					<Text>
-						<Text color="gray">Stripe: </Text>
-						<Text dimColor>{displayCustomer.stripe_id}</Text>
+						<Text color="gray">Processor: </Text>
+						<Text dimColor>{displayCustomer.processor_id}</Text>
 					</Text>
 				)}
 			</Box>

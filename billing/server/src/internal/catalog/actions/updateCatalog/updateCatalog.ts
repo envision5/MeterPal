@@ -17,18 +17,12 @@ import { getObjectsUsingFeature } from "@/internal/features/utils/updateFeatureU
 import { createProduct } from "@/internal/product/actions/createProduct.js";
 import { deleteProduct } from "@/internal/product/actions/deleteProduct.js";
 import {
-	createPlanMigrationDraft,
 	getVariantMigrationSnapshots,
 	validateNoDirectVariantMigrationDrafts,
 } from "@/internal/product/actions/updateProduct/createPlanMigrationDraft.js";
 import { updateProduct } from "@/internal/product/actions/updateProduct.js";
 import { ProductService } from "@/internal/products/ProductService.js";
 import { getPlanResponse } from "@/internal/products/productUtils/productResponseUtils/getPlanResponse.js";
-import {
-	applyCatalogConfigResources,
-	assertNoCatalogConfigConflicts,
-	resolveCatalogConfigResources,
-} from "../catalogConfigResources.js";
 import { sortCatalogPlansByDependencies } from "../catalogPlanDependencies.js";
 import {
 	deriveReplaceFeatureIds,
@@ -222,7 +216,7 @@ const upsertPlans = async ({
 
 		const hasPlanUpdateValue = ([key, value]: [string, unknown]) => {
 			if (value === undefined) return false;
-			if (key === "create_in_stripe") return false;
+			if (key === "create_in_processor") return false;
 			if (key === "archived" && value === current.archived) return false;
 			if (key === "group" && value === (current.group ?? "")) return false;
 			if (key === "description" && value === (current.description ?? null)) {
@@ -290,31 +284,8 @@ const upsertPlans = async ({
 
 		if (!fromPlan) continue;
 
-		const after = await ProductService.getFull({
-			db,
-			idOrInternalId: latestPlanId,
-			orgId: org.id,
-			env,
-			version: current.version,
-		});
-		if (!after) continue;
-		const toPlan = await getPlanResponse({
-			ctx,
-			product: after,
-			features: ctx.features,
-		});
-		await createPlanMigrationDraft({
-			ctx,
-			current,
-			fromPlan,
-			includeCustom:
-				migration?.include_custom ?? params.migration?.include_custom,
-			mode: all_versions ? "all_versions" : "version",
-			planId: plan_id,
-			selectedVariantIds,
-			toPlan,
-			variantsBefore,
-		});
+		// A migration draft would be created here — the migrations module that
+		// persists drafts is gone, so the request's draft cannot be stored.
 	}
 };
 
@@ -489,23 +460,13 @@ const resolveCatalogUpdateResponse = async ({
 				: null;
 		}),
 	);
-	const { rewardById, programById } = await resolveCatalogConfigResources({
-		ctx,
-		params,
-	});
-
 	return {
 		plans: resolvedPlans.filter((plan) => plan !== null),
 		features: resolvedFeatures.filter((feature) => feature !== null),
-		rewards: (params.rewards ?? []).flatMap((reward) => {
-			const id = reward.coupon?.id ?? reward.feature_grant!.id;
-			const resolved = rewardById.get(id);
-			return resolved ? [resolved] : [];
-		}),
-		referral_programs: (params.referral_programs ?? []).flatMap((program) => {
-			const resolved = programById.get(program.id);
-			return resolved ? [resolved] : [];
-		}),
+		// Rewards and referral programs are not part of the catalog surface
+		// anymore — the catalog states plans and features only.
+		rewards: [],
+		referral_programs: [],
 	};
 };
 
@@ -519,11 +480,6 @@ export const updateCatalog = async ({
 	// Preflight the whole virtual catalog before any mutation; individual writes
 	// revalidate against the real product identities created by earlier plans.
 	const preview = await previewUpdateCatalog({ ctx, params });
-	const configPreview = {
-		rewardChanges: preview.reward_changes,
-		referralProgramChanges: preview.referral_program_changes,
-	};
-	assertNoCatalogConfigConflicts(configPreview);
 	const { db, org, env } = ctx;
 	const productsBeforeUpdate = await ProductService.listFull({
 		db,
@@ -544,7 +500,6 @@ export const updateCatalog = async ({
 
 	await upsertFeatures({ ctx, params, products: productsBeforeUpdate });
 	await upsertPlans({ ctx, params });
-	await applyCatalogConfigResources({ ctx, params, preview: configPreview });
 	await applyMissingPlanRemovals({ ctx, removals: replacePlanIds });
 
 	const replaceFeatureIds = params.skip_deletions

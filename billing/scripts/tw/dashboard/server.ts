@@ -53,8 +53,6 @@ export const getDashboardSnapshot = () => {
 		phaseStartedAt: s.phaseStartedAt,
 		activity: s.lastLine,
 		fanout: {
-			stripeDone: s.stripeDone,
-			stripeTotal: s.stripeTotal,
 			workersReady: s.workersReady,
 			workersTotal: s.workersTotal,
 			workersFailed: s.workersFailed,
@@ -62,8 +60,6 @@ export const getDashboardSnapshot = () => {
 		teardown: {
 			sandboxesDone: s.sandboxesDone,
 			sandboxesTotal: s.sandboxesTotal,
-			accountsDone: s.accountsDone,
-			accountsTotal: s.accountsTotal,
 		},
 		run: {
 			total: s.runTotal,

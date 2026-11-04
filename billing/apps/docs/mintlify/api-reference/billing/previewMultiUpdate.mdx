@@ -22,7 +22,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
 </DynamicParamField>
 
 <DynamicParamField body="subscription_params" type="object">
-  Additional parameters to pass into the Stripe subscription update or cancel call.
+  Additional parameters to pass into the processor subscription update or cancel call.
 </DynamicParamField>
 
 <DynamicParamField body="updates" type="object[]" required>
@@ -67,7 +67,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
 </DynamicResponseField>
 
 <DynamicResponseField name="subscriptions" type="object[]">
-  One preview per affected Stripe subscription. Updates to plans without a subscription (free plans) produce no entry.
+  One preview per affected processor subscription. Updates to plans without a subscription (free plans) produce no entry.
   <Expandable title="properties">
     <DynamicResponseField name="customer_id" type="string">
       The ID of the customer.
@@ -324,7 +324,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
                   Base price amounts in additional currencies. The base 'amount' is in the org's default currency.
                   <Expandable title="properties">
                     <DynamicResponseField name="currency" type="string">
-                      Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                      Three-letter currency code (e.g. 'eur', 'gbp').
                     </DynamicResponseField>
 
                     <DynamicResponseField name="amount" type="number">
@@ -356,20 +356,6 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
                   </Expandable>
                 </DynamicResponseField>
 
-                <DynamicResponseField name="processors" type="object">
-                  Payment processors this base price is connected to. Omitted when unset.
-                  <Expandable title="properties">
-                    <DynamicResponseField name="stripe" type="object | null">
-                      <Expandable title="properties">
-                        <DynamicResponseField name="price_id" type="string">
-                          Stripe price ID. For prepaid with included > 0 this is the V2 price.
-                        </DynamicResponseField>
-
-                      </Expandable>
-                    </DynamicResponseField>
-
-                  </Expandable>
-                </DynamicResponseField>
 
               </Expandable>
             </DynamicResponseField>
@@ -476,7 +462,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
                       Amounts in additional currencies for this flat price. The base 'amount' is in the org's default currency. Only valid with 'amount', not 'tiers' (tiered prices carry per-currency amounts on each tier).
                       <Expandable title="properties">
                         <DynamicResponseField name="currency" type="string">
-                          Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                          Three-letter currency code (e.g. 'eur', 'gbp').
                         </DynamicResponseField>
 
                         <DynamicResponseField name="amount" type="number">
@@ -498,7 +484,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
                         <DynamicResponseField name="additional_currencies" type="object[]">
                           <Expandable title="properties">
                             <DynamicResponseField name="currency" type="string">
-                              Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                              Three-letter currency code (e.g. 'eur', 'gbp').
                             </DynamicResponseField>
 
                             <DynamicResponseField name="amount" type="number">
@@ -537,20 +523,6 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
                       Maximum units a customer can purchase beyond included. E.g. if included=100 and max_purchase=300, customer can use up to 400 total before usage is capped. Null for no limit.
                     </DynamicResponseField>
 
-                    <DynamicResponseField name="processors" type="object">
-                      Payment processors this item price is connected to. Omitted when unset.
-                      <Expandable title="properties">
-                        <DynamicResponseField name="stripe" type="object | null">
-                          <Expandable title="properties">
-                            <DynamicResponseField name="price_id" type="string">
-                              Stripe price ID. For prepaid with included > 0 this is the V2 price.
-                            </DynamicResponseField>
-
-                          </Expandable>
-                        </DynamicResponseField>
-
-                      </Expandable>
-                    </DynamicResponseField>
 
                   </Expandable>
                 </DynamicResponseField>
@@ -720,49 +692,6 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
               </Expandable>
             </DynamicResponseField>
 
-            <DynamicResponseField name="processors" type="object">
-              Payment processors this plan is connected to. Omitted when unset.
-              <Expandable title="properties">
-                <DynamicResponseField name="stripe" type="object | null">
-                  <Expandable title="properties">
-                    <DynamicResponseField name="product_id" type="string">
-                      Stripe product ID this plan is billed under.
-                    </DynamicResponseField>
-
-                    <DynamicResponseField name="additional_product_ids" type="string[]">
-                      Extra Stripe product IDs aliased to this plan.
-                    </DynamicResponseField>
-
-                  </Expandable>
-                </DynamicResponseField>
-
-                <DynamicResponseField name="revenuecat" type="object | null">
-                  <Expandable title="properties">
-                    <DynamicResponseField name="products" type="object[]">
-                      Every RevenueCat product that maps to this plan. Replaces the current set.
-                      <Expandable title="properties">
-                        <DynamicResponseField name="product_id" type="string">
-                          RevenueCat product ID that grants this plan when purchased.
-                        </DynamicResponseField>
-
-                        <DynamicResponseField name="feature_quantities" type="object[]">
-                          Prepaid quantities granted when this specific RevenueCat product is purchased, in feature units.
-                          <Expandable title="properties">
-                            <DynamicResponseField name="feature_id" type="string" />
-
-                            <DynamicResponseField name="quantity" type="number" />
-
-                          </Expandable>
-                        </DynamicResponseField>
-
-                      </Expandable>
-                    </DynamicResponseField>
-
-                  </Expandable>
-                </DynamicResponseField>
-
-              </Expandable>
-            </DynamicResponseField>
 
             <DynamicResponseField name="free_trial" type="object">
               Free trial configuration. If set, new customers can try this plan before being charged.
@@ -875,7 +804,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
                     </DynamicResponseField>
 
                     <DynamicResponseField name="skip_overage_billing" type="boolean">
-                      When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally.
+                      When true, overage for this feature is not posted to the payment processor. Usage tracking and balance resets still behave normally.
                     </DynamicResponseField>
 
                   </Expandable>
@@ -1032,7 +961,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
                           Base price amounts in additional currencies. The base 'amount' is in the org's default currency.
                           <Expandable title="properties">
                             <DynamicResponseField name="currency" type="string">
-                              Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                              Three-letter currency code (e.g. 'eur', 'gbp').
                             </DynamicResponseField>
 
                             <DynamicResponseField name="amount" type="number">
@@ -1097,7 +1026,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
                               Amounts in additional currencies for this flat price. The base 'amount' is in the org's default currency. Only valid with 'amount', not 'tiers'.
                               <Expandable title="properties">
                                 <DynamicResponseField name="currency" type="string">
-                                  Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                  Three-letter currency code (e.g. 'eur', 'gbp').
                                 </DynamicResponseField>
 
                                 <DynamicResponseField name="amount" type="number">
@@ -1119,7 +1048,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
                                 <DynamicResponseField name="additional_currencies" type="object[]">
                                   <Expandable title="properties">
                                     <DynamicResponseField name="currency" type="string">
-                                      Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                      Three-letter currency code (e.g. 'eur', 'gbp').
                                     </DynamicResponseField>
 
                                     <DynamicResponseField name="amount" type="number">
@@ -1445,7 +1374,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
                             </DynamicResponseField>
 
                             <DynamicResponseField name="skip_overage_billing" type="boolean">
-                              When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally.
+                              When true, overage for this feature is not posted to the payment processor. Usage tracking and balance resets still behave normally.
                             </DynamicResponseField>
 
                           </Expandable>
@@ -1572,7 +1501,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
                                   Base price amounts in additional currencies. The base 'amount' is in the org's default currency.
                                   <Expandable title="properties">
                                     <DynamicResponseField name="currency" type="string">
-                                      Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                      Three-letter currency code (e.g. 'eur', 'gbp').
                                     </DynamicResponseField>
 
                                     <DynamicResponseField name="amount" type="number">
@@ -1636,7 +1565,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
                                       Amounts in additional currencies for this flat price. The base 'amount' is in the org's default currency. Only valid with 'amount', not 'tiers'.
                                       <Expandable title="properties">
                                         <DynamicResponseField name="currency" type="string">
-                                          Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                          Three-letter currency code (e.g. 'eur', 'gbp').
                                         </DynamicResponseField>
 
                                         <DynamicResponseField name="amount" type="number">
@@ -1658,7 +1587,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
                                         <DynamicResponseField name="additional_currencies" type="object[]">
                                           <Expandable title="properties">
                                             <DynamicResponseField name="currency" type="string">
-                                              Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                              Three-letter currency code (e.g. 'eur', 'gbp').
                                             </DynamicResponseField>
 
                                             <DynamicResponseField name="amount" type="number">
@@ -2001,7 +1930,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
                   Base price amounts in additional currencies. The base 'amount' is in the org's default currency.
                   <Expandable title="properties">
                     <DynamicResponseField name="currency" type="string">
-                      Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                      Three-letter currency code (e.g. 'eur', 'gbp').
                     </DynamicResponseField>
 
                     <DynamicResponseField name="amount" type="number">
@@ -2033,20 +1962,6 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
                   </Expandable>
                 </DynamicResponseField>
 
-                <DynamicResponseField name="processors" type="object">
-                  Payment processors this base price is connected to. Omitted when unset.
-                  <Expandable title="properties">
-                    <DynamicResponseField name="stripe" type="object | null">
-                      <Expandable title="properties">
-                        <DynamicResponseField name="price_id" type="string">
-                          Stripe price ID. For prepaid with included > 0 this is the V2 price.
-                        </DynamicResponseField>
-
-                      </Expandable>
-                    </DynamicResponseField>
-
-                  </Expandable>
-                </DynamicResponseField>
 
               </Expandable>
             </DynamicResponseField>
@@ -2153,7 +2068,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
                       Amounts in additional currencies for this flat price. The base 'amount' is in the org's default currency. Only valid with 'amount', not 'tiers' (tiered prices carry per-currency amounts on each tier).
                       <Expandable title="properties">
                         <DynamicResponseField name="currency" type="string">
-                          Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                          Three-letter currency code (e.g. 'eur', 'gbp').
                         </DynamicResponseField>
 
                         <DynamicResponseField name="amount" type="number">
@@ -2175,7 +2090,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
                         <DynamicResponseField name="additional_currencies" type="object[]">
                           <Expandable title="properties">
                             <DynamicResponseField name="currency" type="string">
-                              Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                              Three-letter currency code (e.g. 'eur', 'gbp').
                             </DynamicResponseField>
 
                             <DynamicResponseField name="amount" type="number">
@@ -2214,20 +2129,6 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
                       Maximum units a customer can purchase beyond included. E.g. if included=100 and max_purchase=300, customer can use up to 400 total before usage is capped. Null for no limit.
                     </DynamicResponseField>
 
-                    <DynamicResponseField name="processors" type="object">
-                      Payment processors this item price is connected to. Omitted when unset.
-                      <Expandable title="properties">
-                        <DynamicResponseField name="stripe" type="object | null">
-                          <Expandable title="properties">
-                            <DynamicResponseField name="price_id" type="string">
-                              Stripe price ID. For prepaid with included > 0 this is the V2 price.
-                            </DynamicResponseField>
-
-                          </Expandable>
-                        </DynamicResponseField>
-
-                      </Expandable>
-                    </DynamicResponseField>
 
                   </Expandable>
                 </DynamicResponseField>
@@ -2397,49 +2298,6 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
               </Expandable>
             </DynamicResponseField>
 
-            <DynamicResponseField name="processors" type="object">
-              Payment processors this plan is connected to. Omitted when unset.
-              <Expandable title="properties">
-                <DynamicResponseField name="stripe" type="object | null">
-                  <Expandable title="properties">
-                    <DynamicResponseField name="product_id" type="string">
-                      Stripe product ID this plan is billed under.
-                    </DynamicResponseField>
-
-                    <DynamicResponseField name="additional_product_ids" type="string[]">
-                      Extra Stripe product IDs aliased to this plan.
-                    </DynamicResponseField>
-
-                  </Expandable>
-                </DynamicResponseField>
-
-                <DynamicResponseField name="revenuecat" type="object | null">
-                  <Expandable title="properties">
-                    <DynamicResponseField name="products" type="object[]">
-                      Every RevenueCat product that maps to this plan. Replaces the current set.
-                      <Expandable title="properties">
-                        <DynamicResponseField name="product_id" type="string">
-                          RevenueCat product ID that grants this plan when purchased.
-                        </DynamicResponseField>
-
-                        <DynamicResponseField name="feature_quantities" type="object[]">
-                          Prepaid quantities granted when this specific RevenueCat product is purchased, in feature units.
-                          <Expandable title="properties">
-                            <DynamicResponseField name="feature_id" type="string" />
-
-                            <DynamicResponseField name="quantity" type="number" />
-
-                          </Expandable>
-                        </DynamicResponseField>
-
-                      </Expandable>
-                    </DynamicResponseField>
-
-                  </Expandable>
-                </DynamicResponseField>
-
-              </Expandable>
-            </DynamicResponseField>
 
             <DynamicResponseField name="free_trial" type="object">
               Free trial configuration. If set, new customers can try this plan before being charged.
@@ -2552,7 +2410,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
                     </DynamicResponseField>
 
                     <DynamicResponseField name="skip_overage_billing" type="boolean">
-                      When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally.
+                      When true, overage for this feature is not posted to the payment processor. Usage tracking and balance resets still behave normally.
                     </DynamicResponseField>
 
                   </Expandable>
@@ -2709,7 +2567,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
                           Base price amounts in additional currencies. The base 'amount' is in the org's default currency.
                           <Expandable title="properties">
                             <DynamicResponseField name="currency" type="string">
-                              Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                              Three-letter currency code (e.g. 'eur', 'gbp').
                             </DynamicResponseField>
 
                             <DynamicResponseField name="amount" type="number">
@@ -2774,7 +2632,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
                               Amounts in additional currencies for this flat price. The base 'amount' is in the org's default currency. Only valid with 'amount', not 'tiers'.
                               <Expandable title="properties">
                                 <DynamicResponseField name="currency" type="string">
-                                  Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                  Three-letter currency code (e.g. 'eur', 'gbp').
                                 </DynamicResponseField>
 
                                 <DynamicResponseField name="amount" type="number">
@@ -2796,7 +2654,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
                                 <DynamicResponseField name="additional_currencies" type="object[]">
                                   <Expandable title="properties">
                                     <DynamicResponseField name="currency" type="string">
-                                      Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                      Three-letter currency code (e.g. 'eur', 'gbp').
                                     </DynamicResponseField>
 
                                     <DynamicResponseField name="amount" type="number">
@@ -3122,7 +2980,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
                             </DynamicResponseField>
 
                             <DynamicResponseField name="skip_overage_billing" type="boolean">
-                              When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally.
+                              When true, overage for this feature is not posted to the payment processor. Usage tracking and balance resets still behave normally.
                             </DynamicResponseField>
 
                           </Expandable>
@@ -3249,7 +3107,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
                                   Base price amounts in additional currencies. The base 'amount' is in the org's default currency.
                                   <Expandable title="properties">
                                     <DynamicResponseField name="currency" type="string">
-                                      Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                      Three-letter currency code (e.g. 'eur', 'gbp').
                                     </DynamicResponseField>
 
                                     <DynamicResponseField name="amount" type="number">
@@ -3313,7 +3171,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
                                       Amounts in additional currencies for this flat price. The base 'amount' is in the org's default currency. Only valid with 'amount', not 'tiers'.
                                       <Expandable title="properties">
                                         <DynamicResponseField name="currency" type="string">
-                                          Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                          Three-letter currency code (e.g. 'eur', 'gbp').
                                         </DynamicResponseField>
 
                                         <DynamicResponseField name="amount" type="number">
@@ -3335,7 +3193,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
                                         <DynamicResponseField name="additional_currencies" type="object[]">
                                           <Expandable title="properties">
                                             <DynamicResponseField name="currency" type="string">
-                                              Three-letter Stripe-supported currency code (e.g. 'eur', 'gbp').
+                                              Three-letter currency code (e.g. 'eur', 'gbp').
                                             </DynamicResponseField>
 
                                             <DynamicResponseField name="amount" type="number">

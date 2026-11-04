@@ -10,7 +10,6 @@ export type UpdateCustomerFormValues = {
 	name: string;
 	email: string;
 	fingerprint: string;
-	stripeId: string;
 	billingDetails: BillingDetailsFormValues;
 };
 
@@ -25,7 +24,6 @@ export const customerToFormValues = ({
 	name: customer.name ?? "",
 	email: customer.email ?? "",
 	fingerprint: customer.fingerprint ?? "",
-	stripeId: customer.processor?.id ?? "",
 	billingDetails: billingDetailsToFormValues(billingDetails),
 });
 
@@ -39,7 +37,7 @@ export const formValuesToCustomerPatch = (
 	...(values.id && { id: values.id }),
 });
 
-/** Billing details are skipped when the Stripe link itself changes, since they belong to the old customer. */
+/** Billing details always belong to the customer being edited. */
 export const formValuesToUpdateCustomerBody = ({
 	initial,
 	values,
@@ -47,17 +45,13 @@ export const formValuesToUpdateCustomerBody = ({
 	initial: UpdateCustomerFormValues;
 	values: UpdateCustomerFormValues;
 }) => {
-	const stripeIdChanged = values.stripeId !== initial.stripeId;
-	const billingDetails = stripeIdChanged
-		? undefined
-		: billingDetailsChanges({
-				initial: initial.billingDetails,
-				current: values.billingDetails,
-			});
+	const billingDetails = billingDetailsChanges({
+		initial: initial.billingDetails,
+		current: values.billingDetails,
+	});
 
 	return {
 		...formValuesToCustomerPatch(values),
-		...(stripeIdChanged && { stripe_id: values.stripeId || null }),
 		...(billingDetails && { billing_details: billingDetails }),
 	};
 };

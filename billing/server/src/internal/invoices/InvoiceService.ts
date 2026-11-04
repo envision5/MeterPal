@@ -1,4 +1,3 @@
-import { getAutumnEnv } from "@autumn/env";
 import {
 	type ApiInvoiceV1,
 	type Customer,
@@ -8,7 +7,6 @@ import {
 	type Feature,
 	type InsertInvoice,
 	type Invoice,
-	type InvoiceItem,
 	type InvoiceStatus,
 	invoices,
 	type ListInvoicesParams,
@@ -16,14 +14,9 @@ import {
 	ProcessorType,
 	RecaseError,
 	StandardCursor,
-	stripeToAtmnAmount,
 } from "@autumn/shared";
 import type { DrizzleCli } from "@server/db/initDrizzle.js";
-import { getInvoiceDiscounts } from "@server/external/stripe/stripeInvoiceUtils.js";
-import { generateId } from "@server/utils/genUtils.js";
-import { Autumn } from "autumn-js";
-import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
-import type Stripe from "stripe";
+import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
 import type { AutumnContext } from "@/honoUtils/HonoEnv";
 import { resolvedProductIdsForColumn } from "./repos/utils/resolvedProductIdsSql.js";
 
@@ -36,39 +29,20 @@ export const processInvoice = ({
 	withItems?: boolean;
 	features?: Feature[];
 }): ApiInvoiceV1 => {
-	const processorType = invoice.processor_type ?? ProcessorType.Stripe;
-	const isStripe = processorType === ProcessorType.Stripe;
+	const processorType = invoice.processor_type ?? ProcessorType.PayPal;
 
 	return {
 		// Current ids from the hydration query; snapshot if nothing resolved.
 		plan_ids: invoice.resolved_product_ids?.length
 			? invoice.resolved_product_ids
 			: (invoice.product_ids ?? []),
-		stripe_id: invoice.stripe_id,
+		processor_invoice_id: invoice.processor_invoice_id,
 		processor_type: processorType,
 		status: invoice.status ?? "",
 		total: invoice.total,
 		currency: invoice.currency,
 		created_at: invoice.created_at,
-		hosted_invoice_url: isStripe
-			? `${getAutumnEnv().AUTUMN_API_URL}/invoices/hosted_invoice_url/${invoice.id}`
-			: null,
-		// hosted_invoice_url: invoice.hosted_invoice_url,
-		// items: withItems
-		// 	? (invoice.items || []).map((i) => {
-		// 			const feature = features?.find(
-		// 				(f) => f.internal_id === i.internal_feature_id,
-		// 			);
-
-		// 			return ApiInvoiceItemSchema.parse({
-		// 				description: i.description,
-		// 				period_start: i.period_start,
-		// 				period_end: i.period_end,
-		// 				feature_id: feature?.id,
-		// 				feature_name: feature?.name,
-		// 			});
-		// 		})
-		// 	: undefined,
+		hosted_invoice_url: invoice.hosted_invoice_url,
 	};
 };
 
@@ -143,7 +117,7 @@ export class InvoiceService {
 					},
 				},
 			},
-		})) as Invoice & {
+		})) as unknown as Invoice & {
 			customer: Customer & { org: Organization & { master: Organization } };
 		};
 	}
@@ -162,7 +136,7 @@ export class InvoiceService {
 					},
 				},
 			},
-		})) as (Invoice & {
+		})) as unknown as (Invoice & {
 			customer: Customer & { org: Organization & { master: Organization } };
 		})[];
 	}
@@ -194,18 +168,9 @@ export class InvoiceService {
 			conditions.push(inArray(invoices.status, query.status));
 		}
 		if (query.processor_types?.length) {
-			// Rows predating processor tracking have NULL processor_type and are Stripe.
-			const processorCondition = query.processor_types.includes(
-				ProcessorType.Stripe,
-			)
-				? or(
-						inArray(invoices.processor_type, query.processor_types),
-						isNull(invoices.processor_type),
-					)
-				: inArray(invoices.processor_type, query.processor_types);
-			if (processorCondition) {
-				conditions.push(processorCondition);
-			}
+			conditions.push(
+				inArray(invoices.processor_type, query.processor_types),
+			);
 		}
 		if (cursor) {
 			conditions.push(
@@ -304,7 +269,7 @@ export class InvoiceService {
 					internalEntityId
 						? or(
 								eq(invoices.internal_entity_id, internalEntityId),
-								isNull(invoices.internal_entity_id),
+								sql`${invoices.internal_entity_id} IS NULL`,
 							)
 						: undefined,
 				),
@@ -318,15 +283,15 @@ export class InvoiceService {
 		})) as Invoice[];
 	}
 
-	static async getByStripeId({
+	static async getByProcessorInvoiceId({
 		db,
-		stripeId,
+		processorInvoiceId,
 	}: {
 		db: DrizzleCli;
-		stripeId: string;
+		processorInvoiceId: string;
 	}) {
 		const invoice = await db.query.invoices.findFirst({
-			where: eq(invoices.stripe_id, stripeId),
+			where: eq(invoices.processor_invoice_id, processorInvoiceId),
 		});
 
 		if (!invoice) {
@@ -334,108 +299,6 @@ export class InvoiceService {
 		}
 
 		return invoice as Invoice;
-	}
-
-	/** @deprecated */
-	static async createInvoiceFromStripe({
-		db,
-		stripeInvoice,
-		internalCustomerId,
-		internalEntityId,
-		productIds,
-		internalProductIds,
-		status,
-		org,
-		sendRevenueEvent = true,
-		items = [],
-	}: {
-		db: DrizzleCli;
-		stripeInvoice: Stripe.Invoice;
-		internalCustomerId: string;
-		internalEntityId?: string | null;
-		productIds: string[];
-		internalProductIds: string[];
-		status?: InvoiceStatus | null;
-		org: Organization;
-		sendRevenueEvent?: boolean;
-		items?: InvoiceItem[];
-	}) {
-		// Convert product ids to unique product ids
-		const uniqueProductIds = [...new Set(productIds)];
-		const uniqueInternalProductIds = [...new Set(internalProductIds)];
-
-		const atmnTotal = stripeToAtmnAmount({
-			amount: stripeInvoice.total,
-			currency: stripeInvoice.currency,
-		});
-
-		const atmnAmountPaid = stripeToAtmnAmount({
-			amount: stripeInvoice.amount_paid,
-			currency: stripeInvoice.currency,
-		});
-
-		const invoice: Invoice = {
-			id: generateId("inv"),
-			internal_customer_id: internalCustomerId,
-			product_ids: uniqueProductIds,
-			created_at: stripeInvoice.created * 1000,
-			stripe_id: stripeInvoice.id!,
-			processor_type: ProcessorType.Stripe,
-			hosted_invoice_url: stripeInvoice.hosted_invoice_url || null,
-			status: status || (stripeInvoice.status as InvoiceStatus | null),
-			internal_product_ids: uniqueInternalProductIds,
-			internal_entity_id: internalEntityId || null,
-
-			// Stripe stuff
-			total: atmnTotal,
-			amount_paid: atmnAmountPaid,
-			refunded_amount: 0,
-			currency: stripeInvoice.currency,
-			discounts: getInvoiceDiscounts({
-				expandedInvoice: stripeInvoice,
-			}),
-
-			items: items,
-		};
-
-		let newInvoice: Invoice | null = null;
-		try {
-			const results = await db
-				.insert(invoices)
-				.values(invoice as any)
-				.returning();
-			if (results.length === 0) {
-				return null;
-			}
-			newInvoice = results[0] as Invoice;
-		} catch (error: any) {
-			if (error.code === "23505") {
-				console.log("   🧐 Invoice already exists");
-				return;
-			} else {
-				console.error("   ❌ Error inserting Stripe invoice: ", error);
-				throw error;
-			}
-		}
-
-		// Send monthly_revenue event
-		try {
-			if (!stripeInvoice.livemode || !sendRevenueEvent) {
-				return newInvoice;
-			}
-
-			const autumn = new Autumn();
-			await autumn.track({
-				customerId: org.id,
-				eventName: "revenue",
-				value: atmnTotal,
-			});
-			console.log("   ✅ Sent revenue event");
-		} catch (error) {
-			console.log("Failed to send revenue event", error);
-		}
-
-		return newInvoice;
 	}
 
 	static async update({
@@ -446,7 +309,7 @@ export class InvoiceService {
 		db: DrizzleCli;
 		query: {
 			id?: string;
-			stripeId?: string;
+			processorInvoiceId?: string;
 		};
 		updates: Partial<InsertInvoice>;
 	}) {
@@ -456,7 +319,9 @@ export class InvoiceService {
 			.where(
 				and(
 					query.id ? eq(invoices.id, query.id) : undefined,
-					query.stripeId ? eq(invoices.stripe_id, query.stripeId) : undefined,
+					query.processorInvoiceId
+						? eq(invoices.processor_invoice_id, query.processorInvoiceId)
+						: undefined,
 				),
 			)
 			.returning();
@@ -477,7 +342,7 @@ export class InvoiceService {
 			.insert(invoices)
 			.values(invoice)
 			.onConflictDoUpdate({
-				target: invoices.stripe_id,
+				target: invoices.processor_invoice_id,
 				set: {
 					status: invoice.status,
 					hosted_invoice_url: invoice.hosted_invoice_url,

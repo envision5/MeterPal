@@ -221,7 +221,7 @@ const runAndApproveAll = async ({
 const createFreshCustomers = async (ids: string[]) => {
 	for (const [index, id] of ids.entries()) {
 		await tools.call("getOrCreateCustomer", {
-			create_in_stripe: true,
+			create_in_processor: true,
 			customer_id: id,
 			email: `${id}@example.com`,
 			name: `Case ${index + 1} ${id}`,

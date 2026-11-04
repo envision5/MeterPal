@@ -1,8 +1,8 @@
 import { addInterval, BillingInterval, type Price } from "@autumn/shared";
 
-// Stripe flexible billing creates one line item per backdated billing period
-// and does not support backdated invoices with more than 250 line items.
-export const STRIPE_BACKDATE_INVOICE_LINE_ITEM_LIMIT = 250;
+// Backdating creates one line item per backdated billing period, so the number
+// of periods a single price spans is capped to keep the invoice sane.
+export const BACKDATE_INVOICE_LINE_ITEM_LIMIT = 250;
 
 export const countBackdatedPeriodsForPrice = ({
 	price,
@@ -21,7 +21,7 @@ export const countBackdatedPeriodsForPrice = ({
 
 	while (periodStart < currentEpochMs) {
 		periods += 1;
-		if (periods > STRIPE_BACKDATE_INVOICE_LINE_ITEM_LIMIT) {
+		if (periods > BACKDATE_INVOICE_LINE_ITEM_LIMIT) {
 			return periods;
 		}
 

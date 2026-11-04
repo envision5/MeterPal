@@ -12,7 +12,7 @@ export const pooledBalanceIdentityToKey = ({
 		identity.intervalCount,
 		identity.resetCycleAnchor,
 		identity.resetMode,
-		identity.stripeSubscriptionId,
+		identity.processorSubscriptionId,
 		identity.customerLicenseLinkId,
 		identity.rolloverSignature,
 	]);

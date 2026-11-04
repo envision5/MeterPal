@@ -46,10 +46,7 @@ export const chargeRowToRefundLineItem = ({
 	});
 
 	const matchingCusPrice = customerProduct.customer_prices.find(
-		(cp) =>
-			cp.price.id === chargeRow.price_id ||
-			(chargeRow.stripe_price_id != null &&
-				cp.price.config?.stripe_price_id === chargeRow.stripe_price_id),
+		(cp) => cp.price.id === chargeRow.price_id,
 	);
 	const product = contextOverride?.product ?? customerProduct.product;
 	const price =
@@ -57,12 +54,6 @@ export const chargeRowToRefundLineItem = ({
 		matchingCusPrice?.price ??
 		customerProduct.customer_prices[0]?.price;
 
-	const couponNameById = new Map(
-		(billingContext.stripeDiscounts ?? []).map((discount) => [
-			discount.source.coupon.id,
-			discount.source.coupon.name ?? discount.source.coupon.id,
-		]),
-	);
 	const matchingCusEnt = matchingCusPrice
 		? cusPriceToCusEnt({
 				cusPrice: matchingCusPrice,
@@ -103,8 +94,6 @@ export const chargeRowToRefundLineItem = ({
 		amountAfterDiscounts: creditAmount,
 		description,
 		context,
-		stripePriceId: chargeRow.stripe_price_id ?? undefined,
-		stripeProductId: chargeRow.stripe_product_id ?? undefined,
 		totalQuantity: chargeRow.total_quantity ?? undefined,
 		paidQuantity: chargeRow.paid_quantity ?? undefined,
 		chargeImmediately: chargeRow.invoice_id !== null,
@@ -113,10 +102,6 @@ export const chargeRowToRefundLineItem = ({
 			(chargeRow.discounts as InvoiceLineItemDiscount[] | null)?.map((d) => ({
 				amountOff: d.amount_off,
 				percentOff: d.percent_off,
-				stripeCouponId: d.stripe_coupon_id,
-				couponName: d.stripe_coupon_id
-					? (couponNameById.get(d.stripe_coupon_id) ?? d.stripe_coupon_id)
-					: undefined,
 			})) ?? [],
 		amountAfterDiscountsFinalized: true,
 	};

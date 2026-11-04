@@ -27,22 +27,11 @@ export const IncludedUsageParamsSchema = z.number().max(10_000_000_000_000, {
 });
 
 /**
- * The `price` sub-object, without any processor mapping. Adoption of an
- * existing Stripe price is deliberately scoped to the catalog path, so the
- * `processors` field is added by `CatalogPlanItemParamsV1Schema` instead of
- * living here — attach/customize/migration paths must not be able to state one.
+ * The `price` sub-object. Processor mapping was deliberately scoped to the
+ * catalog path and has since been removed along with the processor price ids it
+ * carried, so this schema holds only the amount and its tier shape.
  */
 export const PlanItemPriceParamsSchema = z.object({
-	stripe_price_id: z
-		.string()
-		.nullish()
-		.transform((value) => value ?? undefined)
-		.meta({
-			description:
-				"Stripe price id this feature price is billed under. Set by sync flows to preserve an existing Stripe price.",
-			internal: true,
-		})
-		.optional(),
 	amount: z.number().optional().meta({
 		description:
 			"Price per billing_units after included usage. Either 'amount' or 'tiers' is required.",

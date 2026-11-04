@@ -27,7 +27,7 @@ export const handleRemoveDiscountsErrors = ({
 	const removesDiscounts = (params.remove_discounts?.length ?? 0) > 0;
 	if (removesDiscounts && params.no_billing_changes) {
 		throwInvalidRequest(
-			"Cannot remove discounts with no_billing_changes, since it skips all Stripe updates.",
+			"Cannot remove discounts with no_billing_changes, since it skips all processor updates.",
 		);
 	}
 };

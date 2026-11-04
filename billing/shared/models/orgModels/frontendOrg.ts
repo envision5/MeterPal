@@ -1,4 +1,3 @@
-import { VercelMarketplaceMode } from "@models/genModels/processorSchemas";
 import { z } from "zod/v4";
 import { CustomButtonSchema } from "./customButton";
 import { IdempotencyConfigSchema } from "./idempotencyConfig";
@@ -16,9 +15,6 @@ export const FrontendOrgSchema = z.object({
 	test_pkey: z.string().nullable(),
 	live_pkey: z.string().nullable(),
 
-	stripe_connection: z.string(),
-	stripe_secret_key_connected: z.boolean(),
-	stripe_oauth_connected: z.boolean(),
 	master: z
 		.object({
 			id: z.string(),
@@ -38,33 +34,6 @@ export const FrontendOrgSchema = z.object({
 			migrationPercent: z.number(),
 		})
 		.nullable(),
-	processor_configs: z.object({
-		vercel: z.object({
-			connected: z.boolean(),
-			/** These are all masked in the frontend
-			 * - e.g oac_******3a
-			 */
-			client_integration_id: z.string().optional(),
-			client_secret: z.string().optional(),
-			webhook_url: z.string().optional(),
-			custom_payment_method: z.string().optional(),
-			marketplace_mode: z.enum(VercelMarketplaceMode).optional(),
-			allowed_product_ids_live: z.array(z.string()).optional(),
-			allowed_product_ids_sandbox: z.array(z.string()).optional(),
-		}),
-		revenuecat: z.object({
-			connected: z.boolean(),
-			/** These API Keys are also masked in the frontend
-			 * - e.g test_******3a
-			 */
-			api_key: z.string().optional(),
-			sandbox_api_key: z.string().optional(),
-			project_id: z.string().optional(),
-			sandbox_project_id: z.string().optional(),
-			webhook_secret: z.string().optional(),
-			sandbox_webhook_secret: z.string().optional(),
-		}),
-	}),
 });
 
 export type FrontendOrg = z.infer<typeof FrontendOrgSchema>;

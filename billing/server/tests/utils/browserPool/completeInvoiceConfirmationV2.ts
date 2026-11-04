@@ -5,7 +5,7 @@ import { invoiceConfirmation } from "./playwright/invoiceConfirmation.js";
 import { playwrightPool } from "./playwrightPool.js";
 
 /**
- * Complete a Stripe 3DS Invoice Confirmation.
+ * Complete a processor 3DS Invoice Confirmation.
  * Kernel mode: serializes invoiceConfirmation via fn.toString() and runs in-VM.
  * Local mode: runs invoiceConfirmation directly with a local Playwright browser.
  */

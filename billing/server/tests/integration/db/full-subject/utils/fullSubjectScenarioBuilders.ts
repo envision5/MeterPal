@@ -88,8 +88,6 @@ const buildCustomer = ({
 	fingerprint: null,
 	metadata: {},
 	env: ctx.env,
-	processor: null,
-	processors: {},
 	send_email_receipts: false,
 	currency: null,
 	auto_topups: null,
@@ -236,13 +234,6 @@ const buildPrice = ({
 		usage_tiers: [{ to: 1000, amount: 1 }],
 		interval: BillingInterval.Month,
 		interval_count: 1,
-		stripe_meter_id: null,
-		stripe_price_id: null,
-		stripe_empty_price_id: null,
-		stripe_product_id: null,
-		stripe_placeholder_price_id: null,
-		stripe_event_name: null,
-		stripe_prepaid_price_v2_id: null,
 		should_prorate: false,
 	},
 	created_at: now,
@@ -260,7 +251,7 @@ const buildCustomerProduct = ({
 	suffix,
 	internalEntityId = null,
 	entityId = null,
-	subscriptionStripeIds = [],
+	subscriptionIds = [],
 }: {
 	customer: DbCustomer;
 	product: DbProduct;
@@ -268,7 +259,7 @@ const buildCustomerProduct = ({
 	suffix: string;
 	internalEntityId?: string | null;
 	entityId?: string | null;
-	subscriptionStripeIds?: string[];
+	subscriptionIds?: string[];
 }): DbCustomerProduct => ({
 	billing_cycle_anchor: null,
 	billing_cycle_anchor_resets_at: null,
@@ -280,7 +271,6 @@ const buildCustomerProduct = ({
 	created_at: now,
 	updated_at: now,
 	status: CusProductStatus.Active,
-	processor: null,
 	canceled: false,
 	canceled_at: null,
 	ended_at: null,
@@ -291,7 +281,7 @@ const buildCustomerProduct = ({
 	free_trial_id: null,
 	trial_ends_at: null,
 	collection_method: CollectionMethod.ChargeAutomatically,
-	subscription_ids: subscriptionStripeIds,
+	subscription_ids: subscriptionIds,
 	scheduled_ids: null,
 	quantity: 1,
 	is_custom: false,
@@ -301,7 +291,6 @@ const buildCustomerProduct = ({
 	api_version: null,
 	api_semver: ApiVersion.V2_2,
 	external_id: null,
-	stripe_checkout_session_id: null,
 	previous_customer_product_id: null,
 	on_trial_end: null,
 	customer_license_link_id: null,
@@ -411,8 +400,7 @@ const buildSubscription = ({
 }): SubscriptionRow => ({
 	id: `sub_${key}_${suffix}`,
 	org_id: ctx.org.id,
-	stripe_id: `stripe_sub_${key}_${suffix}`,
-	stripe_schedule_id: null,
+	processor_id: `sub_${key}_${suffix}`,
 	created_at: now,
 	metadata: {},
 	usage_features: [TestFeature.Messages],
@@ -443,8 +431,8 @@ const buildInvoice = ({
 	internal_product_ids: [product.internal_id],
 	internal_customer_id: customer.internal_id,
 	internal_entity_id: internalEntityId,
-	stripe_id: `stripe_inv_${key}_${suffix}`,
-	processor_type: ProcessorType.Stripe,
+	processor_invoice_id: `inv_${key}_${suffix}`,
+	processor_type: ProcessorType.PayPal,
 	status: InvoiceStatus.Paid,
 	hosted_invoice_url: null,
 	total: 1000,
@@ -806,7 +794,7 @@ export const buildCustomerWithInvoicesAndSubscriptionsScenario = ({
 	});
 	const customerProduct = {
 		...scenario.customerProducts[0],
-		subscription_ids: [subscription.stripe_id ?? ""],
+		subscription_ids: [subscription.processor_id ?? ""],
 	};
 	const invoice = buildInvoice({
 		customer: scenario.customer,
@@ -1327,11 +1315,11 @@ export const buildEntitySubjectWithSubscriptionsAndInvoicesScenario = ({
 	const customerProducts = [...scenario.customerProducts];
 	customerProducts[0] = {
 		...customerProducts[0]!,
-		subscription_ids: [subscription.stripe_id ?? ""],
+		subscription_ids: [subscription.processor_id ?? ""],
 	};
 	customerProducts[1] = {
 		...customerProducts[1]!,
-		subscription_ids: [subscription.stripe_id ?? ""],
+		subscription_ids: [subscription.processor_id ?? ""],
 	};
 	const invoice = buildInvoice({
 		customer: scenario.customer,

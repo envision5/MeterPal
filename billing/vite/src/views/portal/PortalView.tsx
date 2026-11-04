@@ -1,8 +1,8 @@
 // billing/vite/src/views/portal/PortalView.tsx
 //
 // Self-hosted billing portal for PayPal customers — the PayPal branch of
-// "Open billing portal" lands here (PayPal has no hosted portal equivalent to
-// Stripe's). Public page: the signed token in the URL is the credential; the
+// "Open billing portal" lands here (PayPal has no hosted portal equivalent).
+// Public page: the signed token in the URL is the credential; the
 // server endpoints under /portal/:token verify it (portalRouter.ts).
 
 import axios from "axios";

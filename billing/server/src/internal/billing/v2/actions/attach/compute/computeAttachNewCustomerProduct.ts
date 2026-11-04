@@ -82,8 +82,6 @@ const computeAttachNewCustomerProductResult = ({
 		carryOverSourceCustomerProduct,
 		planTiming,
 		endOfCycleMs,
-		stripeSubscription,
-		stripeSubscriptionSchedule,
 		currentEpochMs,
 		featureQuantities,
 		customerLicenseQuantities,
@@ -94,7 +92,6 @@ const computeAttachNewCustomerProductResult = ({
 		resetCycleAnchorMs,
 		accessStartsAt,
 		billingStartsAt,
-		paymentMethod,
 		processorTypeOverride,
 	} = attachBillingContext;
 
@@ -105,10 +102,12 @@ const computeAttachNewCustomerProductResult = ({
 
 	const isScheduled = planTiming === "end_of_cycle";
 	const startsAt = billingStartsAt ?? (isScheduled ? endOfCycleMs : undefined);
-	const hasAutoChargePaymentMethod =
-		paymentMethod !== undefined && paymentMethod.type !== "custom";
-	const shouldSendInvoiceForFutureStart =
-		isFutureStartDate(startsAt, currentEpochMs) && !hasAutoChargePaymentMethod;
+	// No processor payment method is collected up front, so a future-start
+	// attach always bills by invoice at the start date.
+	const shouldSendInvoiceForFutureStart = isFutureStartDate(
+		startsAt,
+		currentEpochMs,
+	);
 	const collectionMethod = shouldSendInvoiceForFutureStart
 		? CollectionMethod.SendInvoice
 		: undefined;
@@ -150,12 +149,8 @@ const computeAttachNewCustomerProductResult = ({
 			transitionConfig,
 		},
 		initOptions: {
-			subscriptionId:
-				stripeSubscription?.id ??
-				preservedBillingLinkage?.subscription_ids?.[0],
-			subscriptionScheduleId:
-				stripeSubscriptionSchedule?.id ??
-				preservedBillingLinkage?.scheduled_ids?.[0],
+			subscriptionId: preservedBillingLinkage?.subscription_ids?.[0],
+			subscriptionScheduleId: preservedBillingLinkage?.scheduled_ids?.[0],
 			startsAt,
 			endedAt: params.ends_at,
 			accessStartsAt,

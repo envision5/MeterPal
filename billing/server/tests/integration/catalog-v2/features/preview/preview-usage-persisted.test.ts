@@ -8,7 +8,7 @@ import { items } from "@tests/utils/fixtures/items.js";
 import { products } from "@tests/utils/fixtures/products.js";
 import { initScenario, s } from "@tests/utils/testInitUtils/initScenario.js";
 import chalk from "chalk";
-import { initProductsV0 } from "@/utils/scriptUtils/testUtils/initProductsV0.js";
+import { initTestProducts } from "@tests/utils/testInitUtils/initTestProducts.js";
 import { deleteDbFeatures } from "../../utils/expectCatalogFeatures.js";
 import { expectCatalogPreviewCorrect } from "../../utils/expectCatalogUpdate.js";
 import { uniqueTestId } from "../../utils/uniqueTestId.js";
@@ -53,7 +53,7 @@ test.concurrent(
 					},
 				],
 			});
-			await initProductsV0({ ctx, products: [plan] });
+			await initTestProducts({ ctx, products: [plan] });
 
 			const preview = await autumnV2_3.catalogV2.previewUpdate({
 				remove_features: [{ feature_id: meteredId }],
@@ -136,7 +136,7 @@ test.concurrent(
 			await autumnV2_3.catalogV2.update({
 				features: [meteredFeature(featureId)],
 			});
-			await initProductsV0({ ctx, products: plans });
+			await initTestProducts({ ctx, products: plans });
 
 			const preview = await autumnV2_3.catalogV2.previewUpdate({
 				remove_features: [{ feature_id: featureId }],
@@ -192,7 +192,7 @@ test.concurrent(
 			await autumnV2_3.catalogV2.update({
 				features: [meteredFeature(featureId)],
 			});
-			await initProductsV0({ ctx, products: [attachedProduct] });
+			await initTestProducts({ ctx, products: [attachedProduct] });
 			await autumnV2_3.billing.attach<AttachParamsV1Input>({
 				customer_id: customerId,
 				plan_id: attachedProduct.id,
@@ -350,7 +350,7 @@ test.concurrent(
 			await autumnV2_3.catalogV2.update({
 				features: [meteredFeature(oldId)],
 			});
-			await initProductsV0({ ctx, products: [plan] });
+			await initTestProducts({ ctx, products: [plan] });
 
 			const preview = await autumnV2_3.catalogV2.previewUpdate({
 				features: [renameFeature({ from: oldId, to: newId })],

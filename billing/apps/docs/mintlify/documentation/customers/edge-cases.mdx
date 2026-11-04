@@ -15,7 +15,7 @@ When a payment requires 3D Secure authentication, the `attach` response returns:
     "code": "3ds_required",
     "reason": "Payment requires 3D Secure authentication"
   },
-  "payment_url": "https://invoice.stripe.com/..."
+  "payment_url": "https://example.com/invoice/..."
 }
 ```
 
@@ -35,20 +35,20 @@ If the customer's payment method is declined during `attach`, the response retur
     "code": "payment_failed",
     "reason": "Card was declined"
   },
-  "payment_url": "https://invoice.stripe.com/..."
+  "payment_url": "https://example.com/invoice/..."
 }
 ```
 
-The `payment_url` links to Stripe's hosted invoice page where the customer can update their payment method and retry. As with 3DS, the invoice is auto-voided after 10 minutes if left unresolved.
+The `payment_url` links to the processor's hosted invoice page where the customer can update their payment method and retry. As with 3DS, the invoice is auto-voided after 10 minutes if left unresolved.
 
-A third code, `payment_method_required`, is returned when no payment method is on file at all. In this case, redirect the customer to the `payment_url` which points to a Stripe Checkout session.
+A third code, `payment_method_required`, is returned when no payment method is on file at all. In this case, redirect the customer to the `payment_url` which points to a processor checkout session.
 
 ## Past Due Subscriptions
 
 If a recurring payment fails (e.g. card expired between billing cycles), the subscription status becomes `past_due`. To resolve this:
 
 1. Direct the customer to the [billing portal](/api-reference/billing/openCustomerPortal) to update their payment method
-2. Once updated, Stripe automatically retries the failed invoice
+2. Once updated, the processor automatically retries the failed invoice
 
 <CodeGroup>
 
@@ -92,9 +92,9 @@ The same lock is shared with auto top-ups, so a top-up triggered by usage can't 
 
 ## Duplicate Webhook Delivery
 
-Stripe may deliver the same webhook event multiple times. MeterPal deduplicates webhooks using a per-event idempotency key — if the same Stripe event ID is received more than once within a 5-minute window, the duplicate is acknowledged without reprocessing.
+The processor may deliver the same webhook event multiple times. MeterPal deduplicates webhooks using a per-event idempotency key — if the same processor event ID is received more than once within a 5-minute window, the duplicate is acknowledged without reprocessing.
 
-Additionally, when MeterPal initiates a subscription change (e.g. a cancellation or upgrade), it sets a short-lived lock on the subscription. This prevents the resulting Stripe webhook from re-processing the change that MeterPal already applied, avoiding double-counting or conflicting state updates.
+Additionally, when MeterPal initiates a subscription change (e.g. a cancellation or upgrade), it sets a short-lived lock on the subscription. This prevents the resulting processor webhook from re-processing the change that MeterPal already applied, avoiding double-counting or conflicting state updates.
 
 ## API Idempotency
 

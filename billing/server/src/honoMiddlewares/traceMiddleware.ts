@@ -12,7 +12,7 @@ import {
  * chain in an OTel context carrying the same attrs so TenantAttrSpanProcessor
  * propagates them to every child span. Must run AFTER auth/seeder middleware
  * that populates ctx. Works on any router whose ctx extends AutumnContext
- * (apiRouter, internalRouter, stripe/vercel/revenueCat webhook routers, etc).
+ * (apiRouter, internalRouter, the processor webhook routers, etc).
  */
 export const traceEnrichMiddleware: MiddlewareHandler = async (c, next) => {
 	const ctx = c.get("ctx") as AutumnContext | undefined;

@@ -86,7 +86,7 @@ documentation, and packaging.
 - Webhooks move to `POST /webhooks/paypal/:orgId/:webhookId`. The org comes
   from the path, so the signature is verified against THAT org's webhook id,
   and the environment is resolved from the webhook id. Event dedupe reuses
-  `stripe_webhook_events` with a `paypal:` prefix rather than adding a second
+  the durable `webhook_events` table with a `paypal:` prefix rather than adding a second
   table for the same job.
 - The dashboard gets a PayPal section (Settings > Integrations): connect with a
   client id and secret, verified against PayPal BEFORE they are stored, the
@@ -168,7 +168,7 @@ submission-period changes are transparent in git history.
 
 **Wallet & metering core** (fork of Autumn, Apache-2.0 — see NOTICE):
 - LiteLLM bridge tables (`bridge_audit_log`, `bridge_rate_limits`,
-  `wallet_ledger`, `stripe_webhook_events`) and customer bridge columns
+  `wallet_ledger`, `webhook_events`) and customer bridge columns
   (`litellm_virtual_key`, `paypal_subscription_id`, `paypal_plan_id`,
   `paypal_payment_status`) — migration `0085_shallow_iron_man`.
 - Virtual key provisioning (`litellmKeys.ts`, `litellmWebhookTriggers.ts`).
@@ -199,5 +199,5 @@ submission-period changes are transparent in git history.
 walkthrough, all without real payment or provider keys.
 
 **Docs**: `docs/plan.md`, `docs/bridge.md`, `docs/customer-ui.md`,
-`docs/DEPLOY.md` (Stripe-era production guide; rewritten as a PayPal-native
+`docs/DEPLOY.md` (production guide; rewritten as a PayPal-native
 guide during the submission period).

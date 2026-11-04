@@ -1,20 +1,12 @@
 import {
 	type AppEnv,
-	type CreateReward,
-	type CreateRewardProgram,
 	customerProducts,
-	isUsagePrice,
 	planLicenses,
 } from "@autumn/shared";
 import { eq, inArray, or } from "drizzle-orm";
 import type { DrizzleCli } from "@/db/initDrizzle.js";
 import type { AutumnInt } from "@/external/autumn/autumnCli.js";
 import { ProductService } from "@/internal/products/ProductService.js";
-import {
-	rewardProgramRepo,
-	rewardRepo,
-} from "@/internal/rewards/repos/index.js";
-import { constructRewardProgram } from "@/internal/rewards/rewardUtils.js";
 
 export const createProduct = async ({
 	db,
@@ -23,7 +15,6 @@ export const createProduct = async ({
 	autumn,
 	product,
 	prefix,
-	createInStripe,
 }: {
 	db: DrizzleCli;
 	orgId: string;
@@ -31,7 +22,6 @@ export const createProduct = async ({
 	autumn: AutumnInt;
 	product: any;
 	prefix?: string;
-	createInStripe?: boolean;
 }) => {
 	try {
 		const products = await ProductService.listFull({
@@ -92,10 +82,6 @@ export const createProduct = async ({
 		clone.name = `${clone.name} ${prefix}`;
 	}
 
-	if (createInStripe === false) {
-		clone.create_in_stripe = false;
-	}
-
 	try {
 		await autumn.products.create(clone);
 	} catch (error: any) {
@@ -119,7 +105,6 @@ export const createProducts = async ({
 	products,
 	prefix,
 	customerId,
-	createInStripe,
 }: {
 	db: DrizzleCli;
 	orgId: string;
@@ -128,7 +113,6 @@ export const createProducts = async ({
 	products: any[];
 	prefix?: string;
 	customerId?: string;
-	createInStripe?: boolean;
 }) => {
 	if (customerId) {
 		try {
@@ -146,153 +130,9 @@ export const createProducts = async ({
 				autumn,
 				product,
 				prefix,
-				createInStripe,
 			}),
 		);
 	}
 
 	await Promise.all(batchCreate);
-};
-
-export const createReward = async ({
-	db,
-	orgId,
-	env,
-	autumn,
-	reward,
-	productId,
-	onlyUsage = false,
-}: {
-	db: DrizzleCli;
-	orgId: string;
-	env: AppEnv;
-	autumn: AutumnInt;
-	reward: CreateReward;
-	productId?: string;
-	onlyUsage?: boolean;
-}) => {
-	// Only fetch product if we need usage prices
-	if (onlyUsage && productId) {
-		const fullProduct = await ProductService.getFull({
-			db,
-			orgId,
-			env,
-			idOrInternalId: productId,
-		});
-
-		const usagePrices = fullProduct?.prices.filter((price) =>
-			isUsagePrice({ price }),
-		);
-
-		reward.discount_config!.price_ids = usagePrices?.map((price) => price.id);
-	} else if (productId) {
-		const fullProduct = await ProductService.getFull({
-			db,
-			orgId,
-			env,
-			idOrInternalId: productId,
-		});
-
-		reward.discount_config!.price_ids =
-			fullProduct?.prices.map((p) => p.id) ?? [];
-	}
-
-	try {
-		await autumn.rewards.delete(reward.id);
-	} catch (error) {}
-
-	await autumn.rewards.create(reward);
-};
-
-export const createReferralProgram = async ({
-	db,
-	orgId,
-	env,
-	autumn,
-	reward,
-	rewardProgram,
-	productId,
-	onlyUsage = false,
-}: {
-	db: DrizzleCli;
-	orgId: string;
-	env: AppEnv;
-	autumn: AutumnInt;
-	reward: CreateReward;
-	rewardProgram: CreateRewardProgram;
-	productId?: string;
-	onlyUsage?: boolean;
-}) => {
-	// Create reward first
-	await createReward({
-		db,
-		orgId,
-		env,
-		autumn,
-		reward,
-		productId,
-		onlyUsage,
-	});
-
-	// Create referral program (will fail if already exists, but that's ok)
-	try {
-		await autumn.rewardPrograms.create(rewardProgram);
-	} catch (error: any) {
-		// If program already exists (race condition), silently continue
-		if (
-			error?.message?.includes("already exists") ||
-			error?.message?.includes("duplicate") ||
-			error?.code === "REWARD_PROGRAM_EXISTS"
-		) {
-			return;
-		}
-
-		// Free product rewards are rejected by the API, so seed legacy fixtures directly
-		if (error?.message?.includes("Free product rewards are deprecated")) {
-			await seedLegacyRewardProgram({ db, orgId, env, reward, rewardProgram });
-			return;
-		}
-
-		throw error;
-	}
-};
-
-/** Legacy reward types can no longer be created through the API, but must stay covered */
-const seedLegacyRewardProgram = async ({
-	db,
-	orgId,
-	env,
-	reward,
-	rewardProgram,
-}: {
-	db: DrizzleCli;
-	orgId: string;
-	env: AppEnv;
-	reward: CreateReward;
-	rewardProgram: CreateRewardProgram;
-}) => {
-	const existingReward = await rewardRepo.get({
-		db,
-		idOrInternalId: reward.id,
-		orgId,
-		env,
-	});
-
-	if (!existingReward) {
-		throw new Error(
-			`Reward ${reward.id} not found when seeding legacy program`,
-		);
-	}
-
-	await rewardProgramRepo.insert({
-		db,
-		data: constructRewardProgram({
-			rewardProgramData: {
-				...rewardProgram,
-				internal_reward_id: existingReward.internal_id,
-			},
-			orgId,
-			env,
-		}),
-	});
 };

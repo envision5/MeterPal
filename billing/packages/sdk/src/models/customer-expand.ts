@@ -12,8 +12,6 @@ export const CustomerExpand = {
   Rewards: "rewards",
   Entities: "entities",
   Referrals: "referrals",
-  PaymentMethod: "payment_method",
-  BillingDetails: "billing_details",
   SubscriptionsPlan: "subscriptions.plan",
   PurchasesPlan: "purchases.plan",
   BalancesFeature: "balances.feature",

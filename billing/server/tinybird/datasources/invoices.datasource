@@ -10,7 +10,7 @@ SCHEMA >
     `internal_product_ids`     Array(String)       `json:$.internal_product_ids[:]`,
     `internal_customer_id`     String              `json:$.internal_customer_id`,
     `internal_entity_id`       Nullable(String)    `json:$.internal_entity_id`,
-    `stripe_id`                String              `json:$.stripe_id`,
+    `processor_invoice_id`     String              `json:$.processor_invoice_id`,
     `status`                   String              `json:$.status`,
     `hosted_invoice_url`       Nullable(String)    `json:$.hosted_invoice_url`,
     `total`                    Nullable(Float64)   `json:$.total`,

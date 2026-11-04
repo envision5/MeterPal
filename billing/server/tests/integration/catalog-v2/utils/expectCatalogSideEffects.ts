@@ -76,7 +76,6 @@ export const expectDbPricesCorrect = async ({
 		count?: number;
 		configFeatureId?: string;
 		shouldProrate?: boolean;
-		stripePriceId?: string | null;
 	};
 }) => {
 	const feature = await getDbFeature({ ctx, featureId });
@@ -96,9 +95,6 @@ export const expectDbPricesCorrect = async ({
 		}
 		if (expected.shouldProrate !== undefined) {
 			expect(config?.should_prorate).toBe(expected.shouldProrate);
-		}
-		if (expected.stripePriceId !== undefined) {
-			expect(config?.stripe_price_id ?? null).toBe(expected.stripePriceId);
 		}
 	}
 };

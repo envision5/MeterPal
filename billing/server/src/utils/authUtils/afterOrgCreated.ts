@@ -4,15 +4,13 @@ import type { User } from "better-auth";
 import type { Organization as BetterAuthOrganization } from "better-auth/plugins/organization";
 import { isUniqueConstraintError } from "@/db/dbUtils.js";
 import { db } from "@/db/initDrizzle.js";
-import { deleteConnectedAccount } from "@/external/connect/connectUtils.js";
 import { logger } from "@/external/logtail/logtailUtils.js";
 import { createSvixApp, deleteSvixApp } from "@/external/svix/svixHelpers.js";
 import { OrgService } from "@/internal/orgs/OrgService.js";
-import { createConnectAccount } from "@/internal/orgs/orgUtils/createConnectAccount.js";
 import { generatePublishableKey } from "../encryptUtils.js";
 import { captureOrgEvent } from "../posthog.js";
 
-type CreatedResources = { stripeAccountId?: string; svixAppIds: string[] };
+type CreatedResources = { svixAppIds: string[] };
 
 const initOrgSvixApps = async ({ id, slug }: { id: string; slug: string }) => {
 	const [sandboxApp, liveApp] = await Promise.all([
@@ -33,40 +31,33 @@ const initOrgSvixApps = async ({ id, slug }: { id: string; slug: string }) => {
 
 // Best-effort, ordered rollback; the delete helpers swallow their own errors.
 const rollbackOrgResources = async (created: CreatedResources) => {
-	if (!created.stripeAccountId && created.svixAppIds.length === 0) {
+	if (created.svixAppIds.length === 0) {
 		return;
 	}
 	logger.error(
-		`Rolling back partial org provisioning: stripe=${created.stripeAccountId ?? "-"}, svix=[${created.svixAppIds.join(",")}]`,
+		`Rolling back partial org provisioning: svix=[${created.svixAppIds.join(",")}]`,
 	);
 	for (const appId of created.svixAppIds) {
 		await deleteSvixApp({ appId });
 	}
-	if (created.stripeAccountId) {
-		await deleteConnectedAccount({
-			accountId: created.stripeAccountId,
-			env: AppEnv.Sandbox,
-			logger,
-		});
-	}
 };
 
-/** Provision an org's external resources (Stripe account, svix apps, pkeys).
+/** Provision an org's external resources (svix apps, pkeys).
  *  `strict` (sub-org create) fails if svix is configured-but-unprovisioned and
  *  rolls back everything it created on any error, so nothing orphans. Default is
  *  best-effort (legacy self-service signup): write what succeeds, never roll back. */
 export const provisionOrgResources = async ({
 	org,
+	// biome-ignore lint/correctness/noUnusedFunctionParameters: part of the public provisioning contract
 	user,
-	createStripeAccount = true,
 	pkey,
 	livePkey,
 	strict = false,
 }: {
 	org: Organization | BetterAuthOrganization;
-	/** Only the contact email is used, so ownerless orgs can pass a stand-in. */
+	/** The org owner's contact email. Kept for the caller's signature; the
+	 *  remaining provisioning steps don't need it. */
 	user: Pick<User, "email">;
-	createStripeAccount?: boolean;
 	pkey?: string;
 	livePkey?: string;
 	strict?: boolean;
@@ -80,28 +71,11 @@ export const provisionOrgResources = async ({
 			orgId: id,
 			updates: {
 				created_at: createdAt.getTime(),
+				default_currency: "usd",
 			},
 		});
 
-		// 1. Add stripe connect config (track the account id before the DB write
-		// so a failed write can still roll the external account back).
-		if (createStripeAccount) {
-			const stripeConnectAccount = await createConnectAccount({ org, user });
-			created.stripeAccountId = stripeConnectAccount.id;
-
-			await OrgService.update({
-				db,
-				orgId: org.id,
-				updates: {
-					default_currency: "usd",
-					test_stripe_connect: {
-						default_account_id: stripeConnectAccount.id,
-					},
-				},
-			});
-		}
-
-		// 2. Create svix webhooks
+		// 1. Create svix webhooks
 		const { sandboxApp, liveApp } = await initOrgSvixApps({ slug, id });
 		if (sandboxApp?.id) {
 			created.svixAppIds.push(sandboxApp.id);
@@ -159,13 +133,11 @@ export const provisionOrgResources = async ({
 export const afterOrgCreated = async ({
 	org,
 	user,
-	createStripeAccount = true,
 	pkey,
 	livePkey,
 }: {
 	org: Organization | BetterAuthOrganization;
 	user: User;
-	createStripeAccount?: boolean;
 	pkey?: string;
 	livePkey?: string;
 }) => {
@@ -175,7 +147,6 @@ export const afterOrgCreated = async ({
 		await provisionOrgResources({
 			org,
 			user,
-			createStripeAccount,
 			pkey,
 			livePkey,
 		});

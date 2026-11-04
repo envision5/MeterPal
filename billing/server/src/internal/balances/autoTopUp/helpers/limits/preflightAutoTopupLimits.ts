@@ -5,7 +5,6 @@ import type {
 	FullCustomer,
 	InsertAutoTopupLimitState,
 } from "@autumn/shared";
-import type Stripe from "stripe";
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
 import type { AutoTopUpPayload } from "@/queue/workflows";
 import { autoTopupLimitRepo } from "../../repos";
@@ -28,7 +27,7 @@ export const preflightAutoTopupLimits = async ({
 	payload: AutoTopUpPayload;
 	fullCustomer: FullCustomer;
 	autoTopupConfig: AutoTopup;
-	paymentMethod?: Stripe.PaymentMethod | null;
+	paymentMethod?: string | null;
 }): Promise<{
 	allowed: boolean;
 	reason?: BillingAutoTopupFailureReason;

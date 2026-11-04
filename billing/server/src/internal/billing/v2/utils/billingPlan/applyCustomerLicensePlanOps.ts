@@ -4,7 +4,7 @@ import { convergeCustomerLicense } from "@/internal/billing/v2/utils/convergeCus
 
 /** In-memory twin of the pool-converging executors: absolute paidQuantity
  * updates and same-row transitions (take/release moves never reach a
- * Stripe evaluate; cross-row successors ride their inserted rows). */
+ * the processor evaluate; cross-row successors ride their inserted rows). */
 export const applyCustomerLicensePlanOps = ({
 	customerProducts,
 	autumnBillingPlan,

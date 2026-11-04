@@ -18,7 +18,7 @@ const OrgUsageAlertsSchema = z
 		});
 	});
 
-/** Invoice-capable subset of Stripe's subscription
+/** Invoice-capable subset of the processor's subscription
  *  `payment_settings.payment_method_types`. */
 export const InvoicePaymentMethodSchema = z.enum([
 	"card",
@@ -66,8 +66,8 @@ export const OrgConfigSchema = z.object({
 
 	disable_overage_billing: z.boolean().default(false),
 
-	// disable stripe writes
-	disable_stripe_writes: z.boolean().default(false),
+	// Disable processor writes. The key keeps its original name so existing rows in
+	disable_processor_writes: z.boolean().default(false),
 
 	disabled_auto_topup: z.boolean().default(false),
 	persist_free_overage: z.boolean().default(false),
@@ -75,13 +75,13 @@ export const OrgConfigSchema = z.object({
 
 	forward_customer_metadata: z.boolean().default(false),
 
-	// When true, Stripe writes pass `automatic_tax: { enabled: true }`.
+	// When true, processor writes pass `automatic_tax: { enabled: true }`.
 	// Customer must have a tax-resolvable address.
 	automatic_tax: z.boolean().default(false),
 
 	multi_currency: z.boolean().default(false),
 
-	// Unset/null = Stripe's own invoice settings apply; never add a default.
+	// Unset/null = the processor's own invoice settings apply; never add a default.
 	allowed_payment_methods: z.array(InvoicePaymentMethodSchema).min(1).nullish(),
 
 	// Unset/null = downstream 30-day fallback applies; never add a default.

@@ -1,11 +1,9 @@
 import type { FullProduct } from "@autumn/shared";
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
-import { ProductService } from "@/internal/products/ProductService.js";
 import {
 	copyProduct,
 	type PlanCopySource,
 } from "@/internal/products/productUtils.js";
-import { initVariantsInStripe } from "@/internal/products/stripeResourceUtils/initVariantsInStripe.js";
 import { listExistingTargetPlanIds } from "./listExistingTargetPlanIds.js";
 
 /**
@@ -27,7 +25,7 @@ export const copyBaseVariants = async ({
 }): Promise<string[]> => {
 	if (variants.length === 0) return [];
 
-	const { db, logger, org: toOrg, env: toEnv } = toContext;
+	const { logger, org: toOrg, env: toEnv } = toContext;
 	const conflictingIds = await listExistingTargetPlanIds({
 		toContext,
 		planIds: variants.map((variant) => variant.id),
@@ -54,14 +52,6 @@ export const copyBaseVariants = async ({
 	}
 
 	if (copiedVariantIds.length === 0) return [];
-
-	const copiedVariants = await ProductService.listFull({
-		db,
-		orgId: toOrg.id,
-		env: toEnv,
-		inIds: copiedVariantIds,
-	});
-	await initVariantsInStripe({ ctx: toContext, products: copiedVariants });
 
 	return copiedVariantIds;
 };

@@ -37,7 +37,7 @@ openapi: "api/openapi.yml webhook billing.auto_topup_failed"
   Sanitized provider or MeterPal error metadata, when the failure came from an exception or declined charge.
   <Expandable title="properties">
     <ParamField body="code" type="string | null">
-      Machine-readable error code when one is available (for example, a Stripe or MeterPal error code).
+      Machine-readable error code when one is available (for example, a processor or MeterPal error code).
     </ParamField>
 
     <ParamField body="message" type="string | null">
@@ -49,7 +49,7 @@ openapi: "api/openapi.yml webhook billing.auto_topup_failed"
     </ParamField>
 
     <ParamField body="decline_code" type="string | null">
-      Stripe decline code when the failure came from a card decline.
+      Processor decline code when the failure came from a declined payment.
     </ParamField>
 
   </Expandable>

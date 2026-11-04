@@ -9,7 +9,6 @@ export const CUSTOMER_EXPORT_DOWNLOAD_FILE_NAMES: Record<
 	string
 > = {
 	[CustomerExportKind.Customers]: CUSTOMER_EXPORT_FILE_NAME,
-	[CustomerExportKind.BillingVerify]: "billing-issues.csv",
 };
 
 export type CustomerExportDestination = {

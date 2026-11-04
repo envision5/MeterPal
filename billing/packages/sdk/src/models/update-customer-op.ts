@@ -115,7 +115,7 @@ export type UpdateCustomerSpendLimitRequestBody = {
    */
   overageLimit?: number | undefined;
   /**
-   * When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally.
+   * When true, overage for this feature is not posted to the billing processor. Usage tracking and balance resets still behave normally.
    */
   skipOverageBilling?: boolean | undefined;
 };
@@ -374,7 +374,7 @@ export type UpdateCustomerConfigRequestBody = {
    */
   disablePooledBalance?: boolean | undefined;
   /**
-   * Stops Autumn from posting usage-overage line items to Stripe for this customer. Check/track and balance resets still behave normally. When set, this overrides the organization-level disable_overage_billing setting.
+   * Stops Autumn from posting usage-overage line items for this customer. Check/track and balance resets still behave normally. When set, this overrides the organization-level disable_overage_billing setting.
    */
   disableOverageBilling?: boolean | undefined;
 };
@@ -393,7 +393,7 @@ export type UpdateCustomerBillingDetailsAddress = {
 
 export type UpdateCustomerAddBillingDetailsTaxId = {
   /**
-   * Stripe tax ID type, e.g. eu_vat, gb_vat, us_ein. See https://docs.stripe.com/billing/customer/tax-ids#supported-tax-id
+   * Tax ID type, e.g. eu_vat, gb_vat, us_ein.
    */
   type: string;
   /**
@@ -404,7 +404,7 @@ export type UpdateCustomerAddBillingDetailsTaxId = {
 
 export type UpdateCustomerRemoveBillingDetailsTaxId = {
   /**
-   * Stripe tax ID type, e.g. eu_vat, gb_vat, us_ein. See https://docs.stripe.com/billing/customer/tax-ids#supported-tax-id
+   * Tax ID type, e.g. eu_vat, gb_vat, us_ein.
    */
   type: string;
   /**
@@ -414,7 +414,7 @@ export type UpdateCustomerRemoveBillingDetailsTaxId = {
 };
 
 /**
- * Tax IDs to add or remove (e.g. VAT). Stripe tax IDs cannot be edited, so change one by removing the old ID and adding the new one. IDs not listed are kept.
+ * Tax IDs to add or remove (e.g. VAT). Tax IDs cannot be edited, so change one by removing the old ID and adding the new one. IDs not listed are kept.
  */
 export type UpdateCustomerTaxIds = {
   /**
@@ -461,15 +461,15 @@ export type UpdateCustomerInvoiceSettings = {
 };
 
 /**
- * Billing details stored on the linked Stripe customer. Requires a Stripe customer.
+ * Billing details stored on the linked processor customer. Requires a processor customer.
  */
 export type BillingDetailsParams = {
   /**
-   * Billing address, used for tax and shown on invoices. Replaces the whole address, as in Stripe; null clears it.
+   * Billing address, used for tax and shown on invoices. Replaces the whole address; null clears it.
    */
   address?: UpdateCustomerBillingDetailsAddress | null | undefined;
   /**
-   * Tax IDs to add or remove (e.g. VAT). Stripe tax IDs cannot be edited, so change one by removing the old ID and adding the new one. IDs not listed are kept.
+   * Tax IDs to add or remove (e.g. VAT). Tax IDs cannot be edited, so change one by removing the old ID and adding the new one. IDs not listed are kept.
    */
   taxIds?: UpdateCustomerTaxIds | undefined;
   /**
@@ -500,11 +500,7 @@ export type UpdateCustomerParams = {
    * Additional metadata for the customer
    */
   metadata?: { [k: string]: any } | null | undefined;
-  /**
-   * Stripe customer ID if you already have one
-   */
-  stripeId?: string | null | undefined;
-  /**
+    /**
    * Whether to send email receipts to this customer
    */
   sendEmailReceipts?: boolean | undefined;
@@ -517,11 +513,7 @@ export type UpdateCustomerParams = {
    * Miscellaneous configurations for the customer.
    */
   config?: UpdateCustomerConfigRequestBody | undefined;
-  /**
-   * Billing details stored on the linked Stripe customer. Requires a Stripe customer.
-   */
-  billingDetails?: BillingDetailsParams | undefined;
-  /**
+    /**
    * Your unique identifier for the customer
    */
   newCustomerId?: string | undefined;
@@ -704,7 +696,7 @@ export type UpdateCustomerSpendLimitResponse = {
    */
   overageLimit?: number | undefined;
   /**
-   * When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally.
+   * When true, overage for this feature is not posted to the billing processor. Usage tracking and balance resets still behave normally.
    */
   skipOverageBilling?: boolean | undefined;
   /**
@@ -1447,23 +1439,7 @@ export type UpdateCustomerDisplay = {
   plural?: string | null | undefined;
 };
 
-export type UpdateCustomerFlagsStripe = {
-  /**
-   * Stripe product ID this feature's usage prices bill under.
-   */
-  productId?: string | undefined;
-  /**
-   * Stripe meter ID used to create this feature's metered price.
-   */
-  meterId?: string | undefined;
-};
 
-/**
- * Processor mappings for this feature. Present when a Stripe product or meter is set.
- */
-export type UpdateCustomerFlagsProcessors = {
-  stripe?: UpdateCustomerFlagsStripe | undefined;
-};
 
 /**
  * The full feature object if expanded.
@@ -1522,11 +1498,7 @@ export type UpdateCustomerFeature = {
    * Whether the feature is archived and hidden from the dashboard.
    */
   archived: boolean;
-  /**
-   * Processor mappings for this feature. Present when a Stripe product or meter is set.
-   */
-  processors?: UpdateCustomerFlagsProcessors | undefined;
-};
+  };
 
 export type UpdateCustomerFlags = {
   /**
@@ -1560,62 +1532,14 @@ export type UpdateCustomerConfigResponse = {
    */
   disablePooledBalance?: boolean | undefined;
   /**
-   * Stops Autumn from posting usage-overage line items to Stripe for this customer. Check/track and balance resets still behave normally. When set, this overrides the organization-level disable_overage_billing setting.
+   * Stops Autumn from posting usage-overage line items for this customer. Check/track and balance resets still behave normally. When set, this overrides the organization-level disable_overage_billing setting.
    */
   disableOverageBilling?: boolean | undefined;
 };
 
-/**
- * Stripe processor connection for the customer.
- */
-export type UpdateCustomerStripe = {
-  /**
-   * Stripe customer ID.
-   */
-  id: string;
-};
 
-/**
- * Vercel processor connection for the customer (public-safe subset).
- */
-export type UpdateCustomerVercel = {
-  /**
-   * Vercel marketplace installation ID for this customer.
-   */
-  installationId: string;
-  /**
-   * Vercel account ID associated with the installation.
-   */
-  accountId: string;
-};
 
-/**
- * RevenueCat processor connection for the customer.
- */
-export type UpdateCustomerRevenuecat = {
-  /**
-   * Customer's external ID, used as the RevenueCat app user ID. Null if the customer has no external ID set.
-   */
-  id: string | null;
-};
 
-/**
- * Payment processors this customer is connected to (Stripe, Vercel, RevenueCat). Omitted entirely when the customer has not been created in any processor.
- */
-export type UpdateCustomerProcessors = {
-  /**
-   * Stripe processor connection for the customer.
-   */
-  stripe?: UpdateCustomerStripe | undefined;
-  /**
-   * Vercel processor connection for the customer (public-safe subset).
-   */
-  vercel?: UpdateCustomerVercel | undefined;
-  /**
-   * RevenueCat processor connection for the customer.
-   */
-  revenuecat?: UpdateCustomerRevenuecat | undefined;
-};
 
 /**
  * OK
@@ -1641,11 +1565,7 @@ export type UpdateCustomerResponse = {
    * A unique identifier (eg. serial number) to de-duplicate customers across devices or browsers. For example: apple device ID.
    */
   fingerprint: string | null;
-  /**
-   * Stripe customer ID.
-   */
-  stripeId: string | null;
-  /**
+    /**
    * The environment this customer was created in.
    */
   env: UpdateCustomerEnv;
@@ -1685,11 +1605,7 @@ export type UpdateCustomerResponse = {
    * Configuration for the customer.
    */
   config?: UpdateCustomerConfigResponse | undefined;
-  /**
-   * Payment processors this customer is connected to (Stripe, Vercel, RevenueCat). Omitted entirely when the customer has not been created in any processor.
-   */
-  processors?: UpdateCustomerProcessors | undefined;
-};
+  };
 
 /** @internal */
 export const UpdateCustomerAutoTopupIntervalRequestBody$outboundSchema:
@@ -2542,14 +2458,12 @@ export type UpdateCustomerParams$Outbound = {
   email?: string | null | undefined;
   fingerprint?: string | null | undefined;
   metadata?: { [k: string]: any } | null | undefined;
-  stripe_id?: string | null | undefined;
   send_email_receipts?: boolean | undefined;
   currency?: string | null | undefined;
   billing_controls?:
     | UpdateCustomerBillingControlsRequestBody$Outbound
     | undefined;
   config?: UpdateCustomerConfigRequestBody$Outbound | undefined;
-  billing_details?: BillingDetailsParams$Outbound | undefined;
   new_customer_id?: string | undefined;
 };
 
@@ -2564,7 +2478,6 @@ export const UpdateCustomerParams$outboundSchema: z.ZodMiniType<
     email: z.optional(z.nullable(z.string())),
     fingerprint: z.optional(z.nullable(z.string())),
     metadata: z.optional(z.nullable(z.record(z.string(), z.any()))),
-    stripeId: z.optional(z.nullable(z.string())),
     sendEmailReceipts: z.optional(z.boolean()),
     currency: z.optional(z.nullable(z.string())),
     billingControls: z.optional(
@@ -2573,18 +2486,13 @@ export const UpdateCustomerParams$outboundSchema: z.ZodMiniType<
     config: z.optional(
       z.lazy(() => UpdateCustomerConfigRequestBody$outboundSchema),
     ),
-    billingDetails: z.optional(
-      z.lazy(() => BillingDetailsParams$outboundSchema),
-    ),
     newCustomerId: z.optional(z.string()),
   }),
   z.transform((v) => {
     return remap$(v, {
       customerId: "customer_id",
-      stripeId: "stripe_id",
       sendEmailReceipts: "send_email_receipts",
       billingControls: "billing_controls",
-      billingDetails: "billing_details",
       newCustomerId: "new_customer_id",
     });
   }),
@@ -3823,50 +3731,9 @@ export function updateCustomerDisplayFromJSON(
   );
 }
 
-/** @internal */
-export const UpdateCustomerFlagsStripe$inboundSchema: z.ZodMiniType<
-  UpdateCustomerFlagsStripe,
-  unknown
-> = z.pipe(
-  z.object({
-    product_id: types.optional(types.string()),
-    meter_id: types.optional(types.string()),
-  }),
-  z.transform((v) => {
-    return remap$(v, {
-      "product_id": "productId",
-      "meter_id": "meterId",
-    });
-  }),
-);
 
-export function updateCustomerFlagsStripeFromJSON(
-  jsonString: string,
-): SafeParseResult<UpdateCustomerFlagsStripe, SDKValidationError> {
-  return safeParse(
-    jsonString,
-    (x) => UpdateCustomerFlagsStripe$inboundSchema.parse(JSON.parse(x)),
-    `Failed to parse 'UpdateCustomerFlagsStripe' from JSON`,
-  );
-}
 
-/** @internal */
-export const UpdateCustomerFlagsProcessors$inboundSchema: z.ZodMiniType<
-  UpdateCustomerFlagsProcessors,
-  unknown
-> = z.object({
-  stripe: types.optional(z.lazy(() => UpdateCustomerFlagsStripe$inboundSchema)),
-});
 
-export function updateCustomerFlagsProcessorsFromJSON(
-  jsonString: string,
-): SafeParseResult<UpdateCustomerFlagsProcessors, SDKValidationError> {
-  return safeParse(
-    jsonString,
-    (x) => UpdateCustomerFlagsProcessors$inboundSchema.parse(JSON.parse(x)),
-    `Failed to parse 'UpdateCustomerFlagsProcessors' from JSON`,
-  );
-}
 
 /** @internal */
 export const UpdateCustomerFeature$inboundSchema: z.ZodMiniType<
@@ -3899,9 +3766,6 @@ export const UpdateCustomerFeature$inboundSchema: z.ZodMiniType<
       UpdateCustomerDisplay$inboundSchema
     )),
     archived: types.boolean(),
-    processors: types.optional(z.lazy(() =>
-      UpdateCustomerFlagsProcessors$inboundSchema
-    )),
   }),
   z.transform((v) => {
     return remap$(v, {
@@ -3982,90 +3846,13 @@ export function updateCustomerConfigResponseFromJSON(
   );
 }
 
-/** @internal */
-export const UpdateCustomerStripe$inboundSchema: z.ZodMiniType<
-  UpdateCustomerStripe,
-  unknown
-> = z.object({
-  id: types.string(),
-});
 
-export function updateCustomerStripeFromJSON(
-  jsonString: string,
-): SafeParseResult<UpdateCustomerStripe, SDKValidationError> {
-  return safeParse(
-    jsonString,
-    (x) => UpdateCustomerStripe$inboundSchema.parse(JSON.parse(x)),
-    `Failed to parse 'UpdateCustomerStripe' from JSON`,
-  );
-}
 
-/** @internal */
-export const UpdateCustomerVercel$inboundSchema: z.ZodMiniType<
-  UpdateCustomerVercel,
-  unknown
-> = z.pipe(
-  z.object({
-    installation_id: types.string(),
-    account_id: types.string(),
-  }),
-  z.transform((v) => {
-    return remap$(v, {
-      "installation_id": "installationId",
-      "account_id": "accountId",
-    });
-  }),
-);
 
-export function updateCustomerVercelFromJSON(
-  jsonString: string,
-): SafeParseResult<UpdateCustomerVercel, SDKValidationError> {
-  return safeParse(
-    jsonString,
-    (x) => UpdateCustomerVercel$inboundSchema.parse(JSON.parse(x)),
-    `Failed to parse 'UpdateCustomerVercel' from JSON`,
-  );
-}
 
-/** @internal */
-export const UpdateCustomerRevenuecat$inboundSchema: z.ZodMiniType<
-  UpdateCustomerRevenuecat,
-  unknown
-> = z.object({
-  id: types.nullable(types.string()),
-});
 
-export function updateCustomerRevenuecatFromJSON(
-  jsonString: string,
-): SafeParseResult<UpdateCustomerRevenuecat, SDKValidationError> {
-  return safeParse(
-    jsonString,
-    (x) => UpdateCustomerRevenuecat$inboundSchema.parse(JSON.parse(x)),
-    `Failed to parse 'UpdateCustomerRevenuecat' from JSON`,
-  );
-}
 
-/** @internal */
-export const UpdateCustomerProcessors$inboundSchema: z.ZodMiniType<
-  UpdateCustomerProcessors,
-  unknown
-> = z.object({
-  stripe: types.optional(z.lazy(() => UpdateCustomerStripe$inboundSchema)),
-  vercel: types.optional(z.lazy(() => UpdateCustomerVercel$inboundSchema)),
-  revenuecat: types.optional(
-    z.lazy(() => UpdateCustomerRevenuecat$inboundSchema),
-  ),
-});
 
-export function updateCustomerProcessorsFromJSON(
-  jsonString: string,
-): SafeParseResult<UpdateCustomerProcessors, SDKValidationError> {
-  return safeParse(
-    jsonString,
-    (x) => UpdateCustomerProcessors$inboundSchema.parse(JSON.parse(x)),
-    `Failed to parse 'UpdateCustomerProcessors' from JSON`,
-  );
-}
 
 /** @internal */
 export const UpdateCustomerResponse$inboundSchema: z.ZodMiniType<
@@ -4078,7 +3865,7 @@ export const UpdateCustomerResponse$inboundSchema: z.ZodMiniType<
     email: types.nullable(types.string()),
     created_at: types.number(),
     fingerprint: types.nullable(types.string()),
-    stripe_id: types.nullable(types.string()),
+    processor_invoice_id: types.nullable(types.string()),
     env: UpdateCustomerEnv$inboundSchema,
     metadata: z.record(z.string(), z.any()),
     send_email_receipts: types.boolean(),
@@ -4098,14 +3885,10 @@ export const UpdateCustomerResponse$inboundSchema: z.ZodMiniType<
     config: types.optional(
       z.lazy(() => UpdateCustomerConfigResponse$inboundSchema),
     ),
-    processors: types.optional(
-      z.lazy(() => UpdateCustomerProcessors$inboundSchema),
-    ),
   }),
   z.transform((v) => {
     return remap$(v, {
       "created_at": "createdAt",
-      "stripe_id": "stripeId",
       "send_email_receipts": "sendEmailReceipts",
       "billing_controls": "billingControls",
     });

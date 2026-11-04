@@ -21,7 +21,7 @@ export const ApiCusExpandSchema = z.object({
 	}),
 	invoice_previews: z.array(ApiInvoicePreviewV0Schema).optional().meta({
 		description:
-			"Upcoming invoice for each of this customer's Stripe subscriptions.",
+			"Upcoming invoice for each of this customer's processor subscriptions.",
 	}),
 	entities: z.array(ApiBaseEntitySchema).optional().meta({
 		description: "Entities associated with this customer.",

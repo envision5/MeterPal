@@ -24,7 +24,7 @@ const UpdateCustomerDialog = ({
 		error,
 	} = useCusBillingDetailsQuery({
 		customerId: customer_id,
-		enabled: !!selectedCustomer.processor?.id,
+		enabled: !!customer_id,
 	});
 
 	return (

@@ -32,8 +32,8 @@ openapi: "api/openapi.yml webhook billing.auto_topup_succeeded"
 <ParamField body="invoice" type="object" required>
   The invoice created for the auto top-up.
   <Expandable title="properties">
-    <ParamField body="stripe_id" type="string" required>
-      The Stripe invoice ID. Use this as a stable dedupe key.
+    <ParamField body="processor_invoice_id" type="string" required>
+      The processor invoice ID. Use this as a stable dedupe key.
     </ParamField>
 
     <ParamField body="status" type="string | null">
@@ -41,7 +41,7 @@ openapi: "api/openapi.yml webhook billing.auto_topup_succeeded"
     </ParamField>
 
     <ParamField body="total" type="number" required>
-      The total amount of the invoice in the smallest currency unit (e.g. cents for USD), matching Stripe's invoice.total.
+      The total amount of the invoice in the smallest currency unit (e.g. cents for USD), matching the processor's invoice.total.
     </ParamField>
 
     <ParamField body="currency" type="string" required>

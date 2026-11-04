@@ -1,13 +1,12 @@
 /**
- * Seeds plans, customers, discounts and templates for the Create Invoice sheet.
+ * Seeds plans, customers and invoice templates for the Create Invoice sheet.
  *
  *   bun scenario invoice [--skip-clear]
  */
-import { ApiVersion, RewardType } from "@autumn/shared";
+import { ApiVersion } from "@autumn/shared";
 
 import { items } from "@tests/utils/fixtures/items";
 import { products } from "@tests/utils/fixtures/products";
-import { createReward } from "@tests/utils/productUtils";
 import { clearOrg } from "@tests/utils/setup/clearOrg.js";
 import { ensureV2Features } from "@tests/utils/setup/setupOrg.js";
 import { createTestContext } from "@tests/utils/testInitUtils/createTestContext.js";
@@ -15,7 +14,6 @@ import { initScenario, s } from "@tests/utils/testInitUtils/initScenario";
 import { AutumnInt } from "@/external/autumn/autumnCli.js";
 import { InvoiceTemplateService } from "@/internal/orgs/invoiceTemplates/InvoiceTemplateService";
 import { generateId } from "@/utils/genUtils";
-import { constructCoupon } from "@/utils/scriptUtils/createTestProducts";
 
 const GROUP = "invoice-create";
 const PRIMARY_CUSTOMER = "inv_cus_1";
@@ -24,7 +22,6 @@ const SECOND_CUSTOMER = "inv_cus_2";
 export const runInvoiceCreateSeed = async () => {
 	const skipClear = process.argv.includes("--skip-clear");
 
-	// clearOrg resets the org's Stripe account, so build the context after it.
 	if (!skipClear) {
 		const stale = await createTestContext();
 		await clearOrg({ orgSlug: stale.org.slug, env: stale.env });
@@ -61,24 +58,10 @@ export const runInvoiceCreateSeed = async () => {
 		group: GROUP,
 	}));
 
-	// Stripe refuses a repeating coupon on a one-off invoice, so these are `forever`.
-	const percentOff = constructCoupon({
-		id: "inv-10-percent-off",
-		promoCode: "INV10",
-		discountType: RewardType.PercentageDiscount,
-		discountValue: 10,
-	});
-	const amountOff = constructCoupon({
-		id: "inv-25-dollars-off",
-		promoCode: "INV25",
-		discountType: RewardType.FixedDiscount,
-		discountValue: 25,
-	});
-
 	const { autumnV2_3 } = await initScenario({
 		customerId: PRIMARY_CUSTOMER,
 		setup: [
-			s.products({ list, prefix: "", createInStripe: false }),
+			s.products({ list, prefix: "" }),
 			s.customer({ paymentMethod: "success" }),
 			s.otherCustomers([{ id: SECOND_CUSTOMER, paymentMethod: "success" }]),
 		],
@@ -92,17 +75,6 @@ export const runInvoiceCreateSeed = async () => {
 		plan_id: licensed.id,
 		licenses: [{ license_plan_id: editor.id, included: 0 }],
 	});
-
-	// s.reward() always suffixes ids with the product prefix, which is empty here.
-	for (const reward of [percentOff, amountOff]) {
-		await createReward({
-			db: ctx.db,
-			orgId: ctx.org.id,
-			env: ctx.env,
-			autumn: autumnV2_3,
-			reward,
-		});
-	}
 
 	const templates = [
 		{
@@ -146,7 +118,6 @@ export const runInvoiceCreateSeed = async () => {
 	console.log(`   plans:     ${list.map((plan) => plan.id).join(", ")}`);
 	console.log(`   customers: ${PRIMARY_CUSTOMER}, ${SECOND_CUSTOMER}`);
 	console.log(
-		`   discounts: ${percentOff.id} (INV10), ${amountOff.id} (INV25)`,
 	);
 	console.log(`   templates: ${templates.map((t) => t.values.name).join(", ")}\n`);
 };

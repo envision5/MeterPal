@@ -92,7 +92,7 @@ console.log(\`acme-notes-api listening on :\${port}\`);
 		}),
 		integration.probeBodyHas("response carries ONE checkout URL", {
 			call: 1,
-			pattern: /https?:\/\/[^"]*(checkout|stripe|pay)[^"]*/i,
+			pattern: /https?:\/\/[^"]*(checkout|pay)[^"]*/i,
 		}),
 		integration.diffRequires("uses multiAttach for the combined purchase", {
 			pattern: /multiAttach|multi_attach/,

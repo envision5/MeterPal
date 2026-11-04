@@ -208,8 +208,7 @@ export const classifyAutoTopupError = ({
 
 	if (
 		err?.code === ErrCode.PayInvoiceFailed ||
-		err?.code === ErrCode.StripeCardDeclined ||
-		err?.code === "card_declined"
+		err?.code === ErrCode.ProcessorError
 	) {
 		return {
 			reason: "charge_failed",
@@ -217,12 +216,7 @@ export const classifyAutoTopupError = ({
 		};
 	}
 
-	if (err?.message?.includes("[computeAutoTopupPlan] Calculated amount")) {
-		return {
-			reason: "invalid_amount",
-			message: "The calculated auto top-up amount was invalid.",
-		};
-	}
+
 
 	return {
 		reason: "execution_error",

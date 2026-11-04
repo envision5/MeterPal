@@ -1,30 +1,25 @@
 import { describe, expect, test } from "bun:test";
 import {
 	type CurrencyAwarePriceConfig,
-	getAllPriceStripeIds,
-	getPriceCurrencyStripeId,
 	isBaseCurrency,
 	priceConfigForCurrency,
 	priceHasCurrencyAmounts,
-	setPriceCurrencyStripeId,
 } from "./priceCurrencyView.js";
 
 const fixedConfig = {
-	type: "fixed",
 	amount: 10,
 	interval: "month",
 	base_currency: "usd",
 	currencies: {
-		eur: { amount: 9, stripe_price_id: "price_eur" },
+		eur: { amount: 9 },
 	},
 };
 
 const usageConfig = {
-	type: "usage",
-	usage_tiers: [{ to: "inf", amount: 0.5 }],
+	usage_tiers: [{ to: "inf" as const, amount: 0.5 }],
 	base_currency: "usd",
 	currencies: {
-		eur: { usage_tiers: [{ to: "inf", amount: 0.4 }] },
+		eur: { usage_tiers: [{ to: "inf" as const, amount: 0.4 }] },
 	},
 };
 
@@ -99,155 +94,6 @@ describe("priceConfigForCurrency", () => {
 	});
 });
 
-describe("getPriceCurrencyStripeId", () => {
-	test("reads the top-level slot for the base currency", () => {
-		const config = { ...fixedConfig, stripe_price_id: "price_usd" };
-		expect(
-			getPriceCurrencyStripeId({
-				config,
-				currency: "usd",
-				orgDefault: "usd",
-				slot: "stripe_price_id",
-			}),
-		).toBe("price_usd");
-	});
-
-	test("reads the per-currency slot for a non-base currency", () => {
-		expect(
-			getPriceCurrencyStripeId({
-				config: fixedConfig,
-				currency: "eur",
-				orgDefault: "usd",
-				slot: "stripe_price_id",
-			}),
-		).toBe("price_eur");
-	});
-
-	test("undefined when the per-currency slot is unset", () => {
-		expect(
-			getPriceCurrencyStripeId({
-				config: fixedConfig,
-				currency: "gbp",
-				orgDefault: "usd",
-				slot: "stripe_price_id",
-			}),
-		).toBeUndefined();
-	});
-});
-
-describe("setPriceCurrencyStripeId", () => {
-	test("writes the top-level slot for the base currency", () => {
-		const config: CurrencyAwarePriceConfig = {
-			type: "fixed",
-			amount: 10,
-			base_currency: "usd",
-		};
-		setPriceCurrencyStripeId({
-			config,
-			currency: "usd",
-			orgDefault: "usd",
-			slot: "stripe_price_id",
-			id: "price_usd",
-		});
-		expect(config.stripe_price_id).toBe("price_usd");
-		expect(config.currencies).toBeUndefined();
-	});
-
-	test("writes the per-currency block for a non-base currency, creating it", () => {
-		const config: CurrencyAwarePriceConfig = {
-			type: "fixed",
-			amount: 10,
-			base_currency: "usd",
-		};
-		setPriceCurrencyStripeId({
-			config,
-			currency: "eur",
-			orgDefault: "usd",
-			slot: "stripe_price_id",
-			id: "price_eur",
-		});
-		expect(config.currencies?.eur?.stripe_price_id).toBe("price_eur");
-		expect(config.stripe_price_id).toBeUndefined();
-	});
-
-	test("preserves an existing per-currency amount when writing an id", () => {
-		const config: CurrencyAwarePriceConfig = {
-			type: "fixed",
-			amount: 10,
-			base_currency: "usd",
-			currencies: { eur: { amount: 9 } },
-		};
-		setPriceCurrencyStripeId({
-			config,
-			currency: "eur",
-			orgDefault: "usd",
-			slot: "stripe_price_id",
-			id: "price_eur",
-		});
-		expect(config.currencies?.eur?.amount).toBe(9);
-		expect(config.currencies?.eur?.stripe_price_id).toBe("price_eur");
-	});
-
-	test("a nullish id clears the top-level slot for the base currency", () => {
-		const config: CurrencyAwarePriceConfig = {
-			base_currency: "usd",
-			stripe_price_id: "stale",
-		};
-		setPriceCurrencyStripeId({
-			config,
-			currency: "usd",
-			orgDefault: "usd",
-			slot: "stripe_price_id",
-			id: undefined,
-		});
-		expect(config.stripe_price_id).toBeUndefined();
-	});
-
-	test("a nullish id is a no-op for a non-base currency with no existing block", () => {
-		const config: CurrencyAwarePriceConfig = { base_currency: "usd" };
-		setPriceCurrencyStripeId({
-			config,
-			currency: "eur",
-			orgDefault: "usd",
-			slot: "stripe_price_id",
-			id: undefined,
-		});
-		expect(config.currencies).toBeUndefined();
-	});
-});
-
-describe("getAllPriceStripeIds", () => {
-	test("collects top-level and per-currency ids across all currencies", () => {
-		const config: CurrencyAwarePriceConfig = {
-			base_currency: "usd",
-			stripe_price_id: "price_usd",
-			stripe_empty_price_id: "price_usd_empty",
-			currencies: {
-				eur: {
-					stripe_price_id: "price_eur",
-					stripe_prepaid_price_v2_id: "price_eur_v2",
-				},
-				gbp: { stripe_price_id: "price_gbp" },
-			},
-		};
-		expect(getAllPriceStripeIds({ config }).sort()).toEqual(
-			[
-				"price_eur",
-				"price_eur_v2",
-				"price_gbp",
-				"price_usd",
-				"price_usd_empty",
-			].sort(),
-		);
-	});
-
-	test("single-currency config returns just the top-level ids", () => {
-		expect(
-			getAllPriceStripeIds({ config: { stripe_price_id: "price_usd" } }),
-		).toEqual(["price_usd"]);
-	});
-});
-
 describe("priceHasCurrencyAmounts", () => {
 	const base = { base_currency: "usd" };
 
@@ -273,10 +119,10 @@ describe("priceHasCurrencyAmounts", () => {
 		).toBe(false);
 	});
 
-	test("false for an id-only block (no amounts)", () => {
+	test("false for an empty block (no amounts)", () => {
 		const config: CurrencyAwarePriceConfig = {
 			...base,
-			currencies: { eur: { stripe_price_id: "price_eur" } },
+			currencies: { eur: {} },
 		};
 		expect(
 			priceHasCurrencyAmounts({

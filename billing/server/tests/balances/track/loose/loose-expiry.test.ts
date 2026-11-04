@@ -4,7 +4,7 @@ import { TestFeature } from "@tests/setup/v2Features.js";
 import ctx from "@tests/utils/testInitUtils/createTestContext.js";
 import chalk from "chalk";
 import { AutumnInt } from "@/external/autumn/autumnCli.js";
-import { initCustomerV3 } from "@/utils/scriptUtils/testUtils/initCustomerV3.js";
+import { initTestCustomer } from "@tests/utils/testInitUtils/initTestCustomer.js";
 
 /**
  * Sleep until a specific epoch time in milliseconds
@@ -28,10 +28,9 @@ describe(`${chalk.yellowBright("loose-expiry: track with expiring loose entitlem
 	let expiresAt: number;
 
 	beforeAll(async () => {
-		await initCustomerV3({
+		await initTestCustomer({
 			ctx,
 			customerId,
-			withTestClock: false,
 		});
 
 		// Set expiry to 3 seconds from now
@@ -92,10 +91,9 @@ describe(`${chalk.yellowBright("loose-expiry-mixed: mixed expiring and non-expir
 	let expiresAt: number;
 
 	beforeAll(async () => {
-		await initCustomerV3({
+		await initTestCustomer({
 			ctx,
 			customerId,
-			withTestClock: false,
 		});
 
 		// Set expiry to 3 seconds from now

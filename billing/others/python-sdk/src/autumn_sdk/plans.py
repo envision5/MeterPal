@@ -51,7 +51,6 @@ class Plans(BaseSDK):
             ]
         ] = None,
         metadata: Optional[Dict[str, Any]] = None,
-        create_in_stripe: Optional[bool] = True,
         retries: OptionalNullable[utils.RetryConfig] = UNSET,
         server_url: Optional[str] = None,
         timeout_ms: Optional[int] = None,
@@ -76,7 +75,6 @@ class Plans(BaseSDK):
         :param config: Miscellaneous plan-level configuration flags.
         :param billing_controls: Plan-level billing controls used as customer defaults.
         :param metadata: Arbitrary key-value metadata defined by you for your own use (e.g. UI copy, feature highlights). Values can be any JSON-serializable value. Shared across all versions of the plan.
-        :param create_in_stripe:
         :param retries: Override the default retry configuration for this method
         :param server_url: Override the default server URL for this method
         :param timeout_ms: Override the default request timeout configuration for this method in milliseconds
@@ -118,7 +116,6 @@ class Plans(BaseSDK):
                 billing_controls, Optional[models.CreatePlanBillingControlsRequestBody]
             ),
             metadata=metadata,
-            create_in_stripe=create_in_stripe,
         )
 
         req = self._build_request(
@@ -222,7 +219,6 @@ class Plans(BaseSDK):
             ]
         ] = None,
         metadata: Optional[Dict[str, Any]] = None,
-        create_in_stripe: Optional[bool] = True,
         retries: OptionalNullable[utils.RetryConfig] = UNSET,
         server_url: Optional[str] = None,
         timeout_ms: Optional[int] = None,
@@ -247,7 +243,6 @@ class Plans(BaseSDK):
         :param config: Miscellaneous plan-level configuration flags.
         :param billing_controls: Plan-level billing controls used as customer defaults.
         :param metadata: Arbitrary key-value metadata defined by you for your own use (e.g. UI copy, feature highlights). Values can be any JSON-serializable value. Shared across all versions of the plan.
-        :param create_in_stripe:
         :param retries: Override the default retry configuration for this method
         :param server_url: Override the default server URL for this method
         :param timeout_ms: Override the default request timeout configuration for this method in milliseconds
@@ -289,7 +284,6 @@ class Plans(BaseSDK):
                 billing_controls, Optional[models.CreatePlanBillingControlsRequestBody]
             ),
             metadata=metadata,
-            create_in_stripe=create_in_stripe,
         )
 
         req = self._build_request_async(
@@ -782,7 +776,6 @@ class Plans(BaseSDK):
             ]
         ] = None,
         metadata: Optional[Dict[str, Any]] = None,
-        create_in_stripe: Optional[bool] = True,
         version: Optional[float] = None,
         archived: Optional[bool] = False,
         base_plan_id: OptionalNullable[str] = UNSET,
@@ -828,7 +821,6 @@ class Plans(BaseSDK):
         :param config: Miscellaneous plan-level configuration flags.
         :param billing_controls: Plan-level billing controls used as customer defaults.
         :param metadata: Arbitrary key-value metadata defined by you for your own use (e.g. UI copy, feature highlights). Values can be any JSON-serializable value. Shared across all versions of the plan.
-        :param create_in_stripe:
         :param version:
         :param archived:
         :param base_plan_id: The base plan this plan should be linked to as a variant. Set to null to detach it from its base plan.
@@ -883,7 +875,6 @@ class Plans(BaseSDK):
                 billing_controls, Optional[models.UpdatePlanBillingControlsRequestBody]
             ),
             metadata=metadata,
-            create_in_stripe=create_in_stripe,
             version=version,
             archived=archived,
             base_plan_id=base_plan_id,
@@ -1006,7 +997,6 @@ class Plans(BaseSDK):
             ]
         ] = None,
         metadata: Optional[Dict[str, Any]] = None,
-        create_in_stripe: Optional[bool] = True,
         version: Optional[float] = None,
         archived: Optional[bool] = False,
         base_plan_id: OptionalNullable[str] = UNSET,
@@ -1052,7 +1042,6 @@ class Plans(BaseSDK):
         :param config: Miscellaneous plan-level configuration flags.
         :param billing_controls: Plan-level billing controls used as customer defaults.
         :param metadata: Arbitrary key-value metadata defined by you for your own use (e.g. UI copy, feature highlights). Values can be any JSON-serializable value. Shared across all versions of the plan.
-        :param create_in_stripe:
         :param version:
         :param archived:
         :param base_plan_id: The base plan this plan should be linked to as a variant. Set to null to detach it from its base plan.
@@ -1107,7 +1096,6 @@ class Plans(BaseSDK):
                 billing_controls, Optional[models.UpdatePlanBillingControlsRequestBody]
             ),
             metadata=metadata,
-            create_in_stripe=create_in_stripe,
             version=version,
             archived=archived,
             base_plan_id=base_plan_id,

@@ -5,7 +5,7 @@ export const SubscriptionParamsSchema = z
 	.meta({
 		title: "SubscriptionParams",
 		description:
-			"Additional parameters to pass into the Stripe subscription update or cancel call.",
+			"Additional parameters to pass into the processor subscription update or cancel call.",
 	});
 
 export type SubscriptionParams = z.infer<typeof SubscriptionParamsSchema>;

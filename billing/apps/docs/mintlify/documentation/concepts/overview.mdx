@@ -81,10 +81,10 @@ Plan items are where the "what" (features) meets the "how much" (pricing).
 
 ## Subscriptions
 
-When you attach a plan to a customer, MeterPal creates a Stripe subscription under the hood and provisions balances for each feature in the plan. Subscriptions track status (active, trialing, past_due, etc.) and handle the payment lifecycle.
+When you attach a plan to a customer, MeterPal creates a subscription with the payment processor under the hood and provisions balances for each feature in the plan. Subscriptions track status (active, trialing, past_due, etc.) and handle the payment lifecycle.
 
 <Card title="Subscriptions" icon="arrows-repeat" href="/documentation/concepts/subscriptions">
-  How MeterPal manages Stripe subscriptions
+  How MeterPal manages subscriptions
 </Card>
 
 ## Balances
@@ -108,7 +108,7 @@ Model your pricing plans in the MeterPal UI, or through a config file. Define yo
 You can link features to these plans and define their usage limits: both recurring (monthly, yearly), one-time top ups, rollovers, etc.
 </Step>
 <Step title="Handle payments">
-The [attach](/api-reference/billing/attach) endpoint subscribes a customer to a plan or purchases a one-time product. It handles new subscriptions, upgrades, downgrades and add-ons — creating the Stripe subscription and provisioning balances automatically.
+The [attach](/api-reference/billing/attach) endpoint subscribes a customer to a plan or purchases a one-time product. It handles new subscriptions, upgrades, downgrades and add-ons — creating the processor subscription and provisioning balances automatically.
 
 Once paid, MeterPal grants access to the features on their plan.
 </Step>
@@ -122,4 +122,4 @@ If the customer is allowed access, let them use the feature. Afterwards, [track]
 </Step>
 </Steps>
 
-MeterPal also provides endpoints to [get customer billing data](/api-reference/customers/getOrCreateCustomer) (subscriptions, balances, invoices, payment methods), open Stripe billing portal, display usage analytics, handle org billing, and more.
+MeterPal also provides endpoints to [get customer billing data](/api-reference/customers/getOrCreateCustomer) (subscriptions, balances, invoices, payment methods), open the billing portal, display usage analytics, handle org billing, and more.

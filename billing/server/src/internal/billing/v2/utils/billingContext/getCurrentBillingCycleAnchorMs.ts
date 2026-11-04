@@ -1,14 +1,13 @@
-import { secondsToMs } from "@autumn/shared";
-import type { BillingContext } from "@autumn/shared";
+import type { BillingContext, FullCusProduct } from "@autumn/shared";
 
 export const getCurrentBillingCycleAnchorMs = ({
 	billingContext,
 }: {
-	billingContext: BillingContext;
+	billingContext: BillingContext & { customerProduct?: FullCusProduct };
 }) => {
-	const { stripeSubscription } = billingContext;
+	// The anchor lives on the customer product row — the v2 engine never holds a
+	// processor subscription.
+	const billingCycleAnchorMs = billingContext.customerProduct?.billing_cycle_anchor;
 
-	return stripeSubscription?.billing_cycle_anchor
-		? secondsToMs(stripeSubscription.billing_cycle_anchor)
-		: "now";
+	return billingCycleAnchorMs ?? "now";
 };

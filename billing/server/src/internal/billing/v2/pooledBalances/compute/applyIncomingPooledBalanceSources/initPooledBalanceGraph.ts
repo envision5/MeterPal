@@ -110,7 +110,7 @@ export const initPooledBalanceGraph = ({
 			interval_count: identity.intervalCount,
 			reset_cycle_anchor: identity.resetCycleAnchor,
 			reset_mode: identity.resetMode,
-			stripe_subscription_id: identity.stripeSubscriptionId,
+			processor_subscription_id: identity.processorSubscriptionId,
 			customer_license_link_id: identity.customerLicenseLinkId,
 			rollover_signature: identity.rolloverSignature,
 			customer_entitlement_id: customerEntitlementId,

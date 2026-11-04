@@ -24,7 +24,7 @@ export const ExtUpdateSubscriptionV1ParamsSchema =
 		}),
 		discounts: z.array(AttachDiscountSchema).optional().meta({
 			description:
-				"List of discounts to apply. Each discount can be an Autumn reward ID, Stripe coupon ID, or Stripe promotion code.",
+				"List of discounts to apply. Each discount can be an Autumn reward ID or a promotion code.",
 		}),
 		remove_discounts: RemoveDiscountsSchema.optional().meta({
 			description:
@@ -50,7 +50,7 @@ export const ExtUpdateSubscriptionV1ParamsSchema =
 		no_billing_changes: z.boolean().optional().meta({
 			// internal: true,
 			description:
-				"If true, the subscription is updated internally without applying billing changes in Stripe.",
+				"If true, the subscription is updated internally without applying billing changes to the processor.",
 		}),
 
 		refund_last_payment: RefundLastPaymentSchema.optional(),

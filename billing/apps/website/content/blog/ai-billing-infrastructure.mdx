@@ -159,9 +159,9 @@ In addition to a static value, every balance row can have a reset cycle and an e
 
 A **reset** is a recurring grant refreshing: the balance returns to its granted allowance at the start of each cycle. An **expiry** is credits disappearing permanently. A **rollover** is just the two composed: leftover balance at a reset converts into a new bucket with its own expiry, rather than vanishing. There are a few ways to design this:
 
-#### Stripe webhooks
+#### Processor webhooks
 
-The simplest way to handle credit resets and expiry would be to listen to Stripe's webhooks, such as `invoice.paid` or `invoice.created`. This approach is great because it ties credits directly to when the subscription renews, which minimizes drift.
+The simplest way to handle credit resets and expiry would be to listen to the payment processor's webhooks, such as `invoice.paid` or `invoice.created`. This approach is great because it ties credits directly to when the subscription renews, which minimizes drift.
 
 However, it offers limited customizability. For instance, it won't work if your users are on an annual subscription but have their credits reset monthly, or you grant credits on a different cycle (eg, 5 hour rate limits).
 
@@ -177,7 +177,7 @@ The final way you can handle resets is through a lazy strategy. Every time you f
 
 Lazy resets tend to age the best and work well in most cases, but the downside is that you don't have an accurate trigger for when credits are reset, and so aren't able to perform actions like sending out notifications to users when their credits refresh.
 
-In practise, you'll likely end up using multiple of these techniques. At MeterPal, for posting overage bills to Stripe invoices, we have to rely on their webhooks. For sending events and emails (`balance.reset`), we'll use a cron. For most standard balance resets, we'll use the lazy approach. We have guards in place to make sure resets stay aligned with the billing cycle.
+In practise, you'll likely end up using multiple of these techniques. At MeterPal, for posting overage bills to processor invoices, we have to rely on their webhooks. For sending events and emails (`balance.reset`), we'll use a cron. For most standard balance resets, we'll use the lazy approach. We have guards in place to make sure resets stay aligned with the billing cycle.
 
 ## Analytics and Reporting
 

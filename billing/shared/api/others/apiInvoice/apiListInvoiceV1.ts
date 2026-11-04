@@ -28,7 +28,7 @@ export const ApiListInvoiceV1Schema = ApiInvoiceV1Schema.extend({
 	}),
 	items: z.array(ApiInvoiceItemSchema).optional().meta({
 		description:
-			"Line items on the invoice, one per line as shown in Stripe. Capped at 100. Empty for invoices recorded before line item storage.",
+			"Line items on the invoice, one per line as shown on the hosted invoice page. Capped at 100. Empty for invoices recorded before line item storage.",
 	}),
 });
 

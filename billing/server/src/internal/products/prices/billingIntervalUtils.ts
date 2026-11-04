@@ -254,7 +254,7 @@ const subtractFromUnixTillAligned = ({
 
 // Subtracts an interval from a period end, preserving anchor-based end-of-month behavior
 // Uses the anchor date (unixTimestamp) to determine if end-of-month logic should apply
-// e.g. Sep 30 anchor -> Aug 30, Jul 30, Feb 28/29 (follows Stripe behavior)
+// e.g. Sep 30 anchor -> Aug 30, Jul 30, Feb 28/29 (follows the billing anchor behavior)
 export const subtractIntervalForProration = ({
 	unixTimestamp,
 	interval,
@@ -289,7 +289,7 @@ export const subtractIntervalForProration = ({
 		).getDate();
 
 		// If the anchor day doesn't exist in the target month, go to the last day of that month
-		// This follows Stripe's behavior: Sep 30 -> Feb 28, Jul 31 -> Feb 28, etc.
+		// This follows the billing anchor behavior: Sep 30 -> Feb 28, Jul 31 -> Feb 28, etc.
 		const targetDay = Math.min(anchorDay, lastDayOfTargetMonth);
 		return new UTCDate(setDate(d, targetDay).getTime());
 	};
@@ -332,7 +332,7 @@ export const subtractIntervalForProration = ({
 
 // Adds an interval to a period start, preserving anchor-based end-of-month behavior
 // Uses the anchor date (unixTimestamp) to determine if end-of-month logic should apply
-// e.g. Sep 30 anchor -> Oct 30, Nov 30, Feb 28/29 (follows Stripe behavior)
+// e.g. Sep 30 anchor -> Oct 30, Nov 30, Feb 28/29 (follows the billing anchor behavior)
 export const addIntervalForProration = ({
 	unixTimestamp,
 	intervalConfig,
@@ -368,7 +368,7 @@ export const addIntervalForProration = ({
 		).getDate();
 
 		// If the anchor day doesn't exist in the target month, go to the last day of that month
-		// This follows Stripe's behavior: Sep 30 -> Feb 28, Jul 31 -> Feb 28, etc.
+		// This follows the billing anchor behavior: Sep 30 -> Feb 28, Jul 31 -> Feb 28, etc.
 		const targetDay = Math.min(anchorDay, lastDayOfTargetMonth);
 		return new UTCDate(setDate(d, targetDay).getTime());
 	};

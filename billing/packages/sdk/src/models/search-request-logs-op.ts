@@ -45,14 +45,14 @@ export type SearchRequestLogsParams = {
 };
 
 /**
- * Whether this was an API request or an incoming Stripe webhook.
+ * Whether this was an API request or an incoming processor webhook.
  */
 export const SearchRequestLogsSource = {
   ApiRequest: "api_request",
-  StripeWebhook: "stripe_webhook",
+  ProcessorWebhook: "processor_webhook",
 } as const;
 /**
- * Whether this was an API request or an incoming Stripe webhook.
+ * Whether this was an API request or an incoming processor webhook.
  */
 export type SearchRequestLogsSource = OpenEnum<typeof SearchRequestLogsSource>;
 
@@ -105,19 +105,19 @@ export type Context = {
 };
 
 /**
- * Stripe webhook details. Fields are null for API requests.
+ * Processor webhook details. Fields are null for API requests.
  */
-export type SearchRequestLogsStripe = {
+export type SearchRequestLogsProcessor = {
   /**
-   * Stripe event ID, if this was a Stripe webhook.
+   * Processor event ID, if this was a processor webhook.
    */
   eventId: string | null;
   /**
-   * Stripe event type, such as customer.subscription.updated.
+   * Processor event type, such as customer.subscription.updated.
    */
   eventType: string | null;
   /**
-   * ID of the Stripe object the event refers to.
+   * ID of the processor object the event refers to.
    */
   objectId: string | null;
 };
@@ -128,7 +128,7 @@ export type SearchRequestLogsList = {
    */
   timestamp: string;
   /**
-   * Whether this was an API request or an incoming Stripe webhook.
+   * Whether this was an API request or an incoming processor webhook.
    */
   source: SearchRequestLogsSource;
   /**
@@ -144,9 +144,9 @@ export type SearchRequestLogsList = {
    */
   context: Context;
   /**
-   * Stripe webhook details. Fields are null for API requests.
+   * Processor webhook details. Fields are null for API requests.
    */
-  stripe: SearchRequestLogsStripe;
+  processor: SearchRequestLogsProcessor;
   /**
    * Recorded request body, or null if unavailable.
    */
@@ -278,8 +278,8 @@ export function contextFromJSON(
 }
 
 /** @internal */
-export const SearchRequestLogsStripe$inboundSchema: z.ZodMiniType<
-  SearchRequestLogsStripe,
+export const SearchRequestLogsProcessor$inboundSchema: z.ZodMiniType<
+  SearchRequestLogsProcessor,
   unknown
 > = z.pipe(
   z.object({
@@ -296,13 +296,13 @@ export const SearchRequestLogsStripe$inboundSchema: z.ZodMiniType<
   }),
 );
 
-export function searchRequestLogsStripeFromJSON(
+export function searchRequestLogsProcessorFromJSON(
   jsonString: string,
-): SafeParseResult<SearchRequestLogsStripe, SDKValidationError> {
+): SafeParseResult<SearchRequestLogsProcessor, SDKValidationError> {
   return safeParse(
     jsonString,
-    (x) => SearchRequestLogsStripe$inboundSchema.parse(JSON.parse(x)),
-    `Failed to parse 'SearchRequestLogsStripe' from JSON`,
+    (x) => SearchRequestLogsProcessor$inboundSchema.parse(JSON.parse(x)),
+    `Failed to parse 'SearchRequestLogsProcessor' from JSON`,
   );
 }
 
@@ -317,7 +317,7 @@ export const SearchRequestLogsList$inboundSchema: z.ZodMiniType<
     status_code: types.number(),
     request: z.lazy(() => RequestT$inboundSchema),
     context: z.lazy(() => Context$inboundSchema),
-    stripe: z.lazy(() => SearchRequestLogsStripe$inboundSchema),
+    processor: z.lazy(() => SearchRequestLogsProcessor$inboundSchema),
     request_body: z.optional(z.nullable(z.any())),
     response_body: z.optional(z.nullable(z.any())),
   }),

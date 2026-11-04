@@ -13,8 +13,8 @@ import { featureToCreditSystem } from "@/internal/features/creditSystemUtils.js"
 import { timeout } from "@/utils/genUtils.js";
 import { constructFeatureItem } from "@/utils/scriptUtils/constructItem.js";
 import { constructProduct } from "@/utils/scriptUtils/createTestProducts.js";
-import { initCustomerV3 } from "@/utils/scriptUtils/testUtils/initCustomerV3.js";
-import { initProductsV0 } from "@/utils/scriptUtils/testUtils/initProductsV0.js";
+import { initTestCustomer } from "@tests/utils/testInitUtils/initTestCustomer.js";
+import { initTestProducts } from "@tests/utils/testInitUtils/initTestProducts.js";
 
 const action1Feature = constructFeatureItem({
 	featureId: TestFeature.Action1,
@@ -40,14 +40,12 @@ describe(`${chalk.yellowBright("credit-systems3: test /check fallback from meter
 	const creditFeature = ctx.features.find((f) => f.id === TestFeature.Credits);
 
 	beforeAll(async () => {
-		await initCustomerV3({
+		await initTestCustomer({
 			ctx,
 			customerId,
-			attachPm: "success",
-			withTestClock: false,
 		});
 
-		await initProductsV0({
+		await initTestProducts({
 			ctx,
 			products: [proProd],
 			prefix: testCase,

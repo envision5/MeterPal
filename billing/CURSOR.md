@@ -34,12 +34,12 @@ via `applyCloudAgentDevEnv` (Postgres `:5432`, one Redis `:6379`, ElasticMQ
 Do not pin dummy `AWS_ACCESS_KEY_ID=x` either — ElasticMQ is fine with
 Infisical keys; dummy keys make S3 edge-config fail.
 `agent-services.sh` CreateQueue-s `autumn.fifo`, `autumn-track.fifo`,
-`autumn-track-async`, and `autumn-stripe-webhook.fifo` (snapshot conf may
+`autumn-track-async` (snapshot conf may
 only have `autumn.fifo`).
 
 ```sh
 bun dw          # provision-if-needed is a no-op without Neon; starts the app
-bun dw run      # same stack; stripe listen attaches when STRIPE_SANDBOX_SECRET_KEY is present
+bun dw run      # same stack
 bun dw setup    # bun install + ai submodule sync; no Neon/Docker
 bun dw identify # URLs / ports
 ```
@@ -155,20 +155,6 @@ on Cloud. Do not overwrite `node_modules/.bin/infisical`.
 
 Localhost DB/Redis/SQS come from `bun dw` Cloud-agent mode, not a Cloud overlay file.
 The vault is **not** dumped to disk.
-
-## Stripe webhooks
-
-`scripts/dev.ts` starts `stripe listen --forward-connect-to http://localhost:8080/webhooks/connect/sandbox`
-when the Stripe CLI is installed and `STRIPE_SANDBOX_SECRET_KEY` is present (from Infisical).
-Stripe's CLI opens an outbound tunnel — **no public URL / port-forward
-required** for webhooks. This is attached by `bun dw` / `bun dw run`.
-
-`STRIPE_WEBHOOK_SKIP_VERIFY=true` is set by `applyCloudAgentDevEnv` because the
-CLI's `whsec_` is not the Infisical dashboard endpoint secret. Signature skip is
-localhost-only.
-
-If the CLI is present but the sandbox key is missing, `CLOUD_AGENT=1` skips
-`stripe listen` instead of killing the whole stack.
 
 ## Opening the dashboard from your laptop
 

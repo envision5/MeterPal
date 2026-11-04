@@ -478,7 +478,7 @@ test("includeMappings drops processors by default and keeps them when set", asyn
 		...messagesRow,
 		id: "api_calls",
 		name: "API Calls",
-		processors: { stripe: { productId: "prod_123", meterId: "meter_456" } },
+		processors: { paypal: { productId: "prod_123", meterId: "meter_456" } },
 	};
 	const preview = { features: [{ featureId: "api_calls", action: "delete" }] };
 	const catalog = { features: [row], plans: [] };
@@ -537,7 +537,7 @@ test("includeMappings drops processors by default and keeps them when set", asyn
 	expect(onText).toContain(
 		[
 			"\t\t\tprocessors: {",
-			"\t\t\t\tstripe: {",
+			"\t\t\t\tpaypal: {",
 			'\t\t\t\t\tproductId: "prod_123",',
 			'\t\t\t\t\tmeterId: "meter_456",',
 			"\t\t\t\t},",
@@ -554,7 +554,7 @@ test("includeMappings drops processors by default and keeps them when set", asyn
 		consumable: true,
 		feature_id: "api_calls",
 		processors: {
-			stripe: { product_id: "prod_123", meter_id: "meter_456" },
+			paypal: { product_id: "prod_123", meter_id: "meter_456" },
 		},
 	});
 });

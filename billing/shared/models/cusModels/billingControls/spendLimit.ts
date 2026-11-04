@@ -21,7 +21,7 @@ export const DbSpendLimitSchema = z
 		}),
 		skip_overage_billing: z.boolean().optional().meta({
 			description:
-				"When true, overage for this feature is not posted to Stripe. Usage tracking and balance resets still behave normally.",
+				"When true, overage for this feature is not posted to the billing processor. Usage tracking and balance resets still behave normally.",
 		}),
 	})
 	.refine(

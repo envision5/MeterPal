@@ -88,7 +88,7 @@ products
   base_internal_product_id:  "prod_team_v2" ──► products.internal_id
                                                 ALWAYS the latest base ROW
   base_variant_id:           "team"             LEGACY plan-id string
-                                                (Stripe / yearly). Do not use.
+                                                (legacy / yearly). Do not use.
 ```
 
 `FullProduct.variants` is children pointing at **this row**, not the whole

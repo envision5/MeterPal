@@ -1,9 +1,7 @@
 import { ErrCode, type Subscription, subscriptions } from "@autumn/shared";
 import type { DrizzleCli } from "@server/db/initDrizzle.js";
-import { subToPeriodStartEnd } from "@server/external/stripe/stripeSubUtils/convertSubUtils.js";
 import RecaseError from "@server/utils/errorUtils.js";
 import { eq, inArray } from "drizzle-orm";
-import type Stripe from "stripe";
 
 export class SubService {
 	static async createSub({ db, sub }: { db: DrizzleCli; sub: Subscription }) {
@@ -22,8 +20,8 @@ export class SubService {
 
 	/**
 	 * Insert, or return null when a concurrent writer already claimed the
-	 * stripe id. Callers that check-then-insert must handle the null by
-	 * re-reading — two Stripe webhooks for one subscription arrive in parallel.
+	 * processor id. Callers that check-then-insert must handle the null by
+	 * re-reading — two webhooks for one subscription arrive in parallel.
 	 */
 	static async createSubIfAbsent({
 		db,
@@ -57,116 +55,42 @@ export class SubService {
 			.returning();
 	}
 
-	static async updateFromStripe({
+	static async getInProcessorIds({
 		db,
-		stripeSub,
+		ids,
 	}: {
 		db: DrizzleCli;
-		stripeSub: Stripe.Subscription;
+		ids: string[];
 	}) {
-		const { start, end } = subToPeriodStartEnd({ sub: stripeSub });
-		const results = await db
-			.update(subscriptions)
-			.set({
-				current_period_start: start,
-				current_period_end: end,
-				billing_cycle_anchor_seconds: stripeSub.billing_cycle_anchor,
-			})
-			.where(eq(subscriptions.stripe_id, stripeSub.id))
-			.returning();
-
-		if (results.length === 0) {
-			return null;
-		}
-
-		return results[0] as Subscription;
-	}
-
-	static async getFromScheduleId({
-		db,
-		scheduleId,
-	}: {
-		db: DrizzleCli;
-		scheduleId: string;
-	}) {
-		const data = await db
-			.select()
-			.from(subscriptions)
-			.where(eq(subscriptions.stripe_schedule_id, scheduleId));
-
-		if (data.length === 0) {
-			return null;
-		}
-
-		return data[0] as Subscription;
-	}
-
-	static async deleteFromScheduleId({
-		db,
-		scheduleId,
-	}: {
-		db: DrizzleCli;
-		scheduleId: string;
-	}) {
-		await db
-			.delete(subscriptions)
-			.where(eq(subscriptions.stripe_schedule_id, scheduleId));
-
-		return;
-	}
-
-	static async updateFromScheduleId({
-		db,
-		scheduleId,
-		updates,
-	}: {
-		db: DrizzleCli;
-		scheduleId: string;
-		updates: any;
-	}) {
-		const results = await db
-			.update(subscriptions)
-			.set(updates)
-			.where(eq(subscriptions.stripe_schedule_id, scheduleId))
-			.returning();
-
-		if (results.length === 0) {
-			return null;
-		}
-
-		return results[0] as Subscription;
-	}
-
-	static async getInStripeIds({ db, ids }: { db: DrizzleCli; ids: string[] }) {
 		return (await db
 			.select()
 			.from(subscriptions)
-			.where(inArray(subscriptions.stripe_id, ids))) as Subscription[];
+			.where(inArray(subscriptions.processor_id, ids))) as Subscription[];
 	}
 
-	static async getByStripeId({
+	static async getByProcessorId({
 		db,
-		stripeId,
+		processorId,
 	}: {
 		db: DrizzleCli;
-		stripeId: string;
+		processorId: string;
 	}) {
 		return await db.query.subscriptions.findFirst({
-			where: eq(subscriptions.stripe_id, stripeId),
+			where: eq(subscriptions.processor_id, processorId),
 		});
 	}
 
-	static async upsertByStripeId({
+	static async upsertByProcessorId({
 		db,
 		subscription,
 	}: {
 		db: DrizzleCli;
 		subscription: Subscription;
 	}) {
-		// 1. Get by stripe ID
-		const existingSub = await SubService.getByStripeId({
+		// 1. Get by processor ID
+		const existingSub = await SubService.getByProcessorId({
 			db,
-			stripeId: subscription.stripe_id ?? "",
+			processorId: subscription.processor_id ?? "",
 		});
 
 		const periodUpdates = {
@@ -191,9 +115,9 @@ export class SubService {
 		if (createdSub) return createdSub;
 
 		// A concurrent webhook inserted it between the read and the write.
-		const winningSub = await SubService.getByStripeId({
+		const winningSub = await SubService.getByProcessorId({
 			db,
-			stripeId: subscription.stripe_id ?? "",
+			processorId: subscription.processor_id ?? "",
 		});
 
 		if (!winningSub) {

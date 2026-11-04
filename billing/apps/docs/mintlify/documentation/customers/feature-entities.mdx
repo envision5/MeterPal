@@ -9,7 +9,7 @@ Entities are sub accounts of a customer. For example, you may have a product tha
 
 An entity can hold its own plan, with its own balances, while the parent customer pays. There are two ways to provision that, differing in where capacity comes from:
 
-1. **Attach directly**: pass the [entity ID](/api-reference/billing/attach#body-entity-id) into an attach call. The entity gets its own subscription in Stripe, with billing cycles synced to the parent. Use this when entities appear and you bill for them as they do.
+1. **Attach directly**: pass the [entity ID](/api-reference/billing/attach#body-entity-id) into an attach call. The entity gets its own subscription with the payment processor, with billing cycles synced to the parent. Use this when entities appear and you bill for them as they do.
 2. **Licenses**: the parent plan offers a pool of seats that the customer buys upfront, and you assign one to an entity to give it its plan. Use this when customers commit to a seat count before you know who fills it.
 
 Both support different tiers per entity. See [entity plans](/documentation/modelling-pricing/entity-plans) for the full setup of either.

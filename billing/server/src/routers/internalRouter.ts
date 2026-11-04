@@ -15,7 +15,6 @@ import { internalAnalyticsRouter } from "../internal/analytics/internalAnalytics
 import { chatRouter } from "../internal/chat/chatRouter";
 import { internalCusRouter } from "../internal/customers/internalCusRouter";
 import { internalDevRouter } from "../internal/dev/devRouter";
-import { migrationRpcRouter } from "../internal/migrations/v2/migrationRouter";
 import { consentRouter } from "../internal/misc/consent/consentRouter";
 import { feedbackRouter } from "../internal/misc/feedback/feedbackRouter";
 import { pricingAgentRouter } from "../internal/misc/pricingAgent/pricingAgentRouter";
@@ -51,7 +50,6 @@ internalRouter.route("/trmnl", internalTrmnlRouter);
 internalRouter.route("/feedback", feedbackRouter);
 internalRouter.route("/saved_views", savedViewsRouter);
 internalRouter.route("/query", internalAnalyticsRouter);
-internalRouter.route("", migrationRpcRouter);
 internalRouter.route("/workbench", workbenchRouter);
 
 // Autumn SDK handler (requires session auth)

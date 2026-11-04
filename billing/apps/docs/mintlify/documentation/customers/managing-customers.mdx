@@ -102,68 +102,16 @@ curl -X POST "https://api.useautumn.com/v1/customers/update" \
 
 ## Billing Details
 
-Billing details are the tax and invoicing fields stored on the customer's linked Stripe customer: billing address, tax IDs (e.g. VAT), tax exemption, and custom fields printed on every invoice (e.g. a PO number). MeterPal doesn't store them; it writes them to Stripe and reads them back live.
+Billing details are the tax and invoicing fields held on the customer's linked payment processor customer: billing address, tax IDs (e.g. VAT), tax exemption, and custom fields printed on every invoice (e.g. a PO number). MeterPal doesn't store them itself — it reads them back live from the processor.
 
 | Field | Behaviour |
 | --- | --- |
-| `address` | Replaces the whole address, as in Stripe. `null` clears it. |
-| `tax_ids` | `add` and `remove` lists. Tax IDs you don't list are kept. Stripe tax IDs can't be edited, so to change one, remove the old ID and add the new one. |
+| `address` | The billing address on file. |
+| `tax_ids` | The tax IDs (e.g. VAT) on file. |
 | `tax_exempt` | `none`, `exempt`, or `reverse` (reverse charge). |
-| `invoice_settings.custom_fields` | Up to 4 `{ name, value }` pairs shown on every invoice. Replaces the existing list; `null` clears it. |
+| `invoice_settings.custom_fields` | Up to 4 `{ name, value }` pairs shown on every invoice. |
 
-<CodeGroup>
-
-```typescript TypeScript
-await autumn.customers.update({
-  customerId: "user_123",
-  billingDetails: {
-    address: { line1: "1 Main St", city: "Berlin", postalCode: "10115", country: "DE" },
-    taxIds: {
-      add: [{ type: "eu_vat", value: "DE123456789" }],
-      remove: [{ type: "gb_vat", value: "GB123456789" }],
-    },
-    taxExempt: "reverse",
-    invoiceSettings: { customFields: [{ name: "PO Number", value: "PO-10042" }] },
-  },
-});
-```
-
-```python Python
-await autumn.customers.update(
-    customer_id="user_123",
-    billing_details={
-        "address": {"line1": "1 Main St", "city": "Berlin", "postal_code": "10115", "country": "DE"},
-        "tax_ids": {
-            "add": [{"type": "eu_vat", "value": "DE123456789"}],
-            "remove": [{"type": "gb_vat", "value": "GB123456789"}],
-        },
-        "tax_exempt": "reverse",
-        "invoice_settings": {"custom_fields": [{"name": "PO Number", "value": "PO-10042"}]},
-    },
-)
-```
-
-```bash cURL
-curl -X POST "https://api.useautumn.com/v1/customers/update" \
-  -H "Authorization: Bearer $AUTUMN_SECRET_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "customer_id": "user_123",
-    "billing_details": {
-      "address": { "line1": "1 Main St", "city": "Berlin", "postal_code": "10115", "country": "DE" },
-      "tax_ids": {
-        "add": [{ "type": "eu_vat", "value": "DE123456789" }],
-        "remove": [{ "type": "gb_vat", "value": "GB123456789" }]
-      },
-      "tax_exempt": "reverse",
-      "invoice_settings": { "custom_fields": [{ "name": "PO Number", "value": "PO-10042" }] }
-    }
-  }'
-```
-
-</CodeGroup>
-
-To read them back, add `billing_details` to `expand` when fetching the customer. It returns `null` when no Stripe customer is linked.
+To read them, add `billing_details` to `expand` when fetching the customer. It returns `null` when no processor customer is linked.
 
 ```typescript
 const customer = await autumn.customers.get({
@@ -172,14 +120,12 @@ const customer = await autumn.customers.get({
 });
 ```
 
-You can also pass `billing_details` when creating a customer; MeterPal creates the Stripe customer if needed. On update, the customer must already be linked to a Stripe customer.
-
-<Note>
-  Invalid values (for example a malformed VAT number) are rejected with Stripe's
-  error message, and changes from the same request are not left half-applied.
-</Note>
-
-In the dashboard, billing details are under **Edit customer** on the customer's page.
+<Warning>
+  `billing_details` and `payment_method` are read-only through the API. They live on the
+  processor's customer record, and PayPal has no equivalent store, so a request that tries
+  to set either one is rejected with a `400`. Update them in the processor's dashboard, or in
+  the MeterPal dashboard under **Edit customer** on the customer's page.
+</Warning>
 
 #### Deleting a Customer
 
@@ -190,6 +136,6 @@ To delete a customer:
 3. Click "Delete"
 
 <Warning>
-  Deleting a customer will not delete it in Stripe. If they have existing
-  subscriptions, you should cancel them from Stripe if needed.
+  Deleting a customer will not delete it in the payment processor. If they have existing
+  subscriptions, you should cancel them from the processor if needed.
 </Warning>

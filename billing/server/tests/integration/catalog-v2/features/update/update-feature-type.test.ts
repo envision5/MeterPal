@@ -24,7 +24,7 @@ import { products } from "@tests/utils/fixtures/products.js";
 import { initScenario, s } from "@tests/utils/testInitUtils/initScenario.js";
 import chalk from "chalk";
 import { constructFeatureItem } from "@/utils/scriptUtils/constructItem.js";
-import { initProductsV0 } from "@/utils/scriptUtils/testUtils/initProductsV0.js";
+import { initTestProducts } from "@tests/utils/testInitUtils/initTestProducts.js";
 import {
 	deleteDbFeatures,
 	expectDbFeaturesCorrect,
@@ -73,7 +73,7 @@ test.concurrent(
 			await autumnV2_3.catalogV2.update({
 				features: [booleanFeature(boolId), meteredFeature(meteredId, false)],
 			});
-			await initProductsV0({ ctx, products: [product] });
+			await initTestProducts({ ctx, products: [product] });
 
 			// boolean → metered: entitlements become unlimited lifetime
 			expectCatalogPreviewCorrect({
@@ -188,7 +188,7 @@ test.concurrent(
 					meteredFeature(pricedId),
 				],
 			});
-			await initProductsV0({
+			await initTestProducts({
 				ctx,
 				products: [attachedProduct, entityProduct, pricedProduct],
 			});

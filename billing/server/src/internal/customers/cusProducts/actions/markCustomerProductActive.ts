@@ -17,7 +17,7 @@ import { CusProductService } from "@/internal/customers/cusProducts/CusProductSe
  * 2. Updates the FullCustomer in memory
  * 3. Sends products_updated + billing.updated webhooks
  *
- * Used by RevenueCat renewal webhooks (past-due → active recovery) and any
+ * Used by processor renewal webhooks (past-due → active recovery) and any
  * external active-recovery flow.
  */
 export const markCustomerProductActive = async ({

@@ -13,7 +13,7 @@ import {
 	expectPlanPreviewRowCorrect,
 	parsePlanPreview,
 } from "../../preview/utils/expectPlanPreview.js";
-import { seedVersionableCustomer } from "../../migrations/utils/seedVersionableCustomer.js";
+import { seedVersionableCustomer } from "../../utils/seedVersionableCustomer.js";
 import {
 	messagesItem,
 	seedTwoParentVersions,

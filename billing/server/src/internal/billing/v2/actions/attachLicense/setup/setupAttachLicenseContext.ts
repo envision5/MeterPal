@@ -8,7 +8,6 @@ import {
 	RecaseError,
 } from "@autumn/shared";
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
-import { setupStripeBillingContext } from "@/internal/billing/v2/providers/stripe/setup/setupStripeBillingContext.js";
 import { setupBillingCycleAnchor } from "@/internal/billing/v2/setup/setupBillingCycleAnchor.js";
 import { setupFullCustomerContext } from "@/internal/billing/v2/setup/setupFullCustomerContext.js";
 import { setupResetCycleAnchor } from "@/internal/billing/v2/setup/setupResetCycleAnchor.js";
@@ -117,20 +116,12 @@ export const setupAttachLicenseContext = async ({
 
 	// The assignment's cycles anchor to the parent's billing state — same
 	// derivation as attach, minus any billing changes.
-	const [{ stripeSubscription, testClockFrozenTime }, unusedAssignments] =
-		await Promise.all([
-			setupStripeBillingContext({
-				ctx,
-				fullCustomer,
-				targetCustomerProduct: target.parentCustomerProduct,
-				createStripeCustomerIfMissing: false,
-			}),
-			licenseAssignmentRepo.listUnusedAssignmentsByLinkId({
-				db: ctx.db,
-				customerLicenseLinkId: target.customerLicense.link_id,
-				limit: params.entities.length,
-			}),
-		]);
+	const unusedAssignments =
+		await licenseAssignmentRepo.listUnusedAssignmentsByLinkId({
+			db: ctx.db,
+			customerLicenseLinkId: target.customerLicense.link_id,
+			limit: params.entities.length,
+		});
 	const activeAssignments =
 		await licenseAssignmentRepo.listAssignmentsWithEntityAndProductByCustomer({
 			db: ctx.db,
@@ -141,9 +132,8 @@ export const setupAttachLicenseContext = async ({
 	const assignedEntityIds = new Set(
 		activeAssignments.map((assignment) => assignment.entity_id),
 	);
-	const currentEpochMs = testClockFrozenTime ?? Date.now();
+	const currentEpochMs = Date.now();
 	const billingCycleAnchorMs = setupBillingCycleAnchor({
-		stripeSubscription,
 		customerProduct: target.parentCustomerProduct,
 		newFullProduct: target.customerLicense.planLicense.product,
 		currentEpochMs,

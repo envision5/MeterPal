@@ -4,7 +4,6 @@ import {
 	type Checkout,
 	CheckoutAction,
 	checkoutToUrl,
-	stripeToAtmnAmount,
 } from "@autumn/shared";
 
 const isLongLivedCheckout = (checkout: Checkout) =>
@@ -23,39 +22,34 @@ export const billingResultToResponse = ({
 
 	const customerId = fullCustomer.id ?? fullCustomer.internal_id;
 
-	const stripeInvoice = billingResult.stripe.stripeInvoice;
-	const stripeCheckoutSession = billingResult.stripe.stripeCheckoutSession;
+	const invoice = billingResult.processor?.autumnInvoice;
+	const checkoutUrl = billingResult.processor?.checkoutUrl;
 	const autumnCheckout = billingResult.autumn?.checkout;
 
-	// Autumn checkout URL takes priority, then Stripe checkout session, then invoice hosted URL
+	// Autumn checkout URL takes priority, then the processor checkout URL,
+	// then the invoice hosted URL
 	const paymentUrl = autumnCheckout
 		? checkoutToUrl({
 				action: autumnCheckout.action,
 				checkoutId: autumnCheckout.id,
 				longLived: isLongLivedCheckout(autumnCheckout),
 			})
-		: stripeCheckoutSession?.url
-			? stripeCheckoutSession.url
-			: stripeInvoice?.status === "open" && stripeInvoice.hosted_invoice_url
-				? stripeInvoice.hosted_invoice_url
-				: null;
+		: (checkoutUrl ??
+			(invoice?.status === "open" ? (invoice.hosted_invoice_url ?? null) : null));
 
 	return {
 		customer_id: customerId,
 		entity_id: fullCustomer.entity?.id ?? undefined,
-		invoice: stripeInvoice
+		invoice: invoice
 			? {
-					status: stripeInvoice.status,
-					stripe_id: stripeInvoice.id,
-					total: stripeToAtmnAmount({
-						amount: stripeInvoice.total,
-						currency: stripeInvoice.currency,
-					}),
-					currency: stripeInvoice.currency,
-					hosted_invoice_url: stripeInvoice.hosted_invoice_url ?? null,
+					status: invoice.status ?? null,
+					processor_invoice_id: invoice.processor_invoice_id,
+					total: invoice.total,
+					currency: invoice.currency,
+					hosted_invoice_url: invoice.hosted_invoice_url ?? null,
 				}
 			: undefined,
 		payment_url: paymentUrl,
-		required_action: billingResult.stripe.requiredAction,
+		required_action: billingResult.processor?.requiredAction,
 	} satisfies BillingResponse;
 };

@@ -44,7 +44,7 @@ const CANVAS = { w: 680, h: 292 };
 const NODE = { h: 28, pitch: 40, top: 44 };
 const STATE = { x: 8, w: 172 };
 const ACTION = { x: 228, w: 132 };
-const STRIPE = { x: 404, y: 110, w: 84, h: 72 };
+const PROCESSOR = { x: 404, y: 110, w: 84, h: 72 };
 const OUTCOME = { x: 524, w: 148 };
 
 function columnY(index: number, count: number) {
@@ -148,10 +148,10 @@ function useBillingPath({ animate }: { animate: boolean }) {
 
 function dimMesh() {
 	const paths: string[] = [];
-	const stripeIn = { x: STRIPE.x, y: STRIPE.y + STRIPE.h / 2 };
-	const stripeOut = {
-		x: STRIPE.x + STRIPE.w,
-		y: STRIPE.y + STRIPE.h / 2,
+	const processorIn = { x: PROCESSOR.x, y: PROCESSOR.y + PROCESSOR.h / 2 };
+	const processorOut = {
+		x: PROCESSOR.x + PROCESSOR.w,
+		y: PROCESSOR.y + PROCESSOR.h / 2,
 	};
 
 	for (let s = 0; s < STATES.length; s++) {
@@ -171,14 +171,14 @@ function dimMesh() {
 			curve(
 				ACTION.x + ACTION.w,
 				midY(a, ACTIONS.length),
-				stripeIn.x,
-				stripeIn.y,
+				processorIn.x,
+				processorIn.y,
 			),
 		);
 	}
 	for (let o = 0; o < OUTCOMES.length; o++) {
 		paths.push(
-			curve(stripeOut.x, stripeOut.y, OUTCOME.x, midY(o, OUTCOMES.length)),
+			curve(processorOut.x, processorOut.y, OUTCOME.x, midY(o, OUTCOMES.length)),
 		);
 	}
 	return paths;
@@ -314,10 +314,10 @@ export function BillingPathsAnimation() {
 	const { path, phase, selectState, selectAction, selectOutcome } =
 		useBillingPath({ animate: !reduce });
 
-	const stripeIn = { x: STRIPE.x, y: STRIPE.y + STRIPE.h / 2 };
-	const stripeOut = {
-		x: STRIPE.x + STRIPE.w,
-		y: STRIPE.y + STRIPE.h / 2,
+	const processorIn = { x: PROCESSOR.x, y: PROCESSOR.y + PROCESSOR.h / 2 };
+	const processorOut = {
+		x: PROCESSOR.x + PROCESSOR.w,
+		y: PROCESSOR.y + PROCESSOR.h / 2,
 	};
 	const fromState = {
 		x: STATE.x + STATE.w,
@@ -333,11 +333,11 @@ export function BillingPathsAnimation() {
 		y: midY(path.outcome, OUTCOMES.length),
 	};
 
-	const caption = `${STATES[path.state]}  →  ${ACTIONS[path.action]}  →  Stripe  →  ${OUTCOMES[path.outcome]}`;
+	const caption = `${STATES[path.state]}  →  ${ACTIONS[path.action]}  →  Processor  →  ${OUTCOMES[path.outcome]}`;
 
 	return (
 		<figure
-			aria-label="Customer states branching into actions and outcomes, with Stripe as a dependency. One path lights up at a time as the arrow reaches each box."
+			aria-label="Customer states branching into actions and outcomes, with the payment processor as a dependency. One path lights up at a time as the arrow reaches each box."
 			className="not-prose my-8 overflow-hidden rounded-xl border border-[#292929] bg-[#0F0F0F]"
 		>
 			<div className="flex items-center gap-2 border-b border-[#292929] px-3 py-2.5 sm:px-4">
@@ -385,14 +385,14 @@ export function BillingPathsAnimation() {
 							<ActiveConnector
 								delay={DELAYS[1]}
 								from={fromAction}
-								key={`${path.action}-stripe-b`}
+								key={`${path.action}-processor-b`}
 								reduce={reduce}
-								to={stripeIn}
+								to={processorIn}
 							/>
 							<ActiveConnector
 								delay={DELAYS[2]}
-								from={stripeOut}
-								key={`stripe-${path.outcome}-c`}
+								from={processorOut}
+								key={`processor-${path.outcome}-c`}
 								reduce={reduce}
 								to={toOutcome}
 							/>
@@ -444,13 +444,13 @@ export function BillingPathsAnimation() {
 									: "border-[#292929] bg-[#141414] text-[#c8c8c8]",
 							)}
 							style={{
-								left: STRIPE.x,
-								top: STRIPE.y,
-								width: STRIPE.w,
-								height: STRIPE.h,
+								left: PROCESSOR.x,
+								top: PROCESSOR.y,
+								width: PROCESSOR.w,
+								height: PROCESSOR.h,
 							}}
 						>
-							Stripe
+								Processor
 						</div>
 					</div>
 				</div>

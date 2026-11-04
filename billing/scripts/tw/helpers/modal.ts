@@ -43,18 +43,13 @@ import {
 	type Sandbox,
 } from "modal";
 import {
-	INGRESS_PORT,
 	PROJECT_ROOT,
 	SERVER_PORT,
 	WARM_SANDBOX_PREFIX,
 	WORKER_TIMEOUT_MS,
 } from "../constants.ts";
 import { narrate, sink } from "./logSink.ts";
-import {
-	type BaseImageDeps,
-	buildBaseImage,
-	buildIngressImage,
-} from "./modalImage.ts";
+import { type BaseImageDeps, buildBaseImage } from "./modalImage.ts";
 import type {
 	CreateSandboxOptions,
 	DetachedCommand,
@@ -88,7 +83,6 @@ const APP_NAME = "autumn-tw";
  */
 const WORKER_CPU = Number(process.env.TW_MODAL_WORKER_CPU ?? 2);
 const WORKER_MEMORY_MIB = Number(process.env.TW_MODAL_WORKER_MEM_MIB ?? 4096);
-const INGRESS_MEMORY_MIB = 1024;
 /**
  * Snapshot budget — the warm filesystem (node_modules + migrated PGDATA, tens of
  * thousands of files) far exceeds Modal's 55s default, so give it 10 min.
@@ -182,23 +176,6 @@ const getBaseImage = (deps: BaseImageDeps): Promise<Image> => {
 		}
 	})();
 	return baseImagePromise;
-};
-
-let ingressImagePromise: Promise<Image> | undefined;
-const getIngressImage = (): Promise<Image> => {
-	ingressImagePromise ??= (async () => {
-		const app = await getApp();
-		const done = stage(
-			"building ingress image (debian + bun; cached after)",
-			15_000,
-		);
-		try {
-			return await buildIngressImage(modal, app);
-		} finally {
-			done();
-		}
-	})();
-	return ingressImagePromise;
 };
 
 /** Warm snapshot images keyed by warm sandbox name (forkWorker restores these). */
@@ -685,28 +662,6 @@ const makeModalProvider = (v2: boolean): ProviderImpl => {
 			return wrap(opts.name, sandbox);
 		},
 
-		async createIngressSandbox(
-			opts: CreateSandboxOptions,
-		): Promise<ProviderSandbox> {
-			// Ingress runs only a built-ins-only http server shipped inline — a tiny
-			// debian+bun image with no repo clone, NOT the full services base.
-			const image = await getIngressImage();
-			const sandbox = await createFromImage(
-				image,
-				{
-					name: opts.name,
-					env: opts.env,
-					tags: opts.tags,
-					cpu: opts.vcpus ?? 1,
-					memoryMiB: INGRESS_MEMORY_MIB,
-					timeout: opts.timeout,
-					encryptedPorts: opts.ports ?? [INGRESS_PORT],
-				},
-				v2,
-			);
-			return wrap(opts.name, sandbox);
-		},
-
 		async forkWorker(opts: ForkWorkerOptions): Promise<ProviderSandbox> {
 			const image = warmImageByName.get(opts.sourceSandbox);
 			if (!image) {
@@ -958,41 +913,6 @@ const makeModalProvider = (v2: boolean): ProviderImpl => {
 
 		isSandboxStreamClosed,
 	};
-};
-
-/** Registry image for the detached teardown nuke — tiny, cached, boots in ~1s. */
-const NUKE_IMAGE = "oven/bun:1";
-const NUKE_SANDBOX_TIMEOUT_MS = 15 * 60 * 1000;
-const NUKE_CPU = 1;
-const NUKE_MEMORY_MIB = 512;
-
-/**
- * Fire-and-forget teardown sandbox: boots a bare bun registry image and runs
- * `script` via `bun -e` as the sandbox COMMAND (no exec, nothing to await —
- * the orchestrator returns as soon as the create call does). The sandbox exits
- * when the script does; `timeoutMs` is the hung-script backstop.
- */
-export const spawnDetachedNukeSandbox = async ({
-	name,
-	script,
-	env,
-}: {
-	name: string;
-	script: string;
-	env: Record<string, string>;
-}): Promise<string> => {
-	const app = await getApp();
-	const image = await modal.images.fromRegistry(NUKE_IMAGE);
-	const sandbox = await modal.sandboxes.create(app, image, {
-		cpu: NUKE_CPU,
-		memoryMiB: NUKE_MEMORY_MIB,
-		timeoutMs: NUKE_SANDBOX_TIMEOUT_MS,
-		command: ["bun", "-e", script],
-		env,
-		name,
-		tags: tagsWithName(name, { kind: "bun-tw-nuke" }),
-	});
-	return sandbox.sandboxId;
 };
 
 /** Classic V1 backend (tags, list, fromName, 5/s + 100-concurrent caps). */

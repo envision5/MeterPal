@@ -36,10 +36,6 @@ export const CustomerBreadcrumbs = () => {
 									key: "Internal ID",
 									value: customer.internal_id,
 								},
-								{
-									key: "Stripe ID",
-									value: customer.processor?.id,
-								},
 								...(() => {
 									const ents = (customer.entities || []) as Entity[];
 									if (ents.length === 0) return [];

@@ -1108,7 +1108,6 @@ describe("approval status card", () => {
 		expect(json).toContain("$400.00");
 		// No misleading placeholder — the running "…" sentence carries the state.
 		expect(json).not.toContain("▸");
-		expect(json).not.toContain("Confirming with Stripe");
 		expect(json).not.toContain("⏳");
 		expect(json).not.toContain("approve_billing_action");
 	});
@@ -1141,7 +1140,7 @@ describe("approval status card", () => {
 						status: "draft",
 						total: 0,
 						currency: "usd",
-						stripe_id: "in_123",
+						processor_invoice_id: "in_123",
 						hosted_invoice_url: "https://invoice.example",
 					},
 					payment_url: "https://pay.example",
@@ -1156,9 +1155,9 @@ describe("approval status card", () => {
 			"✅ Attached **<https://app.useautumn.com/sandbox/products/enterprise|enterprise>** to **<https://app.useautumn.com/sandbox/customers/kp-customer-1000|kp-customer-1000>**",
 		);
 		expect(json).toContain("Draft invoice — $0.00");
-		// Drafts link to the dashboard — the hosted page is not payable yet.
-		expect(json).toContain("Open draft in Stripe");
-		expect(json).toContain("https://dashboard.stripe.com/test/invoices/in_123");
+		// Drafts link to the hosted invoice page.
+		expect(json).toContain("Open draft invoice");
+		expect(json).toContain("https://invoice.example");
 		expect(json).toContain("Open checkout");
 		expect(json).toContain("https://pay.example");
 		expect(json).not.toContain("View customer");
@@ -1217,7 +1216,7 @@ describe("approval status card", () => {
 				result: {
 					invoice: {
 						status: "open",
-						stripe_id: "in_live",
+						processor_invoice_id: "in_live",
 						hosted_invoice_url: "https://invoice.example/open",
 					},
 					payment_url: "https://invoice.example/open",
@@ -1230,41 +1229,6 @@ describe("approval status card", () => {
 		expect(json).toContain("https://invoice.example/open");
 		// payment_url mirrors the hosted URL for open invoices — one link only.
 		expect(json).not.toContain("Open checkout");
-	});
-
-	test("falls back to the Stripe dashboard invoice link per environment", () => {
-		const sandbox = approvalStatusCard({
-			status: "approved",
-			env: AppEnv.Sandbox,
-			toolName: "attach",
-			result: {
-				result: {
-					invoice: {
-						status: "draft",
-						stripe_id: "in_123",
-						hosted_invoice_url: null,
-					},
-				},
-			},
-		});
-		const live = approvalStatusCard({
-			status: "approved",
-			env: AppEnv.Live,
-			toolName: "attach",
-			result: {
-				result: {
-					invoice: { stripe_id: "in_live", hosted_invoice_url: null },
-				},
-			},
-		});
-
-		expect(JSON.stringify(sandbox)).toContain(
-			"https://dashboard.stripe.com/test/invoices/in_123",
-		);
-		expect(JSON.stringify(live)).toContain(
-			"https://dashboard.stripe.com/invoices/in_live",
-		);
-		expect(JSON.stringify(live)).not.toContain("/test/invoices/in_live");
 	});
 
 	test("explains required payment actions in human terms", () => {

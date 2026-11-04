@@ -4,7 +4,7 @@ import { TestFeature } from "@tests/setup/v2Features.js";
 import ctx from "@tests/utils/testInitUtils/createTestContext.js";
 import chalk from "chalk";
 import { AutumnInt } from "@/external/autumn/autumnCli.js";
-import { initCustomerV3 } from "@/utils/scriptUtils/testUtils/initCustomerV3.js";
+import { initTestCustomer } from "@tests/utils/testInitUtils/initTestCustomer.js";
 
 const testCase = "entity-loose2";
 const customerId = testCase;
@@ -15,10 +15,9 @@ describe(`${chalk.yellowBright(`${testCase}: unlimited entity loose entitlement`
 	const autumnV1: AutumnInt = new AutumnInt({ version: ApiVersion.V1_2 });
 
 	beforeAll(async () => {
-		await initCustomerV3({
+		await initTestCustomer({
 			ctx,
 			customerId,
-			withTestClock: false,
 		});
 
 		// Create entity

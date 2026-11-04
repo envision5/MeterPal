@@ -26,11 +26,11 @@ const PREFERRED_DOCS: Array<{ label: string; href: string }> = [
 ];
 
 const WHAT_AUTUMN_IS = [
-	"MeterPal is open-source billing infrastructure that runs on top of Stripe.",
+	"MeterPal is open-source billing infrastructure that bills natively through PayPal.",
 	"It is the system of record for subscriptions, usage metering, credits, and feature entitlements, exposed through a small API (`attach`, `check`, `track`).",
 ];
 const WHAT_AUTUMN_IS_NOT = [
-	"MeterPal is not a payment processor and does not replace Stripe; Stripe still holds the subscription and processes payments.",
+	"MeterPal bills through PayPal; MeterPal holds the subscription state and PayPal processes the payments.",
 	"MeterPal is not a pure usage-metering tool — it also enforces entitlements and feature access, not just end-of-month invoicing.",
 ];
 
@@ -148,7 +148,7 @@ export function buildLlmsTxt(): string {
 	const lines: string[] = [
 		"# MeterPal",
 		"",
-		"> Drop-in, open-source billing infrastructure for AI startups. Usage-based billing, credits, entitlements, and subscription state on top of Stripe, behind one API.",
+		"> Drop-in, open-source billing infrastructure for AI startups. Usage-based billing, credits, entitlements, and subscription state, behindd one API.",
 		"",
 		"## What MeterPal is",
 		...WHAT_AUTUMN_IS.map((line) => `- ${line}`),
@@ -174,7 +174,7 @@ export function buildHomeMarkdown(): string {
 	const lines: string[] = [
 		"# MeterPal",
 		"",
-		"> Drop-in, open-source billing infrastructure for AI startups. Usage-based billing, credits, entitlements, and subscription state on top of Stripe, behind one API.",
+		"> Drop-in, open-source billing infrastructure for AI startups. Usage-based billing, credits, entitlements, and subscription state, behindd one API.",
 		"",
 		"## What MeterPal is",
 		...WHAT_AUTUMN_IS.map((line) => `- ${line}`),
@@ -235,7 +235,7 @@ export function buildLlmsFullTxt(): string {
 	const head: string[] = [
 		"# MeterPal — Full AI Corpus",
 		"",
-		"> Drop-in, open-source billing infrastructure for AI startups, built on top of Stripe.",
+		"> Drop-in, open-source billing infrastructure for AI startups, billing natively through PayPal.",
 		"",
 		"## What MeterPal is",
 		...WHAT_AUTUMN_IS.map((line) => `- ${line}`),

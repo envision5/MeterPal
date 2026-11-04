@@ -53,8 +53,8 @@ const shouldIdleSelfKill = process.env.NODE_ENV !== "development";
 
 // Per-message processing timeout — must be under VisibilityTimeout (30s)
 const MESSAGE_TIMEOUT_MS = 25_000;
-// Batch resets legitimately outrun the default bound (up to 1k rows plus Stripe
-// anchor checks), so they get a longer one — never an unbounded one.
+// Batch resets legitimately outrun the default bound (up to 1k rows plus
+// balance-anchor checks), so they get a longer one — never an unbounded one.
 const BATCH_RESET_MESSAGE_TIMEOUT_MS = ms.minutes(1);
 const SQS_RECEIVE_BATCH_LIMIT = 10;
 const SQS_RECEIVE_TIMEOUT_MS = ms.seconds(30);
@@ -75,12 +75,6 @@ type JobOverride = {
 // preserves backpressure; background dispatch is only safe for rare,
 // low-volume work that does not use a shared concurrency limit.
 const JOB_OVERRIDES: Partial<Record<JobName, JobOverride>> = {
-	// Rare (handful per day); fire-and-forget is safe.
-	[JobName.Migration]: {
-		ack: "upfront",
-		dispatch: "background",
-		timeoutMs: null,
-	},
 	// Can exceed VisibilityTimeout on large orgs; redelivery causes a
 	// self-amplifying Redis UNLINK storm. Inline so one worker's concurrency
 	// stays capped at the receive batch size.
@@ -101,9 +95,6 @@ const JOB_OVERRIDES: Partial<Record<JobName, JobOverride>> = {
 	// redeliver in minutes (not hours) so oldest-message age stays bounded.
 	[JobName.AutoTopUp]: {
 		visibilityTimeoutSeconds: seconds.minutes(2),
-	},
-	[JobName.StripeWebhookReplay]: {
-		visibilityTimeoutSeconds: seconds.minutes(1),
 	},
 };
 
@@ -668,7 +659,8 @@ export const initWorkers = async ({
 			queueUrl: QUEUE_URL,
 			defaultEnabled: true,
 		},
-		// TW-only: a separate poller keeps sync moving while primary jobs wait for Stripe.
+		// TW-only: a separate poller keeps balance sync moving while the primary
+		// queue is busy.
 		{
 			queueId: "balanceSync",
 			queueUrl: process.env.BALANCE_SYNC_SQS_QUEUE_URL,
@@ -687,11 +679,6 @@ export const initWorkers = async ({
 		{
 			queueId: JOB_QUEUE_IDS.customerCreationRecovery,
 			queueUrl: process.env.CUSTOMER_CREATION_RECOVERY_SQS_QUEUE_URL,
-			defaultEnabled: false,
-		},
-		{
-			queueId: JOB_QUEUE_IDS.stripeWebhookReplay,
-			queueUrl: process.env.STRIPE_WEBHOOK_SQS_QUEUE_URL,
 			defaultEnabled: false,
 		},
 		{

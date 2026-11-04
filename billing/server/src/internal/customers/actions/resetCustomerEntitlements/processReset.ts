@@ -87,7 +87,7 @@ export const processReset = async ({
 		return null;
 	}
 
-	// Compute next reset time (with Stripe anchor adjustment on edge dates)
+	// Compute next reset time (clamped to the billing cycle anchor)
 	const nextResetAt = await getResetAtUpdate({
 		curResetAt: cusEnt.next_reset_at,
 		interval: ent.interval,

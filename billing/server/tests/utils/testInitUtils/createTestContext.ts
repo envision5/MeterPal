@@ -10,9 +10,7 @@ import {
 	LATEST_VERSION,
 	type Organization,
 } from "@autumn/shared";
-import type Stripe from "stripe";
 import { type DrizzleCli, initDrizzle } from "@/db/initDrizzle.js";
-import { createStripeCli } from "@/external/connect/createStripeCli.js";
 import { resolveRedisV2 } from "@/external/redis/resolveRedisV2.js";
 import { FeatureService } from "@/internal/features/FeatureService.js";
 import { OrgService } from "@/internal/orgs/OrgService.js";
@@ -58,7 +56,6 @@ const withRetry = async <T>(
 export interface TestContext extends AutumnContext {
 	org: Organization;
 	env: AppEnv;
-	stripeCli: Stripe;
 	db: DrizzleCli;
 	orgSecretKey: string;
 	features: Feature[];
@@ -85,7 +82,6 @@ export const createTestContext = async () => {
 	}
 
 	const env = DEFAULT_ENV;
-	const stripeCli = createStripeCli({ org, env });
 	await withRetry(
 		() => ensureV2Features({ db, orgId: org.id, env }),
 		{ label: "ensureV2Features" },
@@ -107,7 +103,6 @@ export const createTestContext = async () => {
 	return {
 		org,
 		env,
-		stripeCli,
 		db,
 		dbGeneral: db,
 		features,

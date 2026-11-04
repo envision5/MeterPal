@@ -34,28 +34,4 @@ describe("billingContextToCurrency", () => {
 			}),
 		).toBe("usd");
 	});
-
-	test("legacy null-currency customer falls back to Stripe's customer currency", () => {
-		expect(
-			billingContextToCurrency({
-				org,
-				billingContext: {
-					fullCustomer: { currency: null },
-					stripeCustomer: { currency: "EUR" },
-				} as never,
-			}),
-		).toBe("eur");
-	});
-
-	test("a locked row currency wins over the Stripe currency", () => {
-		expect(
-			billingContextToCurrency({
-				org,
-				billingContext: {
-					fullCustomer: { currency: "gbp" },
-					stripeCustomer: { currency: "eur" },
-				} as never,
-			}),
-		).toBe("gbp");
-	});
 });

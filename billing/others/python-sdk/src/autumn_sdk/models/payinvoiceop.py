@@ -56,8 +56,7 @@ class PayInvoiceParams(BaseModel):
 
 PayInvoiceProcessorType = Union[
     Literal[
-        "stripe",
-        "revenuecat",
+        "paypal",
     ],
     UnrecognizedStr,
 ]
@@ -170,8 +169,8 @@ class PayInvoiceItem(BaseModel):
 class PayInvoiceInvoiceTypedDict(TypedDict):
     plan_ids: List[str]
     r"""Array of plan IDs included in this invoice"""
-    stripe_id: str
-    r"""The Stripe invoice ID"""
+    processor_invoice_id: str
+    r"""The processor's stable invoice ID."""
     status: str
     r"""The status of the invoice"""
     total: float
@@ -193,17 +192,17 @@ class PayInvoiceInvoiceTypedDict(TypedDict):
     processor_type: NotRequired[PayInvoiceProcessorType]
     r"""The billing processor that owns this invoice."""
     hosted_invoice_url: NotRequired[Nullable[str]]
-    r"""URL to the Stripe-hosted invoice page"""
+    r"""The hosted invoice URL, when available."""
     items: NotRequired[List[PayInvoiceItemTypedDict]]
-    r"""Line items on the invoice, one per line as shown in Stripe. Capped at 100. Empty for invoices recorded before line item storage."""
+    r"""Line items on the invoice, one per line. Capped at 100. Empty for invoices recorded before line item storage."""
 
 
 class PayInvoiceInvoice(BaseModel):
     plan_ids: List[str]
     r"""Array of plan IDs included in this invoice"""
 
-    stripe_id: str
-    r"""The Stripe invoice ID"""
+    processor_invoice_id: str
+    r"""The processor's stable invoice ID."""
 
     status: str
     r"""The status of the invoice"""
@@ -232,14 +231,14 @@ class PayInvoiceInvoice(BaseModel):
     refunded_amount: float
     r"""The total amount refunded on the invoice"""
 
-    processor_type: Optional[PayInvoiceProcessorType] = "stripe"
+    processor_type: Optional[PayInvoiceProcessorType] = "paypal"
     r"""The billing processor that owns this invoice."""
 
     hosted_invoice_url: OptionalNullable[str] = UNSET
-    r"""URL to the Stripe-hosted invoice page"""
+    r"""The hosted invoice URL, when available."""
 
     items: Optional[List[PayInvoiceItem]] = None
-    r"""Line items on the invoice, one per line as shown in Stripe. Capped at 100. Empty for invoices recorded before line item storage."""
+    r"""Line items on the invoice, one per line. Capped at 100. Empty for invoices recorded before line item storage."""
 
     @model_serializer(mode="wrap")
     def serialize_model(self, handler):

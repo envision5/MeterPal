@@ -12,8 +12,7 @@ export enum AuthType {
 
 	// Internal
 	Vercel = "vercel",
-	Revenuecat = "revenuecat",
-	Stripe = "stripe",
+	PayPal = "paypal",
 	Unknown = "unknown",
 	Worker = "worker",
 }

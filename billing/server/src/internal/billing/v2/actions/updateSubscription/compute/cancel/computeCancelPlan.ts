@@ -55,13 +55,13 @@ const shouldDeleteCustomerProductBeforeBillingStarts = ({
 }): boolean => {
 	if (customerProduct.status === CusProductStatus.Scheduled) return true;
 
-	const hasStripeSchedule = (customerProduct.scheduled_ids?.length ?? 0) > 0;
-	const hasStripeSubscription =
+	const hasProcessorSchedule = (customerProduct.scheduled_ids?.length ?? 0) > 0;
+	const hasProcessorSubscription =
 		(customerProduct.subscription_ids?.length ?? 0) > 0;
 
 	return (
-		hasStripeSchedule &&
-		!hasStripeSubscription &&
+		hasProcessorSchedule &&
+		!hasProcessorSubscription &&
 		isFutureStartDate(customerProduct.starts_at, currentEpochMs)
 	);
 };

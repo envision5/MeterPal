@@ -40,7 +40,7 @@ export type PooledAddIdentity = {
 	intervalCount: number;
 	resetCycleAnchor: number | null;
 	resetMode: PooledBalanceResetMode;
-	stripeSubscriptionId: null;
+	processorSubscriptionId: null;
 	customerLicenseLinkId: string;
 	rolloverSignature: string;
 };

@@ -97,28 +97,28 @@ model. Now:
 - Unknown `license_plan_id` in params is **silently ignored** — validation
   deliberately deferred.
 
-## 5. Stripe subscription state (done, attach-scoped)
+## 5. Processor subscription state (done, attach-scoped)
 
-- `licenseBillingRowToStripeItemSpec` (stripeItemSpec/) → `{ stripePriceId,
-  quantity, autumnPrice }`, throws when price lacks `stripe_price_id`.
-- `customerLicenseToStripeItemSpecs` (subscriptionItems/) — same
+- `licenseBillingRowToProcessorItemSpec` (processorItemSpec/) → `{ processorPriceId,
+  quantity, autumnPrice }`, throws when price lacks `processor_price_id`.
+- `customerLicenseToProcessorItemSpecs` (subscriptionItems/) — same
   seat-rows+buffer recipe as line items.
-- Hooked in `customerProductToStripeItemSpecs` (guarded on optional
+- Hooked in `customerProductToProcessorItemSpecs` (guarded on optional
   `billingContext`) → feeds ALL four surfaces at once: sub items update, sub
   create, schedule phases, checkout. Seat+buffer specs sharing a price merge
   in the existing per-priceId accumulators.
-- `initStripeResourcesForBillingPlan` now appends license child products
+- `initProcessorResourcesForBillingPlan` now appends license child products
   (deduped `customer_licenses[].planLicense.product` from insert+existing
   products) to `targetProducts`. Passed **by reference** deliberately —
-  `createStripePriceIFNotExist` stamps `config.stripe_price_id` on the shared
+  `createProcessorPriceIfNotExist` stamps `config.processor_price_id` on the shared
   price objects that buffer rows point at. Persisted seat rows are detached
   JSON copies from the DB query and rely on earlier initialization.
 
 ## 6. Known traps / open wrinkles (do not forget these)
 
-1. **Stripe deletion-loop trap**: any flow that rebuilds sub items without
+1. **Processor deletion-loop trap**: any flow that rebuilds sub items without
    `customerLicenseBillingContext` set up will produce no license specs → the
-   removal diff strips seat items from the Stripe sub. Must wire
+   removal diff strips seat items from the processor sub. Must wire
    `setupCustomerLicenseBillingContext` into updateSubscription /
    createSchedule / sync before license billing goes beyond attach.
 2. **Included-delta wrinkle** (parked by John): transitioned seat billing
@@ -137,7 +137,7 @@ model. Now:
    `setupReconcileContext` bridge (link-keyed seat counts → row-id map)
    should be deleted; reconcile's stranded case becomes counter-carry by
    link_id.
-5. Checkout `filterStripeItemSpecsByLargestInterval` drops a monthly license
+5. Checkout `filterProcessorItemSpecsByLargestInterval` drops a monthly license
    item from an annual parent's checkout — pre-existing multi-interval
    limitation, accepted for now.
 6. `isNoopTransition` drops same-state transitions; planted rows mint fresh
@@ -157,7 +157,7 @@ model. Now:
   only. First run needs migration 0047 applied + dev server (worktree port
   12780 via `AUTUMN_TEST_BASE_URL` in server/.env.local) + `bun workers`.
 - Likely first-run suspects: `insertNewCusProducts` persisting planted pools
-  with paid_quantity; invoice total proration; stripe price init ordering.
+  with paid_quantity; invoice total proration; processor price init ordering.
 
 ## 8. Working agreements (John's process — follow these)
 

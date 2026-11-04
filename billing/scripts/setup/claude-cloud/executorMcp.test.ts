@@ -132,7 +132,7 @@ printf 'fixture-value'
 	const hook = readFileSync(join(scriptsDir, "session-start.sh"), "utf8");
 	const lookup = hook.slice(
 		hook.indexOf("infisical_project_id="),
-		hook.indexOf("\npull_infisical STRIPE_SANDBOX_SECRET_KEY"),
+		hook.indexOf("\npull_infisical CLOUDFLARE_TUNNEL_API_TOKEN"),
 	);
 	const result = spawnSync(
 		"bash",

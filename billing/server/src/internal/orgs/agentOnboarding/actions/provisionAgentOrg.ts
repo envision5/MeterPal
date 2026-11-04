@@ -18,7 +18,7 @@ import { createPendingAgentOrg } from "../repos/agentOrgRepo.js";
 
 const CLAIM_TTL_MS = 72 * 60 * 60 * 1000;
 
-/** Stripe requires a contact email; a keyless org has no owner until it's claimed. */
+/** Provisioning requires a contact email; a keyless org has no owner until it's claimed. */
 const AGENT_ORG_CONTACT_EMAIL = "support@useautumn.com";
 
 const SLUG_ATTEMPTS = 5;
@@ -82,7 +82,7 @@ export const provisionAgentOrg = async ({
 		}
 	})();
 
-	// Stripe account, svix apps and pkeys — the same bring-up a signed-up org
+	// Svix apps and pkeys — the same bring-up a signed-up org
 	// gets. Strict so a partial failure rolls back rather than handing the agent
 	// a key to an org that can never bill.
 	try {

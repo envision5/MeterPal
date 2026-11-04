@@ -16,7 +16,7 @@ export type PlanTiming = z.infer<typeof PlanTimingSchema>;
 
 // Checkout mode for attach operations
 export const CheckoutModeSchema = z
-	.enum(["stripe_checkout", "autumn_checkout"])
+	.enum(["processor_checkout", "autumn_checkout"])
 	.nullable();
 
 export type CheckoutMode = z.infer<typeof CheckoutModeSchema>;
@@ -55,7 +55,7 @@ export interface AttachBillingContext extends BillingContext {
 // export interface AttachBillingContextOverride {
 // 	fullCustomer?: FullCustomer;
 
-// 	stripeBillingContext?: StripeBillingContextOverride;
+// 	processorBillingContext?: ProcessorBillingContextOverride;
 
 // 	productContext?: {
 // 		attachProduct: FullProduct;

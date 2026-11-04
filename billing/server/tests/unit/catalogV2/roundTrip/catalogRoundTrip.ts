@@ -55,8 +55,7 @@ const contextFor = (features: Feature[], org: RoundTripOrg = {}) =>
 			name: "Test Organization",
 			slug: "test-org",
 			default_currency: "usd",
-			stripe_account_id: "acct_test",
-			config: { multi_currency: org.multiCurrency ?? false },
+				config: { multi_currency: org.multiCurrency ?? false },
 		} as never,
 	});
 

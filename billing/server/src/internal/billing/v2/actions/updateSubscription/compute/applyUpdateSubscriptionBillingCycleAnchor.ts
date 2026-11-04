@@ -61,8 +61,7 @@ export const applyUpdateSubscriptionBillingCycleAnchor = ({
 	return applyBillingCycleAnchorToSharedSubscription({
 		plan: planWithInsertedAnchor,
 		billingContext,
-		stripeSubscriptionId:
-			billingContext.stripeSubscription?.id ??
+		processorSubscriptionId:
 			billingContext.customerProduct.subscription_ids?.[0],
 		targetCustomerProduct: billingContext.customerProduct,
 	});

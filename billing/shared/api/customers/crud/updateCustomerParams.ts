@@ -1,7 +1,6 @@
 import { CustomerBillingControlsUpdateSchema } from "@api/billingControls/customerBillingControls";
 import { CustomerDataSchema } from "@api/common/customerData";
 import { CustomerIdSchema } from "@api/common/customerId";
-import { BillingDetailsParamsSchema } from "@api/customers/components/billingDetails/billingDetails";
 import { z } from "zod/v4";
 
 export const UpdateCustomerParamsV0Schema = z
@@ -11,11 +10,9 @@ export const UpdateCustomerParamsV0Schema = z
 		),
 		...CustomerDataSchema.shape,
 		billing_controls: CustomerBillingControlsUpdateSchema.optional(),
-		billing_details: BillingDetailsParamsSchema.optional(),
 	})
 	.omit({
 		auto_enable_plan_id: true,
-		create_in_stripe: true,
 	});
 
 export const UpdateCustomerParamsV1Schema = z

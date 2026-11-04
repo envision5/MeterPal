@@ -32,7 +32,6 @@ test(`${chalk.yellowBright("activate scheduled: early activation replaces future
 		org_id: ctx.org.id,
 		env: ctx.env,
 		created_at: now,
-		processor: null,
 	});
 	await ctx.db.insert(products).values({
 		id: productId,
