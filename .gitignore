@@ -35,7 +35,8 @@ demo/probe_key.json
 *.session_token
 
 # Submission bundles are rebuilt at submission time, never tracked
-MeterPal.zip
+# (a bundle captures .env files -- keep it out of git entirely)
+MeterPal*.zip
 
 # Local agent / IDE session artifacts -- never part of the project
 .workbuddy-ai/
