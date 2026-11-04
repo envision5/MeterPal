@@ -12,7 +12,7 @@
 
 param(
 	[Parameter(Mandatory = $true)]
-	[ValidateSet("demo-app", "billing", "gateway", "mock-llm", "dashboard")]
+	[ValidateSet("demo-app", "billing", "gateway", "mock-cloud", "mock-llm", "dashboard")]
 	[string]$Service
 )
 

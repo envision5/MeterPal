@@ -1,8 +1,8 @@
-# Autumn auth.md
+# MeterPal auth.md
 
-You are an agent. Autumn supports **agentic registration** in the user-claimed shape: provision an org with no human signed in, use it immediately, and let a human claim it later. This file is `https://useautumn.com/auth.md`.
+You are an agent. MeterPal supports **agentic registration** in the user-claimed shape: provision an org with no human signed in, use it immediately, and let a human claim it later. This file is `https://useautumn.com/auth.md`.
 
-Autumn does not support ID-JAG identity assertions, verified-email registration, or an `/oauth2/token` exchange today. The credential you get is a sandbox secret key, used as a bearer token directly.
+MeterPal does not support ID-JAG identity assertions, verified-email registration, or an `/oauth2/token` exchange today. The credential you get is a sandbox secret key, used as a bearer token directly.
 
 If a human is present and can open a browser, do not use this flow. Run `atmn init --login` instead, or read `https://useautumn.com/SKILL.md` — that skill owns the full setup (connect, pricing, push, integrate) and will ask the user which way to connect. This file covers only the unattended path underneath.
 
@@ -72,9 +72,9 @@ Response:
 {"claim_url":"https://app.useautumn.com/claim?token=<opaque>","expires_at":"<iso8601>"}
 ```
 
-Autumn emails the same `claim_url` to the address you sent. Give the URL to the user in chat as well, and tell them which address it went to.
+MeterPal emails the same `claim_url` to the address you sent. Give the URL to the user in chat as well, and tell them which address it went to.
 
-The human opens the link, signs in with any Autumn account (or creates one), reviews the organization, and confirms. Whoever confirms becomes the owner — the email is only where the link is delivered, it is not checked at claim time. Treat `claim_url` like the key: share it with the user only.
+The human opens the link, signs in with any MeterPal account (or creates one), reviews the organization, and confirms. Whoever confirms becomes the owner — the email is only where the link is delivered, it is not checked at claim time. Treat `claim_url` like the key: share it with the user only.
 
 Notes:
 

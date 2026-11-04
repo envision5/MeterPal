@@ -121,6 +121,17 @@ function Get-StackServices {
 			env = @{}
 			log = "dashboard"
 		}
+		# Local stand-in for Google OAuth + the Resend mail API (sign-in flows
+		# work with zero external accounts; mail lands in the :9998 web inbox).
+		"mock-cloud" = @{
+			port = 9998
+			dir = "$StackRoot\demo"
+			exe = (Resolve-Executable "python")
+			args = @("mock_cloud.py")
+			envFile = $null
+			env = @{ PYTHONIOENCODING = "utf-8"; PYTHONUNBUFFERED = "1" }
+			log = "mock-cloud"
+		}
 		"mock-llm" = @{
 			port = 9999
 			dir = "$StackRoot\demo"

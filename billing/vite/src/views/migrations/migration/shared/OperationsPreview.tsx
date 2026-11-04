@@ -171,7 +171,7 @@ export function OperationsPreview({ operations }: { operations: Operations }) {
 										<GitBranchIcon
 											size={16}
 											weight="duotone"
-											className="text-violet-500 shrink-0"
+											className="text-[#264082] shrink-0"
 										/>
 									}
 									text={formatVersionTransition({

@@ -6,7 +6,7 @@ export function StoryHeading() {
 				<span className="text-white">Loved by teams.</span>
 			</h2>
 			<p className="mt-4 max-w-xl text-[15px] lg:text-[16px] font-sans leading-relaxed tracking-[-1%] font-light text-[#FFFFFF99]">
-				The best startups run their billing, usage and AI credits on Autumn.
+				The best startups run their billing, usage and AI credits on MeterPal.
 			</p>
 		</div>
 	);

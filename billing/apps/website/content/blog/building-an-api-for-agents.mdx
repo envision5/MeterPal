@@ -1,6 +1,6 @@
 ---
 title: "Building an API for agents"
-description: "Some patterns we've found ourselves adopting as we design Autumn's API increasingly for agents instead of humans."
+description: "Some patterns we've found ourselves adopting as we design MeterPal's API increasingly for agents instead of humans."
 date: "2026-07-08"
 author: "John"
 slug: "building-an-api-for-agents"
@@ -15,7 +15,7 @@ We've always been an API-first product, but over the past few months we've found
 
 Agents interact with applications very differently from humans. They don't see a dashboard, click through buttons, or navigate the user journeys you so thoughtfully designed. They simply read and call your API. So increasingly, we're starting to think about how to design user flows and product from a backend perspective.
 
-For example, updating a plan in Autumn is a surprisingly complex workflow because each decision depends on the current state of your pricing model and there are many branches. A simplified version of the decision tree looks something like this:
+For example, updating a plan in MeterPal is a surprisingly complex workflow because each decision depends on the current state of your pricing model and there are many branches. A simplified version of the decision tree looks something like this:
 
 ![Decision tree for updating a plan](/images/blog/building-an-api-for-agents-decision-tree.png)
 

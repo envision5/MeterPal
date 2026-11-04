@@ -1,14 +1,14 @@
 ---
 slug: autumn-vs-building-in-house
-title: Autumn vs Building In-House
+title: MeterPal vs Building In-House
 description: Building billing in-house starts simple, but real-time checks, credit ledgers, reset rules, rollovers, custom contracts, analytics, and pricing changes become hard to maintain over time.
 date: "2026-06-22"
 updated: "2026-06-22"
-author: Autumn
+author: MeterPal
 category: Comparisons
-summary: "Building in-house gives you maximum control. Autumn is for teams that want real-time checks, credits, entitlements, ledgers, rollovers, reset rules, custom packages, and pricing changes without maintaining a billing system forever."
+summary: "Building in-house gives you maximum control. MeterPal is for teams that want real-time checks, credits, entitlements, ledgers, rollovers, reset rules, custom packages, and pricing changes without maintaining a billing system forever."
 relatedDocs:
-  - { label: "Autumn overview", href: "https://docs.useautumn.com/welcome" }
+  - { label: "MeterPal overview", href: "https://docs.useautumn.com/welcome" }
   - { label: "Checking access", href: "https://docs.useautumn.com/documentation/customers/check" }
 relatedAlog:
   - autumn-vs-stripe-billing
@@ -16,7 +16,7 @@ relatedAlog:
   - autumn-vs-metronome
 ---
 
-# Autumn vs Building In-House
+# MeterPal vs Building In-House
 
 > Building billing in-house starts simple. Keeping it correct as pricing changes is the hard part.
 
@@ -26,9 +26,9 @@ If your billing model is simple, building in-house can work. You can create a fe
 
 The problem is that billing rarely stays simple. Pricing changes. Credits roll over. Some balances reset monthly, others never expire. Enterprise customers need custom packages. Usage limits become product behavior. Eventually, the "simple billing table" becomes a system with a counter, a ledger, reset jobs, analytics pipelines, migration logic, and Stripe sync.
 
-Autumn is for teams that want that application billing state managed from the beginning: real-time checks, credits, entitlements, limits, usage, rollovers, reset behavior, custom packages, ledgers, and Stripe sync.
+MeterPal is for teams that want that application billing state managed from the beginning: real-time checks, credits, entitlements, limits, usage, rollovers, reset behavior, custom packages, ledgers, and Stripe sync.
 
-## When Autumn Fits
+## When MeterPal Fits
 
 - Your pricing is based on credits, seats, usage limits, feature tiers, or hybrid packages.
 - You need low-latency `check()` calls and reliable `track()` writes.
@@ -71,23 +71,23 @@ Your app -> custom checks / usage writes / deduction logic
 Your jobs -> resets / rollovers / migrations / analytics / Stripe sync
 ```
 
-With Autumn, the typical model is:
+With MeterPal, the typical model is:
 
 ```text
-Autumn -> plans / credits / usage / limits / entitlements / ledgers
-Your app -> Autumn check() / track()
-Autumn -> Stripe -> subscriptions / invoices / payments
+MeterPal -> plans / credits / usage / limits / entitlements / ledgers
+Your app -> MeterPal check() / track()
+MeterPal -> Stripe -> subscriptions / invoices / payments
 ```
 
 ## Bottom Line
 
-Building in-house gives you maximum control over the data model and analytics. Autumn gives you a maintained billing-state layer so your team can spend less time rebuilding counters, ledgers, credits, entitlements, limits, rollovers, reset logic, and pricing migrations.
+Building in-house gives you maximum control over the data model and analytics. MeterPal gives you a maintained billing-state layer so your team can spend less time rebuilding counters, ledgers, credits, entitlements, limits, rollovers, reset logic, and pricing migrations.
 
-If billing is not your product, Autumn is usually the better default.
+If billing is not your product, MeterPal is usually the better default.
 
 ## Sources
 
-- Autumn: [overview](https://docs.useautumn.com/welcome), [checking access](https://docs.useautumn.com/documentation/customers/check)
+- MeterPal: [overview](https://docs.useautumn.com/welcome), [checking access](https://docs.useautumn.com/documentation/customers/check)
 - External: [OpenAI on real-time access, limits, and credits](https://openai.com/index/beyond-rate-limits/), [OpenMeter on credit systems](https://openmeter.io/blog/credit-systems-are-challenging), [Stripe on credit-based subscription models](https://stripe.com/resources/more/what-is-a-credits-based-subscription-model-and-how-does-it-work)
 - Related: [Stop rebuilding your billing system](/blog/stop-rebuilding-billing), [We built a billing company but didn't replace Stripe Billing](/blog/we-built-a-billing-company-but-didnt-replace-stripe-billing)
 

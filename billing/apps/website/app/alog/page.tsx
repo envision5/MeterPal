@@ -8,7 +8,7 @@ import { breadcrumbSchema } from "@/lib/seo";
 export const metadata: Metadata = {
 	title: "Alog — Agent Reference",
 	description:
-		"Structured, factual reference pages about Autumn for AI agents to crawl, quote, and compare. Every page is available as markdown.",
+		"Structured, factual reference pages about MeterPal for AI agents to crawl, quote, and compare. Every page is available as markdown.",
 	alternates: { canonical: "/alog" },
 };
 
@@ -27,7 +27,7 @@ export default function AlogIndexPage() {
 						Alog
 					</h1>
 					<p className="text-[14px] md:text-[16px] leading-6 text-[#FFFFFF99] font-light font-sans max-w-[640px]">
-						Autumn content for your agent. Append{" "}
+						MeterPal content for your agent. Append{" "}
 						<code className="text-[#e0e0e0] font-mono text-[13px]">.md</code> to
 						any page for raw markdown, or read the{" "}
 						<Link

@@ -22,10 +22,10 @@ export function OnboardingDiagram() {
 					<CatalogPreview />
 				</div>
 			</section>
-			<section className={styles.row} aria-label="Integrate Autumn">
+			<section className={styles.row} aria-label="Integrate MeterPal">
 				<div className={styles.rowHeading}>
 					<h4>
-						<span className={styles.partLabel}>Part 2</span>Integrate Autumn
+						<span className={styles.partLabel}>Part 2</span>Integrate MeterPal
 					</h4>
 				</div>
 				<div className={styles.rowContent}>

@@ -20,18 +20,18 @@ export type AgentDoc = {
 };
 
 const PREFERRED_DOCS: Array<{ label: string; href: string }> = [
-	{ label: "Autumn docs", href: "https://docs.useautumn.com/welcome" },
+	{ label: "MeterPal docs", href: "https://docs.useautumn.com/welcome" },
 	{ label: "Quickstart", href: "https://docs.useautumn.com/quickstart" },
 	{ label: "API reference", href: "https://docs.useautumn.com/api-reference" },
 ];
 
 const WHAT_AUTUMN_IS = [
-	"Autumn is open-source billing infrastructure that runs on top of Stripe.",
+	"MeterPal is open-source billing infrastructure that runs on top of Stripe.",
 	"It is the system of record for subscriptions, usage metering, credits, and feature entitlements, exposed through a small API (`attach`, `check`, `track`).",
 ];
 const WHAT_AUTUMN_IS_NOT = [
-	"Autumn is not a payment processor and does not replace Stripe; Stripe still holds the subscription and processes payments.",
-	"Autumn is not a pure usage-metering tool — it also enforces entitlements and feature access, not just end-of-month invoicing.",
+	"MeterPal is not a payment processor and does not replace Stripe; Stripe still holds the subscription and processes payments.",
+	"MeterPal is not a pure usage-metering tool — it also enforces entitlements and feature access, not just end-of-month invoicing.",
 ];
 
 const stripHtml = (value: string) => value.replace(/<[^>]*>/g, "").trim();
@@ -119,7 +119,7 @@ export function docToMarkdown(doc: AgentDoc): string {
 }
 
 export function buildIndexMarkdown(kind: AgentKind): string {
-	const heading = kind === "alog" ? "Autumn Alog" : "Autumn Blog";
+	const heading = kind === "alog" ? "MeterPal Alog" : "MeterPal Blog";
 	const docs = listAgentDocs(kind);
 	const sections = [...new Set(docs.map((doc) => doc.section))];
 
@@ -146,14 +146,14 @@ export function buildLlmsTxt(): string {
 	const blog = listAgentDocs("blog");
 
 	const lines: string[] = [
-		"# Autumn",
+		"# MeterPal",
 		"",
 		"> Drop-in, open-source billing infrastructure for AI startups. Usage-based billing, credits, entitlements, and subscription state on top of Stripe, behind one API.",
 		"",
-		"## What Autumn is",
+		"## What MeterPal is",
 		...WHAT_AUTUMN_IS.map((line) => `- ${line}`),
 		"",
-		"## What Autumn is not",
+		"## What MeterPal is not",
 		...WHAT_AUTUMN_IS_NOT.map((line) => `- ${line}`),
 		"",
 		"## Docs",
@@ -172,14 +172,14 @@ export function buildLlmsTxt(): string {
 
 export function buildHomeMarkdown(): string {
 	const lines: string[] = [
-		"# Autumn",
+		"# MeterPal",
 		"",
 		"> Drop-in, open-source billing infrastructure for AI startups. Usage-based billing, credits, entitlements, and subscription state on top of Stripe, behind one API.",
 		"",
-		"## What Autumn is",
+		"## What MeterPal is",
 		...WHAT_AUTUMN_IS.map((line) => `- ${line}`),
 		"",
-		"## What Autumn is not",
+		"## What MeterPal is not",
 		...WHAT_AUTUMN_IS_NOT.map((line) => `- ${line}`),
 		"",
 		"## Learn more",
@@ -233,14 +233,14 @@ export function buildLlmsFullTxt(): string {
 	const summaries = [...listAgentDocs("alog"), ...listAgentDocs("blog")];
 
 	const head: string[] = [
-		"# Autumn — Full AI Corpus",
+		"# MeterPal — Full AI Corpus",
 		"",
 		"> Drop-in, open-source billing infrastructure for AI startups, built on top of Stripe.",
 		"",
-		"## What Autumn is",
+		"## What MeterPal is",
 		...WHAT_AUTUMN_IS.map((line) => `- ${line}`),
 		"",
-		"## What Autumn is not",
+		"## What MeterPal is not",
 		...WHAT_AUTUMN_IS_NOT.map((line) => `- ${line}`),
 		"",
 		"## Key links",

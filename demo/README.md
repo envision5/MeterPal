@@ -1,9 +1,11 @@
 # Local demo — the billing loop with no real keys
 
 A self-contained dry run of the whole stack: chat completions flow through
-LiteLLM, Autumn admits / meters / debits them, and you watch a wallet drain
+LiteLLM, MeterPal admits / meters / debits them, and you watch a wallet drain
 until admission control refuses the next call — all with a mock LLM provider
-instead of OpenAI/Anthropic and no Stripe/PayPal at all.
+instead of OpenAI/Anthropic, so it needs no provider keys and no PayPal
+account. (The PayPal rail itself is exercised by `demo-app/` — see
+"With PayPal sandbox keys" in the root README.)
 
 ```
 demo-customer ──► LiteLLM :4000 ──► mock LLM :9999        (stands in for providers)
@@ -19,7 +21,7 @@ demo-customer ──► LiteLLM :4000 ──► mock LLM :9999        (stands in
 # 1. Infrastructure (postgres x2, redis x2)
 docker compose up -d
 
-# 2. Autumn billing server   (terminal 1)
+# 2. MeterPal billing server   (terminal 1)
 cd billing/server
 NODE_ENV=development bun src/index.ts
 
@@ -38,12 +40,12 @@ python demo/run_demo.py
 
 Prereqs: Python 3.12 with the `litellm` package installed (`pip install -e
 "../gateway[proxy]"` from `gateway/` — brings httpx/uvicorn used here),
-[Bun](https://bun.sh), and the LiteLLM + Autumn DBs already migrated (see
+[Bun](https://bun.sh), and the LiteLLM + MeterPal DBs already migrated (see
 `../DEPLOY.md`).
 
 ## What `bootstrap.py` seeds
 
-A fresh Autumn DB has no organization, so the script:
+A fresh MeterPal DB has no organization, so the script:
 
 1. **psql** — inserts org `demo` + a sandbox secret key (`am_sk_test_…`,
    stored hashed, same SHA-256 scheme as `server/src/internal/dev/apiKeys`).
@@ -78,7 +80,7 @@ like `[usage: in=10000 out=2000 cache_read=8000]` (stripped from the reply).
 
 - `gateway/.env` — all bridge config. `PAB_REQUIRED_BALANCE` (minimum
   headroom for admission), `PAB_MODEL_ID_MAP` (LiteLLM alias →
-  Autumn-billable id), `PAB_FAIL_MODE=open|closed` (an Autumn outage
+  MeterPal-billable id), `PAB_FAIL_MODE=open|closed` (a MeterPal outage
   serves unbilled inference when `open`; use `closed` in production).
 - `demo/mock_llm.py` — add models/usage shapes freely; anything served here
   is billed through the exact same path as a real provider.
@@ -91,12 +93,12 @@ like `[usage: in=10000 out=2000 cache_read=8000]` (stripped from the reply).
    `response_obj` whose `.usage` holds the tokens; `kwargs["usage"]` is
    `None`. The bridge now reads `response_obj.usage` first.
 2. **Model id mapping** — LiteLLM passes bare aliases / provider-echoed
-   names (`demo-gpt`, `gpt-4o-mini`); Autumn needs `<provider>/<model>` or
+   names (`demo-gpt`, `gpt-4o-mini`); MeterPal needs `<provider>/<model>` or
    `custom/<name>`. New `PAB_MODEL_ID_MAP` bridges them; unmapped ids pass
    through. `PAB_REQUIRED_BALANCE` likewise makes the headroom explicit.
 3. **Redis v2 pool** — without `CACHE_V2_DRAGONFLY_URL`, the full-subject
    cache pool dials ioredis's default `127.0.0.1:6379` and every
-   customer read sheds with 503. Added to `autumn/server/.env` +
+   customer read sheds with 503. Added to `billing/server/.env` +
    `.env.example`.
 4. **plpgsql functions** — `deduct_from_cus_ents` and friends live in
    `server/src/internal/balances/utils/sql/`, outside drizzle migrations,
@@ -110,13 +112,18 @@ like `[usage: in=10000 out=2000 cache_read=8000]` (stripped from the reply).
    throw when no queue is configured. Development now logs and continues;
    production still throws.
 
-Bridge changes are covered by `litellm/tests/test_autumn_billing.py`
-(14 tests, `pytest tests/test_autumn_billing.py -q`).
+Bridge changes are covered by `gateway/tests/test_meterpal_billing.py`
+(15 tests, `pytest tests/test_meterpal_billing.py -q` from `gateway/`).
 
-## Not covered by the demo
+## Not covered by this script
 
-- Real Stripe/PayPal webhook flows (subscription lifecycle, top-ups, the
-  `litellm_virtual_key` provisioning in `litellmKeys.ts`). Everything is in
-  place — swap the mocked "money in" step for real keys when ready.
+- **Real PayPal money-in.** This walkthrough tops the wallet up through
+  `POST /v1/customers/:id/balances` so it runs with no PayPal account. The
+  real path — Orders v2 capture → `PAYMENT.CAPTURE.COMPLETED` webhook →
+  wallet grant — is implemented in `billing/server/src/external/paypal/`
+  (`orders.ts`, `webhookRouter.ts`, `webhookSecurity.ts`) and is exercised by
+  `billing/server/tests/paypal_webhook.test.ts` plus the sandbox-verified
+  subscription loop in `CHANGELOG.md`. To drive it for real, follow
+  "With PayPal sandbox keys" in the root README and use `demo-app/`.
 - Multi-tenant isolation in the UI (the demo identifies customers by the
   OpenAI `user` field on the request; production binds virtual keys).

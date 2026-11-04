@@ -53,8 +53,8 @@ type SessionWithScopes = {
 
 const OrgLogo = () => (
 	<img
-		src="/autumn-logo.svg"
-		alt="Autumn"
+		src="/meterpal-logo.svg"
+		alt="MeterPal"
 		className="w-5 h-5 min-w-5 rounded-md"
 	/>
 );
@@ -372,7 +372,7 @@ export const Consent = () => {
 			return;
 		}
 		if (selectedScopes.length === 0) {
-			toast.error("Select at least one Autumn permission");
+			toast.error("Select at least one MeterPal permission");
 			return;
 		}
 
@@ -521,7 +521,7 @@ export const Consent = () => {
 						{clientInfo.client_name}
 					</h1>
 					<p className="text-sm text-muted-foreground">
-						wants to access your Autumn account
+						wants to access your MeterPal account
 					</p>
 					{session?.user && (
 						<p className="text-xs text-muted-foreground">

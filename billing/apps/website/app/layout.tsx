@@ -21,12 +21,12 @@ const url = "https://useautumn.com";
 
 export const metadata: Metadata = {
 	title: {
-		default: "Billing Infrastructure for AI Startups | Autumn",
-		template: "%s | Autumn",
+		default: "Billing Infrastructure for AI Startups | MeterPal",
+		template: "%s | MeterPal",
 	},
 	description:
-		"Drop-in billing for AI startups. Stop rebuilding usage limits, credits, and subscription logic. Autumn keeps payments, webhooks, and usage in sync.",
-	applicationName: "Autumn",
+		"Drop-in billing for AI startups. Stop rebuilding usage limits, credits, and subscription logic. MeterPal keeps payments, webhooks, and usage in sync.",
+	applicationName: "MeterPal",
 	keywords: [
 		"AI billing",
 		"usage-based billing",
@@ -37,8 +37,8 @@ export const metadata: Metadata = {
 		"usage limits",
 		"credit system",
 	],
-	authors: [{ name: "Autumn" }],
-	creator: "Autumn",
+	authors: [{ name: "MeterPal" }],
+	creator: "MeterPal",
 	metadataBase: new URL(url),
 	icons: {
 		icon: [
@@ -52,8 +52,8 @@ export const metadata: Metadata = {
 		type: "website",
 		locale: "en_US",
 		url,
-		siteName: "Autumn",
-		title: "Autumn — Billing Infrastructure for AI Startups",
+		siteName: "MeterPal",
+		title: "MeterPal — Billing Infrastructure for AI Startups",
 		description:
 			"The drop-in billing layer for AI startups. Stop rebuilding usage limits, credit systems, and subscription logic.",
 		images: [
@@ -61,13 +61,13 @@ export const metadata: Metadata = {
 				url: "/images/og-image.png",
 				width: 1200,
 				height: 630,
-				alt: "Autumn — Billing Infrastructure for AI Startups",
+				alt: "MeterPal — Billing Infrastructure for AI Startups",
 			},
 		],
 	},
 	twitter: {
 		card: "summary_large_image",
-		title: "Autumn — Billing Infrastructure for AI Startups",
+		title: "MeterPal — Billing Infrastructure for AI Startups",
 		description:
 			"The drop-in billing layer for AI startups. Stop rebuilding usage limits, credit systems, and subscription logic.",
 		images: ["/images/og-image.png"],

@@ -1,7 +1,7 @@
 import { CopyButton } from "@autumn/ui";
 
 export const SETUP_PROMPT =
-	"Add Autumn to my app: useautumn.com/SKILL.md";
+	"Add MeterPal to my app: app.meterpal.dev/SKILL.md";
 
 /** One line the user pastes into their coding agent — the agent fetches the URL
  * and gets the whole setup skill, so nothing long has to live in the dashboard. */

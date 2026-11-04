@@ -2,7 +2,7 @@ import { CheckCircleIcon } from "@phosphor-icons/react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import type { OnboardingStepDefinition } from "./onboardingSteps";
+import type { OnboardingStepDefinition } from "./onboardingStepTypes";
 
 /**
  * One spring drives height and opacity together, so the panel reads as a single

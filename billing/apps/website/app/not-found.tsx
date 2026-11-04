@@ -82,7 +82,7 @@ export default function NotFound() {
 					<div className="relative z-10 flex flex-col items-center justify-center w-full px-4 text-center mt-[-40px]">
 						<Image
 							src="/images/autumn-notfound.svg"
-							alt="Autumn Logo"
+							alt="MeterPal Logo"
 							width={64}
 							height={64}
 							className="w-[56px] h-[56px] md:w-[64px] md:h-[64px] mb-6"

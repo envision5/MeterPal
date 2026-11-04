@@ -1,8 +1,8 @@
-# Customer-Facing UI — Design for the LiteLLM + Autumn Billing Layer
+# Customer-Facing UI — Design for the LiteLLM + MeterPal Billing Layer
 
 This is the third and final piece of the architecture. With `plan.md` (the wallet/billing backend) and `bridge.md` (the inference gateway integration) in place, the missing layer is the **end-customer account UI** — the widget inside your apps that shows "you have 1,247 credits", the modal for topping up, the usage history, the upgrade button.
 
-Autumn does not ship this UI. LiteLLM ships an *operator* dashboard (`litellm/ui/litellm-dashboard/`) — Next.js 16 + shadcn + TanStack Query — but it is for *you* (the SaaS owner), not for your end users. The end-customer UI is yours to build, and the good news is that Autumn's React SDK (`autumn-js`) ships the data hooks so you only have to write the components.
+MeterPal does not ship this UI. LiteLLM ships an *operator* dashboard (`gateway/litellm/ui/litellm-dashboard/`) — Next.js 16 + shadcn + TanStack Query — but it is for *you* (the SaaS owner), not for your end users. The end-customer UI is yours to build, and the good news is that MeterPal's React SDK (`autumn-js`) ships the data hooks so you only have to write the components.
 
 This document designs those components, with code that drops into any Next.js / React / Vite / Remix app.
 
@@ -17,15 +17,15 @@ Five components cover 95% of the surface every customer expects from a metered A
 | `<CreditsBadge />` | "1,247 credits remaining" pill, refreshes every 5s | Top-right of every chat UI, every IDE panel, every mobile app |
 | `<LowBalanceBanner />` | Yellow/red banner at 20% / 10% / 0% balance with deep link to top-up | Below the badge when balance is low |
 | `<PlanCard />` | Current plan + plan picker (upgrade/downgrade) | Account settings → Plan |
-| `<TopUpModal />` | One-click purchase of a credit pack via Stripe Checkout | Triggered from the banner or the Plan page |
+| `<TopUpModal />` | One-click purchase of a credit pack via PayPal Checkout | Triggered from the banner or the Plan page |
 | `<UsageHistoryPanel />` | Per-day / per-model / per-request usage breakdown | Account settings → Usage |
 | `<CostTooltip />` | "Why did this cost 4 credits?" popover | On every assistant message that was billable |
 
-All six are React components that wrap `autumn-js` hooks. No backend code lives in the UI — every action goes through LiteLLM (for inference) and Autumn (for billing). The UI is a thin view layer.
+All six are React components that wrap `autumn-js` hooks. No backend code lives in the UI — every action goes through LiteLLM (for inference) and MeterPal (for billing). The UI is a thin view layer.
 
 ## 2. The data layer (already shipped by `autumn-js`)
 
-The `autumn-js` package at `autumn/packages/autumn-js/` exports:
+The `autumn-js` package at `billing/packages/autumn-js/` exports:
 
 | Export | Path | What it does |
 | --- | --- | --- |
@@ -36,7 +36,7 @@ The `autumn-js` package at `autumn/packages/autumn-js/` exports:
 | `useEntity({ customer_id, entity_id })` | `src/react/hooks/useEntity.ts` | For per-seat / per-workspace sub-accounts |
 | `useReferrals()` | `src/react/hooks/useReferrals.ts` | Referral program state |
 | `AutumnClient` | `src/react/client/AutumnClient.ts` | Lower-level HTTP client (for non-React contexts) |
-| `useAutumnClient()` | `src/react/AutumnContext.ts` | Provider hook for the Autumn client |
+| `useAutumnClient()` | `src/react/AutumnContext.ts` | Provider hook for the MeterPal client |
 
 Install with `bun add autumn-js` or `npm install autumn-js`. Wrap your app in `<AutumnProvider backendUrl="https://api.your-saas.com" identify={(user) => user.id} />` once at the root.
 
@@ -62,7 +62,7 @@ export function Providers({ children, user }: { children: React.ReactNode; user:
   return (
     <QueryClientProvider client={queryClient}>
       <AutumnProvider
-        // point at the Autumn server you deployed
+        // point at the MeterPal server you deployed
         backendUrl={process.env.NEXT_PUBLIC_AUTUMN_URL!}
         // identifies the customer — call this with your app's authenticated user
         identify={async () => ({ customerId: user.id, customerData: { name: user.name, email: user.email } })}
@@ -74,14 +74,14 @@ export function Providers({ children, user }: { children: React.ReactNode; user:
 }
 ```
 
-`backendUrl` points at the Autumn server (`autumn/server/`, port 8080 in dev, your prod URL in production). `identify` is what maps your app's session to an Autumn `customer_id` — Autumn will auto-create the customer on first call.
+`backendUrl` points at the MeterPal server (`billing/server/`, port 8080 in dev, your prod URL in production). `identify` is what maps your app's session to a MeterPal `customer_id` — MeterPal will auto-create the customer on first call.
 
 For LiteLLM, the request flow inside the UI is:
 
 ```tsx
 // app/chat/page.tsx — example
 async function sendMessage(message: string) {
-  // 1. ask Autumn if the user has credits (admission check via the LiteLLM CustomLogger
+  // 1. ask MeterPal if the user has credits (admission check via the LiteLLM CustomLogger
   //    in bridge.md — the LiteLLM proxy already does this server-side, so the UI doesn't
   //    need to. The UI only checks for display.)
   const { allowed, balance } = await autumn.check({
@@ -94,7 +94,7 @@ async function sendMessage(message: string) {
     return;
   }
 
-  // 2. call LiteLLM with the customer's virtual key (read from Autumn on session start)
+  // 2. call LiteLLM with the customer's virtual key (read from MeterPal on session start)
   const response = await fetch(`${LITELLM_BASE}/v1/chat/completions`, {
     method: "POST",
     headers: {
@@ -104,7 +104,7 @@ async function sendMessage(message: string) {
     body: JSON.stringify({
       model: "anthropic/claude-sonnet-4-5",
       messages: [{ role: "user", content: message }],
-      user: user.id,   // propagated to Autumn /check via the bridge
+      user: user.id,   // propagated to MeterPal /check via the bridge
       stream: true,
       stream_options: { include_usage: true },
     }),
@@ -117,7 +117,7 @@ async function sendMessage(message: string) {
 }
 ```
 
-The LiteLLM virtual key is fetched from Autumn on session-start and cached in memory:
+The LiteLLM virtual key is fetched from MeterPal on session-start and cached in memory:
 
 ```tsx
 // hooks/useLitellmKey.ts
@@ -125,7 +125,7 @@ import { useCustomer } from "autumn-js/react";
 
 export function useLitellmKey(userId: string) {
   const { data: customer } = useCustomer({ customerId: userId });
-  // custom field you added to the Autumn customer row via the migration in bridge.md
+  // custom field you added to the MeterPal customer row via the migration in bridge.md
   return customer?.litellm_virtual_key as string | undefined;
 }
 ```
@@ -325,7 +325,7 @@ export function PlanCard({ customerId }: { customerId: string }) {
 }
 ```
 
-`useCustomer().attach` returns either `{ success: true }` (immediate switch for downgrades / upgrades within the same billing cycle) or `{ checkout_url }` (redirect to Stripe Checkout for new subscriptions). The component handles both cases.
+`useCustomer().attach` returns either `{ success: true }` (immediate switch for downgrades / upgrades within the same billing cycle) or `{ checkout_url }` (redirect to PayPal Checkout for new subscriptions). The component handles both cases.
 
 ### 4.4 `<TopUpModal />`
 
@@ -391,9 +391,9 @@ export function TopUpModal() {
 }
 ```
 
-The `topup_1k` / `topup_5k` / `topup_25k` are products you pre-create in Autumn via `POST /products` with `type: "topup"`, `price: { amount: 10, ... }`, and a `credit_system` feature grant of 1000 / 5000 / 25000. Configure them once in the merchant dashboard, then any app can sell them via this modal.
+The `topup_1k` / `topup_5k` / `topup_25k` are products you pre-create in MeterPal via `POST /products` with `type: "topup"`, `price: { amount: 10, ... }`, and a `credit_system` feature grant of 1000 / 5000 / 25000. Configure them once in the merchant dashboard, then any app can sell them via this modal.
 
-You can also configure **auto-top-up** in Autumn per customer (`internal/balances/autoTopUp/setup/`). When balance falls below the threshold, Autumn's own cron creates a Stripe invoice and charges the saved payment method. The `<LowBalanceBanner />` should still show as a courtesy, but the user will be auto-billed if they ignore it.
+You can also configure **auto-top-up** in MeterPal per customer (`internal/balances/autoTopUp/setup/`). When balance falls below the threshold, MeterPal's own cron creates a PayPal invoice and charges the saved payment method. The `<LowBalanceBanner />` should still show as a courtesy, but the user will be auto-billed if they ignore it.
 
 ### 4.5 `<UsageHistoryPanel />`
 
@@ -475,7 +475,7 @@ export function UsageHistoryPanel({ customerId }: { customerId: string }) {
 }
 ```
 
-This panel pulls from Autumn's `/events` and `/aggregate` endpoints via the React hooks — no separate analytics store needed for the basic view. If you later want richer analytics (time-series charts, cost-per-user segmentation), Autumn's MotherDuck pipeline + the LiteLLM `LiteLLM_DailyUserSpend` table are both queryable.
+This panel pulls from MeterPal's `/events` and `/aggregate` endpoints via the React hooks — no separate analytics store needed for the basic view. If you later want richer analytics (time-series charts, cost-per-user segmentation), MeterPal's MotherDuck pipeline + the LiteLLM `LiteLLM_DailyUserSpend` table are both queryable.
 
 ### 4.6 `<CostTooltip />`
 
@@ -511,7 +511,7 @@ export function CostTooltip({ usage }: { usage: { model: string; input_tokens: n
 }
 ```
 
-Append the per-request usage chunk to your chat-message metadata so the next render shows the tooltip. The bridge already records this data in Autumn's `events.properties` block, so you could also fetch from there, but the per-message render is faster.
+Append the per-request usage chunk to your chat-message metadata so the next render shows the tooltip. The bridge already records this data in MeterPal's `events.properties` block, so you could also fetch from there, but the per-message render is faster.
 
 ## 5. The setup, in order
 
@@ -521,51 +521,51 @@ Append the per-request usage chunk to your chat-message metadata so the next ren
 
 3. **Mount the components.** Drop `<CreditsBadge />` in every app header. Add `<LowBalanceBanner />` below the badge in the same header. Add `<TopUpModal />` once at the root. Add `<PlanCard />` and `<UsageHistoryPanel />` to your account settings page.
 
-4. **Set up the top-up products.** In the Autumn merchant dashboard (`autumn/vite/`):
-   - Create three `topup_1k`, `topup_5k`, `topup_25k` products with `type: "topup"` and a one-time Stripe price.
+4. **Set up the top-up products.** In the MeterPal merchant dashboard (`billing/vite/`):
+   - Create three `topup_1k`, `topup_5k`, `topup_25k` products with `type: "topup"` and a one-time PayPal price.
    - Each one grants a `credit_system` balance of 1000 / 5000 / 25000 credits on purchase.
    - The `ai_tokens` feature with `type: "credit_system"` and your per-model `credit_schema` already exists (see `plan.md` step 5).
 
-5. **Configure auto-top-up.** Per customer in the Autumn dashboard, set `auto_topup_enabled: true`, `auto_topup_threshold: 100 credits`, `auto_topup_amount: 1000 credits`. Autumn's cron handles the rest.
+5. **Configure auto-top-up.** Per customer in the MeterPal dashboard, set `auto_topup_enabled: true`, `auto_topup_threshold: 100 credits`, `auto_topup_amount: 1000 credits`. MeterPal's cron handles the rest.
 
 6. **Wire LiteLLM.** Your apps already use the LiteLLM virtual key for inference (per `bridge.md` Section 8, step 8). The bridge in `bridge.md` handles all the credit deduction server-side — the UI doesn't need to.
 
-7. **Test the flow.** Sign up a test customer in Autumn. Use the app until credits run low. Click "Add credits" → `<TopUpModal />` opens → click `topup_5k` → Stripe Checkout → pay → return to app → `<CreditsBadge />` shows 5000 credits within 2 seconds.
+7. **Test the flow.** Sign up a test customer in MeterPal. Use the app until credits run low. Click "Add credits" → `<TopUpModal />` opens → click `topup_5k` → PayPal Checkout → pay → return to app → `<CreditsBadge />` shows 5000 credits within 2 seconds.
 
 ## 6. Optional: the LiteLLM operator dashboard integration
 
-If you want the customer UI inside the LiteLLM admin UI (`litellm/ui/litellm-dashboard/`), the same components work. The dashboard is a Next.js 16 app with shadcn, so the patterns above drop in directly. Wrap its root layout with `<AutumnProvider>`, then add the customer-facing components under a new `app/customers/[id]/usage/page.tsx` route. The operator sees the same `<UsageHistoryPanel />` they see when they log in as that customer.
+If you want the customer UI inside the LiteLLM admin UI (`gateway/litellm/ui/litellm-dashboard/`), the same components work. The dashboard is a Next.js 16 app with shadcn, so the patterns above drop in directly. Wrap its root layout with `<AutumnProvider>`, then add the customer-facing components under a new `app/customers/[id]/usage/page.tsx` route. The operator sees the same `<UsageHistoryPanel />` they see when they log in as that customer.
 
-You can also add a new admin-side panel that calls `useListEvents` across all customers to show aggregate platform spend. Autumn's `/events/aggregate` endpoint with no `customer_id` filter returns the org-wide totals.
+You can also add a new admin-side panel that calls `useListEvents` across all customers to show aggregate platform spend. MeterPal's `/events/aggregate` endpoint with no `customer_id` filter returns the org-wide totals.
 
 ## 7. What you do not build
 
-The UI reuses so much existing surface that the net-new code is small. The five components above are ~400 LOC total. The setup steps above are mostly Autumn dashboard configuration, not engineering.
+The UI reuses so much existing surface that the net-new code is small. The five components above are ~400 LOC total. The setup steps above are mostly MeterPal dashboard configuration, not engineering.
 
-What you explicitly do not need to build, because Autumn already shipped it:
+What you explicitly do not need to build, because MeterPal already shipped it:
 
-- **A billing database.** Autumn owns the schema, the migrations, the Stripe sync, the ledger.
-- **A webhook handler.** Autumn receives Stripe webhooks, allocates credits on `invoice.paid`, and fires `usage_alert` webhooks at configured thresholds.
-- **A price registry.** Autumn stores `model_id` → credit cost and reads `models.dev` for live prices.
-- **A customer CRUD UI.** Autumn has `useCustomer` with `getOrCreate`, `update`, `delete` baked in.
-- **A checkout page.** `apps/checkout/` ships with Autumn; or use `<TopUpModal />` + the SDK's `attach()` for in-app purchases.
+- **A billing database.** MeterPal owns the schema, the migrations, the PayPal sync, the ledger.
+- **A webhook handler.** MeterPal receives PayPal webhooks, allocates credits on `PAYMENT.CAPTURE.COMPLETED`, and fires `usage_alert` webhooks at configured thresholds.
+- **A price registry.** MeterPal stores `model_id` → credit cost and reads `models.dev` for live prices.
+- **A customer CRUD UI.** MeterPal has `useCustomer` with `getOrCreate`, `update`, `delete` baked in.
+- **A checkout page.** `apps/checkout/` ships with MeterPal; or use `<TopUpModal />` + the SDK's `attach()` for in-app purchases.
 
 What you explicitly do not need to build, because LiteLLM already shipped it:
 
 - **An inference gateway.** LiteLLM handles provider routing, rate limits, retries, streaming, and now (via the bridge) credit deduction.
-- **A virtual key management UI.** LiteLLM has `/key/*` endpoints; the bridge in `bridge.md` mints and blocks them per Autumn customer lifecycle.
+- **A virtual key management UI.** LiteLLM has `/key/*` endpoints; the bridge in `bridge.md` mints and blocks them per MeterPal customer lifecycle.
 - **A spend analytics database.** `LiteLLM_SpendLogs` and `LiteLLM_DailyTeamSpend` are queryable for admin reporting.
 
 ## 8. Where every piece lives
 
 | Path | Purpose |
 | --- | --- |
-| `C:\Users\craig\Desktop\AI billing\plan.md` | Wallet / billing layer architecture |
-| `C:\Users\craig\Desktop\AI billing\bridge.md` | LiteLLM ↔ Autumn bridge code and file map |
-| `C:\Users\craig\Desktop\AI billing\customer-ui.md` | This document |
-| `C:\Users\craig\Desktop\AI billing\autumn\packages\autumn-js\src\react\hooks\` | `useCustomer`, `useListPlans`, `useListEvents`, `useAggregateEvents`, `useEntity`, `useReferrals` |
-| `C:\Users\craig\Desktop\AI billing\autumn\packages\autumn-js\src\react\client\` | `AutumnClient` for non-React contexts |
-| `C:\Users\craig\Desktop\AI billing\litellm\ui\litellm-dashboard\` | LiteLLM operator dashboard (Next.js 16 + shadcn) — same component primitives work here |
-| `C:\Users\craig\Desktop\AI billing\autumn\vite\src\views\` | Merchant-side React component patterns (TanStack Query + shadcn) — copy the visual style |
+| `docs/plan.md` | Wallet / billing layer architecture |
+| `docs/bridge.md` | LiteLLM ↔ MeterPal bridge code and file map |
+| `docs/customer-ui.md` | This document |
+| `billing/packages/autumn-js/src\react\hooks\` | `useCustomer`, `useListPlans`, `useListEvents`, `useAggregateEvents`, `useEntity`, `useReferrals` |
+| `billing/packages/autumn-js/src\react\client\` | `AutumnClient` for non-React contexts |
+| `gateway/litellm/ui/litellm-dashboard/` | LiteLLM operator dashboard (Next.js 16 + shadcn) — same component primitives work here |
+| `billing/vite/src\views\` | Merchant-side React component patterns (TanStack Query + shadcn) — copy the visual style |
 
-The visual design language is shadcn-style on both sides — same `cn()` utility, same Card/Dialog/Button primitives, same color tokens. The customer-facing UI feels native to both the LiteLLM admin and the Autumn merchant dashboards because they share a common ancestor.
+The visual design language is shadcn-style on both sides — same `cn()` utility, same Card/Dialog/Button primitives, same color tokens. The customer-facing UI feels native to both the LiteLLM admin and the MeterPal merchant dashboards because they share a common ancestor.

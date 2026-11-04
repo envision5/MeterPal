@@ -78,12 +78,12 @@ Today, when a Mintlify deal closes in Salesforce, it posts into a Slack channel 
 In one API call, it determines the shape of the plan, adds custom credit amounts and entitlements, backdates the subscription when needed, and sends an invoice. The rules that used to live in a salesperson's head over multiple steps are now written down as instructions the Slack agent follows. A simplified version looks like this:
 
 ```
-🎉 <Customer> closed-won! Provision this in Autumn from the attached contract.
+🎉 <Customer> closed-won! Provision this in MeterPal from the attached contract.
 - Parse the contract for any custom credit amounts or entitlements
 - Backdate the subscription to the contract signing date if it differs from today.
 - Attach the plan to a specific deployment, not to the customer.
 - For Enterprise, enable the plan immediately rather than after payment.
-- If the contract lists multiple deployments, confirm the same number exists in Autumn. If they do not match, flag a human.
+- If the contract lists multiple deployments, confirm the same number exists in MeterPal. If they do not match, flag a human.
 - (+ a few more rules)
 ```
 
@@ -107,16 +107,16 @@ They also completely dropped seat-based pricing. Charging per seat is a common w
 
 With the tiers cleaned up and consistent, sales had a defined and explainable ladder to move customers up.
 
-### How Autumn helped
+### How MeterPal helped
 
 The result is that billing stopped being a constraint on growth. Sales can structure a custom deal and have it provisioned the same day. Pricing and packaging can change as the market teaches them what to charge, without rebuilding billing each time. Customers are billed and provisioned more predictably, with cleaner underlying data.
 
-Instead of building this themselves, Mintlify worked with Autumn to put billing, entitlements and usage into our platform. That meant they got:
+Instead of building this themselves, Mintlify worked with MeterPal to put billing, entitlements and usage into our platform. That meant they got:
 
 - A single source of truth for customer state across PLG and enterprise, queryable in real-time from their app.
 - Trials, pilots, schedules and other complex deals handled out the box.
 - A parent-child account model to manage deployment-level entitlements under a single customer subscription.
-- Autumn team support to handle credit and seat pricing changes and other experiments.
+- MeterPal team support to handle credit and seat pricing changes and other experiments.
 
 <TestimonialQuote
 	avatarAlt="Kyle Finken"

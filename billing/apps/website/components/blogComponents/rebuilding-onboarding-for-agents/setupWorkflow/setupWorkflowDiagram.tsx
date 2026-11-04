@@ -7,7 +7,7 @@ const steps = [
 		detail: "Find existing config, key, and pricing. Skip what’s already done.",
 	},
 	{
-		title: "Connect to Autumn",
+		title: "Connect to MeterPal",
 		detail:
 			"Reuse the key, sign in, or start a keyless sandbox with atmn init.",
 		reference: "references/keyless.md",

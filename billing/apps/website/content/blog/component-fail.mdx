@@ -12,7 +12,7 @@ You know those moments where you have an idea so brilliant you feel like Steve J
 
 Unfortunately, it didn't. We ended up with a weird mess and had to spend the last week rewriting everything.
 
-_For context: we're building [Autumn](https://docs.useautumn.com/welcome), pricing and billing software. Part of our offering is frontend components for things like a pricing table, paywalls etc. We wrote about_ [_why we went with shadcn_](/blog/shadcn) _for this._
+_For context: we're building [MeterPal](https://docs.useautumn.com/welcome), pricing and billing software. Part of our offering is frontend components for things like a pricing table, paywalls etc. We wrote about_ [_why we went with shadcn_](/blog/shadcn) _for this._
 
 ### **V1 as a React library**
 
@@ -117,9 +117,9 @@ Unfortunately only half our users use shadcn, but the others wanted components a
 
 **Mistake 2**
 
-We launched a separate open source pricing component library called [pricecn](pricecn.com). We thought it would go viral like [React Email](https://react.email/) by Resend. We designed it so pricecn users could easily migrate to using Autumn components later later, and so made the Autumn component library have the pricecn library as a dependency.
+We launched a separate open source pricing component library called [pricecn](pricecn.com). We thought it would go viral like [React Email](https://react.email/) by Resend. We designed it so pricecn users could easily migrate to using MeterPal components later later, and so made the MeterPal component library have the pricecn library as a dependency.
 
-Pricecn didn't take off. People liked generating pricing cards from JSON, but it's hard enough to promote one project, let alone two. Having Autumn components depend on pricecn ones was just a confusing experience for users, as each component came with several files in different folders.
+Pricecn didn't take off. People liked generating pricing cards from JSON, but it's hard enough to promote one project, let alone two. Having MeterPal components depend on pricecn ones was just a confusing experience for users, as each component came with several files in different folders.
 
 ![](https://framerusercontent.com/images/B1eGaHr7YRlAxGzl1TNCz0n38A.png)
 

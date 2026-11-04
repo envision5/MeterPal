@@ -199,4 +199,5 @@ submission-period changes are transparent in git history.
 walkthrough, all without real payment or provider keys.
 
 **Docs**: `docs/plan.md`, `docs/bridge.md`, `docs/customer-ui.md`,
-`docs/DEPLOY.md` (Stripe-era production guide; superseded by the root README).
+`docs/DEPLOY.md` (Stripe-era production guide; rewritten as a PayPal-native
+guide during the submission period).

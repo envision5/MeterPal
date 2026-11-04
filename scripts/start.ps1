@@ -26,7 +26,7 @@ $ErrorActionPreference = "Continue"
 
 $root = $StackRoot
 $services = Get-StackServices
-$order = @("billing", "mock-llm", "gateway", "demo-app", "dashboard")
+$order = @("billing", "mock-cloud", "mock-llm", "gateway", "demo-app", "dashboard")
 
 Write-Host "MeterPal stack startup" -ForegroundColor Cyan
 

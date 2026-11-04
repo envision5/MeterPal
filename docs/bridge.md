@@ -1,16 +1,16 @@
-# Bridging Autumn and LiteLLM — Integration Guide
+# Bridging MeterPal and LiteLLM — Integration Guide
 
 This is the technical bridge between the two repos you have locally. It is based on direct reads of the source code in `C:\Users\craig\Desktop\AI billing\autumn\` and `C:\Users\craig\Desktop\AI billing\litellm\`, not on documentation summaries.
 
-The short version: **Autumn is a merchant-side billing backend with a merchant admin dashboard.** The `vite/` dashboard is for the SaaS owner (you) to model products, plans, and prices, view customers and analytics — *not* an end-customer account portal. End customers see the LiteLLM UI you build, which calls Autumn over HTTP for credit checks and usage recording. Autumn ships one customer-facing surface (`apps/checkout/`, a hosted Stripe-style checkout page); the rest of the customer UI ("you have X credits", upgrade buttons, usage history) is yours to build into LiteLLM.
+The short version: **MeterPal is a merchant-side billing backend with a merchant admin dashboard.** The `vite/` dashboard is for the SaaS owner (you) to model products, plans, and prices, view customers and analytics — *not* an end-customer account portal. End customers see the LiteLLM UI you build, which calls MeterPal over HTTP for credit checks and usage recording. MeterPal ships one customer-facing surface (`apps/checkout/`, a hosted Stripe-style checkout page); the rest of the customer UI ("you have X credits", upgrade buttons, usage history) is yours to build into LiteLLM.
 
-The bridge is one Python `CustomLogger` file inside LiteLLM (gates admission and forwards usage to Autumn) and a small Hono handler inside Autumn (provisions per-customer LiteLLM virtual keys on subscription lifecycle events). They share a stable event contract — `{customer_id, feature_id, value, idempotency_key, metadata}` for usage, and `{customer_id, model_id, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, reasoning_tokens, cost_usd, request_id}` for AI usage specifically.
+The bridge is one Python `CustomLogger` file inside LiteLLM (gates admission and forwards usage to MeterPal) and a small Hono handler inside MeterPal (provisions per-customer LiteLLM virtual keys on subscription lifecycle events). They share a stable event contract — `{customer_id, feature_id, value, idempotency_key, metadata}` for usage, and `{customer_id, model_id, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, reasoning_tokens, cost_usd, request_id}` for AI usage specifically.
 
 ---
 
 ## 1. What each repo actually does
 
-### Autumn — `C:\Users\craig\Desktop\AI billing\autumn`
+### MeterPal — `C:\Users\craig\Desktop\AI billing\autumn`
 
 - **Stack.** TypeScript + Bun + Hono + Drizzle ORM/Postgres + Redis + Better-Auth + Zod v4 + Stripe SDK + Trigger.dev + MotherDuck + Sentry/Axiom/Logtail + Infisical (secrets) + Speakeasy (SDK generator). Two surfaces in one monorepo, managed by Turborepo.
 - **Layout.**
@@ -54,7 +54,7 @@ The bridge is one Python `CustomLogger` file inside LiteLLM (gates admission and
   │       ├── rewards/, entities/   #   referral, sub-billable units
   │       └── migrations/           # code-based migrations, NOT SQL files
   └── apps/
-      ├── checkout/                 # **the only end-customer-facing UI Autumn ships** (hosted checkout)
+      ├── checkout/                 # **the only end-customer-facing UI MeterPal ships** (hosted checkout)
       ├── website/                  # marketing site
       ├── leaf/                     # Slack/Growth internal tool (NOT a customer UI)
       ├── scope-picker/             # dev launcher
@@ -62,13 +62,13 @@ The bridge is one Python `CustomLogger` file inside LiteLLM (gates admission and
       └── docs/                     # documentation
   ```
 - **Merchant dashboard.** `vite/` at the repo root (React/Vite SPA, port 3000). Auth via Better-Auth email-OTP/Google/SSO. Used by *you* (the SaaS owner) to model products, plans, features, prices, customers, invoices, test clocks, and view analytics.
-- **End-customer surface.** **Autumn does not ship one.** Your app (the LiteLLM UI, or your existing apps) embeds the SDK or calls the HTTP API. The only end-customer-facing UI in the Autumn repo is `apps/checkout/` (the hosted Stripe-style checkout page). Everything else — "you have X credits", upgrade buttons, usage history — you build.
+- **End-customer surface.** **MeterPal does not ship one.** Your app (the LiteLLM UI, or your existing apps) embeds the SDK or calls the HTTP API. The only end-customer-facing UI in the MeterPal repo is `apps/checkout/` (the hosted Stripe-style checkout page). Everything else — "you have X credits", upgrade buttons, usage history — you build.
 - **Public API auth.** Bearer `am_sk_...` (publishable) for merchant-issued keys, or per-customer JWT (`am_cu_...`). API keys carry **scopes** (`balances.read`, `balances.write`, `billing.write`) enforced by `createRoute({ scopes: [...] })`.
 - **API surface.** REST routes registered in `server/src/routers/apiRouter.ts` under `balancesRouter.post("/check", ...)` etc. A parallel **RPC router** exposes verb-shaped paths under `/v1/rpc/<resource.action>` — preferred for new integrations.
 - **Multi-tenant.** Every endpoint is scoped by `org_id` resolved from the `am_sk_...` key via `secretKeyMiddleware`. The same applies to customer JWTs.
 - **Reservations.** Implemented in-memory in Redis as **lock receipts** (`internal/balances/utils/lockV2/saveLockReceiptV2.ts`, `buildClaimMarkerKey.ts`). `/check` with `lock.enabled=true` reserves and returns a `lock_id`. `POST /balances/finalize` (handler `handleFinalizeLock.ts`) commits or releases. There is **no separate `reservations` Postgres table** — locks live in Redis only.
-- **Pricing model.** The merchant defines a **`credit_system` feature** with a `credit_schema` mapping each `model_id` (or downstream feature) to its credit cost. `/track_tokens` resolves the cost via `internal/balances/track/utils/getTokenTrackParams.ts` using `models.dev`-derived pricing. Autumn is the source of truth for token → credit conversion.
-- **Stripe.** Handled in `external/stripe/`. Webhook receiver verifies signature, dispatches via `runStripeWebhookHandlers.ts`. Handled events include `checkout.session.completed`, `customer.subscription.created/updated/deleted`, `invoice.paid`, `invoice.created`, `subscription_schedule.*`. Queued for SQS replay on transient errors. `packages/stripe-sync` runs a long-running process that fans Stripe events into Autumn's queue.
+- **Pricing model.** The merchant defines a **`credit_system` feature** with a `credit_schema` mapping each `model_id` (or downstream feature) to its credit cost. `/track_tokens` resolves the cost via `internal/balances/track/utils/getTokenTrackParams.ts` using `models.dev`-derived pricing. MeterPal is the source of truth for token → credit conversion.
+- **Stripe.** Handled in `external/stripe/`. Webhook receiver verifies signature, dispatches via `runStripeWebhookHandlers.ts`. Handled events include `checkout.session.completed`, `customer.subscription.created/updated/deleted`, `invoice.paid`, `invoice.created`, `subscription_schedule.*`. Queued for SQS replay on transient errors. `packages/stripe-sync` runs a long-running process that fans Stripe events into MeterPal's queue.
 - **Conventions.** `createRoute({ scopes, versionedBody, handler })` wraps every handler (Zod validation, scope check, telemetry, idempotency, rate limit, response version transforms). Body / query schemas live in `shared/api/<resource>/<verb>Params.ts`. Responses are flat JSON with version transforms. Path alias `@/internal/...` resolves to `server/src/internal/...`; `@autumn/shared` for `shared/`. Logging via `ctx.logger.info(...)` (Logtail), never `console.log` in production paths. Code-based migrations (Drizzle-kit-style) in `server/src/internal/migrations/`.
 
 ### LiteLLM — `C:\Users\craig\Desktop\AI billing\litellm`
@@ -125,9 +125,9 @@ The bridge is one Python `CustomLogger` file inside LiteLLM (gates admission and
 
 ## 2. The API contract between the two systems
 
-The bridge talks to Autumn over HTTP using the existing endpoint shapes. No new endpoints are required on either side. All public calls authenticate with `Authorization: Bearer am_sk_...` (an Autumn secret key with the right scopes) and pin to API version `V1_2` via the `am-version` query parameter.
+The bridge talks to MeterPal over HTTP using the existing endpoint shapes. No new endpoints are required on either side. All public calls authenticate with `Authorization: Bearer am_sk_...` (an MeterPal secret key with the right scopes) and pin to API version `V1_2` via the `am-version` query parameter.
 
-### Autumn's API (the surface LiteLLM calls)
+### MeterPal's API (the surface LiteLLM calls)
 
 All routes live under `apiRouter` (`server/src/routers/apiRouter.ts`) and are registered in `balancesRouter` (`server/src/internal/balances/balancesRouter.ts`). The exact registrations, with the source line where each one is mounted:
 
@@ -173,7 +173,7 @@ The same operations are also exposed via the RPC router at `/v1/rpc/customers.ba
 }
 ```
 
-If `allowed` is false, the bridge raises `HTTPException(402)`. If `allowed` is true, the request proceeds. **Fail-open semantics**: if the Autumn request exceeds the 3-second timeout, the handler returns `202 Accepted` with `allowed: true` (controlled by `failOpen` on the route; see `server/src/internal/api/check/handleCheck.ts:24`).
+If `allowed` is false, the bridge raises `HTTPException(402)`. If `allowed` is true, the request proceeds. **Fail-open semantics**: if the MeterPal request exceeds the 3-second timeout, the handler returns `202 Accepted` with `allowed: true` (controlled by `failOpen` on the route; see `server/src/internal/api/check/handleCheck.ts:24`).
 
 **Optional reservation — `POST /check` with `lock: true`** returns the same response plus a `lock` field with a `lock_id`. The bridge holds onto that id until it knows the final cost, then commits or releases via `/balances/finalize`.
 
@@ -245,7 +245,7 @@ If `allowed` is false, the bridge raises `HTTPException(402)`. If `allowed` is t
 // Response (202 async) — same shape, indicates queueing
 ```
 
-Autumn computes the credit cost from `model_id` + the token breakdown using `models.dev`-derived pricing and the feature's `credit_schema`. The bridge does **not** send a precomputed dollar amount — Autumn owns the price registry and the conversion.
+MeterPal computes the credit cost from `model_id` + the token breakdown using `models.dev`-derived pricing and the feature's `credit_schema`. The bridge does **not** send a precomputed dollar amount — MeterPal owns the price registry and the conversion.
 
 **Generic fallback — `POST /track`** (`handleTrack`, scope `balances.write`)
 
@@ -274,11 +274,11 @@ Use only for non-token costs (e.g., a flat per-image feature). For AI, prefer `t
 ]
 ```
 
-The bridge calls this at startup to cache the price table. Autumn is still the source of truth — the cache is only for fast admission estimates.
+The bridge calls this at startup to cache the price table. MeterPal is still the source of truth — the cache is only for fast admission estimates.
 
-### LiteLLM's API (the surface Autumn calls)
+### LiteLLM's API (the surface MeterPal calls)
 
-LiteLLM's management API is at `/key/*` and uses `Bearer <master_key>` auth. These are the calls Autumn makes to provision per-customer virtual keys.
+LiteLLM's management API is at `/key/*` and uses `Bearer <master_key>` auth. These are the calls MeterPal makes to provision per-customer virtual keys.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
@@ -294,9 +294,9 @@ LiteLLM's management API is at `/key/*` and uses `Bearer <master_key>` auth. The
 ```jsonc
 // POST /key/generate  (Authorization: Bearer sk-litellm-master-...)
 {
-  "user_id":   "cus_abc123",            // the Autumn customer id
+  "user_id":   "cus_abc123",            // the MeterPal customer id
   "team_id":   "team_xyz",              // optional, if multi-tenant
-  "max_budget": 2000.0,                 // USD, soft cap from Autumn subscription
+  "max_budget": 2000.0,                 // USD, soft cap from MeterPal subscription
   "budget_duration": "30d",
   "key_alias": "autumn:cus_abc123",     // for traceability
   "metadata": { "autumn_customer_id": "cus_abc123", "plan": "pro" }
@@ -304,7 +304,7 @@ LiteLLM's management API is at `/key/*` and uses `Bearer <master_key>` auth. The
 
 // Response
 {
-  "key": "sk-vkey-...",   // store on Autumn customer record
+  "key": "sk-vkey-...",   // store on MeterPal customer record
   "key_name": "...",
   "expires": "2026-10-27T..."
 }
@@ -335,13 +335,13 @@ Drop this file at `C:\Users\craig\Desktop\AI billing\litellm\litellm\integration
 ```python
 # litellm/integrations/autumn_billing.py
 """
-Autumn-backed CustomLogger for the LiteLLM proxy.
+MeterPal-backed CustomLogger for the LiteLLM proxy.
 
 Responsibilities (mirrors proxy_track_cost_callback.py):
-  1. async_pre_call_hook        -> Autumn POST /check            (admission, optional lock)
-  2. async_log_success_event    -> Autumn POST /balances/finalize (commit) +
+  1. async_pre_call_hook        -> MeterPal POST /check            (admission, optional lock)
+  2. async_log_success_event    -> MeterPal POST /balances/finalize (commit) +
                                     POST /track_tokens            (analytics + per-token deduction)
-  3. async_log_failure_event    -> Autumn POST /balances/finalize (release) +
+  3. async_log_failure_event    -> MeterPal POST /balances/finalize (release) +
                                     POST /track_tokens with status="failure"
   4. async_post_call_failure_hook -> release any LiteLLM reservation if we raised
 
@@ -349,11 +349,11 @@ Configuration (env):
   AUTUMN_BASE_URL        default https://api.useautumn.com/v1
   AUTUMN_API_KEY         required — bearer token (am_sk_...)
   AUTUMN_FEATURE_ID      the credit_system feature_id to charge against (e.g. "ai_tokens")
-  AUTUMN_CUSTOMER_HEADER header carrying the Autumn customer id  (default: "user")
+  AUTUMN_CUSTOMER_HEADER header carrying the MeterPal customer id  (default: "user")
   AUTUMN_ADMIT_MODE      "block" (default) or "soft" (admit + log)
   AUTUMN_CHECK_TTL_SEC   cache /check responses for N seconds (default: 1.0)
   AUTUMN_TIMEOUT_SEC     HTTP timeout                              (default: 2.0)
-  AUTUMN_FAIL_MODE       "open" (default) or "closed" — on Autumn unreachable
+  AUTUMN_FAIL_MODE       "open" (default) or "closed" — on MeterPal unreachable
   AUTUMN_USE_LOCK        "true" to use lock-based reservation (default: false for v1)
 """
 from __future__ import annotations
@@ -381,11 +381,11 @@ def _now_iso() -> str:
 
 
 class AutumnBillingBridge(CustomLogger):
-    """CustomLogger that delegates admission + metering to Autumn.
+    """CustomLogger that delegates admission + metering to MeterPal.
 
     Compatible with LiteLLM's reservation system. If you set
     general_settings.disable_budget_reservation: true, this becomes the
-    sole admission controller. Otherwise it layers Autumn's per-customer
+    sole admission controller. Otherwise it layers MeterPal's per-customer
     balance on top of LiteLLM's per-key / per-team / per-org budgets.
     """
 
@@ -639,25 +639,25 @@ litellm_settings:
   # failure_callback: ["autumn_billing.AutumnBillingBridge"]
 
 general_settings:
-  # OPTION A — keep LiteLLM's per-key budget enforcement, layer Autumn on top:
+  # OPTION A — keep LiteLLM's per-key budget enforcement, layer MeterPal on top:
   # (no disable_budget_reservation)
-  # OPTION B — let Autumn be the sole admission controller (recommended for v1):
+  # OPTION B — let MeterPal be the sole admission controller (recommended for v1):
   disable_budget_reservation: true
   master_key: os.environ/LITELLM_MASTER_KEY
   database_url: os.environ/DATABASE_URL
 
   # mirror the autumn customer id into LiteLLM's per-end-user tables so the
-  # admin UI's /spend/end_users view stays consistent with Autumn.
+  # admin UI's /spend/end_users view stays consistent with MeterPal.
 ```
 
-## 4. The other direction — Autumn provisioning LiteLLM keys
+## 4. The other direction — MeterPal provisioning LiteLLM keys
 
-When a customer signs up or changes plan in Autumn, Autumn needs to mint / update / block the LiteLLM virtual key for that customer. This is the **provisioning path**, which lives in Autumn.
+When a customer signs up or changes plan in MeterPal, MeterPal needs to mint / update / block the LiteLLM virtual key for that customer. This is the **provisioning path**, which lives in MeterPal.
 
-Add a new handler in `autumn/server/src/internal/keys/` (you already have this folder) — call it `litellmKeys.ts`. Wire it into the existing event triggers in `trigger/` so that customer lifecycle events fan out to LiteLLM.
+Add a new handler in `billing/server/src/internal/keys/` (you already have this folder) — call it `litellmKeys.ts`. Wire it into the existing event triggers in `trigger/` so that customer lifecycle events fan out to LiteLLM.
 
 ```typescript
-// autumn/server/src/internal/keys/litellmKeys.ts
+// billing/server/src/internal/keys/litellmKeys.ts
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
 
 const LITELLM_BASE = process.env.LITELLM_BASE_URL!;
@@ -702,7 +702,7 @@ export async function provisionLitellmKey(
     key_alias: `autumn:${args.customerId}`,
     metadata: { autumn_customer_id: args.customerId, plan: args.planKey },
   });
-  // persist out.key on the Autumn customer record
+  // persist out.key on the MeterPal customer record
   await ctx.db
     .updateTable("customers")
     .set({ litellm_virtual_key: out.key })
@@ -726,7 +726,7 @@ export async function blockLitellmKey(ctx: AutumnContext, customerId: string) {
 Wire the trigger in `trigger/subscriptions.ts` (or wherever subscription lifecycle events fire):
 
 ```typescript
-// autumn/server/src/trigger/subscriptions.ts — append
+// billing/server/src/trigger/subscriptions.ts — append
 import { provisionLitellmKey, blockLitellmKey } from "@/internal/keys/litellmKeys.js";
 
 on("customer.subscription.created", async (ctx, evt) => {
@@ -753,7 +753,7 @@ on("customer.subscription.updated", async (ctx, evt) => {
 Add a `litellm_virtual_key text` column to the `customers` table via Drizzle migration:
 
 ```typescript
-// autumn/server/src/drizzle/migrations/000X_litellm_keys.ts
+// billing/server/src/drizzle/migrations/000X_litellm_keys.ts
 import { sql } from "drizzle-orm";
 
 export async function up(db) {
@@ -776,22 +776,22 @@ Both repos use Postgres + Redis. The bridge does not require them to share a dat
 
 | Choice | Pros | Cons |
 | --- | --- | --- |
-| **Separate Postgres, separate Redis** (recommended for v1) | Clean blast radius. Autumn's Drizzle migrations are independent of LiteLLM's Prisma migrations. You can swap either side without touching the other. | Two databases to operate. Reconciler must compare cross-DB row counts. |
+| **Separate Postgres, separate Redis** (recommended for v1) | Clean blast radius. MeterPal's Drizzle migrations are independent of LiteLLM's Prisma migrations. You can swap either side without touching the other. | Two databases to operate. Reconciler must compare cross-DB row counts. |
 | **Same Postgres, separate schemas, shared Redis** | One connection pool. Cross-system analytics simpler. | Migration tools conflict (Drizzle + Prisma on same DB is workable but quirky). Schema-name collisions possible. |
 
 For v1, run them with separate Postgres + separate Redis. Each owns its data:
 
 ```
-postgres-autumn      Postgres for Autumn (customers, balances, events, invoices, ...)
+postgres-billing      Postgres for MeterPal (customers, balances, events, invoices, ...)
 postgres-litellm     Postgres for LiteLLM (LiteLLM_SpendLogs, LiteLLM_VerificationToken, ...)
 
-redis-autumn         Redis for Autumn Lua scripts (fullSubject, deduction, syncDirty)
+redis-billing         Redis for MeterPal Lua scripts (fullSubject, deduction, syncDirty)
 redis-litellm        Redis for LiteLLM spend counters (spend_counter_cache, budget_reservation)
 ```
 
-Operationally, point each app at its own DB / Redis URL. The only shared state is the customer_id / virtual_key mapping, which lives in **both** systems (Autumn stores it on the customer row; LiteLLM stores it on the `LiteLLM_EndUserTable.user_id`).
+Operationally, point each app at its own DB / Redis URL. The only shared state is the customer_id / virtual_key mapping, which lives in **both** systems (MeterPal stores it on the customer row; LiteLLM stores it on the `LiteLLM_EndUserTable.user_id`).
 
-The LiteLLM-side spend counter uses the prefix from `proxy_server.py:2988-3000`. Autumn's Lua scripts use their own prefixes — no collision risk even if you ever share Redis.
+The LiteLLM-side spend counter uses the prefix from `proxy_server.py:2988-3000`. MeterPal's Lua scripts use their own prefixes — no collision risk even if you ever share Redis.
 
 ## 6. End-to-end request trace, after integration
 
@@ -808,10 +808,10 @@ A user in your app types a prompt. The journey:
     max_budget=2000, current_spend=12.47.
  3. _run_centralized_common_checks fires. With disable_budget_reservation=true,
     this only does auth + rate-limit checks; the budget reservation is skipped
-    because Autumn is the source of truth.
+    because MeterPal is the source of truth.
  4. CustomLogger.async_pre_call_hook(AutumnBillingBridge) fires.
     - extracts customer_id=cus_abc123 from data["user"]
-    - calls Autumn POST /check  →  {allowed: true, balance: {remaining: 1987.53}}
+    - calls MeterPal POST /check  →  {allowed: true, balance: {remaining: 1987.53}}
     - returns data with mirrored customer_id; admits.
  5. Router picks model+deployment (load balance across 3 OpenAI orgs, etc.).
  6. Provider call (streaming).
@@ -822,27 +822,27 @@ A user in your app types a prompt. The journey:
     - reconciles LiteLLM budget reservation (if any)
  9. CustomLogger.async_log_success_event(AutumnBillingBridge) fires.
     - extracts customer_id from kwargs["user_api_key_end_user_id"]
-    - calls Autumn POST /track_tokens
+    - calls MeterPal POST /track_tokens
       {customer_id, model, input_tokens, output_tokens,
        cache_read_tokens, cache_creation_tokens, cost_usd, idempotency_key}
-    - Autumn decrements balance by $0.0042 via _luaScriptsV2/deduction
-    - Autumn returns {ok: true, balance: {remaining: 1987.49}}
+    - MeterPal decrements balance by $0.0042 via _luaScriptsV2/deduction
+    - MeterPal returns {ok: true, balance: {remaining: 1987.49}}
 10. Stream chunks forwarded to [App].
 11. [App] shows user the response.
 ```
 
-If Autumn is unreachable at step 4 (network blip), `AUTUMN_FAIL_MODE=open` admits the request. The /track_tokens call at step 9 may also fail; in that case LiteLLM still has its own SpendLog row, and a nightly reconciliation job (covered below) catches the divergence.
+If MeterPal is unreachable at step 4 (network blip), `AUTUMN_FAIL_MODE=open` admits the request. The /track_tokens call at step 9 may also fail; in that case LiteLLM still has its own SpendLog row, and a nightly reconciliation job (covered below) catches the divergence.
 
 ## 7. Idempotency and reconciliation
 
-**Idempotency.** LiteLLM emits a stable `litellm_call_id` (UUID) per request, exposed in `kwargs["litellm_call_id"]`. The bridge forwards it as `idempotency_key` to Autumn. Autumn's `handleTrackTokens` is built on a unique-constraint insert; a duplicate `idempotency_key` returns `idempotent: true` and does not double-debit.
+**Idempotency.** LiteLLM emits a stable `litellm_call_id` (UUID) per request, exposed in `kwargs["litellm_call_id"]`. The bridge forwards it as `idempotency_key` to MeterPal. MeterPal's `handleTrackTokens` is built on a unique-constraint insert; a duplicate `idempotency_key` returns `idempotent: true` and does not double-debit.
 
-If the bridge receives a retry from a transient HTTP error (e.g. Autumn returned 502 mid-write), the next attempt is naturally idempotent. No special retry logic is needed in the bridge; just make sure `httpx.AsyncClient` retries on connection errors (default `retry=0` is fine; LiteLLM's outer retry envelope will replay the request).
+If the bridge receives a retry from a transient HTTP error (e.g. MeterPal returned 502 mid-write), the next attempt is naturally idempotent. No special retry logic is needed in the bridge; just make sure `httpx.AsyncClient` retries on connection errors (default `retry=0` is fine; LiteLLM's outer retry envelope will replay the request).
 
-**Reconciliation.** Run a daily cron that catches any drift between LiteLLM's per-customer spend and Autumn's per-customer spend:
+**Reconciliation.** Run a daily cron that catches any drift between LiteLLM's per-customer spend and MeterPal's per-customer spend:
 
 ```typescript
-// autumn/server/src/cron/reconcileLitellmSpend.ts
+// billing/server/src/cron/reconcileLitellmSpend.ts
 import { Cron } from "@/cron/Cron.js";
 import { litellmFetch } from "@/internal/keys/litellmKeys.js";
 import { getAdminDb } from "@/db/initDrizzle.js";
@@ -883,7 +883,7 @@ This is the same three-layer reconciliation pattern documented in the Stripe sec
 
 Run these steps in sequence. Each step ends with a verification you can perform before moving on.
 
-1. **Bring up shared infrastructure.** Two Postgres (one for Autumn, one for LiteLLM) and two Redis instances. Recommended: Docker compose locally, RDS/ElastiCache in production. Verify: `psql` to each, `redis-cli ping` to each.
+1. **Bring up shared infrastructure.** Two Postgres (one for MeterPal, one for LiteLLM) and two Redis instances. Recommended: Docker compose locally, RDS/ElastiCache in production. Verify: `psql` to each, `redis-cli ping` to each.
 
 2. **Run migrations.**
    ```bash
@@ -898,9 +898,9 @@ Run these steps in sequence. Each step ends with a verification you can perform 
    ```
    Verify: `\dt` in each Postgres shows the expected tables.
 
-3. **Configure Autumn.**
+3. **Configure MeterPal.**
    ```bash
-   # .env in autumn/server/
+   # .env in billing/server/
    LITELLM_BASE_URL=https://api.your-saas.com  # the LiteLLM proxy URL
    LITELLM_MASTER_KEY=sk-litellm-master-...
    ```
@@ -926,7 +926,7 @@ Run these steps in sequence. Each step ends with a verification you can perform 
    general_settings:
      master_key: os.environ/LITELLM_MASTER_KEY
      database_url: os.environ/DATABASE_URL_LITELLM
-     disable_budget_reservation: true   # let Autumn be the sole admission controller
+     disable_budget_reservation: true   # let MeterPal be the sole admission controller
 
    model_list:
      - model_name: claude-sonnet-4-5
@@ -944,16 +944,16 @@ Run these steps in sequence. Each step ends with a verification you can perform 
    ```
    Verify: `curl http://localhost:4000/v1/models -H "Authorization: Bearer sk-litellm-master-..."` returns the configured models.
 
-6. **Run end-to-end test.** Sign up a test customer in Autumn. Send a chat request through LiteLLM with the customer's virtual key. Confirm:
-   - The request is admitted (Autumn `/check` returns `allowed: true`)
+6. **Run end-to-end test.** Sign up a test customer in MeterPal. Send a chat request through LiteLLM with the customer's virtual key. Confirm:
+   - The request is admitted (MeterPal `/check` returns `allowed: true`)
    - The response streams correctly
-   - Autumn's customer balance is debited (check the dashboard at `apps/leaf`)
+   - MeterPal's customer balance is debited (check the dashboard at `apps/leaf`)
    - The `wallet_ledger` table has a new row with `kind='usage'`
    - The `LiteLLM_SpendLogs` table has a matching row
 
 7. **Run reconciliation.** Wait 24 hours (or temporarily change the cron schedule to `*/5 * * * *` for testing). Confirm zero drift alerts. Reset the schedule to daily.
 
-8. **Wire the rest of your apps.** Each of your apps authenticates the user, reads the LiteLLM virtual key from the Autumn customer record, and forwards the request. The Autumn customer record carries the `litellm_virtual_key` field; your app's auth layer reads it from Autumn's `/customers/:id` endpoint at session-start.
+8. **Wire the rest of your apps.** Each of your apps authenticates the user, reads the LiteLLM virtual key from the MeterPal customer record, and forwards the request. The MeterPal customer record carries the `litellm_virtual_key` field; your app's auth layer reads it from MeterPal's `/customers/:id` endpoint at session-start.
 
 ## 9. Where every piece lives in the two repos
 
@@ -978,20 +978,20 @@ For the integrator, this is the file map.
 | --- | --- |
 | `autumn\server\src\routers\apiRouter.ts` | Confirm route registration and middleware order. |
 | `autumn\server\src\internal\balances\balancesRouter.ts` | Confirm the `/check` and `/track_tokens` mounts. |
-| `autumn\server\src\internal\balances\track\handlers\handleTrackTokens.ts` | Read the request schema Autumn expects. |
-| `autumn\server\src\internal\balances\check\handleCheck.ts` | Read the response shape Autumn returns. |
+| `autumn\server\src\internal\balances\track\handlers\handleTrackTokens.ts` | Read the request schema MeterPal expects. |
+| `autumn\server\src\internal\balances\check\handleCheck.ts` | Read the response shape MeterPal returns. |
 | `autumn\server\src\_luaScriptsV2\fullSubject\adjustSubjectBalance.lua` | Confirm the atomic decrement script that runs on every track. |
 | `litellm\litellm\integrations\custom_logger.py` | Base class your bridge inherits from. |
 | `litellm\litellm\proxy\hooks\proxy_track_cost_callback.py` | Mirror its structure for `async_log_success_event` / `async_log_failure_event`. |
 | `litellm\litellm\proxy\spend_tracking\budget_reservation.py` | Understand the reservation semantics even though you will skip them with `disable_budget_reservation: true`. |
 | `litellm\litellm\proxy\_types.py` (UserAPIKeyAuth, SpendLogsPayload) | Type defs for kwargs in your hook methods. |
 | `litellm\model_prices_and_context_window.json` | The pricing source of truth that LiteLLM uses for `response_cost`. |
-| `litellm\litellm\cost_calculator.py` (`completion_cost` at line 1261) | The function that produces `kwargs["response_cost"]` — same value Autumn receives. |
+| `litellm\litellm\cost_calculator.py` (`completion_cost` at line 1261) | The function that produces `kwargs["response_cost"]` — same value MeterPal receives. |
 
 ### What you do NOT touch
 
-- Autumn's Stripe handler (`external/stripe/`) — already wired, no change.
-- Autumn's customer lifecycle (`internal/customers/`) — no change; you only subscribe via `trigger/`.
+- MeterPal's Stripe handler (`external/stripe/`) — already wired, no change.
+- MeterPal's customer lifecycle (`internal/customers/`) — no change; you only subscribe via `trigger/`.
 - LiteLLM's proxy core (`proxy_server.py`) — no change; you only add a config line.
 - LiteLLM's existing reservation system (`budget_reservation.py`) — you opt out of it via `disable_budget_reservation: true` rather than modifying it.
 - LiteLLM's per-key budget table — kept for admin observability but not used for admission.
@@ -1000,13 +1000,13 @@ For the integrator, this is the file map.
 
 | Failure | What happens | What the bridge does |
 | --- | --- | --- |
-| Autumn is unreachable at admission | `/check` HTTP fails | `AUTUMN_FAIL_MODE=open` admits by default. Set `=closed` to deny on Autumn unreachable (recommended for production after the dashboard is reliable). |
-| Autumn is unreachable at tracking | `/track_tokens` HTTP fails | Logged; LiteLLM's own SpendLog is still written. Reconciler catches the drift in the next 24h. |
-| Network blip mid-write | Idempotency key replays cleanly | Autumn returns `idempotent: true` on retry; no double-debit. |
-| LiteLLM crashes mid-request | Reservation released by `BudgetReservationReleaseMiddleware` | With `disable_budget_reservation: true`, no LiteLLM-side reservation to release. Autumn-side, nothing was debited at admission (we set `send_event: false` on `/check`), so no release needed. |
-| Provider returns mid-stream error | LiteLLM fires `async_log_failure_event` | Bridge calls `/track_tokens` with `cost=0` and `error_type` set. Autumn records the failed attempt for analytics. |
-| Customer upgrades plan mid-month | Stripe webhook → Autumn `trigger/` → `provisionLitellmKey` | New `max_budget` pushed to LiteLLM via `/key/update`. Next request uses the new budget. |
-| Customer cancels subscription | Stripe webhook → Autumn `trigger/` → `blockLitellmKey` | LiteLLM key blocked. Next request returns 401 from auth (before pre_call_hook even runs). |
-| Bridge crashes between success and track | LiteLLM has the SpendLog; Autumn does not | Reconciler catches the divergence within 24h. |
+| MeterPal is unreachable at admission | `/check` HTTP fails | `AUTUMN_FAIL_MODE=open` admits by default. Set `=closed` to deny on MeterPal unreachable (recommended for production after the dashboard is reliable). |
+| MeterPal is unreachable at tracking | `/track_tokens` HTTP fails | Logged; LiteLLM's own SpendLog is still written. Reconciler catches the drift in the next 24h. |
+| Network blip mid-write | Idempotency key replays cleanly | MeterPal returns `idempotent: true` on retry; no double-debit. |
+| LiteLLM crashes mid-request | Reservation released by `BudgetReservationReleaseMiddleware` | With `disable_budget_reservation: true`, no LiteLLM-side reservation to release. MeterPal-side, nothing was debited at admission (we set `send_event: false` on `/check`), so no release needed. |
+| Provider returns mid-stream error | LiteLLM fires `async_log_failure_event` | Bridge calls `/track_tokens` with `cost=0` and `error_type` set. MeterPal records the failed attempt for analytics. |
+| Customer upgrades plan mid-month | Stripe webhook → MeterPal `trigger/` → `provisionLitellmKey` | New `max_budget` pushed to LiteLLM via `/key/update`. Next request uses the new budget. |
+| Customer cancels subscription | Stripe webhook → MeterPal `trigger/` → `blockLitellmKey` | LiteLLM key blocked. Next request returns 401 from auth (before pre_call_hook even runs). |
+| Bridge crashes between success and track | LiteLLM has the SpendLog; MeterPal does not | Reconciler catches the divergence within 24h. |
 
 The architecture is fault-tolerant by design: every state is independently reconstructible from the message logs on either side. The bridge is the thinnest possible layer — it does not own state, it only translates events.

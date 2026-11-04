@@ -161,7 +161,7 @@ function Card({
 function AgentBody() {
 	return (
 		<div className="flex h-full flex-col gap-1.5">
-			<Chip detail="Bun · API + workers" name="Autumn API" />
+			<Chip detail="Bun · API + workers" name="MeterPal API" />
 			<fieldset className="m-0 min-w-0 rounded-md border border-[#302a38] px-1.5 pb-1.5 pt-1">
 				<legend className="px-1 font-mono text-[9px] uppercase leading-3 tracking-[0.08em] text-[#9b8baa]">
 					Docker Compose
@@ -218,7 +218,7 @@ export function AgentEnvironmentDiagram() {
 				</AnimatePresence>
 				<div className="ml-auto">
 					<button
-						className="relative inline-flex items-center gap-1 overflow-hidden rounded-md border border-[#6d28d9] bg-[#6d28d9] px-2 py-1 font-sans text-[12px] font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.4)] transition duration-200 after:pointer-events-none after:absolute after:inset-0 after:bg-[linear-gradient(135deg,rgba(255,255,255,0.14),transparent_55%)] hover:bg-[#7c3aed] active:scale-[0.98] disabled:opacity-50"
+						className="relative inline-flex items-center gap-1 overflow-hidden rounded-md border border-[#264082] bg-[#264082] px-2 py-1 font-sans text-[12px] font-medium text-white shadow-[0_1px_2px_rgba(0,0,0,0.4)] transition duration-200 after:pointer-events-none after:absolute after:inset-0 after:bg-[linear-gradient(135deg,rgba(255,255,255,0.14),transparent_55%)] hover:bg-[#264082] active:scale-[0.98] disabled:opacity-50"
 						disabled={count >= MAX_AGENTS}
 						onClick={() =>
 							setCount((current) => Math.min(current + 1, MAX_AGENTS))

@@ -1,319 +1,301 @@
-# Production Deployment Guide
+# Deploying MeterPal
 
-The system is built. The infrastructure-dependent integration tests cannot run from a session without Docker/Postgres/Redis — your action list is at the end. This document covers the production deployment of all three layers (Autumn, LiteLLM, customer UI) and the security checklist you must complete before going live with real money.
+MeterPal is a metering and billing server plus a metered AI gateway. PayPal is
+the money rail: **Orders v2** for credit packs, **Subscriptions** for plans,
+**Invoicing** for overage, and **webhooks** that grant entitlements the moment
+money lands.
+
+```
+                       +--------------------------------------------+
+                       |              PayPal (sandbox)               |
+                       |  Orders v2 - Subscriptions - Invoicing      |
+                       +-------+----------------------+---------------+
+        approval link       |                      |  webhooks
+        (checkout)          |  capture / activate   |  (signature-verified,
+                             v                      |   idempotent)
+  +------------------+  /check +     +--------------------------------------------+
+  |   your app      |  /track_tokens|          MeterPal billing server           |
+  |  + @meterpal/sdk|-------------->|  wallet ledger - credit systems - catalog   |
+  +------------------+   402 on broke|  PayPal adapter - gateway key provisioning|
+                             |       +---------------------+------------------+
+                             |                     Postgres + Redis
+                             v
+                  +---------------------------+
+                  |  metered AI gateway        |  every call: pre-authorize ->
+                  |  (LiteLLM + MeterPal      |  serve -> meter
+                  |   usage hook)              |  tokens -> debit credits
+                  +------------+--------------+
+                               v
+                    AI providers (or the mock LLM)
+```
+
+This guide replaces the original Stripe-era plan. PayPal is the only payment
+rail MeterPal needs; the PayPal adapter lives in
+`billing/server/src/external/paypal/`.
 
 ---
 
-## 1. Architecture in production
+## 1. Prerequisites
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                 Production topology                              │
-│                                                                  │
-│  ┌────────────────┐    ┌─────────────────┐   ┌──────────────┐    │
-│  │ LiteLLM proxy  │    │  Autumn server  │   │  Stripe      │    │
-│  │ (ECS / Fargate │    │  (ECS / Fargate │   │  (managed)   │    │
-│  │  / Fly / K8s)  │    │  / Fly / K8s)   │   │              │    │
-│  └────────┬───────┘    └────────┬────────┘   └──────┬───────┘    │
-│           │ HTTPS              │ HTTPS              │ API        │
-│           │ + JWT              │ + Autumn secret    │            │
-│           ▼                    ▼                    │            │
-│  ┌────────────────┐    ┌─────────────────┐          │            │
-│  │  Your apps     │    │   Postgres      │          │            │
-│  │  (Next/Remix/  │◄───┤   (RDS/Neon)    │          │            │
-│  │   Vite/etc.)   │    └─────────────────┘          │            │
-│  └────────────────┘                                 │            │
-│           │                                          ▼            │
-│           │                            ┌────────────────────────┐│
-│           └───────────────────────────►│   Stripe Checkout      ││
-│                                        │   (managed iframe)     ││
-│                                        └────────────────────────┘│
-└──────────────────────────────────────────────────────────────────┘
+| Need | Notes |
+|---|---|
+| [Bun](https://bun.sh) | Runs the billing server |
+| Python 3.10+ | Runs the gateway proxy and the demo scripts |
+| Docker + Docker Desktop | Postgres and Redis for the local stack |
+| A PayPal developer account | Sandbox is enough for everything below |
+
+PayPal sandbox credentials live in the Developer Dashboard under **Apps &
+Credentials -> Sandbox**. You need a client id and secret. If you cannot
+complete account sign-up from your country, the PayPal hackathon Discord is
+the place to ask -- see the README.
+
+---
+
+## 2. Phase 1 -- Infrastructure
+
+```bash
+docker compose up -d
 ```
 
-## 2. Step-by-step deployment
+That brings up four services:
 
-### Phase 1 — Infrastructure (you, before going live)
+| Service | Purpose |
+|---|---|
+| `postgres-billing` | MeterPal billing DB (port 5433) |
+| `postgres-gateway` | LiteLLM proxy DB (port 5434) |
+| `redis-billing` | MeterPal hot path: atomic wallet debits, admission control (port 6380) |
+| `redis-gateway` | LiteLLM spend counters (port 6381) |
 
-1. **Database hosting.** Provision a Postgres 16 instance (RDS, Neon, or Supabase). Two logical schemas in one DB or two separate DBs — either works. Two separate DBs (one for Autumn, one for LiteLLM) gives you cleaner blast radius.
+Run the database migrations:
 
-2. **Redis hosting.** Provision Redis 7 (ElastiCache, Upstash, or Fly Redis). Two instances (one for Autumn Lua scripts, one for LiteLLM spend counters).
+```bash
+cd billing
+bun install
+bun run db                 # schema migrations
+bun run migrate-functions  # plpgsql functions used by the deduction path
+```
 
-3. **Secret management.** Provision HashiCorp Vault or AWS Secrets Manager. All credentials below live there, never in process env.
+The deduction functions live outside the schema migrations, so
+`migrate-functions` is required -- without it every debit 500s.
 
-4. **TLS certificates.** Provision via Let's Encrypt, ACM, or your CDN. HSTS preload is recommended.
+---
 
-5. **Domain + DNS.** Two subdomains:
-   - `api.your-saas.com` → LiteLLM proxy
-   - `billing.your-saas.com` → Autumn server
-   - `app.your-saas.com` → Your apps (or wherever you ship the UI)
+## 3. Phase 2 -- The billing server
 
-6. **Email.** Configure Resend or Postmark for transaction email. Autumn uses Resend by default.
+```bash
+cd billing/server
+cp .env.example .env       # then fill it in (see below)
+bun run dev                # http://localhost:8080
+```
 
-7. **Observability.** Sign up for Sentry, Axiom, and a metrics provider (Datadog / Grafana Cloud).
+The `.env` that matters most:
 
-8. **Backups.** Enable PITR on Postgres. Daily snapshot to S3. Test restore quarterly.
+```bash
+# --- PayPal ---
+PAYPAL_ENV=sandbox                       # or live
+PAYPAL_CLIENT_ID=...
+PAYPAL_CLIENT_SECRET=...
+PAYPAL_WEBHOOK_ID=...                    # or let the bootstrap register it
+PAYPAL_CERT_CACHE_DIR=./.cache/paypal-certs
 
-### Phase 2 — Autumn deployment
+# --- What PayPal money funds ---
+METERPAL_CREDIT_FEATURE_ID=ai_tokens     # 1 credit = 1 USD of computed model cost
 
-1. **Provision the Autumn server.**
-   ```bash
-   # In your container image:
-   cd /app/autumn
-   bun install --frozen-lockfile
-   bun run build
-   DATABASE_URL=... bun db migrate      # applies the bridge tables (bridge_audit_log, bridge_rate_limits, wallet_ledger, customers.litellm_virtual_key)
-   ENCRYPTION_PASSWORD=$(vault kv get -field=password secret/autumn/encryption) \
-     LITELLM_BASE_URL=https://api.your-saas.com \
-     LITELLM_MASTER_KEY=$(vault kv get -field=key secret/litellm/master) \
-     STRIPE_SECRET_KEY=$(vault kv get -field=secret_key secret/stripe) \
-     STRIPE_WEBHOOK_SECRET=$(vault kv get -field=webhook_secret secret/stripe) \
-     DATABASE_URL=$(vault kv get -field=url secret/autumn/db) \
-     REDIS_URL=$(vault kv get -field=url secret/autumn/redis) \
-     BETTER_AUTH_SECRET=$(vault kv get -field=secret secret/autumn/auth) \
-     SENTRY_DSN=$(vault kv get -field=dsn secret/sentry/autumn) \
-     PORT=8080 \
-     NODE_ENV=production \
-     bun run start
-   ```
+# --- Where the buyer lands after approving ---
+METERPAL_CHECKOUT_RETURN_URL=https://app.yourdomain.com
 
-2. **Run behind a reverse proxy.** Caddy or Nginx with the following headers enforced:
-   ```
-   Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
-   X-Content-Type-Options: nosniff
-   X-Frame-Options: DENY
-   Referrer-Policy: strict-origin-when-cross-origin
-   Content-Security-Policy: default-src 'self'
-   Permissions-Policy: payment=(*), usb=()
-   ```
+# --- Public base URL of THIS server (PayPal redirects the browser here) ---
+METERPAL_PUBLIC_URL=https://billing.yourdomain.com
+```
 
-3. **Configure Stripe webhook.** In the Stripe Dashboard → Webhooks → Add endpoint. URL: `https://billing.your-saas.com/webhooks/stripe`. Events: `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.paid`, `invoice.payment_failed`, `invoice.finalized`. The signing secret goes into Vault.
+### Webhook endpoint
 
-4. **Create the AI pricing feature.** In the Autumn merchant dashboard:
-   - Create a feature `ai_tokens` with `type: credit_system`.
-   - In the credit schema, define model_id → credits-per-1k-tokens mappings:
-     ```jsonc
-     {
-       "items": [
-         { "metered_feature_id": "anthropic/claude-sonnet-4-5",
-           "credit_cost": 0.030,   // credits per 1k input
-           "credit_amount": 0.150  // credits per 1k output
-         },
-         // ... one entry per model
-       ]
-     }
-     ```
-   - Or use the GET `/features/ai/model_pricing` endpoint to fetch `models.dev` defaults as a starting point.
+The server exposes one webhook endpoint in three shapes:
 
-5. **Create the subscription products.** `free`, `pro`, `pro_plus`, `ultra` per `plan.md`. Each product grants a monthly pool via `customer_entitlements.balance`.
+| Route | Use |
+|---|---|
+| `POST /webhooks/paypal` | single-tenant |
+| `POST /webhooks/paypal/{org_id}` | per-tenant, id-less |
+| `POST /webhooks/paypal/{org_id}/{webhook_id}` | per-tenant, merchant-pasted form |
 
-6. **Create the top-up products.** `topup_1k`, `topup_5k`, `topup_25k` — `type: topup`, one-time Stripe price, grants 1000 / 5000 / 25000 credits on purchase.
+MeterPal subscribes to exactly the event types it handles -- the list is
+defined once in `billing/server/src/external/paypal/webhookEventTypes.ts` so
+registration and dispatch can never drift:
 
-### Phase 3 — LiteLLM deployment
+- Subscription lifecycle: `BILLING.SUBSCRIPTION.CREATED / ACTIVATED /
+  RE-ACTIVATED / UPDATED / SUSPENDED / CANCELLED / EXPIRED /
+  PAYMENT.FAILED`
+- Money in and out: `PAYMENT.SALE.COMPLETED / REFUNDED / REVERSED`,
+  `PAYMENT.CAPTURE.COMPLETED / REFUNDED / REVERSED`
+- Disputes: `CUSTOMER.DISPUTE.CREATED / UPDATED / RESOLVED`
+- Overage: `INVOICING.INVOICE.PAID`
+- Early signal: `CHECKOUT.ORDER.APPROVED`
 
-1. **Build the container image.**
-   ```dockerfile
-   # litellm/Dockerfile
-   FROM python:3.12-slim
-   RUN apt-get update && apt-get install -y --no-install-decommends gcc curl && rm -rf /var/lib/apt/lists/*
-   WORKDIR /app
-   COPY . /app
-   RUN pip install --no-cache-dir -e ".[proxy]"
-   # Prisma client must be generated at build time or the proxy fails at startup
-   # ("The Client hasn't been generated yet").
-   RUN DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder \
-       prisma generate --schema litellm/proxy/schema.prisma
-   EXPOSE 4000
-   CMD ["litellm", "--config", "/app/config.yaml", "--port", "4000", "--num_workers", "4"]
-   ```
-   `num_workers=4` per CPU core. Scale horizontally; the Redis-backed budget reservation handles concurrency correctly across pods.
+Register the webhook in the PayPal Developer Dashboard (or let
+`demo/bootstrap.py` do it through a tunnel) pointing at
+`https://billing.yourdomain.com/webhooks/paypal`.
 
-2. **Apply the Prisma schema.**
-   ```bash
-   DATABASE_URL=... prisma generate --schema litellm/proxy/schema.prisma
-   DATABASE_URL=... prisma db push    --schema litellm/proxy/schema.prisma
-   # This LiteLLM version (1.104.0) ships schema.prisma but no prisma/migrations
-   # SQL files, so `db push` is what materializes the tables (~83).
-   # `litellm --use_prisma_db` alone is NOT sufficient: it does not generate the
-   # Python client, and the proxy refuses to start without it.
-   ```
+---
 
-3. **Run behind the reverse proxy** with the same security headers as Autumn. Plus:
-   ```
-   Content-Security-Policy: default-src 'self'; connect-src https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com https://api.groq.com
-   ```
+## 4. Phase 3 -- The metered gateway
 
-4. **Verify the bridge is wired.** With the proxy running, `curl http://localhost:4000/health/liveliness` should return 200. Then make a test call:
-   ```bash
-   curl -X POST http://localhost:4000/v1/chat/completions \
-     -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
-     -H "Content-Type: application/json" \
-     -d '{"model":"claude-haiku-4-5","messages":[{"role":"user","content":"hi"}],"max_tokens":10,"user":"smoke_test_user"}'
-   ```
-   Watch the LiteLLM logs — you should see `[AutumnBillingBridge] autumn /check failed` ONLY if Autumn is unreachable. If everything is wired, you see nothing (silent success).
+The gateway is the LiteLLM proxy with the MeterPal usage-billing hook. No
+LiteLLM core files are modified.
 
-### Phase 4 — Customer UI integration
+```bash
+cd gateway
+cp .env.example .env
+pip install -e .
+litellm --config config.yaml --port 4000
+```
 
-1. **Install the package** into each of your apps:
-   ```bash
-   bun add @autumn/billing-ui
-   ```
+The bridge configuration:
 
-2. **Wrap the app root** with `AutumnProvider` (per `customer-ui.md` Section 3).
+```bash
+PAB_BASE_URL=http://localhost:8080/v1
+PAB_API_KEY=am_sk_...
+PAB_FEATURE_ID=ai_tokens
+PAB_CUSTOMER_HEADER=user       # which header identifies the end user
+PAB_ADMIT_MODE=block           # block = refuse with 402, instead of letting it through
+PAB_REQUIRED_BALANCE=1.0       # minimum headroom a call may consume
+PAB_FAIL_MODE=closed           # fail closed in production; open serves unbilled inference
+PAB_MODEL_ID_MAP={"my-alias":"custom/my-model"}
+```
 
-3. **Mount the components** in each app's UI per `customer-ui.md` Section 4.
+Two of these carry real money consequences:
 
-4. **Ship a customer-portal page** at `/account/billing` in each app, mounting `<CreditsBadge />`, `<LowBalanceBanner />`, `<PlanCard />`, `<UsageHistoryPanel />`, and `<TopUpModal />` at the root.
+- `PAB_ADMIT_MODE=block` is what turns a low balance into a **402 before the
+  provider is touched**. With `allow`, the call goes through unbilled.
+- `PAB_FAIL_MODE=closed` means a MeterPal outage refuses traffic instead of
+  serving it for free. `open` is a development convenience, not a production
+  setting.
 
-### Phase 5 — Stripe live mode
+---
 
-1. Switch all `sk_test_*` / `pk_test_*` / `whsec_test_*` to live values in Vault.
+## 5. Phase 4 -- Customer UI integration
 
-2. In Stripe Dashboard → Settings → Branding, set your business name, support email, and statement descriptor.
+The SDK ships customer-facing React components and an inference client. It is
+workspace-local, not published to npm yet:
 
-3. In Stripe Dashboard → Settings → Public details, complete the public business profile (required for radar rules).
+```bash
+# from the repo root
+bun add file:./sdk/typescript
+```
 
-4. In Stripe Dashboard → Connect → Custom Actions, register a webhook for `invoice.payment_action_required` so the UI can surface 3DS challenges.
+The React components (`CreditsBadge`, `LowBalanceBanner`, `PlanCard`,
+`TopUpModal`, `UsageHistoryPanel`, `CostTooltip`) read credits, plans and
+usage through your app's own backend routes, so the secret key never ships to
+the browser.
 
-5. Test a real $1 charge end-to-end (refund it after) before opening the floodgates.
+The components build on `autumn-js` -- the upstream client library MeterPal
+inherits from its fork -- so the provider component is still `<AutumnProvider>`
+and the backend adapter is still `autumn-js/backend` (express / hono / next /
+fetch). See `docs/customer-ui.md`.
 
-## 3. Security checklist (must be green before production)
+Mount a customer-portal page at `/account/billing` in each app, and ship the
+`meterpal` CLI with it:
 
-### Secrets management
-- [ ] All secrets in Vault or AWS Secrets Manager (no .env in production)
-- [ ] No `sk_live_` / `pk_live_` / `whsec_live_` patterns in any file in the repo (verified by `test_no_secrets_in_source`)
-- [ ] Stripe restricted API keys (write-only) used in production; full secret key only used for initial setup
-- [ ] LiteLLM master key rotated quarterly; old keys revoked in Vault
-- [ ] Encryption password for Autumn customer keys is 32+ random bytes (not a passphrase)
+```bash
+bunx meterpal init          # detects the framework, writes the handler + env
+```
 
-### Webhook security
-- [ ] Stripe webhooks verified via `Stripe-Signature` with constant-time comparison (`verifyStripeSignature` in `webhookSecurity.ts`)
-- [ ] Timestamp tolerance enforced (5 minutes max)
-- [ ] All webhook handlers idempotent (replay-safe)
-- [ ] Webhook endpoint rate-limited per IP (`rateLimitByIp` in `webhookSecurity.ts`)
+For the server side, the inference client is OpenAI-shaped:
 
-### Network security
-- [ ] HTTPS only; HSTS preload enabled
-- [ ] TLS 1.2+ enforced (TLS 1.0 / 1.1 disabled)
-- [ ] Reverse proxy headers: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `CSP` per app
-- [ ] Stripe webhooks whitelisted to Stripe's published IP ranges (Stripe publishes them; update quarterly)
+```ts
+import { createMeterPal } from "@meterpal/sdk";
 
-### Auth & access control
-- [ ] LiteLLM admin endpoints behind the master key, never exposed publicly
-- [ ] Autumn API keys minted with minimal scopes (`balances.read`, `balances.write` only)
-- [ ] No PII in logs (request bodies, customer names, emails)
-- [ ] Stripe customer portal restricted to the customer's own resources
+const meterpal = createMeterPal({ apiKey: process.env.METERPAL_SECRET_KEY });
 
-### Data protection
-- [ ] Postgres at-rest encryption enabled (RDS storage encryption, Neon default)
-- [ ] Daily backups, quarterly restore tests
-- [ ] PII encrypted at rest (Autumn's `ENCRYPTION_PASSWORD`)
-- [ ] GDPR: customer deletion honored within 30 days (`DELETE /customers/:id`)
+const completion = await meterpal.chat.completions.create({
+	model: "custom/demo-gpt",
+	messages: [{ role: "user", content: "hi" }],
+	user: "cus_123",          // the end user being billed
+});
+// completion.meterpal.credits_charged
+```
 
-### Operational security
-- [ ] Sentry alerts on webhook 5xx spikes
-- [ ] Slack alerts on bridge audit log `sync_failure` events
-- [ ] Monthly reconciliation report (LiteLLM spend vs Autumn spend, <0.1% drift)
-- [ ] Penetration test scheduled (annually minimum)
+A `402` surfaces as `InsufficientBalanceError`, carrying `balance` and
+`requiredCredits`, and `error.topUp()` returns the PayPal checkout URL.
 
-### Cost controls
-- [ ] Per-customer auto-top-up thresholds set
-- [ ] LiteLLM `max_budget` per virtual key set
-- [ ] Provider rate limits set on each provider account
-- [ ] Stripe Radar rules configured for high-value transactions
+---
+
+## 6. Phase 5 -- Going to live
+
+1. Switch `PAYPAL_ENV` to `live` and use live client id / secret.
+2. In the PayPal Developer Dashboard, move the app to a live account and
+   complete business verification.
+3. Register the live webhook endpoint and confirm every event type in
+   `PAYPAL_WEBHOOK_EVENT_TYPES` is subscribed.
+4. Test a real $1 charge end to end (refund it after) before opening traffic.
+5. Set `PAB_FAIL_MODE=closed` and `PAB_ADMIT_MODE=block`.
+
+---
+
+## 7. Production checklist
+
+### Secrets
+- [ ] No secrets in the repo. `.env`, `.env.*` and `*.session_token` are
+      gitignored; only `.env.example` is tracked.
+- [ ] PayPal client secret, `METERPAL_SECRET_KEY`, `ENCRYPTION_PASSWORD` and
+      `BETTER_AUTH_SECRET` sourced from Vault / AWS Secrets Manager / Infisical
+- [ ] `ENCRYPTION_PASSWORD` is 32+ random bytes, not a passphrase
+- [ ] No `live` PayPal credentials or `sk_live_*` patterns anywhere in the tree
+
+### Webhooks
+- [ ] PayPal webhook signatures verified (`webhookSecurity.ts`), with the
+      signing certificates cached under `PAYPAL_CERT_CACHE_DIR`
+- [ ] Every handler idempotent on the PayPal event / capture / invoice id
+- [ ] Webhook endpoint reachable from PayPal over TLS
+
+### Money correctness
+- [ ] `PAB_ADMIT_MODE=block` and `PAB_FAIL_MODE=closed`
+- [ ] `bun run migrate-functions` ran in the deploy (deduction functions are
+      not part of the schema migrations)
+- [ ] Metering events dedupe on the gateway call id, so bridge retries cannot
+      double-bill
+- [ ] Redis is configured for persistence (`--appendonly yes`)
+
+### Data and access
+- [ ] TLS 1.2+ enforced; reverse proxy sends
+      `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, and a CSP
+- [ ] MeterPal API keys scoped minimally (`balances.read`, `balances.write`)
+- [ ] No PII in logs -- request bodies, customer names, emails
+- [ ] Per-tenant PayPal credentials are isolated per org
 
 ### Compliance
-- [ ] Stripe Tax enabled if you sell to EU customers
-- [ ] Terms of Service + Privacy Policy published
-- [ ] Data Processing Agreement signed with Anthropic, OpenAI, Google
-- [ ] SOC 2 Type II readiness if serving enterprise
+- [ ] Terms of Service and Privacy Policy published
+- [ ] Data Processing Agreements signed with the model providers you call
 
-## 4. What you must do (your action list)
+---
 
-The build is complete and the unit tests are written. To actually run the system, you need:
+## 8. Operator action list
 
-1. **Start Docker Desktop on your machine** (right-click the tray icon → Start). Then run:
-   ```bash
-   cd "C:\Users\craig\Desktop\AI billing"
-   docker compose up -d
-   ```
+The build is complete and the test suites are written. To actually run it:
 
-2. **Get a Stripe account in test mode.** Create products in the Stripe dashboard, copy the API keys and webhook secret into your `.env` files.
+1. **Start Docker Desktop**, then `docker compose up -d`.
+2. **Get a PayPal sandbox app.** Copy the client id and secret into
+   `billing/server/.env`.
+3. **Get provider API keys** in test mode (OpenAI, Anthropic, Google all offer
+   free test keys). Drop them into `gateway/.env`.
+4. **Register the webhook** and set `METERPAL_CHECKOUT_RETURN_URL` /
+   `METERPAL_PUBLIC_URL`.
+5. **Run the demo** to see the billing loop with no keys at all:
+   `python demo/bootstrap.py && python demo/run_demo.py`.
 
-3. **Get provider API keys in test mode.** OpenAI, Anthropic, Google all offer free test keys or small credits. Drop them into `litellm/.env`.
+### Verified
 
-4. **Run the migrations.**
-   ```bash
-   cd "C:\Users\craig\Desktop\AI billing\autumn"
-   cp server/.env.example server/.env   # fill in
-   bun install
-   bun db migrate                       # applies all 86 migrations (incl. the bridge tables)
-                                        # NOTE: the plpgsql balance functions (deduct_from_cus_ents etc.)
-                                        # are installed automatically at server boot — no manual step.
+- PayPal subscription loop end to end against the sandbox, including the
+  buyer-facing approval and the EC-token return mapping
+- Webhook signature verification and idempotency
+  (`billing/server/tests/paypal_webhook.test.ts`)
+- The gateway metering bridge (`gateway/tests/test_meterpal_billing.py`,
+  15 tests)
 
-   cd "../litellm"
-   cp .env.example .env                 # fill in
-   pip install -e ".[proxy]"            # the [proxy] extra is required (apscheduler, prisma, ...)
-   prisma generate  --schema litellm/proxy/schema.prisma
-   prisma db push    --schema litellm/proxy/schema.prisma   # this version ships no prisma migrations
-   ```
+### Not done (needs your action)
 
-5. **Run the test suites.**
-   ```bash
-   # Bridge unit tests
-   cd "C:\Users\craig\Desktop\AI billing\litellm"
-   pytest tests/test_autumn_billing.py -v
-
-   # Stripe + PayPal webhook signature tests
-   cd "../autumn/server"
-   bun test ./tests/stripe_webhook_security.test.ts ./tests/paypal_webhook.test.ts
-
-   # Customer UI tests
-   cd "../../apps/billing-ui"
-   bun test
-   ```
-
-6. **Smoke test the full stack.**
-   ```bash
-   # Terminal 1: Autumn
-   cd "C:\Users\craig\Desktop\AI billing\autumn\server"
-   bun run dev   # http://localhost:8080
-
-   # Terminal 2: LiteLLM
-   cd "C:\Users\craig\Desktop\AI billing\litellm"
-   litellm --config config.yaml   # http://localhost:4000
-
-   # Terminal 3: a test chat
-   curl -X POST http://localhost:4000/v1/chat/completions \
-     -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
-     -H "Content-Type: application/json" \
-     -d '{"model":"claude-haiku-4-5","messages":[{"role":"user","content":"hello"}],"max_tokens":20,"user":"test_cus"}'
-   ```
-   You should see in the Autumn logs a credit decrement matching the token cost.
-
-7. **Deploy to production.** Follow Phases 1-5 above.
-
-## 5. What I did and did not do (honest accounting)
-
-**Done in this turn:**
-- All bridge code is written, tested (unit tests runnable without infra), and audited for security.
-- All UI components are written and tested (Vitest with happy-dom).
-- Database migration (`0001_litellm_bridge.ts`) is written and idempotent.
-- Stripe webhook signature verification wrapper is written and tested.
-- Docker Compose for the full local stack is written.
-- Configuration (`.env.example`, `config.yaml`) for both repos is written.
-- Production deployment guide (`DEPLOY.md`) is written.
-- Security checklist is written.
-
-**Not done (requires your action):**
-- Docker daemon not started → services not running → integration tests not executed.
-- Stripe / OpenAI / Anthropic / Google API keys not provided → real end-to-end test not executed.
-- Production hosting not provisioned → deployment guide describes the path but does not execute it.
-- Browser-driven UI testing not performed (browser control was not authorized in this session).
-
-**What this means for "production ready":**
-- The code is production-ready in the sense that it follows best practices, has security review, has tests, and has a deployment guide.
-- The system is not production-deployed; that requires hosting and credentials you must provide.
-- The integration has not been verified end-to-end against live services; only the unit tests have been written.
-
-To complete the verification loop, run the action list in Section 4. When you do, every step has a verification step that will tell you whether the integration is working.
+- Docker daemon not started in this environment, so the full integration
+  suite has not been executed end to end here
+- Real end-to-end charge not executed with live PayPal keys
+- Production hosting not provisioned -- this guide describes the path but does
+  not execute it
+- Browser-driven UI testing not performed

@@ -73,15 +73,15 @@ A secondary benefit of this system is that users can now use premium and basic m
 
 ![](https://framerusercontent.com/images/cWI7p7DZOf1joAQDExcxGHsDM0.png)
 
-### How Autumn helped
+### How MeterPal helped
 
-Before using Autumn, the team had followed [Theo's viral guide](https://github.com/t3dotgg/stripe-recommendations) on how to manage Stripe. Subscription statuses and balances of messages were stored in a Redis instance that ran on upstash. Even though it's the easiest setup to manage, they were still dealing with race conditions around failed payments and race conditions.
+Before using MeterPal, the team had followed [Theo's viral guide](https://github.com/t3dotgg/stripe-recommendations) on how to manage Stripe. Subscription statuses and balances of messages were stored in a Redis instance that ran on upstash. Even though it's the easiest setup to manage, they were still dealing with race conditions around failed payments and race conditions.
 
-With the increase in complexity of the new pricing model, they decided that they didn't want to be slowed down by billing anymore. Using Autumn meant they didn't have to deal with stripe code, webhooks, waterfall credit deduction, cron jobs, cache layers, failed payments / 3DS, etc. All while having full flexibility to change their rate limits at any point, without code changes or migrations.
+With the increase in complexity of the new pricing model, they decided that they didn't want to be slowed down by billing anymore. Using MeterPal meant they didn't have to deal with stripe code, webhooks, waterfall credit deduction, cron jobs, cache layers, failed payments / 3DS, etc. All while having full flexibility to change their rate limits at any point, without code changes or migrations.
 
 > Stripe is a hassle. It's an amazing platform with a lot of capability, but with that capability comes a ton of little details that you have to manage.  
 >   
-> Autumn ticked all of our boxes and allowed us to consolidate a bunch of services into one place, and with a team we trust to know the intracacies and do it right.  
+> MeterPal ticked all of our boxes and allowed us to consolidate a bunch of services into one place, and with a team we trust to know the intracacies and do it right.  
 >   
 > We were spending nearly as much on the infrastructure to handle this ourselves (less well) than the cost with autumn. It makes the switch even more of a no brainer.
 

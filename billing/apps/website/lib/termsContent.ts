@@ -10,13 +10,13 @@ export const termsSections: LegalSection[] = [
 	{
 		title: "1. Acceptance of Terms",
 		content:
-			'By accessing or using the Autumn platform, APIs, SDKs, or any related services (collectively, the "Services") provided by Rebase, Inc., a Delaware corporation ("Autumn," "we," "us," or "our"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, do not use our Services.',
+			'By accessing or using the MeterPal platform, APIs, SDKs, or any related services (collectively, the "Services") provided by Rebase, Inc., a Delaware corporation ("MeterPal," "we," "us," or "our"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, do not use our Services.',
 		isUppercase: false,
 	},
 	{
 		title: "2. Description of Services",
 		content:
-			"Autumn provides billing infrastructure, including usage-based billing, credits management, pricing configuration, and entitlements management for software applications. Our Services are designed for developers and businesses building products that require flexible billing and pricing capabilities.",
+			"MeterPal provides billing infrastructure, including usage-based billing, credits management, pricing configuration, and entitlements management for software applications. Our Services are designed for developers and businesses building products that require flexible billing and pricing capabilities.",
 		isUppercase: false,
 	},
 	{
@@ -46,7 +46,7 @@ export const termsSections: LegalSection[] = [
 	{
 		title: "7. Intellectual Property",
 		content:
-			"The Services, including all software, APIs, documentation, and related materials, are owned by Autumn and protected by intellectual property laws. We grant you a limited, non-exclusive, non-transferable license to use the Services in accordance with these Terms. You may not copy, modify, or create derivative works of the Services except as expressly permitted.",
+			"The Services, including all software, APIs, documentation, and related materials, are owned by MeterPal and protected by intellectual property laws. We grant you a limited, non-exclusive, non-transferable license to use the Services in accordance with these Terms. You may not copy, modify, or create derivative works of the Services except as expressly permitted.",
 		isUppercase: false,
 	},
 	{
@@ -70,7 +70,7 @@ export const termsSections: LegalSection[] = [
 	{
 		title: "11. Indemnification",
 		content:
-			"You agree to indemnify, defend, and hold harmless Autumn and its officers, directors, employees, and agents from any claims, liabilities, damages, losses, or expenses arising from your use of the Services, your violation of these Terms, or your infringement of any third-party rights.",
+			"You agree to indemnify, defend, and hold harmless MeterPal and its officers, directors, employees, and agents from any claims, liabilities, damages, losses, or expenses arising from your use of the Services, your violation of these Terms, or your infringement of any third-party rights.",
 		isUppercase: false,
 	},
 	{
@@ -94,13 +94,13 @@ export const termsSections: LegalSection[] = [
 	{
 		title: "15. General Provisions",
 		content:
-			"These Terms constitute the entire agreement between you and Autumn regarding the Services. If any provision is found unenforceable, the remaining provisions will continue in effect. Our failure to enforce any right or provision does not constitute a waiver. You may not assign these Terms without our prior written consent.",
+			"These Terms constitute the entire agreement between you and MeterPal regarding the Services. If any provision is found unenforceable, the remaining provisions will continue in effect. Our failure to enforce any right or provision does not constitute a waiver. You may not assign these Terms without our prior written consent.",
 		isUppercase: false,
 	},
 	{
 		title: "16. Contact Information",
 		content:
-			"For questions about these Terms, please contact us at security@useautumn.com or at: Rebase, Inc. (d/b/a Autumn), Email: security@useautumn.com, Website: https://useautumn.com",
+			"For questions about these Terms, please contact us at security@useautumn.com or at: Rebase, Inc. (d/b/a MeterPal), Email: security@useautumn.com, Website: https://useautumn.com",
 		isUppercase: false,
 	},
 ];

@@ -8,12 +8,12 @@ export function AutumnKeylessDiagram() {
 	return (
 		<figure
 			className={cn("not-prose", styles.diagram)}
-			aria-label="Autumn keyless onboarding: the agent provisions a sandbox organization and receives its API key, then builds the catalog and integrates the app. Later, it shares a claim link. The user verifies their identity and claims the organization. The same organization, catalog, and API key keep working."
+			aria-label="MeterPal keyless onboarding: the agent provisions a sandbox organization and receives its API key, then builds the catalog and integrates the app. Later, it shares a claim link. The user verifies their identity and claims the organization. The same organization, catalog, and API key keep working."
 		>
 			<AuthSequence
-				title="Autumn"
+				title="MeterPal"
 				subtitle="Keyless onboarding"
-				service="Autumn"
+				service="MeterPal"
 			>
 				<AuthSequenceMessage direction="request" label="Provision sandbox" />
 				<AuthSequenceMessage direction="response" label="Org + API key" />

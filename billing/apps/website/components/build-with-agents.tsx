@@ -6,8 +6,8 @@ import type { SvgIconProps } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const SKILL_URL = "useautumn.com/SKILL.md";
-const PROMPT_TEXT = `Add Autumn to my app: ${SKILL_URL}`;
-const COPY_TEXT = `Add Autumn to my app: https://${SKILL_URL}`;
+const PROMPT_TEXT = `Add MeterPal to my app: ${SKILL_URL}`;
+const COPY_TEXT = `Add MeterPal to my app: https://${SKILL_URL}`;
 const COPIED_RESET_MS = 1800;
 
 type AgentMarkProps = SvgIconProps & { title: string; d: string };
@@ -112,7 +112,7 @@ export default function AgentPromptPane({ active }: { active: boolean }) {
 			<button
 				type="button"
 				onClick={copyPrompt}
-				aria-label="Copy the Autumn setup prompt"
+				aria-label="Copy the MeterPal setup prompt"
 				className="group flex w-full items-center gap-2.5 border border-[#9564ff] bg-[#0F0F0F] px-3 py-2.5 font-mono text-left cursor-pointer hover:border-[#b08aff] transition-colors duration-300"
 			>
 				<span

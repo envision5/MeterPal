@@ -7,7 +7,7 @@ image: "/images/blog/coding-agents-and-abstractions.png"
 featured: true
 ---
 
-At Autumn, we experiment a ton with AI to try and speed up internal workflows. A lot of things we build don’t stick, but the ones that do sometimes feel like magic. One interesting pattern I’ve noticed is that these work because they give agents the right abstractions to operate on.
+At MeterPal, we experiment a ton with AI to try and speed up internal workflows. A lot of things we build don’t stick, but the ones that do sometimes feel like magic. One interesting pattern I’ve noticed is that these work because they give agents the right abstractions to operate on.
 
 We're sharing what works for us so that others can do similar internally, and also help people build better agent products.
 
@@ -77,24 +77,24 @@ Here's our full /write-script skill to give you an idea of the primitives we cre
 ````mdx
 ---
 name: write-script
-description: "Write a new scripts-v2 script. Use when asked to create, write, or scaffold a script that interacts with Autumn DB, Stripe, or customer data."
+description: "Write a new scripts-v2 script. Use when asked to create, write, or scaffold a script that interacts with MeterPal DB, Stripe, or customer data."
 ---
 
 # Write a scripts-v2 script
 
-> **Background on Autumn's data model.** For general Autumn domain concepts — FullCusProduct shape, the three item categories, prepaid pricing, entity-level vs entity-scoped — see the skills under `ai/config/skills/autumn/`. Read the relevant one (e.g. `customer-products`) BEFORE writing any script that mutates customer products, prices, or entitlements.
+> **Background on MeterPal's data model.** For general MeterPal domain concepts — FullCusProduct shape, the three item categories, prepaid pricing, entity-level vs entity-scoped — see the skills under `ai/config/skills/autumn/`. Read the relevant one (e.g. `customer-products`) BEFORE writing any script that mutates customer products, prices, or entitlements.
 >
-> **Stripe resource creation.** For helpers that create Stripe prices/products/meters tied to Autumn prices (idempotent, V1+V2 prepaid pairing, volume-tier shape), see `ai/config/skills/autumn/stripe-resources`. Read it BEFORE writing any catalog migration that touches Stripe.
+> **Stripe resource creation.** For helpers that create Stripe prices/products/meters tied to MeterPal prices (idempotent, V1+V2 prepaid pairing, volume-tier shape), see `ai/config/skills/autumn/stripe-resources`. Read it BEFORE writing any catalog migration that touches Stripe.
 >
-> **Shared utility functions.** For the naming conventions (`is*`, `<src>To<dst>`, `enrich*`, `find*`, `filter*By*`) and folder layout of `autumn/shared/utils/`, see `ai/config/skills/autumn/shared-utils`. Check it BEFORE writing inline `array.filter(...).some(...)` or `array.find(... === id)` over Autumn objects — there is almost certainly an existing helper.
+> **Shared utility functions.** For the naming conventions (`is*`, `<src>To<dst>`, `enrich*`, `find*`, `filter*By*`) and folder layout of `autumn/shared/utils/`, see `ai/config/skills/autumn/shared-utils`. Check it BEFORE writing inline `array.filter(...).some(...)` or `array.find(... === id)` over MeterPal objects — there is almost certainly an existing helper.
 
 1. Read [PATTERNS.md](PATTERNS.md) to pick the right script category
 2. Create a dedicated folder for the script under `runs/{org-name}/`
 3. Copy [template.ts](template.ts) as the scaffold into that folder
 4. Fill in config: `id`, `org`, `env`, `dryRun: true`, `params`
-5. If the script needs non-trivial Autumn DB selection logic, use the `write-autumn-query` skill first
+5. If the script needs non-trivial MeterPal DB selection logic, use the `write-autumn-query` skill first
 6. Implement `run` using `s.step()` for inline phases, `s.run()` for named step functions, `s.batch()` for iteration
-7. For multi-file scripts, put Autumn candidate-fetching files in `loaders/`, define steps with `step()`, and compose with `s.run()`
+7. For multi-file scripts, put MeterPal candidate-fetching files in `loaders/`, define steps with `step()`, and compose with `s.run()`
 8. Name the entrypoint file after what it does; do not use `index.ts`
 9. Check [SERVICES.md](SERVICES.md) for available imports
 10. For Google Sheets exports, read [google-sheets.md](google-sheets.md)
@@ -107,8 +107,8 @@ description: "Write a new scripts-v2 script. Use when asked to create, write, or
 - `ctx` extends `AutumnContext` -- pass directly to server functions
 - Never name files `index.ts` -- name after what the function does
 - Always put the script entrypoint in its own folder under `runs/{org-name}/`
-- Follow the `autumn-query-conventions` rule for Autumn DB query structure
-- Prefer a `loaders/` folder for Autumn DB selection/query files instead of scattering them across entrypoints or ad hoc folders
+- Follow the `autumn-query-conventions` rule for MeterPal DB query structure
+- Prefer a `loaders/` folder for MeterPal DB selection/query files instead of scattering them across entrypoints or ad hoc folders
 - Outputs route to local `data/` on laptop, S3 (`scripts-us-east`) on trigger.dev — never call `node:fs` directly. Use `stores: { ... }` (preferred) or `await s.data.*`. Sync with `bun fs <script-id> pull|push` (default mirrors all dirs; prompts before overwriting). Batch checkpoints live at `state/checkpoint.json`; dry-run checkpoints live at `state/dry-run-checkpoint.json` only when `checkpointDryRun: true`. Use `params.only` to force specific items to rerun even if checkpointed.
 - When iterating `ctx.products`, filter to the latest version per product id first — the catalog carries historical versions, and most catalog migrations only want the latest. A 7-line `keepLatestVersionOnly` helper that picks `max(version)` per `id` is enough.
 - **Keep the entrypoint focused on orchestration.** No inline helper functions, ad-hoc types, multi-line filter/map blocks, or detailed `ctx.logger.info` lines at the top level. Move them to `utils/` (or `steps/` if the work is a named phase). The entrypoint should read as a sequence of `s.run` / `s.batch` calls plus `params` / `stores` config — anything that takes more than 2–3 lines belongs in a sibling file. If the user asks for a log line or extra branching at the top level, put it in `utils/<descriptive-name>.ts` and call from the entrypoint.
@@ -357,10 +357,10 @@ Read these when the investigation falls into a specific domain:
 
 ## Final thoughts
 
-Incidentally, Autumn itself happens to fall into this category of tools: systems that create this abstraction layer, which I believe is best described as an interface which allows humans and agents to work together more effectively.
+Incidentally, MeterPal itself happens to fall into this category of tools: systems that create this abstraction layer, which I believe is best described as an interface which allows humans and agents to work together more effectively.
 
 It’s an abstraction layer representing your application's pricing and billing state, and we’ve spent a lot of time designing it to be flexible, but intuitive. As a result, coding agents interact with billing systems much more effectively. 
 
 For instance, sales teams can update deals, grant entitlements, or manage customer billing schedules directly from Slack. GTM teams can make entire pricing changes and migrations without ever involving engineering.
 
-This wasn’t something we thought about when we first started Autumn, but it’s definitely why we’re more bullish than ever on what we’re building.
+This wasn’t something we thought about when we first started MeterPal, but it’s definitely why we’re more bullish than ever on what we’re building.

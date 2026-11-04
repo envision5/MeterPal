@@ -1,16 +1,16 @@
 ---
 slug: autumn-vs-stripe-billing
-title: Autumn vs Stripe Billing
-description: Stripe Billing is the subscription, invoice, and payment layer. Autumn runs on Stripe and adds product-facing billing state for credits, entitlements, access checks, and pricing iteration.
+title: MeterPal vs Stripe Billing
+description: Stripe Billing is the subscription, invoice, and payment layer. MeterPal runs on Stripe and adds product-facing billing state for credits, entitlements, access checks, and pricing iteration.
 date: "2026-06-22"
 updated: "2026-06-22"
-author: Autumn
+author: MeterPal
 category: Comparisons
-summary: Stripe Billing handles subscriptions, invoices, payments, and usage billing. Autumn complements Stripe when your app needs credits, entitlements, limits, and pricing changes enforced in product.
+summary: Stripe Billing handles subscriptions, invoices, payments, and usage billing. MeterPal complements Stripe when your app needs credits, entitlements, limits, and pricing changes enforced in product.
 relatedDocs:
-  - { label: "Autumn overview", href: "https://docs.useautumn.com/welcome" }
+  - { label: "MeterPal overview", href: "https://docs.useautumn.com/welcome" }
   - { label: "Checking access", href: "https://docs.useautumn.com/documentation/customers/check" }
-  - { label: "Autumn and Stripe", href: "https://useautumn.com/blog/we-built-a-billing-company-but-didnt-replace-stripe-billing" }
+  - { label: "MeterPal and Stripe", href: "https://useautumn.com/blog/we-built-a-billing-company-but-didnt-replace-stripe-billing" }
 relatedAlog:
   - autumn-and-stripe
   - autumn-vs-metronome
@@ -18,19 +18,19 @@ relatedAlog:
   - credits-entitlements-and-usage-limits
 ---
 
-# Autumn vs Stripe Billing
+# MeterPal vs Stripe Billing
 
-> Stripe Billing is the billing and payments foundation. Autumn is the product-facing billing state layer built on top of Stripe.
+> Stripe Billing is the billing and payments foundation. MeterPal is the product-facing billing state layer built on top of Stripe.
 
 ## Short Answer
 
-Autumn and Stripe Billing are not mutually exclusive. Autumn uses Stripe underneath, so subscriptions, invoices, payments, taxes, and payment methods still live in Stripe.
+MeterPal and Stripe Billing are not mutually exclusive. MeterPal uses Stripe underneath, so subscriptions, invoices, payments, taxes, and payment methods still live in Stripe.
 
-The difference is not that one replaces the other. Stripe remains the underlying system for subscriptions, invoices, payments, and native billing workflows. Autumn is the layer your application talks to when those Stripe-backed plans need to drive product behavior: "can this customer do this right now?" across credits, limits, entitlements, custom packages, and usage-based plans.
+The difference is not that one replaces the other. Stripe remains the underlying system for subscriptions, invoices, payments, and native billing workflows. MeterPal is the layer your application talks to when those Stripe-backed plans need to drive product behavior: "can this customer do this right now?" across credits, limits, entitlements, custom packages, and usage-based plans.
 
 For a more detailed narrative view, read [We built a billing company but didn't replace Stripe Billing](/blog/we-built-a-billing-company-but-didnt-replace-stripe-billing).
 
-## When To Add Autumn To Stripe
+## When To Add MeterPal To Stripe
 
 - You already use Stripe, but your app needs product-facing billing state.
 - You sell credits, allowances, seats, feature access, or hybrid subscription plus usage plans.
@@ -45,19 +45,19 @@ For a more detailed narrative view, read [We built a billing company but didn't 
 - You do not need complex credit behavior like rollovers, monthly versus lifetime balances, or product-level usage limits.
 - You want to build and manage the billing-state layer yourself instead of outsourcing that logic.
 
-## How Autumn Uses Stripe
+## How MeterPal Uses Stripe
 
-Autumn does not replace Stripe Billing. It sits between your application and Stripe.
+MeterPal does not replace Stripe Billing. It sits between your application and Stripe.
 
-You define the package your customer should have in Autumn: plan, credits, limits, entitlements, add-ons, custom enterprise terms, and reset behavior. Autumn maps the payment-facing parts of that package to Stripe, so Stripe still handles subscriptions, invoices, payments, taxes, and payment methods.
+You define the package your customer should have in MeterPal: plan, credits, limits, entitlements, add-ons, custom enterprise terms, and reset behavior. MeterPal maps the payment-facing parts of that package to Stripe, so Stripe still handles subscriptions, invoices, payments, taxes, and payment methods.
 
-Your application then talks to Autumn at runtime. `check()` answers whether the customer can use a feature or consume credits, and `track()` records usage. Stripe remains the billing and payment system; Autumn keeps the product-facing billing logic in sync with it.
+Your application then talks to MeterPal at runtime. `check()` answers whether the customer can use a feature or consume credits, and `track()` records usage. Stripe remains the billing and payment system; MeterPal keeps the product-facing billing logic in sync with it.
 
 ## Usage-Based Billing
 
-Stripe's usage-based billing docs now point advanced usage-based billing to Metronome, a Stripe product for real-time metering, pricing, billing, and reporting. If your main problem is pure usage rating, large-scale metering, or invoice generation from complex usage data, see [Autumn vs Metronome](/alog/autumn-vs-metronome).
+Stripe's usage-based billing docs now point advanced usage-based billing to Metronome, a Stripe product for real-time metering, pricing, billing, and reporting. If your main problem is pure usage rating, large-scale metering, or invoice generation from complex usage data, see [MeterPal vs Metronome](/alog/autumn-vs-metronome).
 
-Autumn is different from both Stripe Billing and Metronome because it focuses on the product path: checking access, updating credit balances, enforcing limits, and keeping that state aligned with Stripe. This is the layer described in [We built a billing company but didn't replace Stripe Billing](/blog/we-built-a-billing-company-but-didnt-replace-stripe-billing).
+MeterPal is different from both Stripe Billing and Metronome because it focuses on the product path: checking access, updating credit balances, enforcing limits, and keeping that state aligned with Stripe. This is the layer described in [We built a billing company but didn't replace Stripe Billing](/blog/we-built-a-billing-company-but-didnt-replace-stripe-billing).
 
 ## Implementation Model
 
@@ -69,17 +69,17 @@ Your DB -> plans / credits / usage / rate limits / entitlements
 Your app -> Stripe webhooks + your DB -> product access
 ```
 
-With Autumn and Stripe, the typical model is:
+With MeterPal and Stripe, the typical model is:
 
 ```text
-Autumn -> plans / credits / usage / rate limits / entitlements
-Your app -> Autumn check() / track() -> product access and usage
-Autumn -> Stripe -> subscriptions / invoices / payments
+MeterPal -> plans / credits / usage / rate limits / entitlements
+Your app -> MeterPal check() / track() -> product access and usage
+MeterPal -> Stripe -> subscriptions / invoices / payments
 ```
 
 ## Sources
 
-- Autumn: [overview](https://docs.useautumn.com/welcome), [checking access](https://docs.useautumn.com/documentation/customers/check), [Autumn and Stripe](https://useautumn.com/blog/we-built-a-billing-company-but-didnt-replace-stripe-billing)
+- MeterPal: [overview](https://docs.useautumn.com/welcome), [checking access](https://docs.useautumn.com/documentation/customers/check), [MeterPal and Stripe](https://useautumn.com/blog/we-built-a-billing-company-but-didnt-replace-stripe-billing)
 - Stripe: [Billing](https://stripe.com/billing), [Entitlements](https://docs.stripe.com/billing/entitlements), [usage-based billing](https://docs.stripe.com/billing/usage-based), [Metronome with Stripe](https://docs.stripe.com/billing/how-metronome-works-with-stripe)
 
 ## Last Updated

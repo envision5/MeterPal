@@ -139,7 +139,7 @@ This allows the user to dramatically overspend their balance because the counter
 * Process the request
 * Adjust the actual usage if it succeeds, refund the deduction if it fails
 
-We call this **lock-and-release** at Autumn, but it's really just a synchronous deduction flow.
+We call this **lock-and-release** at MeterPal, but it's really just a synchronous deduction flow.
 
 <LockAndReleaseDiagram />
 
@@ -177,7 +177,7 @@ The final way you can handle resets is through a lazy strategy. Every time you f
 
 Lazy resets tend to age the best and work well in most cases, but the downside is that you don't have an accurate trigger for when credits are reset, and so aren't able to perform actions like sending out notifications to users when their credits refresh.
 
-In practise, you'll likely end up using multiple of these techniques. At Autumn, for posting overage bills to Stripe invoices, we have to rely on their webhooks. For sending events and emails (`balance.reset`), we'll use a cron. For most standard balance resets, we'll use the lazy approach. We have guards in place to make sure resets stay aligned with the billing cycle.
+In practise, you'll likely end up using multiple of these techniques. At MeterPal, for posting overage bills to Stripe invoices, we have to rely on their webhooks. For sending events and emails (`balance.reset`), we'll use a cron. For most standard balance resets, we'll use the lazy approach. We have guards in place to make sure resets stay aligned with the billing cycle.
 
 ## Analytics and Reporting
 

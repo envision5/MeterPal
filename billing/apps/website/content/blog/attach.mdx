@@ -36,7 +36,7 @@ Creating a one off payment
 
 There are more complex scenarios that require updating individual items within a subscription (eg. decrease the price of a metered feature when upgrading).
 
-Stripe’s low-level design maps each action to a different function. When designing Autumn, we were pretty strong in our belief that all these cases should just be 1 endpoint: `POST /attach`
+Stripe’s low-level design maps each action to a different function. When designing MeterPal, we were pretty strong in our belief that all these cases should just be 1 endpoint: `POST /attach`
 
 Initially we just handled basic cases, so a set of if else statements was enough. As we’ve started handling more cases, the if else spaghetti was becoming a nightmare of bugs. We spent last week rewriting the architecture into 5 steps so we can handle it more logically.
 

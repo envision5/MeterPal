@@ -13,7 +13,7 @@ export function AgentCatalogDiagram() {
 	return (
 		<figure
 			className={cn("not-prose", styles.diagram)}
-			aria-label="Agent setup: clarify that Pro's 500 monthly messages are shared by the team, define the complete catalog in autumn.config.ts, then push and confirm it through the Autumn CLI."
+			aria-label="Agent setup: clarify that Pro's 500 monthly messages are shared by the team, define the complete catalog in autumn.config.ts, then push and confirm it through the MeterPal CLI."
 		>
 			<ol className={cn(styles.steps, styles.agentSteps)}>
 				<CatalogWorkflowStep step={1} title="Discuss pricing">
@@ -32,7 +32,7 @@ export function AgentCatalogDiagram() {
 				<CatalogWorkflowStep step={2} title="Write config">
 					<CatalogConfigPreview />
 				</CatalogWorkflowStep>
-				<CatalogWorkflowStep step={3} title="Push to Autumn">
+				<CatalogWorkflowStep step={3} title="Push to MeterPal">
 					<div className={styles.push}>
 						<div>
 							<div className={styles.command}>

@@ -64,7 +64,7 @@ const cards = [
 		metric: "> 5 billion",
 		label: "Monthly events",
 		description:
-			"Autumn handles billions of billing events monthly for some of your favorite apps.",
+			"MeterPal handles billions of billing events monthly for some of your favorite apps.",
 		clipart: true,
 	},
 	{
@@ -176,7 +176,7 @@ export default function ProductionScale() {
 						</h2>
 					</div>
 					<p className="text-[#FFFFFF99] font-light text-[16px] lg:text-sm lg:w-sm leading-[20px] lg:leading-5">
-						Autumn is trusted by some of fastest-growing teams. Open source
+						MeterPal is trusted by some of fastest-growing teams. Open source
 						core, self-host ready.{" "}
 						<span className="text-white">
 							We'll help you go live quickly

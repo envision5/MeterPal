@@ -19,9 +19,9 @@ That said, there's a difference between an agent simply editing your code in a r
 
 I think most companies are still pretty far from the latter, and the reason is that it's not just the models and infra that need to improve, but your own setup: dev environments, codebase, infra. Companies like Ramp and Stripe have internal labs building these out, which is why they're able to make huge claims around their internal agents: [Inspect](https://builders.ramp.com/post/why-we-built-our-background-agent) and [Minions](https://stripe.dev/blog/minions-stripes-one-shot-end-to-end-coding-agents).
 
-At Autumn, I think we're slowly starting to find our footing here, thanks to the work we've put in bit by bit over the past year. Here's a chart showing the growth of weekly PRs made, and more importantly, the proportion made by cloud agents. So I wanted to share the pieces which I thought were most crucial to enabling this.
+At MeterPal, I think we're slowly starting to find our footing here, thanks to the work we've put in bit by bit over the past year. Here's a chart showing the growth of weekly PRs made, and more importantly, the proportion made by cloud agents. So I wanted to share the pieces which I thought were most crucial to enabling this.
 
-![Weekly PR growth at Autumn, showing all PRs and estimated cloud-agent PRs alongside key milestones](/images/blog/inching-towards-a-software-factory-pr-growth.png)
+![Weekly PR growth at MeterPal, showing all PRs and estimated cloud-agent PRs alongside key milestones](/images/blog/inching-towards-a-software-factory-pr-growth.png)
 
 ## Test driven development
 
@@ -37,7 +37,7 @@ For us, testing has always felt particularly overwhelming and challenging for a 
 
 ### Building an internal testing framework
 
-We ultimately solved this by building an internal testing framework. The way it works is that we designed a set of primitives and fixtures which let us structure our tests in a way we felt was most appropriate to expressing Autumn's behavior: 1) initialize a customer in a particular state, 2) perform the action we want to test, 3) verify the outcome.
+We ultimately solved this by building an internal testing framework. The way it works is that we designed a set of primitives and fixtures which let us structure our tests in a way we felt was most appropriate to expressing MeterPal's behavior: 1) initialize a customer in a particular state, 2) perform the action we want to test, 3) verify the outcome.
 
 For example, say we wanted to verify that submitting overages to Stripe works as expected. The test would be designed like this:
 
@@ -63,7 +63,7 @@ Rather than going into the nitty gritty of how each service is set up (which the
 
 **1. Deciding what actually needs to be isolated**
 
-Firstly, you don't need to isolate every single service. Some can be shared between environments, and the reason is that with most services, the data is usually already separated per tenant. Take Stripe as an example: each customer created in Autumn is linked to a unique Stripe customer, and different environments would never operate over the same Stripe customer. As such, there's no conflict there and a single Stripe account can be shared.
+Firstly, you don't need to isolate every single service. Some can be shared between environments, and the reason is that with most services, the data is usually already separated per tenant. Take Stripe as an example: each customer created in MeterPal is linked to a unique Stripe customer, and different environments would never operate over the same Stripe customer. As such, there's no conflict there and a single Stripe account can be shared.
 
 Another slightly more nuanced example is Tinybird (our analytics DB). Now, technically our tests reuse the same `customerId`, so running the same test in two environments could cause their events to clash. But heuristically, since we spend less than 10% of our engineering time on analytics (most goes into the core billing and entitlement logic), that overlap is unlikely. As such, we felt comfortable keeping Tinybird shared, and it hasn't caused any issues so far.
 
@@ -85,13 +85,13 @@ The same migration runs either way; we're just changing how it gets executed.
 
 ### Running integration tests at scale
 
-The other challenge which we needed to solve infra wise was figuring out a way to run our integration tests at scale. Most of our tests at Autumn are integration tests, and each of these can take anywhere from seconds to minutes to run. So with the framework we came up with from before, our bottleneck shifted from writing the tests to actually running them. Before the work we did to speed things up, our core integration suite (which we needed to run before merging any meaningful change to main) consisted of ~400 tests and took about an hour to run.
+The other challenge which we needed to solve infra wise was figuring out a way to run our integration tests at scale. Most of our tests at MeterPal are integration tests, and each of these can take anywhere from seconds to minutes to run. So with the framework we came up with from before, our bottleneck shifted from writing the tests to actually running them. Before the work we did to speed things up, our core integration suite (which we needed to run before merging any meaningful change to main) consisted of ~400 tests and took about an hour to run.
 
 To speed this up, we needed to find a way to run all of these in parallel, and if you haven't guessed it already, there's a pretty popular solution for this at the moment: sandboxes. Here's how it works:
 
 1. We first find or prepare a warm snapshot of our app for a given branch: docker services spun up, dependencies installed, DB migrations applied and test data seeded. (fun fact: checking whether the lockfile had changed before running `bun install` saved 60 seconds on this step)
 
-2. Next, we spin up a pool of workers, each running its own copy of Autumn, with the pool size based on how many test files we're running. From our benchmarks, with the warm snapshot, we could get 40 workers running Autumn and its services in 29 seconds, with no startup failures.
+2. Next, we spin up a pool of workers, each running its own copy of MeterPal, with the pool size based on how many test files we're running. From our benchmarks, with the warm snapshot, we could get 40 workers running MeterPal and its services in 29 seconds, with no startup failures.
 
 3. We then distribute the test files across the pool, with each worker running up to three tests at once. A big issue we've had with our integration tests is that they can be flaky, especially the ones that verify Stripe behavior. To account for this, we retry each failed test file at most once, preferably on a different worker to reduce correlated failures.
 

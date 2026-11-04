@@ -2,7 +2,7 @@
 title: "Hunting down memory leaks (in Bun)"
 description: "How we tracked down a stack of memory leaks in our Bun production server — and recycled what we couldn't fix."
 date: "2026-08-29"
-author: "John, Autumn Co-Founder"
+author: "John, MeterPal Co-Founder"
 slug: "eliminating-memory-leaks"
 image: "/images/blog/eliminating-memory-leaks-listing.png"
 ---
@@ -43,7 +43,7 @@ Finally, after making these changes, you can see in the memory graph below, the 
 
 ### Finding other sources of leaks
 
-The other leaks took us quite a bit more digging, and were much more obscure than the logging one we found earlier. To figure this one out, Owen asked [Capy](https://capy.ai/), a cloud coding agent, via Slack to run an experiment: spin up the Autumn server and check if it leaks with zero traffic.
+The other leaks took us quite a bit more digging, and were much more obscure than the logging one we found earlier. To figure this one out, Owen asked [Capy](https://capy.ai/), a cloud coding agent, via Slack to run an experiment: spin up the MeterPal server and check if it leaks with zero traffic.
 
 > Sidenote: this was a bit of an eye opening moment for us towards cloud agents. Capy pretty much took a single instruction, ran the experiment fully autonomously, and produced comprehensive graphs / explanations which were pretty helpful in finding the leaks! Something like this would've taken a couple days to run ourselves. Instead, it took maybe an hour (without us having to do anything)
 

@@ -14,7 +14,7 @@ Pricing is one of the highest leverage parts of a business to experiment with. E
 
 But when you built your system, you hadn't planned for a pricing update each quarter. You just wanted to ship it quickly and get back to valuable features. That means every time your growth or sales team comes to you with an idea for pricing, you flinch because it's a month of rework.
 
-We've been through this ourselves at Autumn — trying to build a system and data model to generalize pricing. We've made mistakes and seen scars from our customers, and so wanted to share our learnings on how to architect a billing system that requires as little maintenance and rebuild as possible.
+We've been through this ourselves at MeterPal — trying to build a system and data model to generalize pricing. We've made mistakes and seen scars from our customers, and so wanted to share our learnings on how to architect a billing system that requires as little maintenance and rebuild as possible.
 
 ### Billing is a relational system
 
@@ -68,7 +68,7 @@ This concept extends beyond entitlements. Take usage alerts as an example. You m
 
 ### Don't design your billing around Stripe operations
 
-This is something we've found tremendously helpful at Autumn. When it comes to Stripe, most people think in terms of transitions:
+This is something we've found tremendously helpful at MeterPal. When it comes to Stripe, most people think in terms of transitions:
 
 _"When we move a customer from Pro v1 to Pro v2, what Stripe update do we need to make?"_
 

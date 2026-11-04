@@ -18,18 +18,18 @@ const testimonialsData = [
 	{
 		id: 3,
 		quote:
-			"Autumn is awesome. We've been happy customers since the very beginning - it was a no-brainer to be honest. The founders are in true founder mode.",
+			"MeterPal is awesome. We've been happy customers since the very beginning - it was a no-brainer to be honest. The founders are in true founder mode.",
 		author: "MAX PRILUTSKIY",
 	},
 	{
 		id: 4,
-		quote: "What migrating to Autumn does (scroll!)",
+		quote: "What migrating to MeterPal does (scroll!)",
 		author: "Ben Y",
 	},
 	{
 		id: 5,
 		quote:
-			"Autumn fixed stripe. Trust me. Save you at least a week and potentially months of Stripe integration time. I wish we could have discovered Autumn earlier.",
+			"MeterPal fixed stripe. Trust me. Save you at least a week and potentially months of Stripe integration time. I wish we could have discovered MeterPal earlier.",
 		author: "Benny Kok",
 	},
 	{

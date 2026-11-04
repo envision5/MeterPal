@@ -6,7 +6,7 @@ export function AutumnLogo(props: SVGProps<SVGSVGElement>) {
 			viewBox="0 0 114 28"
 			fill="currentColor"
 			xmlns="http://www.w3.org/2000/svg"
-			aria-label="Autumn"
+			aria-label="MeterPal"
 			{...props}
 		>
 			<path

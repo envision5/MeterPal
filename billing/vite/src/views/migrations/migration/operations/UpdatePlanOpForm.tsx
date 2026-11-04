@@ -219,7 +219,7 @@ export function UpdatePlanOpForm({
 							<GitBranchIcon
 								size={16}
 								weight="duotone"
-								className="text-violet-500 shrink-0"
+								className="text-[#264082] shrink-0"
 							/>
 							<span className="flex-1 text-left text-sm">
 								<SelectValue />

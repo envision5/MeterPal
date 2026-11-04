@@ -1198,43 +1198,43 @@ export const faqData = [
 		id: 1,
 		question: "Do I still need Stripe?",
 		answer:
-			"Yes. Autumn works with Stripe—it handles the billing logic that Stripe doesn't. You keep your Stripe account, your customer relationships, and your payment data. Autumn sits between your app and Stripe, managing webhooks, usage limits, and state.\n\nYou're never locked in. Your subscriptions live in Stripe.",
+			"Yes. MeterPal works with Stripe—it handles the billing logic that Stripe doesn't. You keep your Stripe account, your customer relationships, and your payment data. MeterPal sits between your app and Stripe, managing webhooks, usage limits, and state.\n\nYou're never locked in. Your subscriptions live in Stripe.",
 	},
 	{
 		id: 7,
-		question: "Do I need to call Autumn before every action?",
+		question: "Do I need to call MeterPal before every action?",
 		answer:
-			"For latency-sensitive operations, you may not want to make an `autumn.check()` network call before every action. \n\n Instead, you can either cache the Autumn customer data on your end, or use our single `customer.products.updated` webhook to replicate the Autumn state into your own system.",
+			"For latency-sensitive operations, you may not want to make an `autumn.check()` network call before every action. \n\n Instead, you can either cache the MeterPal customer data on your end, or use our single `customer.products.updated` webhook to replicate the MeterPal state into your own system.",
 	},
 	{
 		id: 2,
-		question: "What if Autumn goes down? Will my app go down?",
+		question: "What if MeterPal goes down? Will my app go down?",
 		answer:
-			"We run on redundant infrastructure and high availability is our priority. However, not being able to reach Autumn does not mean that your app will go down. Our app and SDKs default to fail open and fail fast, meaning that in a worst case scenario, some users may get temporary additional access.\n\nWe can work with you to reconcile usage tracking and balances afterward if needed.",
+			"We run on redundant infrastructure and high availability is our priority. However, not being able to reach MeterPal does not mean that your app will go down. Our app and SDKs default to fail open and fail fast, meaning that in a worst case scenario, some users may get temporary additional access.\n\nWe can work with you to reconcile usage tracking and balances afterward if needed.",
 	},
 	{
 		id: 3,
-		question: "How is Autumn different from Orb or Metronome?",
+		question: "How is MeterPal different from Orb or Metronome?",
 		answer:
-			"Orb and Metronome focus on usage metering—tracking how much customers consume, suitable for end of month invoicing. You still have to build access control and state management separately, meaning you'll wire together your own logic, Stripe billing and a metering provider.\n\nAutumn is a complete system of record. We handle usage metering + entitlements + feature gating + billing state in one API. `check()` tells you if a user can access a feature in <50ms.",
+			"Orb and Metronome focus on usage metering—tracking how much customers consume, suitable for end of month invoicing. You still have to build access control and state management separately, meaning you'll wire together your own logic, Stripe billing and a metering provider.\n\nMeterPal is a complete system of record. We handle usage metering + entitlements + feature gating + billing state in one API. `check()` tells you if a user can access a feature in <50ms.",
 	},
 	{
 		id: 4,
-		question: "What if I need to move off Autumn? Am I locked in?",
+		question: "What if I need to move off MeterPal? Am I locked in?",
 		answer:
-			"Autumn is open source. You can self-host anytime, or export all your data. Your Stripe subscriptions, customers and payment details remain yours. Moving off Autumn is simply a case of building what you would have built in-house anyway (but this has never happened, touch wood!). \n\n You can even do this gradually: first by replicating customer state into your own system via our webhooks, then making a full transition after.",
+			"MeterPal is open source. You can self-host anytime, or export all your data. Your Stripe subscriptions, customers and payment details remain yours. Moving off MeterPal is simply a case of building what you would have built in-house anyway (but this has never happened, touch wood!). \n\n You can even do this gradually: first by replicating customer state into your own system via our webhooks, then making a full transition after.",
 	},
 	{
 		id: 5,
 		question: "Can you do the implementation for us?",
 		answer:
-			"If you're setting up payments for the first time, most teams go live in under an hour. Migrating from an existing billing system typically takes 1–2 weeks, depending on complexity.\n\n For Series A+ companies, we provide a forward deployed service to work with your team, dual-write to your internal system and Autumn, then smoothly migrate over. Minimal work needed on your part.",
+			"If you're setting up payments for the first time, most teams go live in under an hour. Migrating from an existing billing system typically takes 1–2 weeks, depending on complexity.\n\n For Series A+ companies, we provide a forward deployed service to work with your team, dual-write to your internal system and MeterPal, then smoothly migrate over. Minimal work needed on your part.",
 	},
 	{
 		id: 6,
 		question: "Can you handle our event volume?",
 		answer:
-			"Yes. Autumn supports 10,000+ events per second per end customer. We've processed millions of billing events daily for AI companies at scale. If you have specific requirements, reach out—we'll walk through our architecture.",
+			"Yes. MeterPal supports 10,000+ events per second per end customer. We've processed millions of billing events daily for AI companies at scale. If you have specific requirements, reach out—we'll walk through our architecture.",
 	},
 ];
 
@@ -1388,7 +1388,7 @@ export const customerStoriesData: CustomerStory[] = [
 			{ value: "0", label: "Stripe webhooks written" },
 		],
 		quote:
-			"I would literally recommend Autumn to every person who asked. Since the migration, I have a lot more confidence that customers are actually getting what they're paying for.",
+			"I would literally recommend MeterPal to every person who asked. Since the migration, I have a lot more confidence that customers are actually getting what they're paying for.",
 		author: { name: "Kyle Finken", title: "Engineering at Mintlify" },
 	},
 	{
@@ -1404,7 +1404,7 @@ export const customerStoriesData: CustomerStory[] = [
 		textOn: "light",
 		founderImage: "/images/customers/firecrawl-founder.png",
 		headline: {
-			lead: "Firecrawl metered every crawl with Autumn",
+			lead: "Firecrawl metered every crawl with MeterPal",
 			emphasis: "without touching Stripe.",
 		},
 		stats: [
@@ -1457,7 +1457,7 @@ export const customerStoriesData: CustomerStory[] = [
 		founderImage: "/images/customers/t3-founder.png",
 		headline: {
 			lead: "T3.chat handled a viral launch",
-			emphasis: "on Autumn from day one.",
+			emphasis: "on MeterPal from day one.",
 		},
 		stats: [
 			{ value: "300K", label: "Users onboarded" },
@@ -1465,7 +1465,7 @@ export const customerStoriesData: CustomerStory[] = [
 			{ value: "$0", label: "Revenue leakage" },
 		],
 		quote:
-			"We were spending nearly as much on the Redis instance to handle this ourselves (less well) than the cost with Autumn. It makes the switch even more of a no brainer.",
+			"We were spending nearly as much on the Redis instance to handle this ourselves (less well) than the cost with MeterPal. It makes the switch even more of a no brainer.",
 		author: { name: "Mark Florkowski", title: "Co-Founder at T3 Chat" },
 	},
 ];

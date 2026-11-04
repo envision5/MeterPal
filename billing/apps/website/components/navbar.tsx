@@ -244,7 +244,7 @@ export default function Navbar({
 							src="/images/navbar/autumnlogo.svg"
 							width={114}
 							height={28}
-							alt="Autumn"
+							alt="MeterPal"
 							priority
 							className="nav-logo ml-2 block w-[90px] sm:w-[110px] lg:w-[114px] h-auto"
 						/>

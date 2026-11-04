@@ -6,7 +6,7 @@ pay, never lets them consume more than they paid for, and survives the
 concurrency of many parallel requests from the same user and from many
 users at once. Everything below is grounded in the public engineering of
 OpenRouter, TokenRouter, Cursor, Qoder, Stripe's usage-metering product,
-LiteLLM's proxy, and the Autumn billing platform you already have cloned
+LiteLLM's proxy, and the MeterPal billing platform you already have cloned
 locally. Where a section touches your own code, it points at the path on
 your machine.
 
@@ -25,7 +25,7 @@ keep every dollar of margin and every row of audit data.
 | --- | --- | --- |
 | Pricing source of truth | Maps model name to per-token price in USD/1M, plus prompt-cache, reasoning, audio, and image dimensions. Pulled from `models.dev` and pinned per request. | `pricing_registry` table + a small in-process cache |
 | Metering & gateway | Receives an AI request, decides whether to admit it, calls the upstream provider, streams the response, captures final usage, emits one idempotent event. | LiteLLM proxy (`litellm/proxy/proxy_server.py`) extended with your custom admission hooks |
-| Wallet & ledger | Owns "how many credits does this user have right now", serializes every grant/deduction, reconciles against the metering layer. | Autumn-style credit system (`autumn/server/src/internal/balances` and `customers`) plus a Postgres ledger |
+| Wallet & ledger | Owns "how many credits does this user have right now", serializes every grant/deduction, reconciles against the metering layer. | MeterPal-style credit system (`billing/server/src/internal/balances` and `customers`) plus a Postgres ledger |
 
 Three guarantees fall out of this split:
 
@@ -423,7 +423,7 @@ strongly consider not building them yourself.
 
 | Subsystem | Build | Buy (best option in 2026) |
 | --- | --- | --- |
-| Wallet / ledger (credits, reservations, expiry) | Fine, this is your moat | Autumn self-host (you have it locally) — has all the primitives |
+| Wallet / ledger (credits, reservations, expiry) | Fine, this is your moat | MeterPal self-host (you have it locally) — has all the primitives |
 | Pricing registry (model -> USD/1M tokens) | Fine, one table | LiteLLM proxy ships `model_prices_and_context_window.json` [8] |
 | Gateway (admission, streaming, usage capture) | Multi-month build | LiteLLM proxy (you have it locally) — supports 100+ providers, virtual keys, team budgets [11] |
 | Stripe integration | Fine | Use Stripe Billing Meter + Subscriptions directly [13] |
@@ -459,7 +459,7 @@ My recommendation for your situation, given the local repos:
 - **LiteLLM proxy** as the gateway. It already implements the
   reservation pattern, virtual keys, per-user budget enforcement, and
   multi-provider support [11].
-- **Autumn self-hosted** as the wallet / ledger / pricing layer. Your
+- **MeterPal self-hosted** as the wallet / ledger / pricing layer. Your
   local checkout at `C:\Users\craig\Desktop\AI billing\autumn` already
   has `track`, `check`, and `attach` endpoints with the credit-pool
   primitives; it is a self-hostable Postgres + Redis + React stack and
@@ -467,12 +467,12 @@ My recommendation for your situation, given the local repos:
 - **Stripe** for payments, subscriptions, customer portal, dunning, and
   tax. You do not need Orb or Lago unless you outgrow Stripe's model.
 - A thin **app-specific shim** (yours to build, ~200 LOC) that bridges
-  your apps' auth layer to LiteLLM virtual keys and to Autumn customer
+  your apps' auth layer to LiteLLM virtual keys and to MeterPal customer
   IDs.
 
 This stack gives you everything Bolt, Cursor, and Lovable have, with
 the engineering choices already battle-tested in production. The total
-new code is the shim, plus a few Autumn endpoints you customize for
+new code is the shim, plus a few MeterPal endpoints you customize for
 your pricing rules.
 
 ---
@@ -597,9 +597,9 @@ For each (org, app) pair you onboard, call
 user's pool. The proxy will enforce the budget across pods via Redis
 [11]. Confirm with `curl -H "Authorization: Bearer <vkey>" localhost:4000/v1/models`.
 
-### Step 4 — Deploy Autumn as your wallet / ledger service
+### Step 4 — Deploy MeterPal as your wallet / ledger service
 
-In your local Autumn repo, point it at the same Postgres and Redis. The
+In your local MeterPal repo, point it at the same Postgres and Redis. The
 key endpoints to use are:
 
 - `POST /attach` — when a user picks a plan, returns the Stripe
@@ -614,8 +614,8 @@ key endpoints to use are:
   `models.dev`).
 - `GET /entitled` — list features and remaining allowance.
 
-The local source under `autumn/server/src/internal/balances` and
-`autumn/server/src/internal/customers` is where you extend the schema
+The local source under `billing/server/src/internal/balances` and
+`billing/server/src/internal/customers` is where you extend the schema
 and the reservation primitive if you need to.
 
 Verify: `curl -X POST localhost:8080/check -d '{"customer_id":"u_1","feature_id":"ai_credits","send_event":true,"value_to_use":100}'` returns
@@ -636,7 +636,7 @@ properties:
    drop — this is a retry.
 4. Dispatch on `event.type`:
    - `checkout.session.completed` → grant Credit Pack to wallet via
-     Autumn `POST /track`.
+     MeterPal `POST /track`.
    - `customer.subscription.created` / `.updated` (status ∈
      {active, trialing}) → reset pool to plan amount at
      `current_period_start`.
@@ -657,12 +657,12 @@ roughly 200 LOC and lives between your apps and LiteLLM. Its job:
 2. Resolve `model -> pricing` (cache in Redis with monthly TTL).
 3. Compute `estimate_usd = max_output_tokens * output_per_1m / 1e6 +
    input_tokens * input_per_1m / 1e6` (worst case for the call).
-4. Call Autumn `POST /check` with `value_to_use = estimate_usd` and
+4. Call MeterPal `POST /check` with `value_to_use = estimate_usd` and
    `send_event = true`. If `allowed = false`, return HTTP 402.
 5. Stream the request to LiteLLM with `stream_options.include_usage =
    true` (OpenAI) or the equivalent Anthropic header.
-6. On the final usage chunk, compute `actual_usd` and call Autumn
-   `POST /track_tokens` with the precise token breakdown. Autumn
+6. On the final usage chunk, compute `actual_usd` and call MeterPal
+   `POST /track_tokens` with the precise token breakdown. MeterPal
    handles the reservation-vs-actual reconciliation internally when
    you pass the `idempotency_key` you generated in step 4.
 
@@ -782,7 +782,7 @@ A realistic ramp-up, calibrated to your local repos:
 - **Days 4–7**: deploy LiteLLM proxy with one provider (start with
   OpenAI; add Anthropic and Google in week 2). Confirm virtual keys and
   budget enforcement work end-to-end.
-- **Days 8–12**: deploy Autumn. Wire `POST /check` and `POST /track` to
+- **Days 8–12**: deploy MeterPal. Wire `POST /check` and `POST /track` to
   your apps' test users. Build the gateway bridge.
 - **Days 13–17**: implement the Stripe webhook handler, the Customer
   Portal embed, and the auto-top-up rule.

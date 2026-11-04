@@ -14,7 +14,7 @@ import { resolveSso } from "@/lib/sso/ssoResolve";
 import type { SsoOrgHint } from "@/lib/sso/ssoTypes";
 import { getBackendErr, getSafeNextPath } from "@/utils/genUtils";
 import { AuthBackground } from "./components/AuthBackground";
-import { AutumnWordmark } from "./components/AutumnWordmark";
+import { MeterPalWordmark } from "./components/MeterPalWordmark";
 import { OTPSignIn } from "./components/OTPSignIn";
 import { RememberedSsoSignIn } from "./components/RememberedSsoSignIn";
 
@@ -38,6 +38,9 @@ export const emailRegex = /^[^@]+@[^@]+\.[^@]+$/;
 export const SignIn = () => {
 	const [email, setEmail] = useState("");
 	const [googleLoading, setGoogleLoading] = useState(false);
+	// Google OAuth needs GOOGLE_CLIENT_ID/SECRET server-side; hide the button
+	// rather than ship a dead first screen when the deployment lacks them.
+	const googleEnabled = import.meta.env.VITE_ENABLE_GOOGLE_SIGNIN === "1";
 	const [sendOtpLoading, setSendOtpLoading] = useState(false);
 	const [otpSent, setOtpSent] = useState(false);
 	const [ssoHint, setSsoHint] = useState<SsoOrgHint | null>(() => getSsoHint());
@@ -183,9 +186,9 @@ export const SignIn = () => {
 			<div className="flex flex-col items-center gap-6">
 				{/* Wordmark logo + welcome text */}
 				<div className="flex flex-col items-center gap-3">
-					<AutumnWordmark className="h-7 w-auto text-foreground" />
+					<MeterPalWordmark className="h-7 w-auto text-foreground" />
 					<p className="text-sm text-muted-foreground">
-						Welcome to Autumn, sign in to continue
+						Welcome to MeterPal, sign in to continue
 					</p>
 				</div>
 
@@ -206,26 +209,30 @@ export const SignIn = () => {
 					/>
 				) : (
 					<div className="w-full space-y-5">
-						<IconButton
-							variant="primary"
-							onClick={handleGoogleSignIn}
-							isLoading={googleLoading}
-							icon={<FontAwesomeIcon icon={faGoogle} />}
-							className="w-full gap-2"
-						>
-							Continue with Google
-						</IconButton>
+						{googleEnabled && (
+							<>
+								<IconButton
+									variant="primary"
+									onClick={handleGoogleSignIn}
+									isLoading={googleLoading}
+									icon={<FontAwesomeIcon icon={faGoogle} />}
+									className="w-full gap-2"
+								>
+									Continue with Google
+								</IconButton>
 
-						<div className="relative">
-							<div className="absolute inset-0 flex items-center">
-								<span className="w-full border-t border-border" />
-							</div>
-							<div className="relative flex justify-center text-xs uppercase">
-								<span className="bg-background px-2 text-muted-foreground">
-									Or
-								</span>
-							</div>
-						</div>
+								<div className="relative">
+									<div className="absolute inset-0 flex items-center">
+										<span className="w-full border-t border-border" />
+									</div>
+									<div className="relative flex justify-center text-xs uppercase">
+										<span className="bg-background px-2 text-muted-foreground">
+											Or
+										</span>
+									</div>
+								</div>
+							</>
+						)}
 
 						<div className="flex flex-col gap-2 w-full">
 							<Input

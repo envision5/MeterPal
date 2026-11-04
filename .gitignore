@@ -28,3 +28,15 @@ Thumbs.db
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Session/local artifacts -- never commit credentials or probe state
+demo/*cookies*
+demo/probe_key.json
+*.session_token
+
+# Submission bundles are rebuilt at submission time, never tracked
+MeterPal.zip
+
+# Local agent / IDE session artifacts -- never part of the project
+.workbuddy-ai/
+.zcode/

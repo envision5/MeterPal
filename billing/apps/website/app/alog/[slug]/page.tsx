@@ -33,7 +33,7 @@ export async function generateMetadata({
 			title: doc.title,
 			description: doc.description,
 			type: "article",
-			siteName: "Autumn",
+			siteName: "MeterPal",
 			...(doc.date ? { publishedTime: doc.date } : {}),
 			...(doc.updated ? { modifiedTime: doc.updated } : {}),
 			authors: [doc.author],
@@ -145,7 +145,7 @@ export default async function AlogDocPage({ params }: { params: BlogParams }) {
 						{doc.relatedDocs.length > 0 && (
 							<div>
 								<h2 className="font-mono text-[12px] uppercase tracking-[-1%] text-[#FFFFFF66] mb-3">
-									Autumn docs
+									MeterPal docs
 								</h2>
 								<ul className="flex flex-col gap-2">
 									{doc.relatedDocs.map((docLink) => (

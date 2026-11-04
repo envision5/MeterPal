@@ -1,14 +1,14 @@
 """
 demo/bootstrap.py -- one-time seed for the local demo.
 
-Because a fresh Autumn database has no organization and therefore no secret
+Because a fresh MeterPal database has no organization and therefore no secret
 key (api_keys rows belong to an org), this script bootstraps one directly:
 
   1. psql: insert org "demo" + a sandbox secret key (hashed with SHA-256,
      the same scheme as server/src/internal/dev/apiKeys/apiKeyUtils.ts).
-  2. Autumn API: create the "ai_tokens" AI-credit-system feature with
+  2. MeterPal API: create the "ai_tokens" AI-credit-system feature with
      model_markups pricing custom/demo-gpt at $20/M input, $80/M output.
-  3. Autumn API: create customer "demo-customer" and grant 2.00 credits.
+  3. MeterPal API: create customer "demo-customer" and grant 2.00 credits.
 
 Idempotent: safe to re-run; every step resets to the same state.
 
@@ -30,9 +30,9 @@ import httpx
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "gateway"))
 
-AUTUMN = "http://localhost:8080"
+BASE_URL = "http://localhost:8080"
 PG_CONTAINER = "meterpal-postgres-billing"
-PG_USER, PG_DB = "autumn", "autumn"
+PG_USER, PG_DB = "meterpal", "meterpal"
 
 PAYPAL_EVENTS = [
     "BILLING.SUBSCRIPTION.ACTIVATED",
@@ -87,7 +87,7 @@ def register_paypal_webhook() -> None:
 ORG_ID, ORG_SLUG = "org_demo", "demo"
 KEY_ID = "key_demo_bridge"
 # Demo secret key.  LOCAL ONLY -- production keys come from the dashboard.
-AUTUMN_SECRET_KEY = "am_sk_test_JvWnILAeT5zTxPfHTPvJKV6NNDTn8uF97Np38YRe6d"
+METERPAL_SECRET_KEY = "am_sk_test_JvWnILAeT5zTxPfHTPvJKV6NNDTn8uF97Np38YRe6d"
 
 FEATURE_ID = "ai_tokens"
 CUSTOMER_ID = "demo-customer"
@@ -114,18 +114,18 @@ def ok(msg: str) -> None:
 
 
 def api_call(c: httpx.Client, method: str, path: str, tries: int = 6, **kw) -> httpx.Response:
-    """Retry transient 502/503s (Autumn sheds requests until Redis warms up)."""
+    """Retry transient 502/503s (MeterPal sheds requests until Redis warms up)."""
     for attempt in range(1, tries + 1):
         resp = c.request(method, path, **kw)
         if resp.status_code not in (502, 503) or attempt == tries:
             return resp
-        print(f"  {resp.status_code} on {method} {path} -- Autumn warming up, retry {attempt}/{tries}")
+        print(f"  {resp.status_code} on {method} {path} -- MeterPal warming up, retry {attempt}/{tries}")
         time.sleep(2)
     return resp
 
 
 def main() -> None:
-    hashed = hashlib.sha256(AUTUMN_SECRET_KEY.encode()).hexdigest()
+    hashed = hashlib.sha256(METERPAL_SECRET_KEY.encode()).hexdigest()
 
     step("1. Bootstrap org + secret key (psql)")
     r = psql(f"""
@@ -142,7 +142,7 @@ def main() -> None:
     ok(f"org '{ORG_SLUG}' + sandbox secret key present (sha256 stored, key never logged)")
 
     step("2. Create ai_tokens feature (AI credit system)")
-    with httpx.Client(base_url=AUTUMN, headers={"Authorization": f"Bearer {AUTUMN_SECRET_KEY}"}, timeout=15) as c:
+    with httpx.Client(base_url=BASE_URL, headers={"Authorization": f"Bearer {METERPAL_SECRET_KEY}"}, timeout=15) as c:
         if c.get(f"/v1/features/{FEATURE_ID}").status_code == 200:
             ok(f"feature '{FEATURE_ID}' already exists -- leaving as-is")
         else:

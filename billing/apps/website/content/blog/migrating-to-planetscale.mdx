@@ -1,5 +1,5 @@
 ---
-title: "Migrating Autumn to PlanetScale"
+title: "Migrating MeterPal to PlanetScale"
 description: "How we migrated our core database to <a href=\"https://planetscale.com/\" target=\"_blank\" rel=\"noopener noreferrer\">PlanetScale</a>, and why it's been a game-changer for performance, reliability, and developer experience."
 date: "2026-04-20"
 author: "John"
@@ -8,7 +8,7 @@ image: "/images/blog/migrating-autumn-to-planetscale.jpeg"
 featured: true
 ---
 
-Autumn is a next-generation billing infrastructure platform for AI companies, helping them manage credit systems and AI token usage around real-time access checks and consumption, as well as making pricing models and pricing changes much more flexible. Since we’re often in the critical path of our customers’ products, we’re not just processing billing in the background, we’re helping decide in real time whether a user can make an API call, generate output, or consume more credits. That makes low latency and high uptime core product requirements for us, not just nice-to-haves.
+MeterPal is a next-generation billing infrastructure platform for AI companies, helping them manage credit systems and AI token usage around real-time access checks and consumption, as well as making pricing models and pricing changes much more flexible. Since we’re often in the critical path of our customers’ products, we’re not just processing billing in the background, we’re helping decide in real time whether a user can make an API call, generate output, or consume more credits. That makes low latency and high uptime core product requirements for us, not just nice-to-haves.
 
 ## Issues with our old database
 
@@ -54,6 +54,6 @@ The support here was truly unexpected as I never thought he’d actually go and 
 
 The next time Joao offered insane support was when we did a table migration on a Sunday which impacted our app. Not only was it a weekend, but it was also his birthday, and he immediately jumped on for ~1 hour to help us fix the issue. Without his help that day, we would’ve probably had a catastrophic incident.
 
-## Impact on Autumn
+## Impact on MeterPal
 
 Planetscale has been amazing for us on all fronts. Latency is better, reliability is excellent, and amazing support. We now don’t need to spend as much time debugging database issues. Can’t recommend it enough to anyone!

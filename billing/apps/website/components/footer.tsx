@@ -62,12 +62,12 @@ export default function Footer() {
 									src="/images/navbar/autumnlogo.svg"
 									width={195}
 									height={48}
-									alt="Autumn"
+									alt="MeterPal"
 									className="brightness-0 invert w-[130px] h-[32px] md:w-[195px] md:h-[48px]"
 								/>
 							</Link>
 							<p className="text-[14px] md:text-[16px] leading-[18px] md:leading-[20px] tracking-[-2%] text-[#FFFFFF99] font-light">
-								Autumn is drop-in billing for AI companies.
+								MeterPal is drop-in billing for AI companies.
 							</p>
 						</div>
 
@@ -204,7 +204,7 @@ export default function Footer() {
 						</div>
 
 						<div className="px-4.5 py-4 md:py-0 flex items-center justify-start md:justify-end text-center md:text-right text-[#FFFFFF99] text-[12px] md:text-[14px] tracking-[-2%] border-b md:border-b-0 border-[#292929] w-full md:w-auto">
-							Copyright © 2026 Autumn All rights reserved
+							Copyright © 2026 MeterPal All rights reserved
 							<div className="hidden lg:flex gap-3 ml-[15px] h-[54px]">
 								<div className="border-r border-[#292929]" />
 								<div className="border-r border-[#292929]" />

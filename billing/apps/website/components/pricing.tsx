@@ -209,7 +209,7 @@ export default function Pricing() {
 
 						<div className="px-6 md:px-8 py-5 md:py-6 lg:mt-[32px] text-left md:text-center">
 							<p className="text-white text-pretty font-light leading-[18px] tracking-[-2%] md:font-extralight text-[16px] md:leading-[1.6] text-wrap-balance">
-								Autumn is built on top of Stripe billing, so Stripe fees (0.7%
+								MeterPal is built on top of Stripe billing, so Stripe fees (0.7%
 								and 2.9% + 30¢) still apply.
 							</p>
 						</div>

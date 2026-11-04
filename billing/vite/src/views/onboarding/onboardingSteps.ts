@@ -1,13 +1,7 @@
 import type { OnboardingStepId } from "./hooks/useOnboardingProgress";
+import type { OnboardingStepDefinition } from "./onboardingStepTypes";
 
-export interface OnboardingStepDefinition {
-	id: OnboardingStepId;
-	title: string;
-	description: string;
-	/** Stands alone on the sidebar card, so it reads as a next action. */
-	shortTitle: string;
-	waitingFor?: string;
-}
+export type { OnboardingStepDefinition };
 
 export const ONBOARDING_STEPS: OnboardingStepDefinition[] = [
 	{
@@ -31,7 +25,7 @@ export const ONBOARDING_STEPS: OnboardingStepDefinition[] = [
 		title: "Create a customer",
 		shortTitle: "Create a customer",
 		description:
-			"Your app tells Autumn who's paying, then attaches a plan to them.",
+			"Your app tells MeterPal who's paying, then attaches a plan to them.",
 		waitingFor: "Waiting for a customer",
 	},
 	{
@@ -39,7 +33,7 @@ export const ONBOARDING_STEPS: OnboardingStepDefinition[] = [
 		title: "Check and track usage",
 		shortTitle: "Track some usage",
 		description:
-			"Check before a customer uses a feature, track after it succeeds. Autumn keeps the balance.",
+			"Check before a customer uses a feature, track after it succeeds. MeterPal keeps the balance.",
 		waitingFor: "Waiting for an event",
 	},
 	{

@@ -3,7 +3,7 @@ import path from "node:path";
 import { ImageResponse } from "next/og";
 import { getPostBySlug } from "@/lib/blogUtils";
 
-export const alt = "Autumn blog";
+export const alt = "MeterPal blog";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -155,7 +155,7 @@ export default async function OgImage({
 }) {
 	const { slug } = await params;
 	const post = getPostBySlug({ slug });
-	const title = post?.title ?? "Autumn";
+	const title = post?.title ?? "MeterPal";
 
 	if (slug === "eliminating-memory-leaks") {
 		return coverImageResponse("/images/blog/eliminating-memory-leaks-og.jpg");
@@ -243,7 +243,7 @@ export default async function OgImage({
 			{/* left rail: logo, headline, footer */}
 			{/** biome-ignore lint/performance/noImgElement: satori only supports <img> */}
 			<img
-				alt="Autumn"
+				alt="MeterPal"
 				height={37}
 				src={logo}
 				style={{ position: "absolute", top: 56, left: 64 }}

@@ -42,7 +42,7 @@ function parseSummary(filename: string, raw: string): AlogSummary {
 		description: data.description || "",
 		date: data.date || null,
 		updated: data.updated || data.date || null,
-		author: data.author || "Autumn",
+		author: data.author || "MeterPal",
 		category,
 		summary: data.summary || data.description || "",
 		relatedDocs: Array.isArray(data.relatedDocs) ? data.relatedDocs : [],

@@ -47,7 +47,7 @@ export default function Problem() {
 							across pricing and product changes becomes messy quickly.
 							<span className="text-white">
 								{" "}
-								Autumn decouples your billing logic from code.
+								MeterPal decouples your billing logic from code.
 							</span>
 						</p>
 					</div>

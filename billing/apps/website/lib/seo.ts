@@ -2,7 +2,7 @@ import { faqData } from "@/app/constant";
 import type { BlogPostSummary } from "@/lib/blogUtils";
 
 export const SITE_URL = "https://useautumn.com";
-const ORG_NAME = "Autumn";
+const ORG_NAME = "MeterPal";
 const LOGO_URL = `${SITE_URL}/icon-192.png`;
 const SAME_AS = [
 	"https://x.com/autumnpricing",

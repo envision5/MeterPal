@@ -144,7 +144,7 @@ export function TestPoolCanvas({ time }: { time: number }) {
 					stroke={DIM}
 				/>
 				<text x="97" y="301" textAnchor="middle" fill="#e5e5e5">
-					Autumn
+					MeterPal
 				</text>
 				{["DB", "cache", "queues"].map((label, i) => (
 					<g key={label}>
@@ -266,7 +266,7 @@ export function TestPoolCanvas({ time }: { time: number }) {
 								stroke={DIM}
 							/>
 							<text x={x + 70} y="310" textAnchor="middle" fill="#d4c7e3">
-								Autumn
+								MeterPal
 							</text>
 							<text x={x + 70} y="337" fontSize="8" textAnchor="middle">
 								DB · cache · queues

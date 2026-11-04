@@ -52,7 +52,7 @@ export default function Solution() {
 						<span className="text-white">customer record</span>
 					</h2>
 					<p className="text-[#A3A3A3] text-[14px] md:text-[16px] sm:text-base max-w-2xl mx-auto font-light leading-[20px] tracking-[-2%]">
-						Autumn is a database purpose-built for real-time monetization. Configure your
+						MeterPal is a database purpose-built for real-time monetization. Configure your
 						pricing
 						<br className="hidden sm:block" />
 						in the dashboard or CLI.{" "}

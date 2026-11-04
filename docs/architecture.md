@@ -1,7 +1,7 @@
 # MeterPal — Plug-and-Play AI Inference & Usage Billing
 
 **Status:** design spec, 2026-11-02.
-**Scope:** the merchant-facing product. The billing core, the Autumn↔LiteLLM contract and the
+**Scope:** the merchant-facing product. The billing core, the MeterPal↔LiteLLM contract and the
 end-user billing UI are already specified in `docs/plan.md`, `docs/bridge.md` and
 `docs/customer-ui.md`. This document covers what those three do **not**: how a merchant goes from
 "sign up" to "serving metered AI inference" with no infrastructure of their own.
@@ -71,8 +71,8 @@ app; MeterPal is never in their UI unless they embed the billing components.
 | 6 | **No model allow-list or per-tenant routing in the gateway.** | `gateway/litellm/integrations/meterpal_billing.py` reads the customer from `PAB_CUSTOMER_HEADER` (default `user`) and calls `POST /check`, `POST /balances.finalize`, `POST /track_tokens`. Nothing resolves a tenant from the credential. | §4.3 |
 
 Everything else the vision needs already exists: the PayPal subscription lifecycle (§8), the
-reservation pattern and concurrency primitives (`docs/plan.md` §4–5), the Autumn↔LiteLLM contract
-(`docs/bridge.md`), the customer-facing billing components (`docs/customer-ui.md`), and Autumn's
+reservation pattern and concurrency primitives (`docs/plan.md` §4–5), the MeterPal↔LiteLLM contract
+(`docs/bridge.md`), the customer-facing billing components (`docs/customer-ui.md`), and MeterPal's
 per-org Stripe model, which is the pattern to copy for PayPal.
 
 ---
@@ -81,7 +81,7 @@ per-org Stripe model, which is the pattern to copy for PayPal.
 
 ### 4.1 Multi-tenant PayPal
 
-Autumn already solved multi-tenant payments for Stripe. Mirror it.
+MeterPal already solved multi-tenant payments for Stripe. Mirror it.
 
 **Storage.** Add to `orgs` (table definition: `billing/shared/models/orgModels/orgTable.ts`):
 
@@ -429,7 +429,7 @@ Publish `@meterpal/sdk` and the Python package; `meterpal` CLI; hosted gateway e
 | **PayPal app review** per merchant | Live-mode merchants need their own PayPal app reviewed; that is a multi-day wait and out of our control. | Sandbox is instant and verifiable in the dashboard; live mode is a clearly-labelled separate step. One PayPal app owned by MeterPal with a **platform** arrangement is the alternative — needs legal/commercial input. |
 | **PayPal webhook routing** | PayPal webhooks are per-app; with one app and many merchants there is no built-in tenant routing. | URL carries `{org_id}/{webhook_id}`; resolve org before reading state. |
 | **LiteLLM fork drift** | The gateway is a fork; upstream releases are not authoritative for it. | Keep the fork thin — the bridge is one file (`meterpal_billing.py`); keep MeterPal-specific logic in the billing server. |
-| **Autumn fork drift** | `billing/` is a fork of Autumn. | Same: new MeterPal logic lives in MeterPal-named modules, upstream is reference-only. |
+| **MeterPal fork drift** | `billing/` is a fork of MeterPal. | Same: new MeterPal logic lives in MeterPal-named modules, upstream is reference-only. |
 | **Open:** does the merchant ever hold their own provider keys? | Decided: MeterPal holds them. But a large merchant may demand BYOK for compliance. | Design §4.3 so `upstream_key_ref` can later point at a merchant-held key without changing the billing path. |
 | **Open:** is one MeterPal PayPal app with many merchants legally workable? | PayPal's platform product covers this, but it carries a contractual review. | Phase P1 supports per-org apps (the general case). Treat the platform question as a commercial decision, not an engineering one. |
 
@@ -440,7 +440,7 @@ Publish `@meterpal/sdk` and the Python package; `meterpal` CLI; hosted gateway e
 | Subsystem | Where |
 | --- | --- |
 | The PayPal subscription lifecycle (create / revise / cancel, approval → activation → plan attach, the redirect-token resolution) | `billing/server/src/internal/billing/paypal/`, `billing/server/src/external/paypal/` |
-| The Autumn↔LiteLLM contract (`/check`, `/balances.finalize`, `/track_tokens`) | `docs/bridge.md`, `gateway/litellm/integrations/meterpal_billing.py` |
+| The MeterPal↔LiteLLM contract (`/check`, `/balances.finalize`, `/track_tokens`) | `docs/bridge.md`, `gateway/litellm/integrations/meterpal_billing.py` |
 | The reservation pattern, concurrency primitives, the 402 wall | `docs/plan.md` §4–5, §7 |
 | The customer-facing billing components and their contract | `docs/customer-ui.md`, `sdk/typescript/src/components/` |
 | The per-org payment-processor pattern to copy | `billing/shared/models/orgModels/orgTable.ts` (`stripe_config`), `billing/vite/src/views/developer/configure-stripe/` |

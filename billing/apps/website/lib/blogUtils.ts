@@ -36,7 +36,7 @@ export function getAllPosts(): BlogPostSummary[] {
 			title: data.title || "Untitled",
 			description: data.description || "",
 			date: data.date || null,
-			author: data.author || "Autumn Team",
+			author: data.author || "MeterPal Team",
 			image: data.image || null,
 			imageScale: data.imageScale ?? 1,
 		};
@@ -67,7 +67,7 @@ export function getPostBySlug({ slug }: { slug: string }): BlogPost | null {
 				title: data.title || "Untitled",
 				description: data.description || "",
 				date: data.date || null,
-				author: data.author || "Autumn Team",
+				author: data.author || "MeterPal Team",
 				image: data.image || null,
 				imageScale: data.imageScale ?? 1,
 				heroComponent: data.heroComponent || null,

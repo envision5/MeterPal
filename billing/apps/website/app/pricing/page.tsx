@@ -9,7 +9,7 @@ import type { PageStyle } from "@/lib/types";
 export const metadata: Metadata = {
 	title: "Pricing",
 	description:
-		"Autumn pricing. Start free with 8K monthly billing volume, scale to Pro from $375/month, or talk to us about volume discounts.",
+		"MeterPal pricing. Start free with 8K monthly billing volume, scale to Pro from $375/month, or talk to us about volume discounts.",
 	alternates: { canonical: "/pricing" },
 };
 

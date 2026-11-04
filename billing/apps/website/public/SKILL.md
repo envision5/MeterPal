@@ -1,6 +1,6 @@
 ---
 name: autumn-setup
-description: First-time Autumn setup — install the atmn CLI, connect to an org (sign in, or keyless with no account), turn the user's pricing into autumn.config.ts, and push it to a sandbox org. Use when the user is new to Autumn, pastes an Autumn setup prompt, or asks to set up Autumn, add billing, monetization, subscriptions, usage-based billing, pricing, or plans. If Autumn is already set up, use autumn-catalog instead.
+description: First-time MeterPal setup — install the atmn CLI, connect to an org (sign in, or keyless with no account), turn the user's pricing into autumn.config.ts, and push it to a sandbox org. Use when the user is new to MeterPal, pastes an MeterPal setup prompt, or asks to set up MeterPal, add billing, monetization, subscriptions, usage-based billing, pricing, or plans. If MeterPal is already set up, use autumn-catalog instead.
 ---
 
 # Setup
@@ -40,10 +40,10 @@ You are a competent engineer pairing with the user, not an installer wizard and 
 Copy this checklist into your first message and keep it up to date. If you skip an item, say why in one line.
 
 - [ ] 1 Skills installed; checked for an existing config, key, and pricing
-- [ ] 2 Connected to Autumn — `atmn` installed, signed in or keyless
+- [ ] 2 Connected to MeterPal — `atmn` installed, signed in or keyless
 - [ ] 3 Got the user's pricing — rough plans and prices to build from
 - [ ] 4 Pricing modeled and approved (the `autumn-catalog` skill runs this part)
-- [ ] 5 Pushed to Autumn and verified
+- [ ] 5 Pushed to MeterPal and verified
 - [ ] 6 Working in the app — one plan bought, one feature gated (the `autumn-integrate` skill runs this part)
 - [ ] 7 Account linked (keyless only — drop this line if they signed in)
 - [ ] 8 Done
@@ -56,19 +56,19 @@ Don't message the user yet — just find out where things stand.
 
 Four skills share this job, and they ship inside the `atmn` CLI: `atmn init` writes them next to the config and prints the `npx skills add <that folder> -y` line that registers them with your agent, and `atmn skills update` refreshes them when `push` or `pull` say they are older than the CLI. If any is missing here, that is Phase 2's job — never fetch them from anywhere else.
 
-`autumn-setup` (this file) is the flow. `autumn-catalog` is how to build the pricing, plus the exact `atmn` commands — load it in Phase 4. `autumn-integrate` is how the app calls Autumn — load it in Phase 6. `autumn-concepts` explains Autumn's objects — the other two load it themselves.
+`autumn-setup` (this file) is the flow. `autumn-catalog` is how to build the pricing, plus the exact `atmn` commands — load it in Phase 4. `autumn-integrate` is how the app calls MeterPal — load it in Phase 6. `autumn-concepts` explains MeterPal's objects — the other two load it themselves.
 
 Then check three things:
 
-- `autumn.config.ts` exists → Autumn is already set up here. Say so, treat the file as the truth, and use `autumn-catalog` for the changes; come back at Phase 5 (push) when there's something to push.
+- `autumn.config.ts` exists → MeterPal is already set up here. Say so, treat the file as the truth, and use `autumn-catalog` for the changes; come back at Phase 5 (push) when there's something to push.
 - An `AUTUMN_SECRET_KEY` exists (shell env, `.env`, `.env.local`) → already connected; skip the connect step in Phase 2.
 - They already told you the pricing (their message, a pricing page, the README) → Phase 3 is a quick confirm, not a list of questions.
 
 ## Phase 2 — Introduce and connect
 
-Start with two or three sentences: what's going to happen (connect this project to an Autumn org → write the pricing into `autumn.config.ts` → approve the pricing → push). Something like this, in your own words:
+Start with two or three sentences: what's going to happen (connect this project to an MeterPal org → write the pricing into `autumn.config.ts` → approve the pricing → push). Something like this, in your own words:
 
-> Setting up Autumn. I'll connect this project to an Autumn org, write your pricing into `autumn.config.ts`, and show it to you to approve before anything is pushed.
+> Setting up MeterPal. I'll connect this project to an MeterPal org, write your pricing into `autumn.config.ts`, and show it to you to approve before anything is pushed.
 
 Then:
 
@@ -76,7 +76,7 @@ Then:
 2. Key already there → `init` says who it's connected to and moves on. Say so in one line.
 3. No key → `init` stops and asks how to connect. Ask the user the same thing, one question, two options, plain words:
 
-   > Two ways to start: sign in to an Autumn account (I'll open a browser), or go keyless — I set up a sandbox for you right now and you link an account later. Which do you want?
+   > Two ways to start: sign in to an MeterPal account (I'll open a browser), or go keyless — I set up a sandbox for you right now and you link an account later. Which do you want?
 
    Always ask this one, even if the user told you to handle everything yourself — a keyless org has no owner until they link it, and that is their call, not yours. Pick keyless without asking only when there is genuinely nobody in the chat to answer (an unattended run), and say in one line that you did.
 4. Connect the way they chose, by running `init` again with the flag:
@@ -111,7 +111,7 @@ Only after the yes. Push with `atmn` using `autumn-catalog`'s atmn reference —
 
 ## Phase 6 — Get it working in the app
 
-Pricing in a sandbox is invisible. The user believes Autumn works when their own app creates a customer, blocks something, and takes money — so go there next, in one short pass, before anything else gets built.
+Pricing in a sandbox is invisible. The user believes MeterPal works when their own app creates a customer, blocks something, and takes money — so go there next, in one short pass, before anything else gets built.
 
 Say what's now live (plans and features, which org, sandbox) and where the config file is, then offer it:
 
@@ -139,7 +139,7 @@ Offer once, right after they've seen the integration work, because that's when t
 
 > Want to link this to your account? I’ll create a secure sign-in link so you can claim the org and open everything that just ran in the dashboard.
 
-No → fine, drop it and say the offer stands whenever. Yes → ask which email to send the link to, run `atmn login --claim <email>`, and give them the returned claim URL. Autumn also emails that same URL — say so, naming the address, so they know where to find it later ("Also sent to you@example.com"). Whoever opens the link and signs in becomes the owner — the email is only where the link is delivered, so treat the link like the key and give it to the user alone. Linking makes them the owner: same key, same plans, same customers, plus the dashboard. An account that already exists works the same way; the new org is added beside their existing ones and becomes active after confirmation.
+No → fine, drop it and say the offer stands whenever. Yes → ask which email to send the link to, run `atmn login --claim <email>`, and give them the returned claim URL. MeterPal also emails that same URL — say so, naming the address, so they know where to find it later ("Also sent to you@example.com"). Whoever opens the link and signs in becomes the owner — the email is only where the link is delivered, so treat the link like the key and give it to the user alone. Linking makes them the owner: same key, same plans, same customers, plus the dashboard. An account that already exists works the same way; the new org is added beside their existing ones and becomes active after confirmation.
 
 Unclaimed orgs don't wait forever, so mention the window `init` printed when you offer — as a fact, not a threat. If linking fails, nothing is lost: the key keeps working and they can try again, or sign up normally and push the same config. What the commands do underneath: `references/keyless.md`.
 
@@ -172,9 +172,9 @@ Back comes `organization_id`, `organization_slug`, `api_key`, `claim_token`, and
 
 ## Claim the org
 
-`POST /agent.start_claim` with an `Authorization: Bearer <AUTUMN_SECRET_KEY>` header and an `email` in the body. Autumn returns `claim_url` and `expires_at`, and emails the same URL to that address.
+`POST /agent.start_claim` with an `Authorization: Bearer <AUTUMN_SECRET_KEY>` header and an `email` in the body. MeterPal returns `claim_url` and `expires_at`, and emails the same URL to that address.
 
-Give the URL to the user in the chat as well, and tell them which address it was emailed to. They open it, sign in with any account, review the organization, and confirm the claim. Autumn then adds that account as owner and switches their dashboard to the claimed organization.
+Give the URL to the user in the chat as well, and tell them which address it was emailed to. They open it, sign in with any account, review the organization, and confirm the claim. MeterPal then adds that account as owner and switches their dashboard to the claimed organization.
 
 The email is only where the link is delivered — it is not checked at claim time. The link itself is the credential: anyone who opens it and signs in owns the org, so share it only with the user.
 

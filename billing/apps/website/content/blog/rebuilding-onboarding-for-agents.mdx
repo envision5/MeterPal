@@ -16,9 +16,9 @@ To set the scene, here's how our onboarding works at a high level:
 
 <OnboardingDiagram />
 
-We'll primarily talk about the catalog step since it's the most complex part and basically 90% of our onboarding. It essentially involves translating your pricing into the Autumn data model.
+We'll primarily talk about the catalog step since it's the most complex part and basically 90% of our onboarding. It essentially involves translating your pricing into the MeterPal data model.
 
-Now, basic cases like a $20/mo Pro plan with credits can usually be one-shotted, even without skills. The complex part is the long tail of edge cases like seat-based pricing, pooling credits at the org level, etc. that can sometimes be non-intuitive and therefore cause agents to trip up. What's even more complex is that the agent in this case is almost a 'middleman', where it's job is to ask the user the right questions to figure out what their pricing model is and how it should be modelled in Autumn. That's where they really trip up, so let's dive into how we solved this.
+Now, basic cases like a $20/mo Pro plan with credits can usually be one-shotted, even without skills. The complex part is the long tail of edge cases like seat-based pricing, pooling credits at the org level, etc. that can sometimes be non-intuitive and therefore cause agents to trip up. What's even more complex is that the agent in this case is almost a 'middleman', where it's job is to ask the user the right questions to figure out what their pricing model is and how it should be modelled in MeterPal. That's where they really trip up, so let's dive into how we solved this.
 
 ---
 
@@ -32,7 +32,7 @@ Agents on the other hand, consume information very differently to humans. It's a
 
 <AgentCatalogDiagram />
 
-Originally, our API was optimized for the human workflow so managing your catalog meant calling granular endpoints like `/v1/features.{get,create,update}` and `/v1/plans.{get,create,update}`. With the agent however, they would work out the catalog as a whole before applying it to Autumn and it became clear pretty quickly that granular endpoints were the wrong abstraction.
+Originally, our API was optimized for the human workflow so managing your catalog meant calling granular endpoints like `/v1/features.{get,create,update}` and `/v1/plans.{get,create,update}`. With the agent however, they would work out the catalog as a whole before applying it to MeterPal and it became clear pretty quickly that granular endpoints were the wrong abstraction.
 
 Apart from unnecessary round trips, the abstraction primarily broke because it treated each plan and feature as an individual resource and missed the relationships between them. For instance, say you’re creating a new plan with a new feature: the feature needs to exist before the plan can reference it, so the order by which you make these feature and plan calls matter.
 
@@ -58,7 +58,7 @@ So our solution was to give `catalog.update` two modes: `PATCH` for the dashboar
 
 <CatalogUpdateModesDiagram />
 
-This made applying config changes to Autumn way more straightforward for the agent. We’d cut out the intermediate steps it previously had to deal with, and the config remained the one source of truth for the catalog.
+This made applying config changes to MeterPal way more straightforward for the agent. We’d cut out the intermediate steps it previously had to deal with, and the config remained the one source of truth for the catalog.
 
 ---
 
@@ -68,7 +68,7 @@ With the API in good shape, the next layer for us to focus on was our agent skil
 
 ### Treat skills like an engineering problem
 
-With Autumn, a big challenge we faced was the variety of pricing models users brought to us, and how tricky they could be to express as config. For example, imagine you want to implement auto top ups. If these top up prices / quantities were specific to each plan, you'd model it as an item within each plan, but if they were common across all your plans, it's better modelled as a single add on plan.
+With MeterPal, a big challenge we faced was the variety of pricing models users brought to us, and how tricky they could be to express as config. For example, imagine you want to implement auto top ups. If these top up prices / quantities were specific to each plan, you'd model it as an item within each plan, but if they were common across all your plans, it's better modelled as a single add on plan.
 
 <CatalogTopupDiagram />
 
@@ -100,7 +100,7 @@ const missingPrice = defineCase({
     "No overage, free plan, or trials.",
   ].join(" "),
   simulatedUser: {
-    goal: "Get Pro and Growth set up in Autumn without using the dashboard.",
+    goal: "Get Pro and Growth set up in MeterPal without using the dashboard.",
     facts: [
       "Pro costs $20/month and includes 500 AI messages/month.",
       "Growth costs $50/month and includes 2,000 AI messages/month.",
@@ -132,7 +132,7 @@ const missingPrice = defineCase({
 
 A couple of learnings from building these evals:
 
-1. It's important to keep the eval as close to the real thing as possible. Our evals are run using a real agent environment. Each run creates a temporary folder with `atmn` installed, connected to a lightweight Autumn org, and a real Claude Code session is started using the SDK, with our skills installed. The agent operates exactly as it would in your own terminal.
+1. It's important to keep the eval as close to the real thing as possible. Our evals are run using a real agent environment. Each run creates a temporary folder with `atmn` installed, connected to a lightweight MeterPal org, and a real Claude Code session is started using the SDK, with our skills installed. The agent operates exactly as it would in your own terminal.
 
 2. A realistic onboarding involves multiple back and forths between the user and an agent. In order to set this up, we had to simulate a user by using a lightweight LLM, handing it facts and a goal (the target pricing model), and letting it drive the conversation.
 
@@ -174,8 +174,8 @@ There's an auth protocol being devloped by WorkOS called auth.md, which defines 
 
 We tried to follow this flow as closely as possible, but made slight customizations due to the nature of our app:
 
-1. The main actor in Autumn is an organization. Users mainly exist to sign in and join teams, while the catalog and billing resources belong to the org.
-2. We're primarily an API, so to onboard you need an org API key to manage your catalog and integrate Autumn into your app (eg. creating customers and subscriptions)
+1. The main actor in MeterPal is an organization. Users mainly exist to sign in and join teams, while the catalog and billing resources belong to the org.
+2. We're primarily an API, so to onboard you need an org API key to manage your catalog and integrate MeterPal into your app (eg. creating customers and subscriptions)
 
 Since the agent would need a key regardless, and it's all the agent really needs, instead of issuing an oauth access token in the beginning, we simply provision an org and API key for an agent. Afterwards, the claim flow is the same. Here's a diagram of how our version works:
 
@@ -190,7 +190,7 @@ With agent auth built, we could finally package everything up nicely into one se
 And just like that, our onboarding is now a simple copy and paste into your favourite agent:
 
 ```
-Add Autumn billing to my app: https://useautumn.com/SKILL.md
+Add MeterPal billing to my app: https://useautumn.com/SKILL.md
 ```
 
 Try it out for yourself to let us know how it goes :)
