@@ -22,16 +22,19 @@ services:
     container_name: meterpal-postgres-billing
     restart: unless-stopped
     environment:
-      POSTGRES_USER: meterpal
-      POSTGRES_PASSWORD: meterpal_dev_only
-      POSTGRES_DB: meterpal
+      # Role/db names are inherited from the upstream fork's local-dev
+      # defaults so an existing data volume keeps working. Change them here
+      # and in billing/server/.env together if you want a clean slate.
+      POSTGRES_USER: autumn
+      POSTGRES_PASSWORD: autumn_dev_only
+      POSTGRES_DB: autumn
     ports:
       - "5433:5432"
     volumes:
       - meterpal_billing_pg:/var/lib/postgresql/data
       - ./docker/pg-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U meterpal -d meterpal"]
+      test: ["CMD-SHELL", "pg_isready -U autumn -d autumn"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -58,7 +61,7 @@ services:
     image: redis:7-alpine
     container_name: meterpal-redis-billing
     restart: unless-stopped
-    command: redis-server --appendonly yes --requirepass meterpal_dev_only
+    command: redis-server --appendonly yes --requirepass autumn_dev_only
     ports:
       - "6380:6379"
     volumes:
