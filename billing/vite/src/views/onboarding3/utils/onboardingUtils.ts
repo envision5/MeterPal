@@ -79,7 +79,7 @@ const stepConfig = {
 	[OnboardingStep.Integration]: {
 		title: "Integrate",
 		description:
-			"Let's integrate Autumn and get your first customer onto one of your plans",
+			"Let's integrate MeterPal and get your first customer onto one of your plans",
 	},
 };
 

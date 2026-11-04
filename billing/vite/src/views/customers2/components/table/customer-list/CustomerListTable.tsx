@@ -192,7 +192,7 @@ export function CustomerListTable({
 							icon={<ArrowSquareOutIcon size={16} />}
 							onClick={() => {
 								window.open(
-									"https://docs.useautumn.com/documentation/getting-started/setup",
+									"https://docs.meterpal.dev/documentation/getting-started/setup",
 									"_blank",
 								);
 							}}

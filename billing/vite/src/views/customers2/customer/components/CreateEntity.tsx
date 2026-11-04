@@ -214,7 +214,7 @@ export const CreateEntity = ({
 							<DropdownMenuTrigger asChild>
 								<Button
 									variant="primary"
-									className="rounded-l-none border-l border-l-purple-medium px-1.5 dark:border-l-[#5611BA]"
+									className="rounded-l-none border-l border-l-[#7b90c4] px-1.5 dark:border-l-[#202a42]"
 									disabled={isLoading}
 								>
 									<CaretDownIcon className="size-3" />

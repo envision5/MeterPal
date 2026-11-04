@@ -13,7 +13,7 @@
  */
 function handler(webhook) {
   var AUTUMN_BASE = "https://app.useautumn.com/customers/";
-  var AUTUMN_USERNAME = "Autumn";
+  var AUTUMN_USERNAME = "MeterPal";
   var AUTUMN_AVATAR_URL = "https://i.ibb.co/BHCF1ZqL/autumnicon.png";
 
   // Discord embed colors (decimal RGB).
@@ -77,7 +77,7 @@ function handler(webhook) {
 
     var description = sentence;
     if (customerId) {
-      description += "\n\n[View in Autumn](" + AUTUMN_BASE + customerId + ")";
+      description += "\n\n[View in MeterPal](" + AUTUMN_BASE + customerId + ")";
     }
 
     var fields = [
@@ -130,7 +130,7 @@ function handler(webhook) {
     var lrDescription =
       lrCustomerDisplay + " hit their **" + lrFeatureId + "** `" + lrLimitType + "` limit";
     if (lrCustomerId) {
-      lrDescription += "\n\n[View in Autumn](" + AUTUMN_BASE + lrCustomerId + ")";
+      lrDescription += "\n\n[View in MeterPal](" + AUTUMN_BASE + lrCustomerId + ")";
     }
 
     var lrFields = [
@@ -200,7 +200,7 @@ function handler(webhook) {
     var uaDescription =
       uaCustomerDisplay + " crossed the **" + uaAlertName + "** threshold on **" + uaFeatureId + "**";
     if (uaCustomerId) {
-      uaDescription += "\n\n[View in Autumn](" + AUTUMN_BASE + uaCustomerId + ")";
+      uaDescription += "\n\n[View in MeterPal](" + AUTUMN_BASE + uaCustomerId + ")";
     }
 
     var uaFields = [

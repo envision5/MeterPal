@@ -28,7 +28,7 @@ export function getPlanKindConfig(
 		case CustomerProductKind.AddOn:
 			return {
 				label: "Add-on",
-				color: "text-violet-500",
+				color: "text-[#264082]",
 				icon: <PuzzlePieceIcon size={size} weight="fill" />,
 			};
 		default:

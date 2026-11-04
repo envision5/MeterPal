@@ -81,7 +81,7 @@ export const ensureFreePhaseStripeProducts = async ({
 	if (!isStripeConnected({ org: ctx.org, env: ctx.env })) {
 		throw new RecaseError({
 			message:
-				"Connect Stripe to schedule a transition out of a free plan. Autumn uses a $0 Stripe subscription to run the schedule.",
+				"Connect Stripe to schedule a transition out of a free plan. MeterPal uses a $0 Stripe subscription to run the schedule.",
 			code: ErrCode.StripeConfigNotFound,
 			statusCode: StatusCodes.BAD_REQUEST,
 		});

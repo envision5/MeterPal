@@ -1,4 +1,4 @@
-// autumn/server/tests/stripe_webhook_security.test.ts
+// billing/server/tests/stripe_webhook_security.test.ts
 //
 // Unit tests for the real Stripe signature verification wrapper
 // (server/src/external/stripe/webhookSecurity.ts).

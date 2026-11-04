@@ -10,7 +10,7 @@ openapi: "api/openapi.yml webhook billing.auto_topup_failed"
 </ParamField>
 
 <ParamField body="feature_id" type="string" required>
-  The feature ID that Autumn attempted to auto top-up.
+  The feature ID that MeterPal attempted to auto top-up.
 </ParamField>
 
 <ParamField body="reason" type="'charge_failed' | 'purchase_limit_reached' | 'attempt_limit_reached' | 'failed_attempt_limit_reached' | 'suspended_after_failures' | 'customer_unavailable' | 'configuration_unavailable' | 'missing_payment_method' | 'missing_customer_product' | 'invalid_amount' | 'grant_limit_reached' | 'lock_contention' | 'redis_unavailable' | 'execution_error'" required>
@@ -18,7 +18,7 @@ openapi: "api/openapi.yml webhook billing.auto_topup_failed"
 </ParamField>
 
 <ParamField body="quantity" type="number | null">
-  The normalized amount of balance Autumn attempted to grant, when a matching auto top-up config was available.
+  The normalized amount of balance MeterPal attempted to grant, when a matching auto top-up config was available.
 </ParamField>
 
 <ParamField body="threshold" type="number | null">
@@ -34,10 +34,10 @@ openapi: "api/openapi.yml webhook billing.auto_topup_failed"
 </ParamField>
 
 <ParamField body="error" type="object | null">
-  Sanitized provider or Autumn error metadata, when the failure came from an exception or declined charge.
+  Sanitized provider or MeterPal error metadata, when the failure came from an exception or declined charge.
   <Expandable title="properties">
     <ParamField body="code" type="string | null">
-      Machine-readable error code when one is available (for example, a Stripe or Autumn error code).
+      Machine-readable error code when one is available (for example, a Stripe or MeterPal error code).
     </ParamField>
 
     <ParamField body="message" type="string | null">

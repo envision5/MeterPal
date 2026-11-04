@@ -103,11 +103,11 @@ export const CustomButtonDialog = ({
 										/>
 										<p className="mt-1.5 text-xs text-tertiary-foreground">
 											Use{" "}
-											<code className="rounded bg-interactive-secondary px-1 py-0.5 font-mono text-purple-500">
+											<code className="rounded bg-interactive-secondary px-1 py-0.5 font-mono text-[#264082]">
 												{"{customerId}"}
 											</code>{" "}
 											or{" "}
-											<code className="rounded bg-interactive-secondary px-1 py-0.5 font-mono text-purple-500">
+											<code className="rounded bg-interactive-secondary px-1 py-0.5 font-mono text-[#264082]">
 												{"{customerEmail}"}
 											</code>{" "}
 											to insert customer details.

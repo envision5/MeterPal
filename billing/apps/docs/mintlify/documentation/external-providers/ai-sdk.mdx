@@ -3,7 +3,7 @@ title: "Vercel AI SDK"
 description: "Automatically track AI token usage with the Vercel AI SDK"
 ---
 
-The `@useautumn/gateway` package integrates Autumn with the [Vercel AI SDK](https://sdk.vercel.ai), automatically tracking token usage for every `generateText` or `streamText` call. No manual `trackTokens` calls needed.
+The `@useautumn/gateway` package integrates MeterPal with the [Vercel AI SDK](https://sdk.vercel.ai), automatically tracking token usage for every `generateText` or `streamText` call. No manual `trackTokens` calls needed.
 
 ## Setup
 
@@ -33,12 +33,12 @@ bun add @useautumn/gateway
 
 #### 2. Wrap your model
 
-Use `withAutumn` to wrap any AI SDK language model. It intercepts generate and stream calls, reads the token usage from the response, and reports it to Autumn automatically.
+Use `withAutumn` to wrap any AI SDK language model. It intercepts generate and stream calls, reads the token usage from the response, and reports it to MeterPal automatically.
 
 ```typescript
 import { Autumn } from "autumn-js";
 import { anthropic } from "@ai-sdk/anthropic";
-import { withAutumn } from "@useautumn/gateway/ai-sdk";
+import { withMeterPal } from "@useautumn/gateway/ai-sdk";
 
 const autumn = new Autumn({ secretKey: "am_sk_test_1234" });
 
@@ -79,7 +79,7 @@ The wrapper normalizes the AI SDK's usage object into the exclusive token pools 
 
 ## Model ID format
 
-The wrapped model constructs the `modelId` sent to Autumn using `provider/model` format, derived from the AI SDK model's `provider` and `modelId` fields. This must match a valid provider and model key from [Models.dev](https://models.dev).
+The wrapped model constructs the `modelId` sent to MeterPal using `provider/model` format, derived from the AI SDK model's `provider` and `modelId` fields. This must match a valid provider and model key from [Models.dev](https://models.dev).
 
 For example:
 - `@ai-sdk/anthropic` → `anthropic/claude-sonnet-4-5-20250514`
@@ -108,9 +108,9 @@ const model = withAutumn({
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `autumn` | `Autumn` | Yes | Your Autumn SDK client instance |
+| `autumn` | `Autumn` | Yes | Your MeterPal SDK client instance |
 | `model` | `LanguageModelV4` | Yes | The AI SDK 7 language model to wrap |
-| `customerId` | `string` | Yes | The Autumn customer ID to attribute usage to |
+| `customerId` | `string` | Yes | The MeterPal customer ID to attribute usage to |
 | `providerId` | `string` | No | Explicit pricing provider, used verbatim instead of the normalized model provider |
 | `featureId` | `string` | No | Target a specific AI credit system feature. Auto-detected if you only have one |
 | `entityId` | `string` | No | Entity ID for entity-scoped balance tracking |
@@ -122,7 +122,7 @@ const model = withAutumn({
 import { Autumn } from "autumn-js";
 import { openai } from "@ai-sdk/openai";
 import { generateText } from "ai";
-import { withAutumn } from "@useautumn/gateway/ai-sdk";
+import { withMeterPal } from "@useautumn/gateway/ai-sdk";
 
 const autumn = new Autumn({ secretKey: process.env.AUTUMN_SECRET_KEY! });
 
@@ -143,5 +143,5 @@ async function chat(customerId: string, message: string) {
 ```
 
 <Tip>
-  Tracking failures are caught and logged to the console — they won't break your AI features. Check your server logs if usage isn't appearing in Autumn.
+  Tracking failures are caught and logged to the console — they won't break your AI features. Check your server logs if usage isn't appearing in MeterPal.
 </Tip>

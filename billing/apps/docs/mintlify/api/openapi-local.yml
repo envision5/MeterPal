@@ -1,5 +1,5 @@
 info:
-  title: Autumn API
+  title: MeterPal API
   version: 2.1.0
 servers:
   - url: http://localhost:8080

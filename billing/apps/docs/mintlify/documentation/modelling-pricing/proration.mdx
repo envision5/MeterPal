@@ -3,7 +3,7 @@ title: Proration
 description: Handle mid-cycle plan changes with prorated billing
 ---
 
-Proration adjusts billing when a customer changes their subscription mid-cycle. That could be an upgrade, a downgrade, or a change to the quantity of a prepaid item like seats. Autumn works out the prorated amount and either charges or credits the customer.
+Proration adjusts billing when a customer changes their subscription mid-cycle. That could be an upgrade, a downgrade, or a change to the quantity of a prepaid item like seats. MeterPal works out the prorated amount and either charges or credits the customer.
 
 > **Example** <br />
 > A customer on a \$20/month plan upgrades to a \$50/month plan halfway through the billing cycle. They're charged \$15 (the prorated difference for the remaining half of the month).
@@ -92,7 +92,7 @@ Item-level proration only applies to prepaid items. It decides how to bill a cha
 
 ## Plan-level proration
 
-When a customer switches between plans (upgrade or downgrade), Autumn prorates automatically:
+When a customer switches between plans (upgrade or downgrade), MeterPal prorates automatically:
 
 - **Upgrades**: the customer is charged the prorated difference between the old and new plan prices for the remainder of the billing cycle. This happens immediately.
 - **Downgrades**: the plan change is **scheduled** to take effect at the end of the current billing period. The customer continues on their current plan until then.
@@ -151,7 +151,7 @@ curl -X POST https://api.useautumn.com/v2/billing/attach \
 - Removing an active **free trial**
 - Any transition that would result in a new charge
 
-In these cases, Autumn requires immediate billing and will return an error.
+In these cases, MeterPal requires immediate billing and will return an error.
 </Warning>
 
 ### Custom line items
@@ -169,8 +169,8 @@ await autumn.billing.attach({
 });
 ```
 
-When `custom_line_items` is provided, Autumn skips its own proration calculation and creates an invoice with exactly the line items you specified. Amounts can be negative to represent credits.
+When `custom_line_items` is provided, MeterPal skips its own proration calculation and creates an invoice with exactly the line items you specified. Amounts can be negative to represent credits.
 
 ## Stripe integration
 
-Autumn uses Stripe's proration system under the hood. Prorated amounts appear as line items on the customer's next invoice (or are charged immediately, depending on configuration).
+MeterPal uses Stripe's proration system under the hood. Prorated amounts appear as line items on the customer's next invoice (or are charged immediately, depending on configuration).

@@ -1,6 +1,6 @@
 ---
 title: "Pricing Table"
-description: "Drop in Autumn's Pricing Table component to display your products and plans"
+description: "Drop in MeterPal's Pricing Table component to display your products and plans"
 ---
 
 The pricing table component displays your available plans, plan features and pricing. 
@@ -63,7 +63,7 @@ The Pricing Table component calls the `products` endpoint, which does not requir
 </Check>
 
 
-The component can take in `productDetails`, which can be used to pass in content that can override the default contents (which are generated from your Autumn products). The example below was used to render the screenshot above.
+The component can take in `productDetails`, which can be used to pass in content that can override the default contents (which are generated from your MeterPal products). The example below was used to render the screenshot above.
 
 ```tsx [expandable]
 const productDetails = [
@@ -102,7 +102,7 @@ const productDetails = [
 ];
 ```
 
-You can choose which products should be displayed, and what items each card should have. The items array can either take an object with `primaryText` and `secondaryText` properties, or a string with the `featureId`, which will just take the item from Autumn's default contents.
+You can choose which products should be displayed, and what items each card should have. The items array can either take an object with `primaryText` and `secondaryText` properties, or a string with the `featureId`, which will just take the item from MeterPal's default contents.
 
 #### Scenarios
 
@@ -178,7 +178,7 @@ export const getPricingTableContent = (product: Product) => {
 ```
 ## Build your own
 
-Display a list of the products you offer by fetching your product data from Autumn's API. This gives you a dynamic, single source of truth for your app's pricing plans.
+Display a list of the products you offer by fetching your product data from MeterPal's API. This gives you a dynamic, single source of truth for your app's pricing plans.
 
 <CodeGroup>
 

@@ -32,6 +32,7 @@ const getTotalDiscountAmount = (invoice: Invoice) => {
 const PROCESSOR_LABELS: Record<InvoiceProcessorVariant, string> = {
 	[ProcessorType.Stripe]: "Stripe",
 	[ProcessorType.RevenueCat]: "RevenueCat",
+	[ProcessorType.PayPal]: "PayPal",
 	vercel: "Vercel",
 };
 

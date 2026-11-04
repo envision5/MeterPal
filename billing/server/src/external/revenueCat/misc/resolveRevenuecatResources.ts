@@ -497,7 +497,7 @@ export const resolveRevenuecatResources = async ({
 
 	if (!autumnProductId) {
 		throw new RecaseError({
-			message: `No Autumn product mapped to RevenueCat product: ${revenuecatProductId}`,
+			message: `No MeterPal product mapped to RevenueCat product: ${revenuecatProductId}`,
 			code: ErrCode.ProductNotFound,
 			statusCode: 404,
 		});

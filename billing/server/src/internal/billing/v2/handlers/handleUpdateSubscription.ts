@@ -1,6 +1,7 @@
 import {
 	AffectedResource,
 	ApiVersion,
+	type BillingContext,
 	InternalError,
 	Scopes,
 	UpdateSubscriptionV0ParamsSchema,
@@ -9,6 +10,7 @@ import {
 import { billingActions } from "@/internal/billing/v2/actions";
 import { updatePendingPlanIfAny } from "@/internal/billing/v2/execute/pendingCustomerProducts/updatePendingPlanIfAny";
 import { buildBillingLockKey } from "@/internal/billing/v2/utils/billingLock/buildBillingLockKey";
+import { handlePaypalSubscriptionCancelAction } from "@/internal/billing/paypal/paypalSubscriptionLifecycle.js";
 import { createRoute } from "../../../../honoMiddlewares/routeHandler";
 import { billingResultToResponse } from "../utils/billingResult/billingResultToResponse";
 
@@ -39,6 +41,31 @@ export const handleUpdateSubscription = createRoute({
 	handler: async (c) => {
 		const ctx = c.get("ctx");
 		const body = c.req.valid("json");
+
+		// PayPal-billed customers: cancel / uncancel run through the PayPal
+		// subscriptions API (the v2 pipeline drives Stripe).  Plan changes
+		// without a cancel_action still use the pipeline below.
+		if (body.cancel_action) {
+			const paypal = await handlePaypalSubscriptionCancelAction({
+				ctx,
+				customerId: body.customer_id,
+				planId: body.plan_id,
+				cancelAction: body.cancel_action,
+			});
+			if (paypal.handled && paypal.customer) {
+				// The mapper only reads the customer identity off the context —
+				// the PayPal cancel carries no Stripe invoice or checkout URL.
+				return c.json(
+					billingResultToResponse({
+						billingContext: {
+							fullCustomer: paypal.customer,
+						} as unknown as BillingContext,
+						billingResult: { stripe: {} },
+					}),
+					200,
+				);
+			}
+		}
 
 		const pendingUpdate = await updatePendingPlanIfAny({ ctx, params: body });
 

@@ -1,0 +1,1 @@
+ALTER TABLE "customers" ADD COLUMN IF NOT EXISTS "paypal_billing_agreement_id" text;

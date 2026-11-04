@@ -10,7 +10,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
 ### Body Parameters
 
 <DynamicParamField body="invoice_id" type="string" required>
-  The Autumn invoice ID to void and replace.
+  The MeterPal invoice ID to void and replace.
 </DynamicParamField>
 
 <DynamicParamField body="invoice_template_id" type="string">
@@ -564,7 +564,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
     </DynamicResponseField>
 
     <DynamicResponseField name="id" type="string">
-      The Autumn invoice ID
+      The MeterPal invoice ID
     </DynamicResponseField>
 
     <DynamicResponseField name="customer_id" type="string | null">
@@ -587,7 +587,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
       Line items on the invoice, one per line as shown in Stripe. Capped at 100. Empty for invoices recorded before line item storage.
       <Expandable title="properties">
         <DynamicResponseField name="id" type="string">
-          The Autumn invoice line item ID. Stable across reads, and can be used to reference this line in later calls.
+          The MeterPal invoice line item ID. Stable across reads, and can be used to reference this line in later calls.
         </DynamicResponseField>
 
         <DynamicResponseField name="description" type="string">
@@ -603,7 +603,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
         </DynamicResponseField>
 
         <DynamicResponseField name="plan_id" type="string | null">
-          The plan this line item came from. Null for lines with no Autumn plan behind them.
+          The plan this line item came from. Null for lines with no MeterPal plan behind them.
         </DynamicResponseField>
 
         <DynamicResponseField name="feature_id" type="string | null">
@@ -647,7 +647,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
 </DynamicResponseField>
 
 <DynamicResponseField name="voided_invoice_id" type="string | null">
-  The Autumn ID of the original invoice, now void. Null when previewing, and when the original was paid and got a credit note instead.
+  The MeterPal ID of the original invoice, now void. Null when previewing, and when the original was paid and got a credit note instead.
 </DynamicResponseField>
 
 <DynamicResponseField name="credit_note_id" type="string | null">

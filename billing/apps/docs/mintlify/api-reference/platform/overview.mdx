@@ -1,6 +1,6 @@
 ---
 title: "Overview"
-description: "Manage Autumn on behalf of your users in a multi-tenant flow"
+description: "Manage MeterPal on behalf of your users in a multi-tenant flow"
 ---
 
 <Warning>
@@ -9,16 +9,16 @@ description: "Manage Autumn on behalf of your users in a multi-tenant flow"
 
 ## What is the Platform API?
 
-The Platform API is for users who want to manage Autumn on behalf of their users (for example, AI app builders) in a multi-tenant flow.
+The Platform API is for users who want to manage MeterPal on behalf of their users (for example, AI app builders) in a multi-tenant flow.
 
 ## How it Works
 
 ### 1. Create an Organization
 
-Create an Autumn organization linked to a user email. This generates API keys that your user can use to interact with Autumn's billing features.
+Create an MeterPal organization linked to a user email. This generates API keys that your user can use to interact with MeterPal's billing features.
 
 ### 2. Integrate
-Each organization created through Step 1 already has a Stripe account connected to their sandbox environment. As such, you can freely integrate and test Autumn without additional Stripe credentials. When you're ready to go to prod, you can then connect your user's Stripe account through the Step 3.
+Each organization created through Step 1 already has a Stripe account connected to their sandbox environment. As such, you can freely integrate and test MeterPal without additional Stripe credentials. When you're ready to go to prod, you can then connect your user's Stripe account through the Step 3.
 
 ### 3. Link Stripe Account
 
@@ -34,6 +34,6 @@ If you have your own Stripe Connect platform, simply pass us the Stripe account 
 
 Use [Get Stripe Connection](/api-reference/platform/getStripeConnection) to decide whether to show **Connect Stripe** or **Disconnect Stripe**. Call it after the OAuth redirect and when reopening your connection settings. Pass the tenant's public `organization_slug` and `env: "test"` or `env: "live"`; authenticate with your master organization's key, not the tenant's key. The `env` field selects the connection independently of whether that key is a test or live key.
 
-The response identifies the OAuth account and its connection time. Historical connections may have `connected_at: null`. Default sandbox accounts, separate secret-key connections, and direct account-ID connections through your own Stripe platform do not count as Autumn OAuth connections.
+The response identifies the OAuth account and its connection time. Historical connections may have `connected_at: null`. Default sandbox accounts, separate secret-key connections, and direct account-ID connections through your own Stripe platform do not count as MeterPal OAuth connections.
 
 Use [Disconnect Stripe](/api-reference/platform/disconnectStripe) to revoke the tenant's OAuth authorization and clear that environment's connection. Disconnecting does not delete the Stripe account or cancel its subscriptions. The other environment and the default sandbox account are preserved. To reconnect, generate a fresh OAuth URL and ask the tenant to authorize again.

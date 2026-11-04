@@ -18,10 +18,10 @@ Authenticate with your **master organization's secret key**, with `platform:read
 - An unconnected tenant returns `{"connected":false,"account_id":null,"connected_at":null}`.
 
 <Note>
-  A default sandbox account, a separately configured Stripe secret key, or a direct account-ID connection through your own Stripe platform does not count as an Autumn OAuth connection. This endpoint is not a general check of whether the tenant can process payments.
+  A default sandbox account, a separately configured Stripe secret key, or a direct account-ID connection through your own Stripe platform does not count as an MeterPal OAuth connection. This endpoint is not a general check of whether the tenant can process payments.
 </Note>
 
-After the tenant returns from the [Stripe OAuth flow](/api-reference/platform/oauth-url), fetch this status to update your UI. Revocations made in Stripe are reflected after Autumn processes Stripe's deauthorization webhook.
+After the tenant returns from the [Stripe OAuth flow](/api-reference/platform/oauth-url), fetch this status to update your UI. Revocations made in Stripe are reflected after MeterPal processes Stripe's deauthorization webhook.
 
 A slug that does not resolve to an organization created by your master organization returns `400` with `Organization with slug '<slug>' not found`. A missing API key returns `401`, and a key without `platform:read` returns `403`.
 

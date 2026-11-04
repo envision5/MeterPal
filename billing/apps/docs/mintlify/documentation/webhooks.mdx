@@ -3,13 +3,13 @@ title: "Webhooks"
 description: "Receive real-time notifications when customer billing events occur"
 ---
 
-With Autumn, you don't need webhooks for managing billing — subscription state, usage tracking, and access control are all synchronized automatically. 
+With MeterPal, you don't need webhooks for managing billing — subscription state, usage tracking, and access control are all synchronized automatically. 
 
 However, webhooks can still be useful for specific use cases where you want to trigger actions in your own systems.
 
 ## Use Cases
 
-While Autumn handles billing complexity for you, webhooks are helpful for:
+While MeterPal handles billing complexity for you, webhooks are helpful for:
 
 - **Sending activation emails** — Welcome new subscribers or notify users when their plan changes
 - **Triggering workflows** — Start onboarding sequences, provision resources, or update CRM records
@@ -124,7 +124,7 @@ For entity-scoped events, the payload will also include an `entity_id`:
 
 **Common patterns:**
 
-- **Sync Autumn state back to your DB** — listen for every `billing.updated` and persist each `plan_changes` entry's `subscription` snapshot keyed by `customer_id` (+ `entity_id` if set).
+- **Sync MeterPal state back to your DB** — listen for every `billing.updated` and persist each `plan_changes` entry's `subscription` snapshot keyed by `customer_id` (+ `entity_id` if set).
 - **Notify on upgrades** — filter for entries with `action: "activated"`. For "upgrade from previous plan" specifically, pair it with an `action: "expired"` entry on the same event.
 - **Detect cancellations** — filter for entries where `previous_attributes.canceled_at === null` (a cancellation was just set) or `previous_attributes.canceled_at` is a number (an uncancel).
 - **Trial-end emails** — filter for `tags.includes("trial_ended")`.
@@ -285,11 +285,11 @@ Fired when a customer crosses a configured usage alert threshold. Usage alerts l
 
 ## Setup
 
-Configure your webhook endpoints in the Autumn dashboard:
+Configure your webhook endpoints in the MeterPal dashboard:
 
 <Steps>
   <Step title="Navigate to Developer Settings">
-    Go to the **Developer** section in your Autumn dashboard and select the **Webhooks** tab.
+    Go to the **Developer** section in your MeterPal dashboard and select the **Webhooks** tab.
   </Step>
   <Step title="Add an Endpoint">
     Click **Add Endpoint** and enter the URL where you want to receive webhook events.
@@ -304,7 +304,7 @@ Configure your webhook endpoints in the Autumn dashboard:
 
 ## Webhook Security
 
-Autumn uses [Svix](https://www.svix.com/) for reliable webhook delivery. Each webhook request includes signature headers that you can use to verify the request is genuinely from Autumn:
+MeterPal uses [Svix](https://www.svix.com/) for reliable webhook delivery. Each webhook request includes signature headers that you can use to verify the request is genuinely from MeterPal:
 
 - `svix-id` — Unique message identifier
 - `svix-timestamp` — Timestamp of when the message was sent
@@ -314,4 +314,4 @@ You can use the [Svix libraries](https://docs.svix.com/receiving/verifying-paylo
 
 ## Retry Policy
 
-If your endpoint returns an error or is unavailable, Autumn will automatically retry the webhook with exponential backoff. You can view delivery attempts and retry failed webhooks from the dashboard.
+If your endpoint returns an error or is unavailable, MeterPal will automatically retry the webhook with exponential backoff. You can view delivery attempts and retry failed webhooks from the dashboard.

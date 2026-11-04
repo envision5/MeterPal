@@ -60,7 +60,7 @@ const STATUS_CONFIG: Record<string, StatusConfig> = {
 	scheduled: {
 		icon: CalendarIcon,
 		label: "Scheduled",
-		iconClassName: "bg-purple-500 dark:bg-purple-600",
+		iconClassName: "bg-[#264082] dark:bg-[#264082]",
 	},
 	pending: {
 		icon: HourglassIcon,

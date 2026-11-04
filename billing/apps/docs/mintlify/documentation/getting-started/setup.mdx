@@ -19,7 +19,7 @@ Create a plan for each pricing tier that your app offers. In our example we'll c
 </Step>
 
 <Step title="Installation">
-[Create an Autumn Secret key](https://app.useautumn.com/sandbox/dev?tab=api_keys), and paste it in your `.env` variables. Then, install the Autumn SDK. If you're using the CLI, this will be done for you.
+[Create an MeterPal Secret key](https://app.useautumn.com/sandbox/dev?tab=api_keys), and paste it in your `.env` variables. Then, install the MeterPal SDK. If you're using the CLI, this will be done for you.
 
 ```bash .env
 AUTUMN_SECRET_KEY=am_sk_test_42424242...
@@ -51,8 +51,8 @@ pip install autumn-sdk
 
 </Step>
 
-<Step title="Create an Autumn customer">
-When the customer signs up, create an Autumn customer for them. Autumn will automatically enable the <Badge color="green">Free</Badge> plan, since you marked it with the `auto-enable` flag.
+<Step title="Create an MeterPal customer">
+When the customer signs up, create an MeterPal customer for them. MeterPal will automatically enable the <Badge color="green">Free</Badge> plan, since you marked it with the `auto-enable` flag.
 
 <CodeGroup>
 
@@ -101,16 +101,16 @@ curl --request POST \
 </CodeGroup>
 
 <Check>
-    Autumn's customer ID is the same as your internal user or org ID generated
+    MeterPal's customer ID is the same as your internal user or org ID generated
     from your auth provider. No need to store any extra IDs.
 </Check>
 
-In the Autumn dashboard, you will see your user under the [customers](https://app.useautumn.com/customers) page.
+In the MeterPal dashboard, you will see your user under the [customers](https://app.useautumn.com/customers) page.
 
 </Step>
 
 <Step title="Stripe Payment Flow">
-Call `attach` when the customer wants to purchase the <Badge color="blue">Pro</Badge> plan. This will return a Stripe payment URL. Once they've paid, Autumn will grant access to "100 messages per month" defined in Step 1.
+Call `attach` when the customer wants to purchase the <Badge color="blue">Pro</Badge> plan. This will return a Stripe payment URL. Once they've paid, MeterPal will grant access to "100 messages per month" defined in Step 1.
 
 <CodeGroup>
 
@@ -172,7 +172,7 @@ Upgrades will happen immediately, and downgrades will be scheduled for the next 
 <Note>
 The **`redirectMode: "always"`** flag will always return a payment URL.
 
-New purchases redirect to Stripe Checkout to enter payment details, and subsequent charges redirect to an Autumn hosted, one-click confirmation page.
+New purchases redirect to Stripe Checkout to enter payment details, and subsequent charges redirect to an MeterPal hosted, one-click confirmation page.
 
 You can build your own billing confirmation flows by using the [previewAttach](/api-reference/billing/previewAttach) function.
 
@@ -189,6 +189,6 @@ Now that the plan is enabled and you've handled payments, you can now make sure 
     title="Track and limit usage"
     href="/documentation/getting-started/gating"
 >
-    Enforce usage limits and feature permissions using Autumn's `check` and
+    Enforce usage limits and feature permissions using MeterPal's `check` and
     `track` functions
 </Card>

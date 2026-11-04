@@ -7,6 +7,7 @@ import {
 import type Stripe from "stripe";
 import { z } from "zod/v4";
 import { createStripeCli } from "@/external/connect/createStripeCli.js";
+import { isPaypalInvoiceId } from "@/external/paypal/invoiceRecording.js";
 import { resolveVercelInstallationId } from "@/external/vercel/misc/vercelInvoiceUtils.js";
 import { createRoute } from "@/honoMiddlewares/routeHandler.js";
 import { CusService } from "@/internal/customers/CusService.js";
@@ -17,6 +18,7 @@ import {
 	resolveChargeFromInvoice,
 	validateChargeRefundable,
 } from "./invoiceRefundUtils.js";
+import { refundPaypalInvoice } from "./refundPaypalInvoice.js";
 import {
 	calculateVercelRefundAmount,
 	requestVercelRefund,
@@ -39,6 +41,32 @@ export const handleRefundInvoice = createRoute({
 		const ctx = c.get("ctx");
 		const { customer_id, stripe_invoice_id } = c.req.param();
 		const { mode, amount, reason } = c.req.valid("json");
+
+		// 0. PayPal invoices (pp-cap- / pp-sale- external ids) have no Stripe
+		// invoice to retrieve — refund through PayPal, keyed by the instrument
+		// the external id names.
+		if (isPaypalInvoiceId(stripe_invoice_id)) {
+			const paypalInvoice = await InvoiceService.getByStripeId({
+				db: ctx.db,
+				stripeId: stripe_invoice_id,
+			});
+			if (!paypalInvoice) {
+				throw new RecaseError({
+					message: "Invoice not found",
+					code: ErrCode.InvalidRequest,
+					statusCode: 404,
+				});
+			}
+			const response = await refundPaypalInvoice({
+				ctx,
+				invoice: paypalInvoice,
+				customerId: customer_id,
+				mode,
+				amount,
+				reason,
+			});
+			return c.json(response);
+		}
 
 		const stripeCli = createStripeCli({ org: ctx.org, env: ctx.env });
 

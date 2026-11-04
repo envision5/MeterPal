@@ -28,12 +28,12 @@ const AgentClaimEmail = ({
 						Claim {organizationName}
 					</Heading>
 					<Text className="mb-[24px] text-[16px] leading-[24px] text-gray-800">
-						An agent created this Autumn organization for you. Sign in with
+						An agent created this MeterPal organization for you. Sign in with
 						this email address to claim it and open the dashboard.
 					</Text>
 					<Button
 						href={claimUrl}
-						className="rounded-[8px] bg-gray-900 px-[20px] py-[12px] text-[15px] font-semibold text-white"
+						className="rounded-[8px] bg-[#264082] px-[20px] py-[12px] text-[15px] font-semibold text-white"
 					>
 						Sign in to claim
 					</Button>
@@ -43,7 +43,7 @@ const AgentClaimEmail = ({
 					</Text>
 					<Section className="mt-[40px] border-t border-gray-200 pt-[24px]">
 						<Text className="m-0 text-[12px] leading-[16px] text-gray-500">
-							Autumn
+							MeterPal
 							<br />
 							2261 Market Street STE 22390
 							<br />

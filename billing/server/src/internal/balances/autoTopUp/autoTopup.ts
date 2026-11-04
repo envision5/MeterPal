@@ -19,6 +19,10 @@ import { computeAutoTopupPlan } from "./compute/computeAutoTopupPlan.js";
 import { buildAutoTopUpLockKey } from "./helpers/autoTopUpUtils.js";
 import { recordAutoTopupAttempt } from "./helpers/limits/index.js";
 import { logAutoTopupContext } from "./logs/logAutoTopupContext.js";
+import {
+	maybeGetPaypalAutoTopupCustomer,
+	runPaypalAutoTopup,
+} from "./paypal/paypalAutoTopup.js";
 import { setupAutoTopupContext } from "./setup/setupAutoTopupContext.js";
 import {
 	classifyAutoTopupError,
@@ -71,6 +75,22 @@ export const autoTopup = async ({
 		if (org.config.disabled_auto_topup && env === AppEnv.Live) {
 			const message = `Auto top-up is disabled for organization ${org.id}, skipping`;
 			logger.info(`[autoTopup] ${message}`);
+			return;
+		}
+
+		// 0. PayPal-charged customers have no Stripe customer to run the v2
+		// pipeline against — their instrument is the vaulted billing agreement,
+		// charged merchant-initiated through Orders v2 (paypalAutoTopup.ts).
+		const paypalCustomer = await maybeGetPaypalAutoTopupCustomer({
+			ctx,
+			customerId,
+		});
+		if (paypalCustomer) {
+			await runPaypalAutoTopup({
+				ctx,
+				payload,
+				fullCustomer: paypalCustomer,
+			});
 			return;
 		}
 

@@ -13,15 +13,15 @@ After generating the OAuth URL:
 
 1. Redirect your tenant to the `oauth_url`
 2. User authorizes their Stripe account
-3. Stripe redirects to Autumn's callback URL
-4. Autumn processes the authorization and redirects to your `redirect_url`
+3. Stripe redirects to MeterPal's callback URL
+4. MeterPal processes the authorization and redirects to your `redirect_url`
 5. Your `redirect_url` receives `success=true` on success, or `success=false`, a stable `error` code, and a human-readable `message` on failure.
 
 After the redirect, call [Get Stripe Connection](/api-reference/platform/getStripeConnection) to refresh the connection shown in your application. Do not treat a missing `connected_at` on a historical connection as a failure.
 
 ## Reconnect and account ownership
 
-A Stripe OAuth account can belong to one Autumn organization per environment. Authorizing the same account again for the same organization refreshes the connection. Trying to connect an account already linked to a different organization returns `account_already_connected`.
+A Stripe OAuth account can belong to one MeterPal organization per environment. Authorizing the same account again for the same organization refreshes the connection. Trying to connect an account already linked to a different organization returns `account_already_connected`.
 
 Conflict details are limited to organizations owned by your own master organization. A conflict with another platform does not disclose that platform's organization identity.
 
@@ -43,7 +43,7 @@ Use `error` for application logic and display `message` to the user. Start a fre
 | `account_id_not_found` | Stripe's token response did not identify an account. |
 | `account_already_connected` | Another organization already uses the account in this environment. |
 | `account_mismatch` | The account differs from the tenant's separate secret-key connection. |
-| `account_mismatch_check_failed` | Autumn could not verify the separate secret-key connection. |
+| `account_mismatch_check_failed` | MeterPal could not verify the separate secret-key connection. |
 | `oauth_callback_failed` | The token exchange, authorization check, or connection update failed. |
 
 <Note>
@@ -51,5 +51,5 @@ Use `error` for application logic and display `message` to the user. Start a fre
 </Note>
 
 <Note>
-  Autumn can use your custom return URL only after validating the OAuth state. A missing, expired, or invalid state returns to Autumn's default callback destination instead.
+  MeterPal can use your custom return URL only after validating the OAuth state. A missing, expired, or invalid state returns to MeterPal's default callback destination instead.
 </Note>

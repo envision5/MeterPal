@@ -1,11 +1,11 @@
 ---
 title: "RevenueCat"
-description: "Integrate Autumn with RevenueCat for mobile app billing"
+description: "Integrate MeterPal with RevenueCat for mobile app billing"
 ---
 
-RevenueCat integration allows you to use Autumn alongside RevenueCat for managing mobile app subscriptions and billing. This is a _read-only_ integration, which means that you will handle billing through RevenueCat. 
+RevenueCat integration allows you to use MeterPal alongside RevenueCat for managing mobile app subscriptions and billing. This is a _read-only_ integration, which means that you will handle billing through RevenueCat. 
 
-Autumn will receive webhook updates from RevenueCat to update the customer's plan and features. You keep the benefits of RevenueCat's paywalls, AB testing and SDK.
+MeterPal will receive webhook updates from RevenueCat to update the customer's plan and features. You keep the benefits of RevenueCat's paywalls, AB testing and SDK.
 
 <Note>
  This is currently in beta, please reach out to us on [Discord](https://discord.gg/STqxY92zuS) or email us at support@useautumn.com to get access.
@@ -14,9 +14,9 @@ Autumn will receive webhook updates from RevenueCat to update the customer's pla
 ## Setup Guide
 <Steps>
     <Step>
-    #### Connect RevenueCat to Autumn
+    #### Connect RevenueCat to MeterPal
     
-        To connect RevenueCat to Autumn, you'll need:
+        To connect RevenueCat to MeterPal, you'll need:
         - A RevenueCat project ID
         - A RevenueCat API key
 
@@ -37,45 +37,45 @@ Autumn will receive webhook updates from RevenueCat to update the customer's pla
             <img src="/assets/screenshots/revenuecat/api-key.png" alt="RevenueCat dashboard showing where to find your API key" />
         </Frame>
 
-        Then, visit your Autumn dashboard, and in the "Developer > RevenueCat" section,
+        Then, visit your MeterPal dashboard, and in the "Developer > RevenueCat" section,
         set up your RevenueCat project ID and API key.
 
         <Frame>
-            <img src="/assets/screenshots/revenuecat/savekeys.png" alt="Autumn dashboard showing where to set up your RevenueCat project ID and API key" />
+            <img src="/assets/screenshots/revenuecat/savekeys.png" alt="MeterPal dashboard showing where to set up your RevenueCat project ID and API key" />
         </Frame>
     </Step>
 
     <Step>
-    #### Map your RevenueCat products to Autumn products
+    #### Map your RevenueCat products to MeterPal products
 
-    When a RevenueCat product is purchased, define which Autumn product should be enabled for the customer. 
+    When a RevenueCat product is purchased, define which MeterPal product should be enabled for the customer. 
     
         <Warning>
-        RevenueCat is managing billing, so any plan prices in Autumn will be ignored. 
+        RevenueCat is managing billing, so any plan prices in MeterPal will be ignored. 
         
-        Since RevenueCat does not support usage-based or quantity-based pricing, any Autumn plans with these price types will not display in the mapping screen for safety. 
+        Since RevenueCat does not support usage-based or quantity-based pricing, any MeterPal plans with these price types will not display in the mapping screen for safety. 
 
         </Warning>
 
-        RevenueCat products are mapped at the store-level into Autumn. This means instead of mapping a Package or an Offering, you will be mapping Products from Google Play, Apple Store, Roku or etc... instead. 
+        RevenueCat products are mapped at the store-level into MeterPal. This means instead of mapping a Package or an Offering, you will be mapping Products from Google Play, Apple Store, Roku or etc... instead. 
         
         You can still use this in conjunction with RevenueCat's paywalls, packages and offerings however you wish.
 
         <Frame>
-            <img src="/assets/screenshots/revenuecat/mappings.png" alt="Autumn dashboard showing where to map your products to RevenueCat products" />
+            <img src="/assets/screenshots/revenuecat/mappings.png" alt="MeterPal dashboard showing where to map your products to RevenueCat products" />
         </Frame>
     </Step>
 
     <Step>
     #### Set up the webhook integration
 
-        For Autumn to recieve updates from RevenueCat, you'll need to set up a webhook integration.
+        For MeterPal to recieve updates from RevenueCat, you'll need to set up a webhook integration.
 
         In RevenueCat, visit "Integrations > Webhooks", and click "Add new configuration". Use the following configuration:
 
-        - Webhook URL: paste this from the Autumn dashboard
-        - Authorization header value: paste this from the Autumn dashboard
-        - Environments: Depending on your Autumn environment, you are given two different URLs. This means you should also separate your RevenueCat webhooks for test and live environments.
+        - Webhook URL: paste this from the MeterPal dashboard
+        - Authorization header value: paste this from the MeterPal dashboard
+        - Environments: Depending on your MeterPal environment, you are given two different URLs. This means you should also separate your RevenueCat webhooks for test and live environments.
         - Events filter: All apps, all events.
 
         <Frame>
@@ -86,18 +86,18 @@ Autumn will receive webhook updates from RevenueCat to update the customer's pla
     <Step>
     #### Integration
     
-        **You should not call Autumn's `attach()` or `checkout()` functions. Instead you should either use RevenueCat's SDK or RevenueCat's paywalls.**
+        **You should not call MeterPal's `attach()` or `checkout()` functions. Instead you should either use RevenueCat's SDK or RevenueCat's paywalls.**
         
-        When the user pays via mobile, the plan will automatically sync into Autumn. Once you have purchased a product or an add-on, you may then continue using `check()` or `track()` to manage your features.
+        When the user pays via mobile, the plan will automatically sync into MeterPal. Once you have purchased a product or an add-on, you may then continue using `check()` or `track()` to manage your features.
         
-        Any existing Autumn customers (that have purchased a plan via Stripe / Web) can still access their balances and features as normal on mobile. They will have an active plan in their `customer` object.
+        Any existing MeterPal customers (that have purchased a plan via Stripe / Web) can still access their balances and features as normal on mobile. They will have an active plan in their `customer` object.
         
         <Warning>
-            You should handle blocking existing Autumn customers from initiating subscriptions with RevenueCat on mobile, by checking for an active plan in their `customer` object.
+            You should handle blocking existing MeterPal customers from initiating subscriptions with RevenueCat on mobile, by checking for an active plan in their `customer` object.
         </Warning>
 
         When integrating RevenueCat and initiating your `Purchases` instance, you must use the `appUserID` parameter to pass in the customer ID from your auth system.
-        This will allow you to sync the customer ID into Autumn, whether its a new user or an existing user from Stripe.
+        This will allow you to sync the customer ID into MeterPal, whether its a new user or an existing user from Stripe.
 
         <CodeGroup>
             ```typescript RevenueCatProvider.tsx
@@ -179,7 +179,7 @@ Autumn will receive webhook updates from RevenueCat to update the customer's pla
                             "undefined"
                         ) {
                             // For immediate responsiveness, the App can rely on RevenueCat's existing entitlements system
-                            // with the above if statement. However, Autumn still needs to wait for the webhooks,
+                            // with the above if statement. However, MeterPal still needs to wait for the webhooks,
                             // at which point the App should move onto using check and track as usual.
                             alert("Successfully purchased product PRO");
                         }
@@ -219,7 +219,7 @@ Autumn will receive webhook updates from RevenueCat to update the customer's pla
 
     <Step>
     #### Congratulations!
-        You have now successfully integrated Autumn with RevenueCat.
+        You have now successfully integrated MeterPal with RevenueCat.
 
         You can now use the `check()` and `track()` functions to manage your features as usual.
 
@@ -253,8 +253,8 @@ Autumn will receive webhook updates from RevenueCat to update the customer's pla
 
 ## Versioning Plans
 
-Autumn's [plan versioning](/documentation/concepts/versioning) feature allows you to update your pricing and migrate customers between versions. However, since mobile billing has specific limitations and is handled by RevenueCat, you should keep the following in mind:
+MeterPal's [plan versioning](/documentation/concepts/versioning) feature allows you to update your pricing and migrate customers between versions. However, since mobile billing has specific limitations and is handled by RevenueCat, you should keep the following in mind:
 
-- Whenever a RevenueCat product is purchased, the latest version of the Autumn plan will be enabled for the customer.
-- Any price set in Autumn is ignored: only the price set in RevenueCat will be used
-- If you migrate a customer from one plan version to another, the plan features will be immediately updated -- just as with the standard migration process. Prices will **not** be updated. You should handle this in [RevenueCat](https://www.revenuecat.com/docs/subscription-guidance/price-changes) <Icon icon="external-link" size={12} className="ml-1 mr-1 mb-1" color="#8838ff" /> (your customers may need to opt-in to the new pricing).
+- Whenever a RevenueCat product is purchased, the latest version of the MeterPal plan will be enabled for the customer.
+- Any price set in MeterPal is ignored: only the price set in RevenueCat will be used
+- If you migrate a customer from one plan version to another, the plan features will be immediately updated -- just as with the standard migration process. Prices will **not** be updated. You should handle this in [RevenueCat](https://www.revenuecat.com/docs/subscription-guidance/price-changes) <Icon icon="external-link" size={12} className="ml-1 mr-1 mb-1" color="#264082" /> (your customers may need to opt-in to the new pricing).

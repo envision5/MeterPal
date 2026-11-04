@@ -11,6 +11,7 @@ import { useSession } from "./lib/auth-client";
 import { SSO_CALLBACK_PATH } from "./lib/sso/ssoCallback";
 import { identifyUser } from "./utils/posthogTracking";
 import LoadingScreen from "./views/general/LoadingScreen";
+import { MIGRATIONS_ENABLED } from "./views/migrations/migrationsEnabled";
 
 const AdminView = React.lazy(() =>
 	import("./views/admin/AdminView").then(({ AdminView }) => ({
@@ -49,6 +50,11 @@ const PasswordSignIn = React.lazy(() =>
 	import("./views/auth/components/PasswordSignIn").then(
 		({ PasswordSignIn }) => ({ default: PasswordSignIn }),
 	),
+);
+const PortalView = React.lazy(() =>
+	import("./views/portal/PortalView").then(({ PortalView }) => ({
+		default: PortalView,
+	})),
 );
 const SignIn = React.lazy(() =>
 	import("./views/auth/SignIn").then(({ SignIn }) => ({ default: SignIn })),
@@ -104,6 +110,7 @@ const OnboardingView = React.lazy(
 const QuickstartView = React.lazy(
 	() => import("./views/onboarding4/QuickstartView"),
 );
+const SetupView = React.lazy(() => import("./views/setup/SetupView"));
 const ProductsView = React.lazy(() => import("./views/products/ProductsView"));
 const PlanEditorView = React.lazy(
 	() => import("./views/products/plan/PlanEditorView"),
@@ -179,6 +186,7 @@ export default function App() {
 					<Route path="/consent" element={<Consent />} />
 					<Route path="/accept" element={<AcceptInvitation />} />
 					<Route path="/claim" element={<ClaimOrg />} />
+					<Route path="/portal" element={<PortalView />} />
 					<Route path={SSO_CALLBACK_PATH} element={<SsoCallback />} />
 					<Route path="/close" element={<CloseScreen />} />
 
@@ -207,8 +215,10 @@ export default function App() {
 								<ProductsView env={AppEnv.Live} />,
 								<ProductsView env={AppEnv.Sandbox} />,
 							)}
-							{envRoutes("migrations", <MigrationsView />)}
-							{envRoutes("migrations/:migration_id", <MigrationView />)}
+							{MIGRATIONS_ENABLED &&
+								envRoutes("migrations", <MigrationsView />)}
+							{MIGRATIONS_ENABLED &&
+								envRoutes("migrations/:migration_id", <MigrationView />)}
 							{envRoutes(
 								"products/:product_id",
 								<SquircleProvider>
@@ -226,6 +236,7 @@ export default function App() {
 							{envRoutes("analytics", <AnalyticsView />)}
 							{envRoutes("logs", <LogsView />)}
 							{envRoutes("onboarding", <OnboardingView />)}
+							{envRoutes("setup", <SetupView />)}
 						</Route>
 					</Route>
 				</Routes>

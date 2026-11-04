@@ -14,7 +14,7 @@ export const pro = plan({ ... });
 export default atmn({ features: [messages], plans: [pro] });
 ```
 
-Preview changes with `atmn push`, apply them with `atmn push --yes`, or pull what's in Autumn with `atmn pull`.
+Preview changes with `atmn push`, apply them with `atmn push --yes`, or pull what's in MeterPal with `atmn pull`.
 
 ## File layout
 
@@ -32,7 +32,7 @@ autumn/
 
 ## `atmn(config)`
 
-The root of your config. Each list you include is the **complete** list: anything in Autumn that isn't in it gets deleted on push. Leave a list out to leave that part of Autumn alone.
+The root of your config. Each list you include is the **complete** list: anything in MeterPal that isn't in it gets deleted on push. Leave a list out to leave that part of MeterPal alone.
 
 <ParamField body="features" type="Feature[]">
   Every feature, from `feature()`.
@@ -307,7 +307,7 @@ export const proV1 = plan({
 });
 ```
 
-To change a plan for everyone on it, edit its existing entry instead. If customers are on that version, Autumn drafts a migration and `atmn push` prints the link to run it.
+To change a plan for everyone on it, edit its existing entry instead. If customers are on that version, MeterPal drafts a migration and `atmn push` prints the link to run it.
 
 <Note>
 After a push, the CLI adds an `internalId` to each plan and feature in your config. Leave it there. It's how the CLI knows to rename a plan instead of deleting and recreating it.

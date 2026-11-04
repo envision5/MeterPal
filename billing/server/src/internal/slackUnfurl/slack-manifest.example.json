@@ -4,7 +4,7 @@
 	},
 	"features": {
 		"bot_user": {
-			"display_name": "Autumn's Link Unfurler",
+			"display_name": "MeterPal's Link Unfurler",
 			"always_online": false
 		},
 		"unfurl_domains": ["app.useautumn.com"]

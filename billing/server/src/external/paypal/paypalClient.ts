@@ -1,4 +1,4 @@
-// autumn/server/src/external/paypal/paypalClient.ts
+// billing/server/src/external/paypal/paypalClient.ts
 //
 // Per-org PayPal REST client.
 //

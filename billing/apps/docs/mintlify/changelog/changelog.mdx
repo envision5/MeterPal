@@ -1,7 +1,7 @@
 ---
 title: "Changelog"
 mode: "center"
-description: "Some new things we've shipped at Autumn HQ"
+description: "Some new things we've shipped at MeterPal HQ"
 ---
 
 <Update label="September 24th 2026">
@@ -15,7 +15,7 @@ description: "Some new things we've shipped at Autumn HQ"
 
   ## Customer billing details
 
-  `customers.create` and `customers.update` accept a new `billing_details` object for the billing address, tax IDs, tax exemption and invoice custom fields (like a PO number). Autumn writes these straight to the linked Stripe customer. Read them back with `expand=billing_details`. The dashboard's edit customer dialog gains a matching billing details section. See [billing details](/documentation/customers/managing-customers#billing-details) — [#3652](https://github.com/useautumn/autumn/pull/3652), [#3656](https://github.com/useautumn/autumn/pull/3656)
+  `customers.create` and `customers.update` accept a new `billing_details` object for the billing address, tax IDs, tax exemption and invoice custom fields (like a PO number). MeterPal writes these straight to the linked Stripe customer. Read them back with `expand=billing_details`. The dashboard's edit customer dialog gains a matching billing details section. See [billing details](/documentation/customers/managing-customers#billing-details) — [#3652](https://github.com/useautumn/autumn/pull/3652), [#3656](https://github.com/useautumn/autumn/pull/3656)
 
   ## Remove subscription discounts
 
@@ -24,7 +24,7 @@ description: "Some new things we've shipped at Autumn HQ"
   <AccordionGroup>
     <Accordion title="Improvements">
       - The [AI SDK gateway](/documentation/external-providers/ai-sdk) now supports AI SDK v7. AI SDK 6 apps should stay on the previous gateway release — [#3563](https://github.com/useautumn/autumn/pull/3563)
-      - Vercel marketplace invoices can be refunded from Autumn, and refunds made in Vercel are recorded on the invoice — [#3438](https://github.com/useautumn/autumn/pull/3438)
+      - Vercel marketplace invoices can be refunded from MeterPal, and refunds made in Vercel are recorded on the invoice — [#3438](https://github.com/useautumn/autumn/pull/3438)
       - A new billing verify export checks every Stripe-linked customer against Stripe and returns one row per customer with its issues. Organizations can opt out of a reviewed mismatch — [#3529](https://github.com/useautumn/autumn/pull/3529), [#3546](https://github.com/useautumn/autumn/pull/3546), [#3555](https://github.com/useautumn/autumn/pull/3555), [#3604](https://github.com/useautumn/autumn/pull/3604)
       - Platform organizations can [read](/api-reference/platform/getStripeConnection) and [disconnect](/api-reference/platform/disconnectStripe) a Stripe OAuth connection. Revoked Stripe connections are now detected and cleared automatically — [#3597](https://github.com/useautumn/autumn/pull/3597)
       - [`advance_test_clock`](/api-reference/customers/advanceTestClock) now lives under customers and needs the `customers:write` scope. The previous billing route still works — [#3530](https://github.com/useautumn/autumn/pull/3530)
@@ -59,7 +59,7 @@ description: "Some new things we've shipped at Autumn HQ"
 <Update label="September 17th 2026">
   ## `atmn` 2.0
 
-  The new [`atmn` CLI](/cli/getting-started) is out of nightly and published as `atmn@2`. `atmn init` sets up a repo in one go: it connects to Autumn (sign in, or keyless with no account), creates an `autumn/` folder with `autumn.config.ts`, `features.ts`, `plans.ts` and `rewards.ts`, adds `atmn` to your `package.json`, pulls your existing catalog and installs the agent skills. `atmn push` always previews first and applies with `--yes`. A new `atmn api` command calls any public endpoint from the terminal. Coupons, feature grants, referral programs and organization settings can now be declared in the config alongside features and plans. Configs from `atmn` 1.x are refused with a message pointing at the upgrade steps; see [upgrading from 1.x](/cli/getting-started#upgrading-from-1x). The [CLI reference](/cli/commands) and [config reference](/cli/config) are rewritten for the release.
+  The new [`atmn` CLI](/cli/getting-started) is out of nightly and published as `atmn@2`. `atmn init` sets up a repo in one go: it connects to MeterPal (sign in, or keyless with no account), creates an `autumn/` folder with `autumn.config.ts`, `features.ts`, `plans.ts` and `rewards.ts`, adds `atmn` to your `package.json`, pulls your existing catalog and installs the agent skills. `atmn push` always previews first and applies with `--yes`. A new `atmn api` command calls any public endpoint from the terminal. Coupons, feature grants, referral programs and organization settings can now be declared in the config alongside features and plans. Configs from `atmn` 1.x are refused with a message pointing at the upgrade steps; see [upgrading from 1.x](/cli/getting-started#upgrading-from-1x). The [CLI reference](/cli/commands) and [config reference](/cli/config) are rewritten for the release.
 </Update>
 
 <Update label="September 14th 2026">
@@ -123,7 +123,7 @@ description: "Some new things we've shipped at Autumn HQ"
 
   ## Map plans to existing Stripe and RevenueCat products
 
-  Catalog plans now accept a `processors` object so Autumn can reuse your existing Stripe catalog instead of minting new objects. Set `processors.stripe` once on a plan and the product mapping fans out to every version and variant, supply a `price_id` to adopt an existing Stripe price (unknown IDs return a 400 instead of silently minting a replacement), or pass `null` to unlink a mapping. RevenueCat product mappings move into the same envelope via `processors.revenuecat`. The dashboard plan page gains a plan-level Stripe product mapping and per-version Stripe price pickers under Advanced.
+  Catalog plans now accept a `processors` object so MeterPal can reuse your existing Stripe catalog instead of minting new objects. Set `processors.stripe` once on a plan and the product mapping fans out to every version and variant, supply a `price_id` to adopt an existing Stripe price (unknown IDs return a 400 instead of silently minting a replacement), or pass `null` to unlink a mapping. RevenueCat product mappings move into the same envelope via `processors.revenuecat`. The dashboard plan page gains a plan-level Stripe product mapping and per-version Stripe price pickers under Advanced.
 
   ## Full-state catalog pushes and stable row IDs
 
@@ -156,7 +156,7 @@ description: "Some new things we've shipped at Autumn HQ"
       - Cancelling a plan pending on a checkout session clears the checkout reservation, so re-attaching opens a fresh session instead of returning an expired payment link — [#3238](https://github.com/useautumn/autumn/pull/3238)
       - Custom-price checkouts no longer crash on completion, and `customer.products.updated` / `billing.updated` webhooks again include the activated paid plan after checkout — [#3225](https://github.com/useautumn/autumn/pull/3225), [#3214](https://github.com/useautumn/autumn/pull/3214)
       - A RevenueCat renewal of a past-due cancelled product now clears the stale cancellation fields instead of reporting the live subscription as cancelled — [#3171](https://github.com/useautumn/autumn/pull/3171)
-      - Cancelling a RevenueCat-managed subscription from the dashboard with **No Billing Changes** no longer returns a 409; Autumn-only cancels bypass the external-provider guard — [#3208](https://github.com/useautumn/autumn/pull/3208)
+      - Cancelling a RevenueCat-managed subscription from the dashboard with **No Billing Changes** no longer returns a 409; MeterPal-only cancels bypass the external-provider guard — [#3208](https://github.com/useautumn/autumn/pull/3208)
       - Current-billing-cycle analytics now use the exact stored cycle boundaries instead of treating the cycle as a rolling window — [#3179](https://github.com/useautumn/autumn/pull/3179)
       - Concurrent lazy usage-window resets no longer stampede the same rows and time out check requests; each customer's roll is guarded by a lock — [#3187](https://github.com/useautumn/autumn/pull/3187)
       - License plan transitions reset entitlement usage to the incoming grant unless carry-over is enabled, editing a linked license plan's items no longer fails with a foreign-key error, and [`plans.list`](/api-reference/plans/listPlans) includes license prices when classifying upgrades vs downgrades — [#3255](https://github.com/useautumn/autumn/pull/3255), [#3233](https://github.com/useautumn/autumn/pull/3233), [#3236](https://github.com/useautumn/autumn/pull/3236)
@@ -181,11 +181,11 @@ description: "Some new things we've shipped at Autumn HQ"
 
   ## Stripe pass-through params on subscription updates
 
-  [`billing.update`](/api-reference/billing/billingUpdate) and [`billing.multi_update`](/api-reference/billing/multiUpdate) accept a new `subscription_params` object that is forwarded onto the underlying Stripe `subscriptions.update` or `subscriptions.cancel` call, with Autumn-owned keys winning any collisions. Multi-update also accepts `refund_last_payment` at the request root for cancel-immediately updates, applying the refund across every update in the call.
+  [`billing.update`](/api-reference/billing/billingUpdate) and [`billing.multi_update`](/api-reference/billing/multiUpdate) accept a new `subscription_params` object that is forwarded onto the underlying Stripe `subscriptions.update` or `subscriptions.cancel` call, with MeterPal-owned keys winning any collisions. Multi-update also accepts `refund_last_payment` at the request root for cancel-immediately updates, applying the refund across every update in the call.
 
   ## Stripe Prices are reused across customers
 
-  When two customers on the same plan end up with identical pricing — including matching custom fixed, usage-based, and prepaid prices — Autumn now reuses the existing Stripe Price instead of minting a duplicate, keeping your Stripe catalog clean. Minted Stripe Prices are also named by kind (Base, Prepaid, Usage-based), and only genuine attach-time customizations get a `(custom)` suffix.
+  When two customers on the same plan end up with identical pricing — including matching custom fixed, usage-based, and prepaid prices — MeterPal now reuses the existing Stripe Price instead of minting a duplicate, keeping your Stripe catalog clean. Minted Stripe Prices are also named by kind (Base, Prepaid, Usage-based), and only genuine attach-time customizations get a `(custom)` suffix.
 
   ## Trials no longer require a card by default
 
@@ -204,7 +204,7 @@ description: "Some new things we've shipped at Autumn HQ"
       - The customer products Status filter is now a multi-select with a combined active + expired view — [#2957](https://github.com/useautumn/autumn/pull/2957)
       - A product scheduled to cancel now offers **Cancel Immediately** and **Manage Cancellation** in its row actions, so you no longer have to uncancel first and cancel again — [#3134](https://github.com/useautumn/autumn/pull/3134), [#3135](https://github.com/useautumn/autumn/pull/3135)
       - MCP OAuth now supports named sandboxes: the consent screen's environment picker lists them, and issued credentials stay bound to the selected sandbox across refreshes — [#3025](https://github.com/useautumn/autumn/pull/3025)
-      - The Verify Stripe sheet's shared-customer warning now links each colliding Autumn customer by name instead of listing plain IDs — [#2953](https://github.com/useautumn/autumn/pull/2953)
+      - The Verify Stripe sheet's shared-customer warning now links each colliding MeterPal customer by name instead of listing plain IDs — [#2953](https://github.com/useautumn/autumn/pull/2953)
       - `atmn push` now forwards `archived: true` from `autumn.config.ts`, so `atmn pull` → `atmn push` round-trips archived plans correctly — [#3009](https://github.com/useautumn/autumn/pull/3009)
     </Accordion>
     <Accordion title="Fixes">
@@ -237,13 +237,13 @@ description: "Some new things we've shipped at Autumn HQ"
 
   [`billing.attach`](/api-reference/billing/attach) accepts a new `remove_plan_ids` array so you can expire one or more active plans in the same call that adds a new one. Removals respect the attach's entity scope, run in a single reconciliation with Stripe, and can act as the carry-over source for usage and balances when there is no same-group predecessor. The attach sheet in the dashboard has a matching **Remove a product** picker next to **Add another product**, with inline greying for plans already being replaced or queued for removal.
 
-  ## Choose payment methods on Autumn invoices
+  ## Choose payment methods on MeterPal invoices
 
-  Organizations on invoice mode (`send_invoice`) can now pick which payment methods appear on the Stripe invoices Autumn generates. **Settings → Invoices → Payment methods** exposes a multi-select for card, bank transfer, ACH, SEPA, Bacs, Canadian pre-authorized debit, and Link. The selection is applied via `payment_settings.payment_method_types` on every invoice the subscription generates. Leaving the setting untouched preserves your Stripe account defaults exactly as before.
+  Organizations on invoice mode (`send_invoice`) can now pick which payment methods appear on the Stripe invoices MeterPal generates. **Settings → Invoices → Payment methods** exposes a multi-select for card, bank transfer, ACH, SEPA, Bacs, Canadian pre-authorized debit, and Link. The selection is applied via `payment_settings.payment_method_types` on every invoice the subscription generates. Leaving the setting untouched preserves your Stripe account defaults exactly as before.
 
   ## Stripe sync verification in the dashboard
 
-  Customer pages now auto-run `billing.verify` in the background and surface a header warning icon only when drift is detected. Clicking it opens a **Verify Stripe** sheet with an **In sync / Warning / Mismatched** badge per subscription and a compact table of the exact fields that differ. The sheet also flags an account-level warning when more than one Autumn customer points at the same Stripe customer and lists the colliding IDs. You can also now clear a customer's Stripe ID by passing `null` or `""` through [`customers.update`](/api-reference/customers/updateCustomer).
+  Customer pages now auto-run `billing.verify` in the background and surface a header warning icon only when drift is detected. Clicking it opens a **Verify Stripe** sheet with an **In sync / Warning / Mismatched** badge per subscription and a compact table of the exact fields that differ. The sheet also flags an account-level warning when more than one MeterPal customer points at the same Stripe customer and lists the colliding IDs. You can also now clear a customer's Stripe ID by passing `null` or `""` through [`customers.update`](/api-reference/customers/updateCustomer).
 
   <AccordionGroup>
     <Accordion title="Improvements">
@@ -277,15 +277,15 @@ description: "Some new things we've shipped at Autumn HQ"
 
   ## Scoped multi-plan attach
 
-  [`billing.multi_attach`](/api-reference/billing/multiAttach) and [`billing.multi_attach.preview`](/api-reference/billing/previewMultiAttach) now support explicit scopes on each plan you send. Choose `inherited`, `customer`, or `per_entity` per plan to control who a plan attaches to across an entity tree, and Autumn plans the schedule so parent and entity-level plans stay consistent through a single billing action.
+  [`billing.multi_attach`](/api-reference/billing/multiAttach) and [`billing.multi_attach.preview`](/api-reference/billing/previewMultiAttach) now support explicit scopes on each plan you send. Choose `inherited`, `customer`, or `per_entity` per plan to control who a plan attaches to across an entity tree, and MeterPal plans the schedule so parent and entity-level plans stay consistent through a single billing action.
 
   ## Product-scoped license discounts
 
-  Coupons and discounts can now target specific licensed products, and Autumn keeps them applied through every subsequent update. Percent and fixed discounts stack in the same order as your preview, refunds and upgrades pull credits from the stored discounted invoice rows instead of recomputing them, and Stripe subscription updates preserve the original `percent_off` so your dashboard and invoices stay in sync.
+  Coupons and discounts can now target specific licensed products, and MeterPal keeps them applied through every subsequent update. Percent and fixed discounts stack in the same order as your preview, refunds and upgrades pull credits from the stored discounted invoice rows instead of recomputing them, and Stripe subscription updates preserve the original `percent_off` so your dashboard and invoices stay in sync.
 
   ## Reliable Stripe webhook processing
 
-  Load-bearing Stripe webhooks — `checkout.session.completed`, cycle `invoice.created`, `invoice.paid`, `customer.updated`, and non-Autumn subscription events — now acknowledge Stripe only after processing succeeds, so a failed webhook is automatically retried instead of being silently dropped. Any early-acked failures are also replayed through a durable queue, and Autumn-originated Stripe calls carry an idempotency key so we never process our own writes as inbound events.
+  Load-bearing Stripe webhooks — `checkout.session.completed`, cycle `invoice.created`, `invoice.paid`, `customer.updated`, and non-MeterPal subscription events — now acknowledge Stripe only after processing succeeds, so a failed webhook is automatically retried instead of being silently dropped. Any early-acked failures are also replayed through a durable queue, and MeterPal-originated Stripe calls carry an idempotency key so we never process our own writes as inbound events.
 
   ## Fixed duplicate checkout subscriptions
 
@@ -320,7 +320,7 @@ description: "Some new things we've shipped at Autumn HQ"
 <Update label="July 24th 2026">
   ## License plan customization & propagation
 
-  License plans are now fully customizable per parent. You can override items, prices, and included seat counts on individual license plans, and Autumn rebases those overrides automatically when the base license plan changes — Stripe items and subscription lifecycle stay in sync. [`plans.update`](/api-reference/plans/updatePlan) accepts a `licenses[].customize` block per parent, and responses now include the effective `customize` payload on each license link. Pair with the new `include_license_parents` on [`plans.preview_update`](/api-reference/plans/updatePlan) to see downstream impacts before saving.
+  License plans are now fully customizable per parent. You can override items, prices, and included seat counts on individual license plans, and MeterPal rebases those overrides automatically when the base license plan changes — Stripe items and subscription lifecycle stay in sync. [`plans.update`](/api-reference/plans/updatePlan) accepts a `licenses[].customize` block per parent, and responses now include the effective `customize` payload on each license link. Pair with the new `include_license_parents` on [`plans.preview_update`](/api-reference/plans/updatePlan) to see downstream impacts before saving.
 
   ## Overflow tracking on usage
 
@@ -332,7 +332,7 @@ description: "Some new things we've shipped at Autumn HQ"
 
   ## Automatic recovery for failed customer creation
 
-  Customer create and get-or-create requests that hit rate limits or transient database/Redis errors are now automatically queued and replayed in the background, with globally serialized concurrency and deterministic dedupe. Requests come back with their original semantics and Autumn records whether the replay created or fetched the customer — no more one-off failures during traffic spikes.
+  Customer create and get-or-create requests that hit rate limits or transient database/Redis errors are now automatically queued and replayed in the background, with globally serialized concurrency and deterministic dedupe. Requests come back with their original semantics and MeterPal records whether the replay created or fetched the customer — no more one-off failures during traffic spikes.
 
   ## License transitions & drop handling
 
@@ -383,7 +383,7 @@ description: "Some new things we've shipped at Autumn HQ"
 
   ## Back-sync carry usage on Stripe imports
 
-  When you import an existing Stripe subscription that's mid-cycle on a usage feature, Autumn now **carries the already-consumed usage** into the new customer product so balances line up with what the customer has actually used, instead of resetting on import.
+  When you import an existing Stripe subscription that's mid-cycle on a usage feature, MeterPal now **carries the already-consumed usage** into the new customer product so balances line up with what the customer has actually used, instead of resetting on import.
 
   ## Invoice-mode start for usage-in-arrears
 
@@ -402,7 +402,7 @@ description: "Some new things we've shipped at Autumn HQ"
       - Analytics dashboard refetches on window focus, so numbers stay fresh when you tab back in — [#2241](https://github.com/useautumn/autumn/pull/2241)
       - `billing.updated` webhooks now fire after the Stripe customer ID is persisted, so downstream consumers always see the linked Stripe record — [#2267](https://github.com/useautumn/autumn/pull/2267)
       - Plan **variants** now stamp their own `previous_price` history, so each variant keeps an independent price trail — [#2238](https://github.com/useautumn/autumn/pull/2238)
-      - Consent screen shows the Autumn brand logo in the org selector — [#2249](https://github.com/useautumn/autumn/pull/2249)
+      - Consent screen shows the MeterPal brand logo in the org selector — [#2249](https://github.com/useautumn/autumn/pull/2249)
       - Faster reset cron and invoice cron for large workspaces — [#2222](https://github.com/useautumn/autumn/pull/2222), [#2257](https://github.com/useautumn/autumn/pull/2257)
     </Accordion>
     <Accordion title="Bug fixes">
@@ -443,7 +443,7 @@ description: "Some new things we've shipped at Autumn HQ"
 
   ## RevenueCat: email and fingerprint identifiers
 
-  The [RevenueCat integration](/documentation/external-providers/revenuecat) now recognizes `autumn_customer_email` and `autumn_customer_fingerprint` subscriber attributes on incoming webhooks, so you can match RevenueCat purchases to Autumn customers by email or fingerprint instead of only by ID.
+  The [RevenueCat integration](/documentation/external-providers/revenuecat) now recognizes `autumn_customer_email` and `autumn_customer_fingerprint` subscriber attributes on incoming webhooks, so you can match RevenueCat purchases to MeterPal customers by email or fingerprint instead of only by ID.
 
   ## Any-shape customer import
 
@@ -466,7 +466,7 @@ description: "Some new things we've shipped at Autumn HQ"
       - `set_usage` now composes with usage windows: setting a balance no longer errors when a feature has an active window, and window caps still hold after the reset — [#2205](https://github.com/useautumn/autumn/pull/2205)
       - Auto top-up expand path returns `purchase_limit` for plan-inherited entries too — [#2205](https://github.com/useautumn/autumn/pull/2205)
       - Refund-last-payment is now exposed on the API — [#2179](https://github.com/useautumn/autumn/pull/2179)
-      - Slack app: additional options for matching a Slack user to an Autumn user — [#2100](https://github.com/useautumn/autumn/pull/2100)
+      - Slack app: additional options for matching a Slack user to an MeterPal user — [#2100](https://github.com/useautumn/autumn/pull/2100)
       - Archived plans now include an `archived` flag when pulled via the CLI — [#2152](https://github.com/useautumn/autumn/pull/2152)
       - Webhook tags: customer and entity IDs are sanitized to the Svix charset so deliveries don't fail on unusual characters — [#2150](https://github.com/useautumn/autumn/pull/2150)
       - Free first schedule phase is now supported in plan schedules — [#2137](https://github.com/useautumn/autumn/pull/2137)
@@ -558,9 +558,9 @@ description: "Some new things we've shipped at Autumn HQ"
 </Update>
 
 <Update label="June 19th 2026">
-  ## Autumn Lakehouse
+  ## MeterPal Lakehouse
 
-  Stream every event, balance change, and invoice straight into your own data warehouse via the new **Autumn Lakehouse**. Connect once and query Autumn data with the SQL engine of your choice — Snowflake, BigQuery, DuckDB, Athena, Spark, or anything else that speaks Apache Iceberg.
+  Stream every event, balance change, and invoice straight into your own data warehouse via the new **MeterPal Lakehouse**. Connect once and query MeterPal data with the SQL engine of your choice — Snowflake, BigQuery, DuckDB, Athena, Spark, or anything else that speaks Apache Iceberg.
 
   See the [Lakehouse overview](/documentation/lakehouse/overview) and [connecting guide](/documentation/lakehouse/connecting) to get started.
 
@@ -582,7 +582,7 @@ description: "Some new things we've shipped at Autumn HQ"
 
   ## OpenRouter support in the AI gateway
 
-  The Autumn [AI gateway](/documentation/external-providers/openrouter) now supports OpenRouter as a provider, so you can meter and bill OpenRouter usage the same way as direct OpenAI, Anthropic, and others.
+  The MeterPal [AI gateway](/documentation/external-providers/openrouter) now supports OpenRouter as a provider, so you can meter and bill OpenRouter usage the same way as direct OpenAI, Anthropic, and others.
 
   <AccordionGroup>
     <Accordion title="Improvements">
@@ -624,25 +624,25 @@ description: "Some new things we've shipped at Autumn HQ"
 </Update>
 
 <Update label="May 29th 2026">
-  ## Autumn MCP server
+  ## MeterPal MCP server
 
-  Autumn now ships an official **Model Context Protocol (MCP) server**, so AI assistants like Claude Desktop and Cursor can read and act on your Autumn data directly. The server is generated against the public API and respects your existing API key scopes (`customers:read`, `plans:read`, `billing:read`, `billing:write`) — no new permission model to learn.
+  MeterPal now ships an official **Model Context Protocol (MCP) server**, so AI assistants like Claude Desktop and Cursor can read and act on your MeterPal data directly. The server is generated against the public API and respects your existing API key scopes (`customers:read`, `plans:read`, `billing:read`, `billing:write`) — no new permission model to learn.
 
   Install it as a Claude Desktop extension or wire it into Cursor with a single deeplink. Use it to look up customers, inspect plans, preview attaches, and run billing updates from your assistant.
 
   ## Org-level usage alerts
 
-  Usage alerts can now be configured **once at the org level** and applied across every customer, instead of being attached plan by plan. Set a threshold and channel from settings, and Autumn fires alerts whenever any customer crosses the bar. The [`balances.usage_alert.triggered` webhook](/api-reference/webhooks/balancesUsageAlertTriggered) fires for both per-plan and org-level alerts.
+  Usage alerts can now be configured **once at the org level** and applied across every customer, instead of being attached plan by plan. Set a threshold and channel from settings, and MeterPal fires alerts whenever any customer crosses the bar. The [`balances.usage_alert.triggered` webhook](/api-reference/webhooks/balancesUsageAlertTriggered) fires for both per-plan and org-level alerts.
 
   ## Vercel Marketplace: invoice mode and resource logs
 
-  The Vercel integration now supports **invoice-mode billing** end to end and surfaces **per-resource logs** in the dashboard, so you can debug a Vercel customer's provisioning, auto top-ups, and invoice flow without leaving Autumn. The frontend was rebuilt around the new resource model, with fallbacks for identity edge cases.
+  The Vercel integration now supports **invoice-mode billing** end to end and surfaces **per-resource logs** in the dashboard, so you can debug a Vercel customer's provisioning, auto top-ups, and invoice flow without leaving MeterPal. The frontend was rebuilt around the new resource model, with fallbacks for identity edge cases.
 
   See the [Vercel Marketplace guide](/documentation/external-providers/vercel-marketplace).
 
   <AccordionGroup>
     <Accordion title="Improvements">
-      - Official Autumn MCP server for Claude Desktop, Cursor, and other MCP clients — [#1715](https://github.com/useautumn/autumn/pull/1715), [#1740](https://github.com/useautumn/autumn/pull/1740), [#1741](https://github.com/useautumn/autumn/pull/1741)
+      - Official MeterPal MCP server for Claude Desktop, Cursor, and other MCP clients — [#1715](https://github.com/useautumn/autumn/pull/1715), [#1740](https://github.com/useautumn/autumn/pull/1740), [#1741](https://github.com/useautumn/autumn/pull/1741)
       - Org-level usage alerts with shared thresholds across customers — [#1707](https://github.com/useautumn/autumn/pull/1707)
       - Vercel Marketplace invoice mode, resource logs, and refreshed frontend — [#1711](https://github.com/useautumn/autumn/pull/1711)
       - Preflight tax-address check before charging customers in taxable regions — [#1699](https://github.com/useautumn/autumn/pull/1699)
@@ -713,7 +713,7 @@ description: "Some new things we've shipped at Autumn HQ"
 
   ## Vercel resource pre-provisioning
 
-  For Vercel Marketplace installs, Autumn now provisions the customer product the moment a resource is created, using a Stripe preauth instead of waiting for the first invoice. New Vercel customers land in your dashboard with their plan attached and entitlements ready immediately.
+  For Vercel Marketplace installs, MeterPal now provisions the customer product the moment a resource is created, using a Stripe preauth instead of waiting for the first invoice. New Vercel customers land in your dashboard with their plan attached and entitlements ready immediately.
 
   See the [Vercel Marketplace guide](/documentation/external-providers/vercel-marketplace).
 
@@ -796,9 +796,9 @@ description: "Some new things we've shipped at Autumn HQ"
 
   See the [auto top-up webhook reference](/api-reference/webhooks/billingAutoTopupSucceeded) and the [auto top-ups guide](/documentation/modelling-pricing/auto-top-ups).
 
-  ## Promo codes in Autumn Checkout
+  ## Promo codes in MeterPal Checkout
 
-  Customers can now apply promo codes directly in Autumn Checkout. The order summary surfaces a collapsed promo trigger that expands into an input — applied codes show their discount and expiry inline, and the totals update before confirmation.
+  Customers can now apply promo codes directly in MeterPal Checkout. The order summary surfaces a collapsed promo trigger that expands into an input — applied codes show their discount and expiry inline, and the totals update before confirmation.
 
   ## Discounts and coupons in subscription updates
 
@@ -838,7 +838,7 @@ description: "Some new things we've shipped at Autumn HQ"
       - `starts_at` parameter on `billing.attach` for scheduled subscription start dates - [#1411](https://github.com/useautumn/autumn/pull/1411), [#1467](https://github.com/useautumn/autumn/pull/1467), [#1476](https://github.com/useautumn/autumn/pull/1476)
       - `ends_at` on one-off products with automatic expiry cron - [#1476](https://github.com/useautumn/autumn/pull/1476)
       - `billing.auto_topup_succeeded` webhook - [#1429](https://github.com/useautumn/autumn/pull/1429)
-      - Promo code support in Autumn Checkout - [#1446](https://github.com/useautumn/autumn/pull/1446)
+      - Promo code support in MeterPal Checkout - [#1446](https://github.com/useautumn/autumn/pull/1446)
       - Discount support on subscription updates and coupon display in subscription detail - [#1463](https://github.com/useautumn/autumn/pull/1463)
       - Tax preview in `billing.preview_attach` - [#1417](https://github.com/useautumn/autumn/pull/1417), [#1424](https://github.com/useautumn/autumn/pull/1424)
       - Invoice credits preview in `billing.preview_attach` - [#1464](https://github.com/useautumn/autumn/pull/1464)
@@ -920,7 +920,7 @@ description: "Some new things we've shipped at Autumn HQ"
       - Improved API reference field descriptions for preview endpoints - [#985](https://github.com/useautumn/autumn/pull/985)
     </Accordion>
     <Accordion title="Bug fixes">
-      - `checkout_session_params.subscription_data` (including `metadata`) is now properly deep-merged with Autumn's internal parameters instead of being overwritten - [#996](https://github.com/useautumn/autumn/pull/996)
+      - `checkout_session_params.subscription_data` (including `metadata`) is now properly deep-merged with MeterPal's internal parameters instead of being overwritten - [#996](https://github.com/useautumn/autumn/pull/996)
     </Accordion>
   </AccordionGroup>
 </Update>
@@ -962,11 +962,11 @@ description: "Some new things we've shipped at Autumn HQ"
 </Update>
 
 <Update label="March 13th 2026">
-  ## Autumn Checkout
+  ## MeterPal Checkout
 
-  We've launched Autumn Checkout — a hosted confirm-before-charge flow that gives customers a clear preview before completing their purchase.
+  We've launched MeterPal Checkout — a hosted confirm-before-charge flow that gives customers a clear preview before completing their purchase.
 
-  When a customer with a saved payment method subscribes or updates their plan, they're now sent to Autumn Checkout instead of being charged directly. This lets them review exact pricing — including prorations, usage charges, and discounts — before confirming.
+  When a customer with a saved payment method subscribes or updates their plan, they're now sent to MeterPal Checkout instead of being charged directly. This lets them review exact pricing — including prorations, usage charges, and discounts — before confirming.
 
   - **Preview before you pay**: Customers see immediate charges and next-cycle estimates before confirming
   - **Works everywhere**: Supports new subscriptions, plan upgrades, and quantity updates
@@ -977,7 +977,7 @@ description: "Some new things we've shipped at Autumn HQ"
     <Accordion title="How it works">
       When you call `billing.attach` or `billing.update`, the returned `paymentUrl` routes customers to:
       - **Stripe Checkout** — if they don't have a saved payment method
-      - **Autumn Checkout** — if they do, so they can review and confirm the charge
+      - **MeterPal Checkout** — if they do, so they can review and confirm the charge
 
       After confirmation, customers are redirected to your `successUrl`.
     </Accordion>
@@ -1169,7 +1169,7 @@ You can input a positive or negative value in this field.
 >
   ## RevenueCat integration
 
-We just released a new integration with RevenueCat, to let you manage your mobile app subscriptions and billing with Autumn. 
+We just released a new integration with RevenueCat, to let you manage your mobile app subscriptions and billing with MeterPal. 
 
 This is especially helpful for users that have a mix of web and mobile users, and want to manage their billing in one place.
 
@@ -1191,7 +1191,7 @@ This is currently in beta, please reach out to us on [Discord](https://discord.g
 >
   ## List and aggregate events endpoints
 
-We just released two new endpoints to retrieve usage data that your customers have sent to Autumn. 
+We just released two new endpoints to retrieve usage data that your customers have sent to MeterPal. 
 
 You can use this to display a billing event log, and a timeseries chart of usage data, so you can provide first-class billing observability out of the box!
 
@@ -1242,9 +1242,9 @@ You can use this to display a billing event log, and a timeseries chart of usage
 <Update
   label="December 5th 2025"
 >
-  ## Autumn is live in us-east
+  ## MeterPal is live in us-east
 
-  Autumn is live on US-East! Previously all requests were hitting our us-west DB.
+  MeterPal is live on US-East! Previously all requests were hitting our us-west DB.
 
   Now, we're reading and writing from multiple Redis caches, so both checking feature balances and tracking usage events are faster and more reliable.
 

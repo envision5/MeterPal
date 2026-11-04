@@ -31,6 +31,7 @@ import { InfoBox } from "@/views/onboarding2/integrate/components/InfoBox";
 function SheetContent() {
 	const { formContext } = useUpdateSubscriptionFormContext();
 	const { customerProduct } = formContext;
+	const { customer } = useCusQuery();
 
 	const product = customerProduct.product;
 	const isDefault = product?.is_default ?? false;
@@ -38,6 +39,10 @@ function SheetContent() {
 	const isPending = customerProduct.status === CusProductStatus.Pending;
 	const { valid: isFreeOrOneOff } = cp(customerProduct).free().or.oneOff();
 	const isFreeDefault = isDefault && isFreeOrOneOff;
+
+	// PayPal subscriptions have no end-of-cycle cancel — PayPal stops future
+	// charges immediately, so the mode choice is made for the merchant.
+	const isPayPalSubscription = Boolean(customer?.paypal_subscription_id);
 
 	const productName = product?.name ?? "Plan";
 
@@ -55,6 +60,15 @@ function SheetContent() {
 					]}
 					itemId={customerProduct.id}
 				/>
+
+				{isPayPalSubscription && !isPending && (
+					<div className="px-4 pt-4">
+						<InfoBox variant="info" classNames={{ infoBox: "w-full" }}>
+							This is a PayPal subscription. Cancelling stops future charges
+							immediately — PayPal has no end-of-cycle option.
+						</InfoBox>
+					</div>
+				)}
 
 				{isPending && (
 					<div className="px-4 pt-4">
@@ -132,9 +146,12 @@ export function SubscriptionCancelSheet() {
 	// const hasSubscription =
 	// 	cusProduct?.subscription_ids && cusProduct.subscription_ids.length > 0;
 	const { valid: isFreeOrOneOff } = cp(cusProduct).free().or.oneOff();
-	const defaultCancelAction = isFreeOrOneOff
-		? "cancel_immediately"
-		: "cancel_end_of_cycle";
+	// PayPal subscriptions cancel immediately at PayPal — no end-of-cycle option.
+	const isPayPalSubscription = Boolean(customer?.paypal_subscription_id);
+	const defaultCancelAction =
+		isFreeOrOneOff || isPayPalSubscription
+			? "cancel_immediately"
+			: "cancel_end_of_cycle";
 
 	if (!cusProduct) {
 		return (

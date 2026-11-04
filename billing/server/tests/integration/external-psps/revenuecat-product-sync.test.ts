@@ -250,7 +250,7 @@ test(`${chalk.yellowBright("rc sync: live env pushes to the store with group nam
 	expect(storePushes[0].body).toEqual({
 		store_information: {
 			duration: "ONE_MONTH",
-			subscription_group_name: "Autumn - Premium Group",
+			subscription_group_name: "MeterPal - Premium Group",
 		},
 	});
 

@@ -1,4 +1,4 @@
-// autumn/server/src/internal/keys/litellmKeys.ts
+// billing/server/src/internal/keys/litellmKeys.ts
 //
 // Provisioning handler for the LiteLLM ↔ Autumn bridge.
 // Called from event triggers on subscription lifecycle changes.

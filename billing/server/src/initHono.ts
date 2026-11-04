@@ -1,7 +1,7 @@
 import { ssoProvider } from "@autumn/shared";
 import { httpInstrumentationMiddleware } from "@hono/otel";
 import { eq } from "drizzle-orm";
-import { Hono } from "hono";
+import { type Context, Hono } from "hono";
 import { cors } from "hono/cors";
 import { db } from "./db/initDrizzle.js";
 import { autumnWebhookRouter } from "./external/autumn/autumnWebhookRouter.js";
@@ -95,7 +95,7 @@ export const createHonoApp = () => {
 
 	app.on(["POST", "GET"], ["/api/auth/*"], async (c) => {
 		if (FACADE_ONLY_SSO_PATHS.has(c.req.path)) {
-			return c.json({ message: "Use the Autumn SSO flow" }, 404);
+			return c.json({ message: "Use the MeterPal SSO flow" }, 404);
 		}
 		const callbackMatch = c.req.path.match(
 			/^\/api\/auth\/sso\/callback\/([^/]+)$/,
@@ -176,6 +176,46 @@ export const createHonoApp = () => {
 	// standard secret-key chain rather than inside it.
 	app.route("/v1", inferenceRouter);
 	app.route("/v1", apiRouter);
+
+	// [REWARDS DISABLED] The rewards/referral routers are unmounted (see
+	// routers/apiRouter.ts and routers/rpcRouter.ts). Answer 404 here rather
+	// than fall through to internalRouter's session gate below, which would
+	// return a misleading 401. Patterns are segment-safe (full-segment
+	// wildcards or exact dotted RPC names) so they match under every Hono
+	// router. Remove with the router markers to re-enable.
+	const rewardsDisabledHandler = (c: Context<HonoEnv>) =>
+		c.json({ error: "not_found" }, 404);
+	const rewardsDisabledPaths = [
+		"/v1/rewards",
+		"/v1/rewards/*",
+		"/v1/rewards.list",
+		"/v1/rewards.create",
+		"/v1/rewards.get",
+		"/v1/rewards.update",
+		"/v1/rewards.delete",
+		"/v1/rewards.redeem",
+		"/v1/reward_programs",
+		"/v1/reward_programs/*",
+		"/v1/reward_programs.create",
+		"/v1/reward_programs.list",
+		"/v1/reward_programs.get",
+		"/v1/reward_programs.update",
+		"/v1/reward_programs.delete",
+		"/v1/referrals",
+		"/v1/referrals/*",
+		"/v1/referrals.create_code",
+		"/v1/referrals.redeem_code",
+		"/v1/referral_programs.create",
+		"/v1/referral_programs.list",
+		"/v1/referral_programs.get",
+		"/v1/referral_programs.update",
+		"/v1/referral_programs.delete",
+		"/v1/redemptions",
+		"/v1/redemptions/*",
+	];
+	for (const path of rewardsDisabledPaths) {
+		app.all(path, rewardsDisabledHandler);
+	}
 
 	// OAuth/MCP discovery is public by contract, so an unmatched probe must 404
 	// here rather than fall through to internalRouter's session gate below,

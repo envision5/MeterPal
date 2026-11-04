@@ -65,7 +65,7 @@ Preview with `atmn push`, then apply with `atmn push --yes`.
 
 When a customer purchases a one-off plan:
 
-- Autumn creates a Stripe invoice (not a subscription) and charges it immediately
+- MeterPal creates a Stripe invoice (not a subscription) and charges it immediately
 - The feature balance is provisioned with the purchased quantity
 - The balance has a `one_off` interval — it never resets or expires
 
@@ -127,7 +127,7 @@ curl -X POST "https://api.useautumn.com/v1/checkout" \
 
 ## One-off prices within a subscription
 
-A subscription plan can include both recurring and one-off prices. When it does, Autumn splits them at checkout:
+A subscription plan can include both recurring and one-off prices. When it does, MeterPal splits them at checkout:
 
 - **Recurring prices** bill every cycle as part of the Stripe subscription
 - **One-off prices** are charged once on the first invoice only
@@ -188,7 +188,7 @@ When you attach the plan, you can select a quantity for the setup fee. The \$20/
 
 ## Balance stacking
 
-One-off balances stack with existing balances from subscriptions. Autumn uses [deduction order](/documentation/concepts/balances#deduction-order) to ensure shorter-interval balances (e.g., monthly) are used before one-off (lifetime) balances.
+One-off balances stack with existing balances from subscriptions. MeterPal uses [deduction order](/documentation/concepts/balances#deduction-order) to ensure shorter-interval balances (e.g., monthly) are used before one-off (lifetime) balances.
 
 ## Use cases
 

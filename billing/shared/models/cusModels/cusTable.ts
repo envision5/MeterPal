@@ -52,6 +52,9 @@ export const customers = pgTable(
 		paypal_plan_id: text("paypal_plan_id"),
 		paypal_payment_status: text("paypal_payment_status"),
 		paypal_payer_id: text("paypal_payer_id"),
+		// The billing agreement (BA-...) the buyer approved for this
+		// subscription — the instrument merchant-initiated top-ups reference.
+		paypal_billing_agreement_id: text("paypal_billing_agreement_id"),
 	},
 	(table) => [
 		unique("cus_id_constraint").on(table.org_id, table.id, table.env),

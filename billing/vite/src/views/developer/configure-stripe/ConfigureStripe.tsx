@@ -107,7 +107,7 @@ export const ConfigureStripe = () => {
 		: connectedSubtitle;
 	const connectionDescription = anyConnected
 		? "Connect with OAuth, a secret key, or both. They must be the same Stripe account."
-		: "You're currently connected to Autumn's default sandbox.";
+		: "You're currently connected to MeterPal's default sandbox.";
 
 	return (
 		<div className="flex flex-col gap-10">

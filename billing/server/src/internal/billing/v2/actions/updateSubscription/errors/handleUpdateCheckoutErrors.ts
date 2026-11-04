@@ -52,7 +52,7 @@ export const handleUpdateCheckoutErrors = ({
 
 	if (billingContext.intent === UpdateSubscriptionIntent.CancelAction) {
 		throw new RecaseError({
-			message: "Autumn checkout does not support cancel or uncancel updates",
+			message: "MeterPal checkout does not support cancel or uncancel updates",
 			code: ErrCode.InvalidRequest,
 			statusCode: 400,
 		});

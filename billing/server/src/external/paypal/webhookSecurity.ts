@@ -1,4 +1,4 @@
-// autumn/server/src/external/paypal/webhookSecurity.ts
+// billing/server/src/external/paypal/webhookSecurity.ts
 //
 // PayPal webhook signature verification.
 //

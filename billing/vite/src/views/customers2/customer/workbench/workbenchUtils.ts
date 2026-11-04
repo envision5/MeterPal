@@ -37,7 +37,7 @@ export const methodColorClass = (method: string | null): string => {
 		case "PUT":
 			return "text-amber-600 dark:text-amber-400";
 		case "PATCH":
-			return "text-purple-600 dark:text-purple-400";
+			return "text-[#264082] dark:text-[#7b90c4]";
 		case "DELETE":
 			return "text-red-600 dark:text-red-400";
 		default:

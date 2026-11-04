@@ -20,26 +20,36 @@
 // `stripe_webhook_events` table (event ids prefixed with "paypal:"), and
 // every wallet grant dedupes on its own idempotency key.
 
-import { and, eq } from "drizzle-orm";
 import {
+	type AppEnv,
 	customers,
+	type DbCustomer,
 	entitlements,
 	features,
-	products,
+	invoices,
 	paypalCatalogMap,
 	paypalOrderIntents,
+	products,
 	stripeWebhookEvents,
+	WebhookEventType,
 	walletLedger,
-	type AppEnv,
-	type DbCustomer,
 } from "@autumn/shared";
-import { hasActiveCustomerProductForProduct } from "@/internal/customers/cusProducts/hasActiveCustomerProductForProduct";
+import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/db/initDrizzle.js";
 import { logger } from "@/external/logtail/logtailUtils.js";
-import { createWorkerContext } from "@/queue/createWorkerContext.js";
+import { sendSvixEvent } from "@/external/svix/svixHelpers.js";
 import { updateBalanceV2 } from "@/internal/balances/updateBalance/v2/updateBalanceV2.js";
-import type { PaypalClient } from "./paypalClient.js";
 import { getPaypalClientForOrder } from "@/internal/billing/paypal/paypalOrgClient.js";
+import { hasActiveCustomerProductForProduct } from "@/internal/customers/cusProducts/hasActiveCustomerProductForProduct";
+import { createWorkerContext } from "@/queue/createWorkerContext.js";
+import {
+	paypalCaptureInvoiceId,
+	paypalInvoiceRefId,
+	paypalSaleInvoiceId,
+	recordPaypalInvoice,
+} from "./invoiceRecording.js";
+import type { PaypalClient } from "./paypalClient.js";
+import { PAYPAL_WEBHOOK_EVENT_TYPES } from "./webhookEventTypes.js";
 
 interface PayPalEvent {
 	id: string;
@@ -47,24 +57,8 @@ interface PayPalEvent {
 	resource: any;
 }
 
-const HANDLED_TYPES = new Set([
-	"BILLING.SUBSCRIPTION.CREATED",
-	"BILLING.SUBSCRIPTION.ACTIVATED",
-	"BILLING.SUBSCRIPTION.RE-ACTIVATED",
-	"BILLING.SUBSCRIPTION.UPDATED",
-	"BILLING.SUBSCRIPTION.SUSPENDED",
-	"BILLING.SUBSCRIPTION.CANCELLED",
-	"BILLING.SUBSCRIPTION.EXPIRED",
-	"BILLING.SUBSCRIPTION.PAYMENT.FAILED",
-	"PAYMENT.SALE.COMPLETED",
-	"PAYMENT.SALE.REFUNDED",
-	"PAYMENT.SALE.REVERSED",
-	"PAYMENT.CAPTURE.COMPLETED",
-	"PAYMENT.CAPTURE.REFUNDED",
-	"PAYMENT.CAPTURE.REVERSED",
-	"CHECKOUT.ORDER.APPROVED",
-	"INVOICING.INVOICE.PAID",
-]);
+/** Dispatch filter — derived from the registration list so the two never drift. */
+const HANDLED_TYPES = new Set<string>(PAYPAL_WEBHOOK_EVENT_TYPES);
 
 /** The org's credit feature (wallet currency). Single-credit-system convention. */
 function creditFeatureId(): string {
@@ -78,7 +72,10 @@ export async function handlePaypalEvent(
 	client?: PaypalClient,
 ): Promise<void> {
 	if (!HANDLED_TYPES.has(event.type)) {
-		logger.info({ msg: "paypal: ignoring unhandled event", eventType: event.type });
+		logger.info({
+			msg: "paypal: ignoring unhandled event",
+			eventType: event.type,
+		});
 		return;
 	}
 
@@ -149,9 +146,17 @@ async function dispatch(
 		case "PAYMENT.CAPTURE.COMPLETED":
 			await onCaptureCompleted(event, client);
 			break;
+		case "CUSTOMER.DISPUTE.CREATED":
+		case "CUSTOMER.DISPUTE.UPDATED":
+		case "CUSTOMER.DISPUTE.RESOLVED":
+			await onDispute(event);
+			break;
 		case "CHECKOUT.ORDER.APPROVED":
 			// Early signal only — the money event is PAYMENT.CAPTURE.COMPLETED.
-			logger.info({ msg: "paypal order approved", orderId: event.resource?.id });
+			logger.info({
+				msg: "paypal order approved",
+				orderId: event.resource?.id,
+			});
 			break;
 		case "INVOICING.INVOICE.PAID":
 			await onInvoicePaid(event);
@@ -183,10 +188,7 @@ export async function resolveCustomer(opts: {
 
 	if (payerId) {
 		const conds = orgId
-			? and(
-					eq(customers.paypal_payer_id, payerId),
-					eq(customers.org_id, orgId),
-				)
+			? and(eq(customers.paypal_payer_id, payerId), eq(customers.org_id, orgId))
 			: eq(customers.paypal_payer_id, payerId);
 		const [cus] = await db.select().from(customers).where(conds).limit(1);
 		if (cus) return cus;
@@ -219,6 +221,49 @@ export async function stampPayerId(
 		.update(customers)
 		.set({ paypal_payer_id: payerId })
 		.where(eq(customers.id, customerId));
+}
+
+/**
+ * Persists the vaulted billing agreement (BA-...) behind a subscription so
+ * merchant-initiated charges (auto top-ups) can reference it later.
+ *
+ * The checkout recorded BA token -> subscription id rows in
+ * paypal_order_intents when it minted the approval link, and a token is only
+ * a real billing agreement once the buyer approved — so this runs on
+ * activation, never at checkout.  First stamp wins.
+ */
+export async function stampPaypalBillingAgreement({
+	customerId,
+	paypalSubscriptionId,
+}: {
+	customerId: string | null | undefined;
+	paypalSubscriptionId: string | null | undefined;
+}): Promise<void> {
+	if (!customerId || !paypalSubscriptionId) return;
+	const [cus] = await db
+		.select({ agreement: customers.paypal_billing_agreement_id })
+		.from(customers)
+		.where(eq(customers.id, customerId))
+		.limit(1);
+	if (cus?.agreement) return; // already vaulted
+
+	const [intent] = await db
+		.select({ orderId: paypalOrderIntents.order_id })
+		.from(paypalOrderIntents)
+		.where(eq(paypalOrderIntents.subscription_id, paypalSubscriptionId))
+		.orderBy(sql`${paypalOrderIntents.id} desc`)
+		.limit(1);
+	if (!intent?.orderId?.startsWith("BA-")) return;
+
+	await db
+		.update(customers)
+		.set({ paypal_billing_agreement_id: intent.orderId })
+		.where(eq(customers.id, customerId));
+	logger.info({
+		msg: "paypal: vaulted billing agreement stamped",
+		customerId,
+		paypalSubscriptionId,
+	});
 }
 
 // ---------- wallet grants ----------
@@ -508,7 +553,11 @@ export async function activatePaypalSubscription(sub: {
 	if (!paypalSubscriptionId) return false;
 	if (!["ACTIVE", "APPROVED"].includes(status ?? "")) return false;
 
-	const cust = await resolveCustomer({ customId, payerId, email: subscriberEmail });
+	const cust = await resolveCustomer({
+		customId,
+		payerId,
+		email: subscriberEmail,
+	});
 	if (!cust?.id) {
 		logger.warn({
 			msg: "paypal: subscription for unknown customer",
@@ -520,17 +569,29 @@ export async function activatePaypalSubscription(sub: {
 
 	// Idempotency: already linked + active for THIS subscription — nothing to
 	// do (the caller still wants its success redirect, hence true).
-	if (cust.paypal_subscription_id === paypalSubscriptionId && cust.paypal_payment_status === "active") {
+	if (
+		cust.paypal_subscription_id === paypalSubscriptionId &&
+		cust.paypal_payment_status === "active"
+	) {
 		// The link can outlive a failed plan attach, so make sure the MeterPal
 		// plan landed.  Re-attaching an already-attached plan is a no-op.
 		await ensurePaypalPlanAttached(cust, planId);
 		// The approval intent may still read "pending" if the first activation
 		// failed after PayPal confirmed the subscription — settle it here too.
 		await markApprovalIntentsActivated(paypalSubscriptionId);
+		// The buyer approved, so the BA token is a real billing agreement now.
+		await stampPaypalBillingAgreement({
+			customerId: cust.id,
+			paypalSubscriptionId,
+		});
 		return true;
 	}
 
 	await stampPayerId(cust.id, payerId);
+	await stampPaypalBillingAgreement({
+		customerId: cust.id,
+		paypalSubscriptionId,
+	});
 	await db
 		.update(customers)
 		.set({
@@ -573,8 +634,14 @@ export async function activatePaypalSubscription(sub: {
 		const [grant] = await db
 			.select({ allowance: entitlements.allowance })
 			.from(entitlements)
-			.innerJoin(products, eq(products.internal_id, entitlements.internal_product_id))
-			.innerJoin(features, eq(features.internal_id, entitlements.internal_feature_id))
+			.innerJoin(
+				products,
+				eq(products.internal_id, entitlements.internal_product_id),
+			)
+			.innerJoin(
+				features,
+				eq(features.internal_id, entitlements.internal_feature_id),
+			)
 			.where(
 				and(
 					eq(products.id, mapRow.product_id),
@@ -709,12 +776,35 @@ async function onSaleCompleted(event: PayPalEvent): Promise<void> {
 		return;
 	}
 
+	const planProductId = await resolveProductIdForPaypalPlan(
+		cust.paypal_plan_id,
+	);
+
+	// Self-heal the vaulted billing agreement: the sale proves the agreement
+	// is live, so an org whose customers activated before the BA column
+	// existed still gets stamped (the intents row maps sub -> BA token).
+	await stampPaypalBillingAgreement({
+		customerId: cust.id,
+		paypalSubscriptionId: subscriptionId,
+	});
+
+	// The money moved either way — record the cycle payment as a PayPal
+	// invoice for merchant visibility and refund attribution.
+	await recordPaypalInvoice({
+		customer: cust,
+		externalId: paypalSaleInvoiceId(saleId),
+		amountUsd: amount,
+		productId: planProductId,
+		description: "PayPal subscription cycle",
+	});
+
 	// The MeterPal plan behind the subscription carries the monthly allowance
 	// and resets it every cycle, so granting the sale amount on top would
 	// credit the customer twice per cycle.  The wallet grant stays the
 	// fallback for subscriptions with no MeterPal plan behind them.
-	const planProductId = await resolveProductIdForPaypalPlan(cust.paypal_plan_id);
-	if (await hasActiveMeterPalPlan({ customer: cust, productId: planProductId })) {
+	if (
+		await hasActiveMeterPalPlan({ customer: cust, productId: planProductId })
+	) {
 		logger.info({
 			msg: "paypal: sale cycle already covered by the meter's plan allowance",
 			subscriptionId,
@@ -749,10 +839,15 @@ async function onRefund(event: PayPalEvent): Promise<void> {
 		return;
 	}
 
-	// Resolve through the ORIGINAL CAPTURE — the refund links to it, and the
-	// capture's custom_id names the customer who was actually paid.  Email
+	// Resolve through the ORIGINAL PAYMENT — the refund links to it, and the
+	// payment's custom_id names the customer who was actually paid.  Email
 	// is deliberately NOT consulted: it let a refund debit whichever
 	// customer row happened to share an address (cross-tenant wallet drain).
+	//
+	// Captures (Orders v2) link "up"; sales (subscription cycles) carry
+	// resource.sale_id.  Either names a ledger row we wrote when the money
+	// landed, which is what the refund cap (never refund more than granted)
+	// and the customer resolution read.
 	let captureId: string | null = null;
 	for (const link of event.resource?.links ?? []) {
 		if (link.rel === "up" && typeof link.href === "string") {
@@ -760,27 +855,44 @@ async function onRefund(event: PayPalEvent): Promise<void> {
 			break;
 		}
 	}
+	const saleId: string | null = event.resource?.sale_id ?? null;
 
 	let cust: DbCustomer | null = null;
 	let refundCap: number | null = null; // never refund more than was granted
 
-	if (captureId) {
+	const readLedgerRow = async (
+		idempotencyKey: string,
+	): Promise<{ customer: DbCustomer; grantedUsd: number | null } | null> => {
 		const [ledgerRow] = await db
 			.select({
 				customer_id: walletLedger.customer_id,
 				amount_usd: walletLedger.amount_usd,
 			})
 			.from(walletLedger)
-			.where(eq(walletLedger.idempotency_key, `paypal-capture:${captureId}`))
+			.where(eq(walletLedger.idempotency_key, idempotencyKey))
 			.limit(1);
-		if (ledgerRow) {
-			refundCap = ledgerRow.amount_usd ?? null;
-			const [row] = await db
-				.select()
-				.from(customers)
-				.where(eq(customers.id, ledgerRow.customer_id))
-				.limit(1);
-			cust = row ?? null;
+		if (!ledgerRow) return null;
+		const [row] = await db
+			.select()
+			.from(customers)
+			.where(eq(customers.id, ledgerRow.customer_id))
+			.limit(1);
+		if (!row) return null;
+		return { customer: row, grantedUsd: ledgerRow.amount_usd ?? null };
+	};
+
+	if (captureId) {
+		const viaCapture = await readLedgerRow(`paypal-capture:${captureId}`);
+		if (viaCapture) {
+			cust = viaCapture.customer;
+			refundCap = viaCapture.grantedUsd;
+		}
+	}
+	if (!cust && saleId) {
+		const viaSale = await readLedgerRow(`paypal-sale:${saleId}`);
+		if (viaSale) {
+			cust = viaSale.customer;
+			refundCap = viaSale.grantedUsd;
 		}
 	}
 
@@ -795,6 +907,7 @@ async function onRefund(event: PayPalEvent): Promise<void> {
 			msg: "paypal refund: no customer for refund — skipping",
 			refundId: event.resource?.id,
 			captureId,
+			saleId,
 		});
 		return;
 	}
@@ -804,13 +917,60 @@ async function onRefund(event: PayPalEvent): Promise<void> {
 		refundCap != null && refundCap > 0 ? refundCap : Math.abs(amount),
 	);
 
-	await grantWalletCredits({
+	const grantApplied = await grantWalletCredits({
 		customer: cust,
 		amountUsd: -refundAmount,
 		idempotencyKey: `paypal-refund:${event.resource?.id}`,
 		eventName: "refund",
-		metadata: { event_type: event.type, capture_id: captureId },
+		metadata: {
+			event_type: event.type,
+			capture_id: captureId,
+			sale_id: saleId,
+		},
 	});
+
+	// Track the refund on the PayPal invoice row — but only when the wallet
+	// correction actually applied, so the endpoint-initiated refund (whose
+	// webhook still fires here) is never counted twice.
+	if (grantApplied && captureId) {
+		await incrementPaypalInvoiceRefund({
+			externalId: paypalCaptureInvoiceId(captureId),
+			amountUsd: refundAmount,
+		});
+	} else if (grantApplied && saleId) {
+		await incrementPaypalInvoiceRefund({
+			externalId: paypalSaleInvoiceId(saleId),
+			amountUsd: refundAmount,
+		});
+	}
+}
+
+/**
+ * Atomically adds to `invoices.refunded_amount` for a PayPal invoice row.
+ * A no-op (with a warning) when the row is missing — refunds recorded
+ * before invoice recording shipped have nothing to increment.
+ */
+export async function incrementPaypalInvoiceRefund({
+	externalId,
+	amountUsd,
+}: {
+	externalId: string;
+	amountUsd: number;
+}): Promise<void> {
+	const updated = await db
+		.update(invoices)
+		.set({
+			refunded_amount: sql`${invoices.refunded_amount} + ${amountUsd}`,
+		})
+		.where(eq(invoices.stripe_id, externalId))
+		.returning({ id: invoices.id });
+	if (updated.length === 0) {
+		logger.warn({
+			msg: "paypal refund: no invoice row to track refunded_amount on",
+			externalId,
+			amountUsd,
+		});
+	}
 }
 
 async function onCaptureCompleted(
@@ -826,7 +986,11 @@ async function onCaptureCompleted(
 	const currency = (capture?.amount?.currency_code ?? "USD").toUpperCase();
 	if (!captureId || !amount) return;
 	if (currency !== "USD") {
-		logger.warn({ msg: "paypal capture: unsupported currency", captureId, currency });
+		logger.warn({
+			msg: "paypal capture: unsupported currency",
+			captureId,
+			currency,
+		});
 		return;
 	}
 
@@ -854,8 +1018,11 @@ async function onCaptureCompleted(
 	}
 
 	let customCustomerId: string | undefined;
+	let customProductId: string | undefined;
 	if (customId?.startsWith("mp:")) {
+		// "mp:<customer_id>:<product_id>" — stamped at checkout creation.
 		customCustomerId = customId.split(":")[1];
+		customProductId = customId.split(":")[2];
 	}
 
 	const cust = await resolveCustomer({
@@ -876,6 +1043,13 @@ async function onCaptureCompleted(
 		idempotencyKey: `paypal-capture:${captureId}`,
 		eventName: "wallet_topup",
 		metadata: { capture_id: captureId, order_id: orderId ?? null },
+	});
+	await recordPaypalInvoice({
+		customer: cust,
+		externalId: paypalCaptureInvoiceId(captureId),
+		amountUsd: amount,
+		productId: customProductId,
+		description: "PayPal credit pack",
 	});
 }
 
@@ -931,6 +1105,123 @@ async function onInvoicePaid(event: PayPalEvent): Promise<void> {
 		eventName: "invoice_paid",
 		metadata: { invoice_id: invoiceId, reference },
 	});
+	await recordPaypalInvoice({
+		customer: cust,
+		externalId: paypalInvoiceRefId(invoiceId),
+		amountUsd: amount,
+		description: "PayPal overage invoice",
+	});
+}
+
+/**
+ * Surfaces a PayPal dispute (chargeback, item-not-received claim) to the
+ * merchant as a `billing.dispute_*` webhook.  No wallet movement here: the
+ * funds reversal arrives separately as PAYMENT.CAPTURE.REVERSED (or
+ * PAYMENT.SALE.REVERSED), which already applies the negative grant —
+ * correcting twice would debit the wallet once per dispute stage.
+ */
+async function onDispute(event: PayPalEvent): Promise<void> {
+	const dispute = event.resource;
+	const disputeId = dispute?.dispute_id;
+	if (!disputeId) return;
+
+	const disputedTransactionId: string | undefined =
+		dispute?.disputed_transaction?.transaction_id;
+
+	// Resolve the affected customer through the disputed payment: the
+	// transaction id is a capture or sale id — the same ledger keys the
+	// money handlers wrote when the customer paid.
+	let cust: DbCustomer | null = null;
+	for (const key of [
+		disputedTransactionId ? `paypal-capture:${disputedTransactionId}` : null,
+		disputedTransactionId ? `paypal-sale:${disputedTransactionId}` : null,
+	]) {
+		if (!key) continue;
+		const [ledgerRow] = await db
+			.select({ customer_id: walletLedger.customer_id })
+			.from(walletLedger)
+			.where(eq(walletLedger.idempotency_key, key))
+			.limit(1);
+		if (ledgerRow) {
+			const [row] = await db
+				.select()
+				.from(customers)
+				.where(eq(customers.id, ledgerRow.customer_id))
+				.limit(1);
+			if (row) {
+				cust = row;
+				break;
+			}
+		}
+	}
+	if (!cust) {
+		cust = await resolveCustomer({
+			payerId: dispute?.payer?.payer_id ?? null,
+		});
+	}
+
+	const eventType =
+		event.type === "CUSTOMER.DISPUTE.CREATED"
+			? WebhookEventType.BillingDisputeCreated
+			: WebhookEventType.BillingDisputeUpdated;
+
+	const payload = {
+		dispute_id: disputeId,
+		status: dispute?.status ?? null,
+		reason: dispute?.reason ?? null,
+		dispute_life_cycle_stage: dispute?.dispute_life_cycle_stage ?? null,
+		amount: dispute?.dispute_amount?.value
+			? parseFloat(dispute.dispute_amount.value)
+			: null,
+		currency: (dispute?.dispute_amount?.currency_code ?? "USD").toUpperCase(),
+		disputed_transaction_id: disputedTransactionId ?? null,
+		customer_id: cust?.id ?? null,
+	};
+
+	logger.warn({
+		msg: "paypal: dispute received",
+		...payload,
+		eventType: event.type,
+	});
+
+	if (!cust?.id) {
+		logger.warn({
+			msg: "paypal dispute: no customer for dispute — webhook not sent",
+			disputeId,
+		});
+		return;
+	}
+
+	const ctx = await createWorkerContext({
+		db,
+		payload: {
+			orgId: cust.org_id,
+			env: cust.env as AppEnv,
+			customerId: cust.id,
+			requestId: `paypal-dispute:${disputeId}:${event.type}`,
+		},
+		logger,
+	});
+	if (!ctx) return;
+
+	try {
+		await sendSvixEvent({
+			ctx,
+			eventType,
+			payloadFields: {
+				id: `evt_paypal_dispute_${disputeId}`,
+				occurred_at: Date.now(),
+			},
+			data: payload,
+			idempotencyKey: `paypal-dispute:${disputeId}:${event.type}`,
+		});
+	} catch (err) {
+		logger.error({
+			msg: "paypal dispute: merchant webhook failed",
+			disputeId,
+			error: String(err),
+		});
+	}
 }
 
 function planKeyForPlanId(planId: string | undefined): string {

@@ -2,7 +2,7 @@ import { logger } from "@/external/logtail/logtailUtils.js";
 import { createResendCli } from "@/external/resend/resendUtils.js";
 import { safeResend } from "@/external/resend/safeResend.js";
 import AgentClaimEmail from "./AgentClaimEmail.js";
-import { FROM_AUTUMN } from "./constants.js";
+import { FROM_METERPAL } from "./constants.js";
 
 export const sendAgentClaimEmail = safeResend({
 	fn: async ({
@@ -19,9 +19,9 @@ export const sendAgentClaimEmail = safeResend({
 		logger.info(`Sending agent claim email to ${email}`);
 		const resend = createResendCli();
 		const { error } = await resend.emails.send({
-			from: FROM_AUTUMN,
+			from: FROM_METERPAL,
 			to: email,
-			subject: `Claim ${organizationName} on Autumn`,
+			subject: `Claim ${organizationName} on MeterPal`,
 			react: AgentClaimEmail({ organizationName, claimUrl, expiresAt }),
 		});
 		if (error) throw error;

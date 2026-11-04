@@ -1,4 +1,4 @@
-// autumn/server/tests/paypal_webhook.test.ts
+// billing/server/tests/paypal_webhook.test.ts
 //
 // Unit tests for PayPal webhook signature verification.
 //

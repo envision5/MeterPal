@@ -3,7 +3,7 @@ title: Spend Limits & Usage Alerts
 description: Cap overage spending and get notified when usage crosses thresholds
 ---
 
-Spend limits let you cap how much overage a customer (or entity) can accumulate on a usage-based feature. Without a spend limit, usage-based features allow unlimited overage — the customer is billed for whatever they use. With a spend limit, Autumn blocks usage once the overage reaches the configured cap.
+Spend limits let you cap how much overage a customer (or entity) can accumulate on a usage-based feature. Without a spend limit, usage-based features allow unlimited overage — the customer is billed for whatever they use. With a spend limit, MeterPal blocks usage once the overage reaches the configured cap.
 
 > **Example** <br />
 > A customer is on a plan with 1,000 API calls included per month and $1 per 1,000 additional calls. You set a spend limit of 5,000 on the `api_calls` feature. The customer can use up to 6,000 total API calls (1,000 included + 5,000 overage), and is blocked after that.
@@ -196,8 +196,8 @@ Combine `skip_overage_billing` with an `overage_limit` to allow a bounded amount
 ## How it works
 
 1. The customer uses a usage-based feature and begins accumulating overage beyond their included amount
-2. On each `check` or `track` call, Autumn computes total overage across all of the customer's usage-based entitlements for that feature
-3. If the total overage would exceed the `overage_limit`, Autumn blocks the usage — `check` returns `allowed: false`, and `track` will not deduct beyond the limit
+2. On each `check` or `track` call, MeterPal computes total overage across all of the customer's usage-based entitlements for that feature
+3. If the total overage would exceed the `overage_limit`, MeterPal blocks the usage — `check` returns `allowed: false`, and `track` will not deduct beyond the limit
 
 <Info>
 Spend limits aggregate overage across **all** of the customer's entitlements for a given feature. If a customer has the same feature on multiple plans (e.g., a base plan and an add-on), the total overage across both is compared against the spend limit.
@@ -551,8 +551,8 @@ The `usage_percentage` threshold is calculated against the **included** allowanc
 
 ## How usage alerts work
 
-1. On each `track` call, Autumn compares the customer's old and new usage against each enabled alert
-2. If the usage crosses the threshold (old usage was below, new usage is at or above), Autumn fires a `balances.usage_alert_triggered` webhook
+1. On each `track` call, MeterPal compares the customer's old and new usage against each enabled alert
+2. If the usage crosses the threshold (old usage was below, new usage is at or above), MeterPal fires a `balances.usage_alert_triggered` webhook
 3. The alert fires **once** per threshold crossing — it won't re-fire on subsequent track calls unless usage drops below the threshold and crosses it again
 
 <Info>

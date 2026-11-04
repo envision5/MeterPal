@@ -1,20 +1,20 @@
 ---
 title: "MCP Server"
 sidebarTitle: "Agents & MCP"
-description: "Connect Autumn's MCP server to AI assistants for billing actions, plan management, and request-log investigations."
+description: "Connect MeterPal's MCP server to AI assistants for billing actions, plan management, and request-log investigations."
 ---
 
 ## Intro
 
-Autumn MCP connects AI assistants to Autumn's billing, customer, plan, balance,
+MeterPal MCP connects AI assistants to MeterPal's billing, customer, plan, balance,
 and log tools.
 
 ### Starter prompt
 
 ```text
-Use Autumn MCP for this request.
+Use MeterPal MCP for this request.
 
-- Always start with autumn://docs/concepts to understand Autumn's data model.
+- Always start with autumn://docs/concepts to understand MeterPal's data model.
 - Use autumn://docs/plan-management for pricing setup, plan creation, plan updates, and plan modeling.
 - Use autumn://docs/billing for attaching plans, updating subscriptions, cancellations, schedules, trials, and billing state changes.
 - Use autumn://docs/logs for API request logs, Stripe webhook timelines, customer request histories, and log analytics.
@@ -24,16 +24,16 @@ Use Autumn MCP for this request.
 
 ## Setup
 
-Autumn MCP can be installed in any MCP client with the server URL:
+MeterPal MCP can be installed in any MCP client with the server URL:
 
 ```text
 https://mcp.useautumn.com/mcp
 ```
 
-You do not need an API key. By default, your MCP client opens an Autumn sign-in
+You do not need an API key. By default, your MCP client opens an MeterPal sign-in
 flow and connects to your organization.
 
-For a long-lived setup, you can also use an Autumn secret key with Bearer auth:
+For a long-lived setup, you can also use an MeterPal secret key with Bearer auth:
 
 ```json
 {
@@ -202,9 +202,9 @@ If your client does not support remote MCP servers directly:
 
 ## Using MCP
 
-Autumn MCP exposes tools and resources. Ask your agent to read the relevant Autumn MCP resource before it acts:
+MeterPal MCP exposes tools and resources. Ask your agent to read the relevant MeterPal MCP resource before it acts:
 
-- Start with `autumn://docs/concepts` to understand Autumn's data model.
+- Start with `autumn://docs/concepts` to understand MeterPal's data model.
 - Use `autumn://docs/plan-management` for pricing setup, plan creation, and plan updates.
 - Use `autumn://docs/billing` for attaching plans, updating subscriptions, cancellations, schedules, trials, and billing state changes.
 - Use `autumn://docs/logs` for API request logs, Stripe webhook timelines, customer request histories, and log analytics.
@@ -213,7 +213,7 @@ Autumn MCP exposes tools and resources. Ask your agent to read the relevant Autu
 
 | Resource | Use for |
 | --- | --- |
-| `autumn://docs/concepts` | Autumn concepts and object relationships |
+| `autumn://docs/concepts` | MeterPal concepts and object relationships |
 | `autumn://docs/plan-management` | Creating and updating pricing plans |
 | `autumn://docs/billing` | Billing actions and preview-first workflows |
 | `autumn://docs/logs` | Request logs, Stripe webhooks, and log analytics |

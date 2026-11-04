@@ -87,7 +87,7 @@ export const handleRestoreErrors = ({
 		!ALLOWED_SCHEDULE_ACTION_TYPES.has(subscriptionScheduleAction.type)
 	) {
 		throw new InternalError({
-			message: `[Restore] Unexpected schedule action '${subscriptionScheduleAction.type}' for subscription ${stripeSubscriptionId}. Restore only allows 'update' or 'create'; 'release' usually means the schedule was never imported into Autumn.`,
+			message: `[Restore] Unexpected schedule action '${subscriptionScheduleAction.type}' for subscription ${stripeSubscriptionId}. Restore only allows 'update' or 'create'; 'release' usually means the schedule was never imported into MeterPal.`,
 			code: "restore_unexpected_schedule_action",
 		});
 	}

@@ -1,11 +1,11 @@
 {
 	"$schema": "https://mintlify.com/docs.json",
 	"theme": "mint",
-	"name": "Autumn",
+	"name": "MeterPal",
 	"colors": {
-		"primary": "#8838ff",
-		"light": "#9b5cff",
-		"dark": "#8838ff"
+		"primary": "#264082",
+		"light": "#264082",
+		"dark": "#264082"
 	},
 	"appearance": {
 		"default": "system",
@@ -35,11 +35,6 @@
 					"anchor": "Discord",
 					"icon": "discord",
 					"href": "https://discord.gg/STqxY92zuS"
-				},
-				{
-					"anchor": "GitHub",
-					"icon": "github",
-					"href": "https://github.com/useautumn/autumn"
 				},
 				{
 					"anchor": "Website",
@@ -101,8 +96,7 @@
 							"documentation/modelling-pricing/add-ons",
 							"documentation/modelling-pricing/graduated-pricing",
 							"documentation/modelling-pricing/volume-based-tiers",
-							"documentation/modelling-pricing/entity-plans",
-							"documentation/modelling-pricing/rewards"
+							"documentation/modelling-pricing/entity-plans"
 						]
 					},
 					{
@@ -275,24 +269,6 @@
 							"api-reference/features/createFeature",
 							"api-reference/features/updateFeature",
 							"api-reference/features/deleteFeature"
-						]
-					},
-					{
-						"group": "Rewards & Referrals",
-						"pages": [
-							"api-reference/referrals/createReferralProgram",
-							"api-reference/referrals/listReferralPrograms",
-							"api-reference/referrals/getReferralProgram",
-							"api-reference/referrals/updateReferralProgram",
-							"api-reference/referrals/deleteReferralProgram",
-							"api-reference/referrals/createReferralCode",
-							"api-reference/referrals/redeemReferralCode",
-							"api-reference/rewards/createReward",
-							"api-reference/rewards/listRewards",
-							"api-reference/rewards/getReward",
-							"api-reference/rewards/updateReward",
-							"api-reference/rewards/deleteReward",
-							"api-reference/rewards/redeemRewardCode"
 						]
 					},
 					{

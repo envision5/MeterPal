@@ -1,5 +1,5 @@
 """
-demo/run_demo.py -- guided walkthrough of the LiteLLM + Autumn billing loop.
+demo/run_demo.py -- guided walkthrough of the LiteLLM + MeterPal billing loop.
 
 Requires the stack from demo/README.md to be running.  It walks through:
 
@@ -7,7 +7,7 @@ Requires the stack from demo/README.md to be running.  It walks through:
   2. Chat calls through LiteLLM (mock provider) and the balance dropping
      after each call, including a cached-input call billed at cheaper rates
   3. A second model priced from models.dev list rates (no config needed)
-  4. Draining the wallet until Autumn's /check refuses the NEXT call (402)
+  4. Draining the wallet until MeterPal's /check refuses the NEXT call (402)
      -- admission control, before any provider is touched
   5. A top-up (the API call a Stripe/PayPal webhook will make in prod)
      and the same customer being admitted again
@@ -104,7 +104,7 @@ def chat(client: httpx.Client, model: str, prompt: str, label: str) -> dict | No
     print(f"    usage   : {usage.get('prompt_tokens')} prompt "
           f"({usage.get('prompt_tokens_details', {}).get('cached_tokens', 0)} cached) "
           f"/ {usage.get('completion_tokens')} completion")
-    time.sleep(1.5)  # let Autumn's deduction + customer cache settle before the balance read
+    time.sleep(1.5)  # let MeterPal's deduction + customer cache settle before the balance read
     return data
 
 
@@ -134,9 +134,9 @@ def main() -> None:
     autumn_c = httpx.Client(base_url=AUTUMN, headers={"Authorization": f"Bearer {AUTUMN_KEY}"}, timeout=30)
 
     # Preflight
-    print(f"{B}AI billing demo -- LiteLLM :4000  →  Autumn :8080  →  mock LLM :9999{C}")
+    print(f"{B}AI billing demo -- LiteLLM :4000  →  MeterPal :8080  →  mock LLM :9999{C}")
     for name, url in [("mock LLM", "http://localhost:9999/healthz"),
-                      ("Autumn", f"{AUTUMN}/health"),
+                      ("MeterPal", f"{AUTUMN}/health"),
                       ("LiteLLM", f"{LITELLM}/health/liveliness")]:
         try:
             httpx.get(url, timeout=5)
@@ -187,11 +187,11 @@ def main() -> None:
     chat(litellm_c, "demo-gpt", "back in business [usage: in=1000 out=200]", "call after top-up: admitted again")
     show_balance(autumn_c)
 
-    phase(6, "Usage ledger (events table in Autumn's Postgres)")
+    phase(6, "Usage ledger (events table in MeterPal's Postgres)")
     time.sleep(1.5)  # event batches flush every 350ms in the background
     ledger()
 
-    print(f"\n{B}Demo complete.{C} Every call above was metered and debited by Autumn,")
+    print(f"\n{B}Demo complete.{C} Every call above was metered and debited by MeterPal,")
     print("and when the wallet ran dry, admission was refused BEFORE hitting the provider.")
     print(f"{DI}The status=failure row with 0 tokens is the 402-denied call -- recorded")
     print(f"by the bridge's failure hook, billed at 0.{C}")

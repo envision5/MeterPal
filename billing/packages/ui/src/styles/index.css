@@ -64,20 +64,22 @@ html {
 	--outer-background: #f5f5f4;
 
 	--interactive-secondary: #fff;
-	--interactive-secondary-hover: #fcfaff;
+	--interactive-secondary-hover: #f7f9fd;
 
 	--muted-foreground: #444;
 	--tertiary-foreground: #666;
 	--subtle: #767676;
 	--placeholder: #aaa;
-	--sandbox: #0f9bff;
+	--sandbox: #00bfe4;
 	--radius: 0.375rem; /* 6px */
 
-	--primary: #8838ff;
+	/* MeterPal brand: dark blue leads, yellow is the highlight, red and light
+	   blue are accents. */
+	--primary: #264082;
 	--primary-foreground: white;
-	--hover-primary: #fcfaff;
-	--active-primary: #f6f0ff;
-	--radio-group-hover-primary: #fcfaff;
+	--hover-primary: #f0f4fc;
+	--active-primary: #e4ecfa;
+	--radio-group-hover-primary: #f0f4fc;
 
 	--border: #e5e5e5;
 	--border-sheet: #eaeae9;
@@ -89,10 +91,10 @@ html {
 	--icon1: #888;
 	--muted: #f2f2f2;
 
-	--destructive: #e40000;
-	--destructive-hover: #c30000;
+	--destructive: #ee3e36;
+	--destructive-hover: #d13327;
 	--destructive-foreground: #fafaf9;
-	--destructive-border: #940000;
+	--destructive-border: #a52c22;
 
 	/* White */
 	--input-background: #ffffff;
@@ -100,7 +102,6 @@ html {
 	/* --card: #f5f5f5; */
 	/* --card: #fafaf9; */
 
-	/* --primary: #9048ff; (old) */
 	font-synthesis: none;
 	text-rendering: optimizeLegibility;
 	-webkit-font-smoothing: antialiased;
@@ -121,29 +122,28 @@ html {
 	/* --border: oklch(0.92 0.004 286.32); */
 
 	/* --input: oklch(0.92 0.004 286.32); */
-	--ring: oklch(0.705 0.015 286.067);
+	--ring: #7b90c4;
 	--chart-1: var(--primary);
-	/* --chart-2: #9c5aff; */
-	--chart-2: #a97eff;
-	--chart-3: #8268ff;
-	--chart-4: #7571ff;
-	--chart-5: #687aff;
-	--chart-6: #5b83ff;
-	--chart-7: #4e8cff;
-	--chart-8: #4195ff;
-	--chart-9: #349eff;
-	--chart-10: #27a7ff;
+	--chart-2: #7b90c4;
+	--chart-3: #5d7cc4;
+	--chart-4: #4a6ab5;
+	--chart-5: #3d5da9;
+	--chart-6: #35539a;
+	--chart-7: #2e4a8c;
+	--chart-8: #264082;
+	--chart-9: #00a6c9;
+	--chart-10: #00bfe4;
 
 	--chart-grid-stroke: #d1d1d190;
 
 	/* Categorical series slots; order is colorblind-validated, never reorder or skip. */
-	--chart-series-1: #8838ff;
-	--chart-series-2: #eb6834;
+	--chart-series-1: #264082;
+	--chart-series-2: #ee3e36;
 	--chart-series-3: #1baf7a;
-	--chart-series-4: #eda100;
+	--chart-series-4: #f4bf3d;
 	--chart-series-5: #e87ba4;
 	--chart-series-6: #008300;
-	--chart-series-7: #2a78d6;
+	--chart-series-7: #00bfe4;
 	--chart-series-8: #e34948;
 	--chart-series-other: #b5b5b5;
 
@@ -163,27 +163,29 @@ html {
 	--muted-foreground: #ccc;
 	--tertiary-foreground: #999;
 
-	--primary: #8838ff;
+	/* A step lighter than the light-mode brand blue so filled buttons keep
+	   presence on the dark background. */
+	--primary: #3d5da9;
 
 	--outer-background: #121212;
 
 	--interactive-secondary: #1d1d1d;
-	--interactive-secondary-hover: #292929;
+	--interactive-secondary-hover: #1f2637;
 
-	--active-primary: #292929;
+	--active-primary: #1f2637;
 	--input-background: #1d1d1d;
 	--muted: #1c1c1d;
-	--sandbox: #0f9bff;
+	--sandbox: #00bfe4;
 
 	--card: #121212;
 	--border: #222222;
 
 	--chart-grid-stroke: #262626;
 
-	--chart-series-1: #9c5aff;
-	--chart-series-2: #d95926;
+	--chart-series-1: #5d7cc4;
+	--chart-series-2: #ee3e36;
 	--chart-series-3: #199e70;
-	--chart-series-4: #c98500;
+	--chart-series-4: #e0a92e;
 	--chart-series-5: #d55181;
 	--chart-series-6: #008300;
 	--chart-series-7: #3987e5;
@@ -201,10 +203,10 @@ html {
 	--destructive: oklch(0.396 0.141 25.723);
 	--destructive-foreground: oklch(0.637 0.237 25.331);
 	--input: oklch(0.274 0.006 286.033);
-	--ring: oklch(0.442 0.017 285.786);
+	--ring: #4a6ab5;
 	--sidebar: oklch(0.21 0.006 285.885);
 	--sidebar-foreground: oklch(0.985 0 0);
-	--sidebar-primary: oklch(0.488 0.243 264.376);
+	--sidebar-primary: #4a6ab5;
 	--sidebar-primary-foreground: oklch(0.985 0 0);
 	--sidebar-accent: oklch(0.274 0.006 286.033);
 	--sidebar-accent-foreground: oklch(0.985 0 0);
@@ -589,20 +591,14 @@ html {
 	--color-code-bg: #1e1e1e;
 	--color-code-tabs-active: #3c3c3c;
 
-	--shadow-focus: 0 0 3px 1.5px rgba(139, 92, 246, 0.4);
-	--color-focus: rgba(139, 92, 246, 0.95);
+	--shadow-focus: 0 0 3px 1.5px rgba(38, 64, 130, 0.4);
+	--color-focus: rgba(38, 64, 130, 0.95);
 
 	--color-table-hover: #f3f3f3;
 
-	/* Inline color consolidation */
-	--color-light-purple: #f9f5ff;
 	--color-error-light: #fee1e1;
 	--color-gray-light: #fafafa;
 	--color-gray-medium: #eeeeee;
-	--color-purple-dark: #8231ff;
-	--color-purple-medium: #b07aff;
-	--color-purple-stripe: #665cff;
-	--color-purple-gradient: #6f47ff;
 
 	/* --breakpoint-xl: 85rem; */
 	/* --breakpoint-2xl: 100rem;

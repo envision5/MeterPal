@@ -16,7 +16,7 @@ import {
 import { sendSvixEvent } from "@/external/svix/svixHelpers.js";
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
 import { generateId } from "@/utils/genUtils.js";
-import type { AutoTopupContext } from "../autoTopupContext.js";
+import type { AutoTopupAttemptContext } from "../autoTopupContext.js";
 
 const shouldEmitSuppressedWebhook = async ({
 	ctx,
@@ -123,7 +123,7 @@ export const sendAutoTopupFailedWebhook = async ({
 	reason: BillingAutoTopupFailureReason;
 	message?: string;
 	error?: unknown;
-	autoTopupContext?: AutoTopupContext;
+	autoTopupContext?: AutoTopupAttemptContext;
 	fullCustomer?: FullCustomer;
 	autoTopupConfig?: AutoTopup;
 	suppressionKey?: string;

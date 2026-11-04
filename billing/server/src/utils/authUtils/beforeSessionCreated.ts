@@ -75,7 +75,7 @@ export const beforeSessionCreated = async (
 				// without it the raw APIError body is served as JSON.
 				throw new APIError("FORBIDDEN", {
 					code: "SSO_INVITATION_REQUIRED",
-					message: `Ask your Autumn admin to invite you to ${orgName ?? "this organization"} before signing in with SSO.`,
+					message: `Ask your MeterPal admin to invite you to ${orgName ?? "this organization"} before signing in with SSO.`,
 				});
 			}
 			return {

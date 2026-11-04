@@ -24,7 +24,7 @@ Usage is controlled two ways:
 The response carries OpenAI-style usage accounting: `prompt_tokens` INCLUDES
 cached input (prompt = in + cache_read + cache_write), and cached tokens are
 also exposed as `prompt_tokens_details.cached_tokens`.  That is exactly the
-rule the Autumn bridge applies when it splits the pools, so balances move by
+rule the MeterPal bridge applies when it splits the pools, so balances move by
 the numbers you asked for.
 
 Run:  python demo/mock_llm.py          # serves http://localhost:9999

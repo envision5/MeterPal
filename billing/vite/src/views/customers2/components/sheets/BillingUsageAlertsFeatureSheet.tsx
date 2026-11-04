@@ -236,7 +236,7 @@ export function BillingUsageAlertsFeatureSheet() {
 												<span className="flex items-center gap-1 truncate text-xs text-tertiary-foreground">
 													{isPlan && (
 														<CubeIcon
-															className="size-3 shrink-0 text-violet-500"
+															className="size-3 shrink-0 text-[#264082]"
 															weight="duotone"
 														/>
 													)}

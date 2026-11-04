@@ -33,7 +33,7 @@ export const canAutoSync = ({
 		return {
 			eligible: false,
 			reason: "no_matched_plans",
-			details: "No Autumn plans matched the current phase.",
+			details: "No MeterPal plans matched the current phase.",
 		};
 	}
 
@@ -44,7 +44,7 @@ export const canAutoSync = ({
 		return {
 			eligible: false,
 			reason: "multiple_main_plans",
-			details: `Stripe sub matched ambiguous non-add-on Autumn plans: ${mainPlans
+			details: `Stripe sub matched ambiguous non-add-on MeterPal plans: ${mainPlans
 				.map((p) => p.product.id)
 				.join(", ")} (${duplicateMainPlanGroup})`,
 		};

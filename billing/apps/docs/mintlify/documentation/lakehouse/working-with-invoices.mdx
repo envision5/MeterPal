@@ -5,7 +5,7 @@ description: "Revenue, and paying-customer metrics — the rows to drop and the 
 ---
 
 <Warning>
-  **Available on request** — The Autumn Lakehouse is provisioned per customer. Contact us at [hey@useautumn.com](mailto:hey@useautumn.com) to get access.
+  **Available on request** — The MeterPal Lakehouse is provisioned per customer. Contact us at [hey@useautumn.com](mailto:hey@useautumn.com) to get access.
 </Warning>
 
 The same lesson as [Working with balances](/documentation/lakehouse/balance-semantics) applies across the rest of the schema: **the warehouse stores inputs; the business number is a derivation that drops rows.** Columns are named like a clean OLTP table, but realized revenue, MRR, and paying-customer counts each require knowing which rows to exclude and which column actually carries truth. The traps below all surfaced from running realistic BI queries against live data.

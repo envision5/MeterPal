@@ -508,7 +508,7 @@ export function ScopePicker() {
 						style={{
 							width: `${percent}%`,
 							height: "100%",
-							background: "#8838ff",
+							background: "#264082",
 							transition: "width 150ms linear",
 						}}
 					/>
@@ -618,8 +618,8 @@ const selectStyle: React.CSSProperties = {
 
 function pillStyle(active: boolean): React.CSSProperties {
 	return {
-		background: active ? "#8838ff" : "#1a1a1a",
-		border: `1px solid ${active ? "#8838ff" : "#2a2a2a"}`,
+		background: active ? "#264082" : "#1a1a1a",
+		border: `1px solid ${active ? "#264082" : "#2a2a2a"}`,
 		color: active ? "#fff" : "#ccc",
 		padding: "6px 10px",
 		borderRadius: "6px",
@@ -996,8 +996,8 @@ function ParentGroup({
 							style={{
 								padding: "4px 6px",
 								fontSize: "10px",
-								background: isCurrent ? "#8838ff" : "#111",
-								border: `1px solid ${isCurrent ? "#8838ff" : color}`,
+								background: isCurrent ? "#264082" : "#111",
+								border: `1px solid ${isCurrent ? "#264082" : color}`,
 								color: isCurrent ? "#fff" : "#ccc",
 								borderRadius: "4px",
 								cursor: "pointer",

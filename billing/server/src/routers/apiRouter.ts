@@ -23,12 +23,15 @@ import { secretKeyMiddleware } from "../honoMiddlewares/secretKeyMiddleware.js";
 
 import { traceEnrichMiddleware } from "../honoMiddlewares/traceMiddleware.js";
 import type { HonoEnv } from "../honoUtils/HonoEnv.js";
-import {
-	redemptionRouter,
-	referralRouter,
-} from "../internal/api/rewards/referralRouter";
-import { rewardProgramRouter } from "../internal/api/rewards/rewardProgramRouter";
-import { rewardRouter } from "../internal/api/rewards/rewardRouter";
+// [REWARDS DISABLED] Unmounted the rewards/referral public API.
+// To re-enable: uncomment the four imports below, the four route mounts
+// (search "[REWARDS DISABLED]"), and the referralRpcRouter lines in rpcRouter.ts.
+// import {
+// 	redemptionRouter,
+// 	referralRouter,
+// } from "../internal/api/rewards/referralRouter";
+// import { rewardProgramRouter } from "../internal/api/rewards/rewardProgramRouter";
+// import { rewardRouter } from "../internal/api/rewards/rewardRouter";
 import { balancesRouter } from "../internal/balances/balancesRouter";
 import { billingRouter } from "../internal/billing/billingRouter";
 import { paypalRouter } from "../internal/billing/paypal/paypalRouter";
@@ -87,10 +90,12 @@ apiRouter.route("/platform/beta", platformBetaRouter);
 
 apiRouter.route("/organization", honoOrgRouter);
 
-apiRouter.route("/rewards", rewardRouter);
-apiRouter.route("/reward_programs", rewardProgramRouter);
-apiRouter.route("/referrals", referralRouter);
-apiRouter.route("/redemptions", redemptionRouter);
+// [REWARDS DISABLED] Public rewards/referral/redemption routes unmounted —
+// see the import block above for re-enable instructions.
+// apiRouter.route("/rewards", rewardRouter);
+// apiRouter.route("/reward_programs", rewardProgramRouter);
+// apiRouter.route("/referrals", referralRouter);
+// apiRouter.route("/redemptions", redemptionRouter);
 apiRouter.route("/query", legacyAnalyticsRouter);
 apiRouter.route("/events", eventsRouter);
 

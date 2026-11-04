@@ -26,7 +26,7 @@ export const resolveChargeFromInvoice = async ({
 	if (paidPayments.length > 1) {
 		throw new RecaseError({
 			message:
-				"This invoice has multiple payments and cannot be refunded via Autumn, please visit the Stripe dashboard to perform this action.",
+				"This invoice has multiple payments and cannot be refunded via MeterPal, please visit the Stripe dashboard to perform this action.",
 			code: ErrCode.InvalidRequest,
 			statusCode: 400,
 		});

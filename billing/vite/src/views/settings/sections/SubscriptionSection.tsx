@@ -21,7 +21,7 @@ export const SubscriptionSection = () => {
 	return (
 		<SettingsSection
 			title="Subscription"
-			description="Manage your Autumn subscription and billing"
+			description="Manage your MeterPal subscription and billing"
 			card={{
 				title: "Billing Portal",
 				description:

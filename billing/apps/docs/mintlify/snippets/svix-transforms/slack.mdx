@@ -13,7 +13,7 @@
  */
 function handler(webhook) {
   var AUTUMN_BASE = "https://app.useautumn.com/customers/";
-  var AUTUMN_USERNAME = "Autumn";
+  var AUTUMN_USERNAME = "MeterPal";
   var AUTUMN_ICON_URL = "https://i.ibb.co/BHCF1ZqL/autumnicon.png";
 
   var payload = webhook.payload || {};
@@ -100,7 +100,7 @@ function handler(webhook) {
         elements: [
           {
             type: "button",
-            text: { type: "plain_text", text: "View in Autumn", emoji: true },
+            text: { type: "plain_text", text: "View in MeterPal", emoji: true },
             url: AUTUMN_BASE + customerId,
             style: "primary"
           }
@@ -176,7 +176,7 @@ function handler(webhook) {
         elements: [
           {
             type: "button",
-            text: { type: "plain_text", text: "View in Autumn", emoji: true },
+            text: { type: "plain_text", text: "View in MeterPal", emoji: true },
             url: AUTUMN_BASE + lrCustomerId,
             style: "danger"
           }
@@ -266,7 +266,7 @@ function handler(webhook) {
         elements: [
           {
             type: "button",
-            text: { type: "plain_text", text: "View in Autumn", emoji: true },
+            text: { type: "plain_text", text: "View in MeterPal", emoji: true },
             url: AUTUMN_BASE + uaCustomerId
           }
         ]

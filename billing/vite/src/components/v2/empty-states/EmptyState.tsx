@@ -74,7 +74,7 @@ export const EmptyState = ({
 				return {
 					title: "API Keys",
 					description:
-						"Create an API key to authenticate requests to the Autumn API",
+						"Create an API key to authenticate requests to the MeterPal API",
 					svg: apiKeysSvg,
 				};
 			case "migrations":

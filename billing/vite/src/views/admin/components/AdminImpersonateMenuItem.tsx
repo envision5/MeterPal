@@ -1,6 +1,7 @@
 import { DropdownMenuItem } from "@autumn/ui";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useAxiosInstance } from "@/services/useAxiosInstance";
 import { impersonateUser } from "../adminUtils";
 import { useAdmin } from "../hooks/useAdmin";
 
@@ -13,6 +14,7 @@ export const AdminImpersonateMenuItem = ({
 }) => {
 	const [loading, setLoading] = useState(false);
 	const { isCurrentlyImpersonating } = useAdmin();
+	const axiosInstance = useAxiosInstance();
 
 	return (
 		<DropdownMenuItem
@@ -26,6 +28,7 @@ export const AdminImpersonateMenuItem = ({
 						userId,
 						organizationId,
 						isCurrentlyImpersonating,
+						axiosInstance,
 					});
 				} catch (error: unknown) {
 					const errorMessage =

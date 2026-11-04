@@ -29,7 +29,7 @@ export const getOAuthConsentScopeGrant = async ({
 		getRequestedOAuthResourceScopes(requestedScopes ?? []).length === 0
 	) {
 		throw new RecaseError({
-			message: "At least one Autumn resource scope must be selected",
+			message: "At least one MeterPal resource scope must be selected",
 			code: ErrCode.InsufficientScopes,
 			statusCode: 403,
 		});

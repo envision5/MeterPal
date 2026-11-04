@@ -54,6 +54,16 @@ export const FullCustomerSchema = CustomerSchema.extend({
 	subscriptions: z.array(SubscriptionSchema).optional(),
 	entity: EntitySchema.optional(),
 
+	// Raw customers-table columns the full-customer read carries (used by the
+	// PayPal billing paths). Optional so cached entries written before these
+	// columns existed stay parseable.
+	litellm_virtual_key: z.string().nullish(),
+	paypal_subscription_id: z.string().nullish(),
+	paypal_plan_id: z.string().nullish(),
+	paypal_payment_status: z.string().nullish(),
+	paypal_payer_id: z.string().nullish(),
+	paypal_billing_agreement_id: z.string().nullish(),
+
 	trials_used: z
 		.array(
 			z.object({
@@ -100,6 +110,15 @@ export type FullCustomer = Customer & {
 	migration_item_runs?: MigrationItemRunData[];
 	/** Hydrated by customer/subject readers; optional for legacy cached objects. */
 	pooled_customer_entitlements?: FullCustomerEntitlement[];
+
+	// Raw customers-table columns carried by the full-customer read; the
+	// PayPal billing paths (lifecycle, auto top-up) read them directly.
+	litellm_virtual_key?: string | null;
+	paypal_subscription_id?: string | null;
+	paypal_plan_id?: string | null;
+	paypal_payment_status?: string | null;
+	paypal_payer_id?: string | null;
+	paypal_billing_agreement_id?: string | null;
 };
 
 export const CustomerWithProductsSchema = CustomerSchema.extend({

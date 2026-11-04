@@ -326,7 +326,7 @@ const options = {
 
 		passkey({
 			rpID: passkeyRpID,
-			rpName: "Autumn",
+			rpName: "MeterPal",
 			origin: passkeyOrigins.length === 1 ? passkeyOrigins[0]! : passkeyOrigins,
 		}),
 

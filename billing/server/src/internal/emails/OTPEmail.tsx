@@ -34,7 +34,7 @@ const OTPEmail = (props: { otpCode: string }) => {
 
 						<Section className="border-t border-gray-200 pt-[24px]">
 							<Text className="text-gray-500 text-[12px] leading-[16px] m-0">
-								Autumn
+								MeterPal
 								<br />
 								2261 Market Street STE 22390
 								<br />

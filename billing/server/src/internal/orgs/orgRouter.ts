@@ -12,6 +12,7 @@ import { handleSaveRCMappings } from "@/external/revenueCat/handlers/handleSaveR
 import { handleSyncRevenueCatProducts } from "@/external/revenueCat/handlers/handleSyncRevenueCatProducts.js";
 import type { HonoEnv } from "@/honoUtils/HonoEnv.js";
 import { organizationSsoRouter } from "@/internal/auth/sso/ssoRouter.js";
+import { setupRouter } from "@/internal/setup/setupRouter.js";
 import { handleDisconnectRevenueCat } from "@/internal/orgs/handlers/revenueCatHandlers/handleDisconnectRevenueCat.js";
 import {
 	handleGetRevenueCatWebhook,
@@ -86,6 +87,8 @@ internalOrgRouter.get(
 // Mounted under /organization, so this resolves to
 // POST /organization/onboardingStatus.
 internalOrgRouter.post("/onboardingStatus", ...handleGetOnboardingStatus);
+// The onboarding wizard's state and its two actions.
+internalOrgRouter.route("/setup", setupRouter);
 internalOrgRouter.route("/sso", organizationSsoRouter);
 
 export const honoOrgRouter = new Hono<HonoEnv>();

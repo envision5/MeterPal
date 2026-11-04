@@ -60,7 +60,7 @@ export const validateStripeSubscriptionActionOwnership = ({
 
 	throw new RecaseError({
 		message:
-			"Cannot update subscription because it was not created by Autumn. Import or relink the subscription with no_billing_changes before changing billing.",
+			"Cannot update subscription because it was not created by MeterPal. Import or relink the subscription with no_billing_changes before changing billing.",
 		code: ErrCode.InvalidRequest,
 		statusCode: 400,
 		data: {

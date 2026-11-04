@@ -74,7 +74,7 @@ Preview with `atmn push`, then apply with `atmn push --yes`.
 
 ### Prepaid per-unit
 
-With prepaid, the customer selects a **total quantity** when purchasing. The `quantity` includes any free included amount — Autumn subtracts the included amount and charges for the remainder.
+With prepaid, the customer selects a **total quantity** when purchasing. The `quantity` includes any free included amount — MeterPal subtracts the included amount and charges for the remainder.
 
 For example, with 5 included seats at \$10/extra seat, a customer who selects `quantity: 10` gets 10 seats total and pays for 5 extra seats (\$50/month).
 
@@ -131,12 +131,12 @@ curl -X POST "https://api.useautumn.com/v1/billing/attach" \
 The customer's balance is set to the total quantity (10). If they're upgrading and already have seats in use, the existing usage is carried over — so a customer with 3 seats in use would see a remaining balance of 7.
 
 <Note>
-Autumn does not prevent you from passing a `quantity` lower than the customer's current usage. If the customer has 5 seats in use and you pass `quantity: 3`, the balance goes negative (-2). The `check` endpoint will return `allowed: false`, preventing new seats from being added, but existing seats are not forcibly removed.
+MeterPal does not prevent you from passing a `quantity` lower than the customer's current usage. If the customer has 5 seats in use and you pass `quantity: 3`, the balance goes negative (-2). The `check` endpoint will return `allowed: false`, preventing new seats from being added, but existing seats are not forcibly removed.
 </Note>
 
 ### Usage-based per-unit
 
-With usage-based billing, no quantity is needed at purchase time. Track seat additions and removals as they happen, and Autumn bills for the actual number of seats in use.
+With usage-based billing, no quantity is needed at purchase time. Track seat additions and removals as they happen, and MeterPal bills for the actual number of seats in use.
 
 <CodeGroup>
 
@@ -203,7 +203,7 @@ When a customer purchases the plan, any seats already in use are **automatically
 
 ## Existing usage on upgrade
 
-When a customer upgrades from one plan to another, Autumn **automatically carries over** their current seat usage to the new plan. This ensures there's no gap in tracking — existing seats don't disappear or go unbilled.
+When a customer upgrades from one plan to another, MeterPal **automatically carries over** their current seat usage to the new plan. This ensures there's no gap in tracking — existing seats don't disappear or go unbilled.
 
 ### Prepaid
 

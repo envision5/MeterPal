@@ -1,11 +1,11 @@
 ---
 title: "Introduction"
-description: "How Autumn's React hooks work"
+description: "How MeterPal's React hooks work"
 ---
 
 ## How Hooks Work
 
-Autumn's React hooks connect to your backend via the `autumnHandler`. When you call a hook, it makes a request to your backend route (e.g., `/api/autumn`), which securely communicates with Autumn's API using your secret key.
+MeterPal's React hooks connect to your backend via the `autumnHandler`. When you call a hook, it makes a request to your backend route (e.g., `/api/autumn`), which securely communicates with MeterPal's API using your secret key.
 
 All hooks are built on [TanStack Query](https://tanstack.com/query) and return standard query results (`data`, `isLoading`, `error`, `refetch`). You can pass `queryOptions` to customize caching, refetching, and other query behaviors.
 

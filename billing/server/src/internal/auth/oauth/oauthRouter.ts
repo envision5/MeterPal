@@ -56,7 +56,7 @@ oauthRouter.get("/.well-known/oauth-protected-resource", (c) => {
 	return c.json(
 		getProtectedResourceMetadata({
 			issuerBaseUrl: baseUrl,
-			resourceName: "Autumn API",
+			resourceName: "MeterPal API",
 			resourceUrl: baseUrl,
 		}),
 	);

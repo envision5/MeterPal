@@ -12,6 +12,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
 	type AvailableModel,
+	type DeploymentUpdate,
 	type ServedModel,
 	useServedModelsQuery,
 } from "@/hooks/queries/useServedModelsQuery";
@@ -20,6 +21,7 @@ import {
 	SETTINGS_LIST_CLASS,
 	SettingsGroup,
 } from "@/views/settings/components/SettingsGroup";
+import { type DeploymentCreateValues, DeploymentsSection } from "./DeploymentsSection";
 
 /** What one megabyte of tokens costs, for a quick sanity read. */
 const formatCost = (value: number | null | undefined) => {
@@ -34,6 +36,10 @@ const ServedModelRow = ({
 	onChange,
 	onRemove,
 	isSaving,
+	onCreateDeployment,
+	onUpdateDeployment,
+	onRemoveDeployment,
+	isDeploymentBusy,
 }: {
 	model: ServedModel;
 	providerInput: number | null;
@@ -41,6 +47,13 @@ const ServedModelRow = ({
 	onChange: (update: Partial<ServedModel>) => void;
 	onRemove: () => void;
 	isSaving: boolean;
+	onCreateDeployment: (values: DeploymentCreateValues) => Promise<void>;
+	onUpdateDeployment: (
+		deploymentId: string,
+		values: DeploymentUpdate,
+	) => Promise<void>;
+	onRemoveDeployment: (deploymentId: string) => Promise<void>;
+	isDeploymentBusy: boolean;
 }) => {
 	const [input, setInput] = useState(
 		model.input_cost_usd_1m?.toString() ?? "",
@@ -159,6 +172,14 @@ const ServedModelRow = ({
 				</div>
 				{isSaving && <span className="pb-1.5 text-subtle text-tiny">Saving…</span>}
 			</div>
+
+			<DeploymentsSection
+				deployments={model.deployments ?? []}
+				onCreate={onCreateDeployment}
+				onUpdate={onUpdateDeployment}
+				onRemove={onRemoveDeployment}
+				isBusy={isDeploymentBusy}
+			/>
 		</div>
 	);
 };
@@ -172,10 +193,25 @@ export const ModelsPage = () => {
 		upsert,
 		isUpserting,
 		remove,
+		createDeployment,
+		isCreatingDeployment,
+		updateDeployment,
+		isUpdatingDeployment,
+		removeDeployment,
+		isRemovingDeployment,
 	} = useServedModelsQuery();
 
 	const [search, setSearch] = useState("");
 	const [adding, setAdding] = useState<string | null>(null);
+
+	// The custom-model form: any "<provider>/<name>" the catalog does not
+	// know -- a self-hosted endpoint, an OpenAI-compatible provider.
+	const [customOpen, setCustomOpen] = useState(false);
+	const [customModelId, setCustomModelId] = useState("");
+	const [customDisplayName, setCustomDisplayName] = useState("");
+	const [customInput, setCustomInput] = useState("");
+	const [customOutput, setCustomOutput] = useState("");
+	const isCustomModelIdValid = /.+\/.+/.test(customModelId.trim());
 
 	const providerCosts = useMemo(() => {
 		const map = new Map<string, AvailableModel>();
@@ -230,6 +266,69 @@ export const ModelsPage = () => {
 		}
 	};
 
+	const handleCreateDeployment = async (
+		model: ServedModel,
+		values: DeploymentCreateValues,
+	) => {
+		try {
+			await createDeployment({ modelId: model.model_id, ...values });
+			toast.success("Instance added");
+		} catch (error) {
+			toast.error(getBackendErr(error, "Failed to add the instance"));
+			throw error;
+		}
+	};
+
+	const handleUpdateDeployment = async (
+		model: ServedModel,
+		deploymentId: string,
+		values: DeploymentUpdate,
+	) => {
+		try {
+			await updateDeployment({
+				modelId: model.model_id,
+				deploymentId,
+				...values,
+			});
+			toast.success("Instance updated");
+		} catch (error) {
+			toast.error(getBackendErr(error, "Failed to update the instance"));
+			throw error;
+		}
+	};
+
+	const handleRemoveDeployment = async (model: ServedModel, deploymentId: string) => {
+		try {
+			await removeDeployment({ modelId: model.model_id, deploymentId });
+			toast.success("Instance removed");
+		} catch (error) {
+			toast.error(getBackendErr(error, "Failed to remove the instance"));
+			throw error;
+		}
+	};
+
+	const handleAddCustomModel = async () => {
+		try {
+			await upsert({
+				model_id: customModelId.trim(),
+				display_name: customDisplayName.trim() || null,
+				enabled: true,
+				input_cost_usd_1m:
+					customInput.trim() === "" ? null : Number(customInput),
+				output_cost_usd_1m:
+					customOutput.trim() === "" ? null : Number(customOutput),
+			});
+			toast.success(`${customModelId.trim()} added`);
+			setCustomOpen(false);
+			setCustomModelId("");
+			setCustomDisplayName("");
+			setCustomInput("");
+			setCustomOutput("");
+		} catch (error) {
+			toast.error(getBackendErr(error, "Failed to add the model"));
+		}
+	};
+
 	return (
 		<div className="flex flex-col gap-10">
 			<SettingsGroup
@@ -266,6 +365,20 @@ export const ModelsPage = () => {
 								onChange={(update) => handleChange(model, update)}
 								onRemove={() => handleRemove(model)}
 								isSaving={isUpserting}
+								onCreateDeployment={(values) =>
+									handleCreateDeployment(model, values)
+								}
+								onUpdateDeployment={(deploymentId, values) =>
+									handleUpdateDeployment(model, deploymentId, values)
+								}
+								onRemoveDeployment={(deploymentId) =>
+									handleRemoveDeployment(model, deploymentId)
+								}
+								isDeploymentBusy={
+									isCreatingDeployment ||
+									isUpdatingDeployment ||
+									isRemovingDeployment
+								}
 							/>
 						))}
 					</div>
@@ -317,11 +430,94 @@ export const ModelsPage = () => {
 										Add
 									</Button>
 								</div>
-							))}
-						</div>
-					)}
-				</div>
-			</SettingsGroup>
-		</div>
-	);
-};
+								))}
+							</div>
+						)}
+
+						{customOpen ? (
+							<div className="flex flex-col gap-3 rounded-lg border bg-background px-3 py-3">
+								<div className="flex flex-wrap items-end gap-3">
+									<div className="flex flex-col gap-1">
+										<span className="text-subtle text-tiny">Model id</span>
+										<Input
+											className="w-56"
+											value={customModelId}
+											onChange={(e) => setCustomModelId(e.target.value)}
+											placeholder="custom/my-model"
+											autoComplete="off"
+										/>
+									</div>
+									<div className="flex flex-col gap-1">
+										<span className="text-subtle text-tiny">Display name</span>
+										<Input
+											className="w-44"
+											value={customDisplayName}
+											onChange={(e) => setCustomDisplayName(e.target.value)}
+											placeholder="Optional"
+											autoComplete="off"
+										/>
+									</div>
+									<div className="flex flex-col gap-1">
+										<span className="text-subtle text-tiny">Input $/1M</span>
+										<Input
+											className="w-28"
+											value={customInput}
+											onChange={(e) => setCustomInput(e.target.value)}
+											placeholder="0.00"
+											inputMode="decimal"
+										/>
+									</div>
+									<div className="flex flex-col gap-1">
+										<span className="text-subtle text-tiny">Output $/1M</span>
+										<Input
+											className="w-28"
+											value={customOutput}
+											onChange={(e) => setCustomOutput(e.target.value)}
+											placeholder="0.00"
+											inputMode="decimal"
+										/>
+									</div>
+								</div>
+								<p className="text-subtle text-xs leading-4">
+									Anything the catalog does not know: a self-hosted endpoint,
+									an OpenAI-compatible provider. Use a{" "}
+									<code className="font-mono text-foreground text-tiny">
+										provider/name
+									</code>{" "}
+									id, then add instances for it on the model above.
+								</p>
+								<div className="flex gap-2">
+									<Button
+										size="sm"
+										onClick={handleAddCustomModel}
+										isLoading={isUpserting}
+										disabled={!isCustomModelIdValid}
+									>
+										Add model
+									</Button>
+									<Button
+										size="sm"
+										variant="secondary"
+										type="button"
+										onClick={() => setCustomOpen(false)}
+									>
+										Cancel
+									</Button>
+								</div>
+							</div>
+						) : (
+							<div>
+								<Button
+									variant="secondary"
+									size="sm"
+									onClick={() => setCustomOpen(true)}
+								>
+									Add a custom model
+								</Button>
+							</div>
+						)}
+					</div>
+				</SettingsGroup>
+			</div>
+		);
+	};

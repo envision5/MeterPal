@@ -101,7 +101,7 @@ export function LicenseAssignedEntities({
 							<Button
 								variant="skeleton"
 								onClick={() => goToEntity(assignment.entity_id)}
-								className="font-medium hover:text-purple-600 cursor-pointer min-w-0 px-0! hover:bg-transparent active:bg-transparent active:border-none"
+								className="font-medium hover:text-[#264082] cursor-pointer min-w-0 px-0! hover:bg-transparent active:bg-transparent active:border-none"
 							>
 								<span className="truncate">
 									{entityLabel(assignment.entity_id)}

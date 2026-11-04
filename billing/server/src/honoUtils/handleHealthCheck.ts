@@ -49,5 +49,5 @@ export const handleHealthCheck = async (c: Context<HonoEnv>) => {
 			return c.text("Redis not ready", 503);
 		}
 	}
-	return c.text("Hello from Autumn (test 1) 🍂🍂🍂");
+	return c.text("Hello from MeterPal");
 };

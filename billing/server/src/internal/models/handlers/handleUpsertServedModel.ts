@@ -14,6 +14,7 @@ import { z } from "zod/v4";
 import { generateId } from "@/utils/genUtils.js";
 import { createRoute } from "@/honoMiddlewares/routeHandler.js";
 import { syncOrgLitellmKeys } from "@/internal/keys/litellmKeys.js";
+import { recordConfigAudit } from "@/internal/audit/configAudit.js";
 
 export const handleUpsertServedModel = createRoute({
 	scopes: [Scopes.Organisation.Write],
@@ -70,6 +71,21 @@ export const handleUpsertServedModel = createRoute({
 						...values,
 					})
 					.returning();
+
+		// Spec §5: every price-sheet edit (including a price change) lands in
+		// the config audit trail.
+		await recordConfigAudit({
+			ctx,
+			action: "served_model.upsert",
+			resource: body.model_id,
+			metadata: {
+				created: !existing,
+				enabled: values.enabled,
+				input_cost_usd_1m: values.input_cost_usd_1m,
+				output_cost_usd_1m: values.output_cost_usd_1m,
+				markup_pct: values.markup_pct,
+			},
+		});
 
 		// The gateway enforces the model allow-list on the key, so the
 		// merchant's price sheet has to reach it, not just this server.

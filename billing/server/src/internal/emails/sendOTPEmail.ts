@@ -1,6 +1,6 @@
 import { logger } from "@/external/logtail/logtailUtils.js";
 import { createResendCli } from "@/external/resend/resendUtils.js";
-import { FROM_AUTUMN } from "./constants.js";
+import { FROM_METERPAL } from "./constants.js";
 import OTPEmail from "./OTPEmail.js";
 
 const sendOTPEmail = async ({ email, otp }: { email: string; otp: string }) => {
@@ -13,9 +13,9 @@ const sendOTPEmail = async ({ email, otp }: { email: string; otp: string }) => {
 		logger.info(`Sending OTP email to ${email}`);
 		const resend = createResendCli();
 		const { error } = await resend.emails.send({
-			from: FROM_AUTUMN,
+			from: FROM_METERPAL,
 			to: email,
-			subject: "Your verification code for Autumn",
+			subject: "Your verification code for MeterPal",
 			react: OTPEmail({ otpCode: otp }),
 		});
 		if (error) throw error;

@@ -3,7 +3,6 @@ import { Button } from "@autumn/ui";
 import {
 	ChartColumn,
 	Cpu,
-	Gift,
 	KeyRound,
 	Layers,
 	Package,
@@ -11,12 +10,14 @@ import {
 	Users,
 	Webhook,
 	Workflow,
+	Rocket,
 } from "lucide-react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useLocalStorage } from "@/hooks/common/useLocalStorage";
 import { useScopes } from "@/hooks/useScopes";
 import { cn } from "@/lib/utils";
 import { useEnv } from "@/utils/envUtils";
+import { MIGRATIONS_ENABLED } from "@/views/migrations/migrationsEnabled";
 import { OrgDropdown } from "./components/OrgDropdown";
 import { EnvDropdown } from "./EnvDropdown";
 import { NavButton } from "./NavButton";
@@ -102,6 +103,12 @@ export const MainSidebar = ({
 					<EnvDropdown env={env} />
 					<nav className="flex flex-col gap-[18px]">
 						<SidebarSearchButton />
+						<NavButton
+							value="setup"
+							icon={<Rocket strokeWidth={ICON_STROKE} />}
+							title="Setup"
+							env={env}
+						/>
 						<NavSection title="Catalog">
 							<NavButton
 								value="products"
@@ -116,13 +123,6 @@ export const MainSidebar = ({
 								subValue="features"
 								icon={<Layers strokeWidth={ICON_STROKE} />}
 								title="Features"
-								env={env}
-							/>
-							<NavButton
-								value="products"
-								subValue="rewards"
-								icon={<Gift strokeWidth={ICON_STROKE} />}
-								title="Rewards"
 								env={env}
 							/>
 							<NavButton
@@ -146,7 +146,7 @@ export const MainSidebar = ({
 								title="Usage"
 								env={env}
 							/>
-							{canSeeMigrations && (
+							{MIGRATIONS_ENABLED && canSeeMigrations && (
 								<NavButton
 									value="migrations"
 									icon={<Workflow strokeWidth={ICON_STROKE} />}

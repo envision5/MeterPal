@@ -78,7 +78,7 @@ export class RCMappingService {
 		// than provisioning against an arbitrarily-picked product.
 		if (matches.length > 1) {
 			throw new RecaseError({
-				message: `RevenueCat product ${revenuecatProductId} is mapped to multiple Autumn products (${matches
+				message: `RevenueCat product ${revenuecatProductId} is mapped to multiple MeterPal products (${matches
 					.map((m) => m.autumn_product_id)
 					.join(", ")}). Resolve the ambiguous mapping before syncing.`,
 				code: ErrCode.InvalidRequest,

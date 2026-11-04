@@ -14,7 +14,7 @@ const SHARED_PARAM_DOCS = leafSkillBundle(["autumn-billing"])
  * block (plus the tool schema) is a cacheable prompt prefix. */
 export const buildSystemPrompt = (tool: GenerateBillingTool) => {
 	const rules = [
-		`You convert a natural-language billing request into structured parameters for Autumn's ${tool} operation, in one shot.`,
+		`You convert a natural-language billing request into structured parameters for MeterPal's ${tool} operation, in one shot.`,
 		generationRegistry[tool].promptFragment,
 		SHARED_PARAM_DOCS,
 		"IMPORTANT — one-shot overrides. The docs above are written for an interactive agent; you are not one. These rules take precedence over anything above:",

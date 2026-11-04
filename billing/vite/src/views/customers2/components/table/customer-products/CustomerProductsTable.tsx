@@ -49,7 +49,7 @@ function createScopeColumn(
 						e.stopPropagation();
 						setEntityId(entity.internal_id);
 					}}
-					className="font-medium hover:text-purple-600 cursor-pointer max-w-full justify-start px-0! hover:bg-transparent active:bg-transparent active:border-none"
+					className="font-medium hover:text-[#264082] cursor-pointer max-w-full justify-start px-0! hover:bg-transparent active:bg-transparent active:border-none"
 				>
 					<span className="truncate min-w-0 text-left">
 						{entity.name || entity.internal_id || "PENDING"}
@@ -175,7 +175,7 @@ export function CustomerProductsTable() {
 						className="px-1! ml-2"
 						onClick={() =>
 							window.open(
-								"https://docs.useautumn.com/documentation/getting-started/setup",
+								"https://docs.meterpal.dev/documentation/getting-started/setup",
 								"_blank",
 							)
 						}

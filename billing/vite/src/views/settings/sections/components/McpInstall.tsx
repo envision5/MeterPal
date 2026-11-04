@@ -15,7 +15,7 @@ import {
 	SettingsGroup,
 } from "../../components/SettingsGroup";
 
-const MCP_NAME = "autumn";
+const MCP_NAME = "meterpal";
 const MCP_URL = "https://mcp.useautumn.com/mcp";
 
 // Web-redirect deeplinks the editors register to one-click install a remote server.
@@ -118,7 +118,7 @@ export const McpInstall = () => {
 	return (
 		<SettingsGroup
 			title="Use in your editor"
-			description="Add Autumn's MCP server to your AI client. You sign in from the editor, no API key needed."
+			description="Add MeterPal's MCP server to your AI client. You sign in from the editor, no API key needed."
 		>
 			<div className={SETTINGS_LIST_CLASS}>
 				<div role="tablist" className="flex flex-wrap gap-0.5 px-2 py-1.5">

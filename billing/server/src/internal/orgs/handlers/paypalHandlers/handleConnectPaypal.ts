@@ -12,14 +12,17 @@
 // live <-> live).  A sandbox dashboard therefore connects a sandbox REST app,
 // so a test checkout can never create a live PayPal subscription.
 
-import { AppEnv, RecaseError, Scopes } from "@autumn/shared";
+import { RecaseError, Scopes } from "@autumn/shared";
 import { z } from "zod/v4";
+import { getPaypalClient } from "@/external/paypal/paypalClient.js";
 import { getMiscRedis } from "@/external/redis/miscCache/getMiscRedis.js";
 import { createRoute } from "@/honoMiddlewares/routeHandler.js";
+import { recordConfigAudit } from "@/internal/audit/configAudit.js";
 import { encryptData } from "@/utils/encryptUtils.js";
 import { OrgService } from "../../OrgService.js";
 import {
 	billingEnvForPaypalEnv,
+	ensurePaypalWebhook,
 	paypalEnvForBillingEnv,
 	verifyPaypalCredentials,
 } from "./paypalConfigUtils.js";
@@ -93,17 +96,78 @@ export const handleConnectPaypal = createRoute({
 			.del(`${org.id}:${billingEnv}:paypal_token:${paypalEnv}`)
 			.catch(() => {});
 
+		// Auto-register the webhook so merchants don't paste an id by hand.
+		// Best-effort: a PayPal hiccup here must not fail the connect — the
+		// dashboard still shows the webhook URL for manual registration.
+		let webhookId = body.webhook_id ?? null;
+		let webhookRegistered = false;
+		try {
+			const updatedOrg = await OrgService.get({ db, orgId: org.id });
+			const client = await getPaypalClient({
+				org: updatedOrg ?? org,
+				env: billingEnv,
+			});
+			const result = await ensurePaypalWebhook({
+				org: updatedOrg ?? org,
+				env: billingEnv,
+				client,
+				persist: async (id) => {
+					// Re-read: another env's config may have changed while this
+					// request ran; only this env's webhook_id is written.
+					const fresh = (await OrgService.get({ db, orgId: org.id })) ?? org;
+					const current = fresh.paypal_config ?? {};
+					const envConfigCurrent =
+						paypalEnv === "live" ? current.live : current.test;
+					if (!envConfigCurrent) return;
+					await OrgService.update({
+						db,
+						orgId: org.id,
+						updates: {
+							paypal_config: {
+								...(current.test ? { test: current.test } : {}),
+								...(current.live ? { live: current.live } : {}),
+								...(paypalEnv === "live"
+									? { live: { ...envConfigCurrent, webhook_id: id } }
+									: { test: { ...envConfigCurrent, webhook_id: id } }),
+							},
+						},
+					});
+				},
+			});
+			webhookId = result.webhookId;
+			webhookRegistered = result.created;
+		} catch (error) {
+			logger.warn("paypal connect: webhook auto-registration failed", {
+				orgId: org.id,
+				env: billingEnv,
+				error: String(error),
+			});
+		}
+
+		await recordConfigAudit({
+			ctx,
+			action: "paypal.connect",
+			resource: org.id,
+			metadata: {
+				paypal_env: paypalEnv,
+				account_email: accountEmail,
+				webhook_registered: webhookRegistered,
+			},
+		});
+
 		logger.info("paypal connected for org", {
 			orgId: org.id,
 			env: billingEnv,
 			accountEmail,
+			webhookRegistered,
 		});
 
 		return c.json({
 			connected: true,
 			env: paypalEnv,
 			account_email: accountEmail,
-			webhook_id: body.webhook_id ?? null,
+			webhook_id: webhookId,
+			webhook_registered: webhookRegistered,
 		});
 	},
 });

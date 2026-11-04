@@ -77,7 +77,7 @@ export const createAPIKeyTableColumns = (): ColumnDef<ApiKey, unknown>[] => [
 			if (source.type === "cli") {
 				return (
 					<div className="flex justify-start items-center">
-						<span className="text-tiny flex items-center gap-1 px-1.5 py-0.5 bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400 rounded-md">
+						<span className="text-tiny flex items-center gap-1 px-1.5 py-0.5 bg-[#e8effb] dark:bg-[#264082]/30 text-[#264082] dark:text-[#7b90c4] rounded-md">
 							<TerminalIcon size={12} />
 							CLI
 						</span>
@@ -90,7 +90,7 @@ export const createAPIKeyTableColumns = (): ColumnDef<ApiKey, unknown>[] => [
 					<div className="flex justify-start items-center">
 						<span className="text-tiny flex items-center gap-1 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-md">
 							<ShieldCheckIcon size={12} />
-							Autumn Support
+							MeterPal Support
 						</span>
 					</div>
 				);

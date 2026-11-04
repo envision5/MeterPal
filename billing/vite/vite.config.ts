@@ -186,7 +186,14 @@ export default defineConfig({
 						changeOrigin: false,
 					},
 				}
-			: undefined,
+				// Local dev: the emulated Google flow points at mock-cloud
+				// (demo/mock_cloud.py), so sign-in works with no external accounts.
+				: {
+						"/o/oauth2": {
+							target: "http://127.0.0.1:9998",
+							changeOrigin: false,
+						},
+					},
 		watch: {
 			usePolling: true, // Required for file watching in Docker on Windows
 			interval: 1000,

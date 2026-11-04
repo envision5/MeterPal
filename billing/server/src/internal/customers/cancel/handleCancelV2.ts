@@ -8,6 +8,7 @@ import { setupUpdateSubscriptionBillingContext } from "@/internal/billing/v2/act
 import { discardPendingPlanIfAny } from "@/internal/billing/v2/execute/pendingCustomerProducts/discardPendingPlanIfAny";
 import { executeBillingPlan } from "@/internal/billing/v2/execute/executeBillingPlan";
 import { voidInvoicesOnImmediateCancel } from "@/internal/billing/v2/execute/voidInvoicesOnImmediateCancel";
+import { handlePaypalSubscriptionCancelAction } from "@/internal/billing/paypal/paypalSubscriptionLifecycle.js";
 import { evaluateStripeBillingPlan } from "@/internal/billing/v2/providers/stripe/actionBuilders/evaluateStripeBillingPlan";
 import { logStripeBillingPlan } from "@/internal/billing/v2/providers/stripe/logs/logStripeBillingPlan";
 import { logStripeBillingResult } from "@/internal/billing/v2/providers/stripe/logs/logStripeBillingResult";
@@ -58,6 +59,22 @@ export const handleCancelV2 = createRoute({
 		ctx.logger.info(
 			`=============== RUNNING CANCEL FOR ${customer_id} ===============`,
 		);
+
+		// PayPal-billed customers: the Stripe-shaped pipeline has no PayPal
+		// executor — cancel through the PayPal subscriptions API instead.
+		const paypalCancel = await handlePaypalSubscriptionCancelAction({
+			ctx,
+			customerId: customer_id,
+			planId: product_id,
+			cancelAction: "cancel_immediately",
+		});
+		if (paypalCancel.handled) {
+			return c.json({
+				success: true,
+				customer_id: customer_id,
+				product_id: product_id,
+			});
+		}
 
 		const discarded = await discardPendingPlanIfAny({
 			ctx,

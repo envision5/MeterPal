@@ -1,12 +1,12 @@
 import { logger } from "@/external/logtail/logtailUtils.js";
 import { sendTextEmail } from "@/external/resend/resendUtils.js";
 import { safeResend } from "@/external/resend/safeResend.js";
-import { FROM_AUTUMN } from "./constants.js";
+import { FROM_METERPAL } from "./constants.js";
 
 const getInvitationEmailBody = ({ orgName }: { orgName: string }) => {
-	return `Hey there! You've been invited to join ${orgName} on Autumn. 
+	return `Hey there! You've been invited to join ${orgName} on MeterPal. 
 
-Click the link below to create an account / sign in to Autumn and accept the invitation.
+Click the link below to create an account / sign in to MeterPal and accept the invitation.
 
 ${process.env.CLIENT_URL}/sign-in
   `;
@@ -24,9 +24,9 @@ export const sendInvitationEmail = safeResend({
 	}) => {
 		logger.info(`Sending invitation email to ${email}`);
 		await sendTextEmail({
-			from: FROM_AUTUMN,
+			from: FROM_METERPAL,
 			to: email,
-			subject: `Join ${orgName} on Autumn`,
+			subject: `Join ${orgName} on MeterPal`,
 			body: getInvitationEmailBody({ orgName }),
 		});
 	},

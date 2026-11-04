@@ -295,7 +295,7 @@ When a feature is part of a [credit system](/documentation/modelling-pricing/cre
 > **Example — per-feature cap inside a credit system** <br />
 > Your `credits` system is spent by `images`, `transcriptions`, and `exports`. Customers can spend credits freely across all three, but you cap `exports` at **10 per day** so one feature can't drain the whole balance. A check or track on `exports` is blocked at 10/day even if plenty of credits remain.
 
-When more than one cap applies to a check (the cap on the evaluated feature and a cap on its parent credit system), Autumn enforces the **tightest** one — the remaining headroom is the minimum across all armed caps.
+When more than one cap applies to a check (the cap on the evaluated feature and a cap on its parent credit system), MeterPal enforces the **tightest** one — the remaining headroom is the minimum across all armed caps.
 
 ## Usage Alerts
 
@@ -395,7 +395,7 @@ curl -X POST "https://api.useautumn.com/v1/customers/update" \
 
 Each alert fires **once** per threshold crossing. It won't re-fire unless usage drops below the threshold and crosses it again.
 
-When triggered, Autumn sends a `balances.usage_alert_triggered` [webhook](/documentation/webhooks). See the [webhook schema](/api-reference/webhooks/balancesUsageAlertTriggered) for the full payload.
+When triggered, MeterPal sends a `balances.usage_alert_triggered` [webhook](/documentation/webhooks). See the [webhook schema](/api-reference/webhooks/balancesUsageAlertTriggered) for the full payload.
 
 For more details and examples, see [Spend Limits & Usage Alerts](/documentation/modelling-pricing/spend-limits#usage-alerts).
 
@@ -404,7 +404,7 @@ For more details and examples, see [Spend Limits & Usage Alerts](/documentation/
 Auto top-ups automatically replenish a customer's prepaid balance when it drops below a configured threshold. This prevents service interruptions for customers who don't want to manually manage their credits.
 
 > **Example** <br />
-> A customer gets 5,000 credits per month. When their balance drops below 500, Autumn automatically purchases 1,000 more credits using the plan's one-off prepaid price.
+> A customer gets 5,000 credits per month. When their balance drops below 500, MeterPal automatically purchases 1,000 more credits using the plan's one-off prepaid price.
 
 Auto top-ups require a plan with a [one-off prepaid](/documentation/modelling-pricing/one-off-purchases) item for the feature, and the customer must have a payment method on file.
 

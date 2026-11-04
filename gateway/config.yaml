@@ -1,13 +1,13 @@
 # litellm/config.yaml
 #
-# LiteLLM proxy configuration with the Autumn billing bridge.
+# LiteLLM proxy configuration with the MeterPal billing bridge.
 #
 # Start the proxy: litellm --config config.yaml
 #
 # Security notes:
 #   - master_key must be set via env var, never committed.
 #   - callbacks registered below are the ONLY admission/usage source.
-#   - disable_budget_reservation makes Autumn the sole authority; remove
+#   - disable_budget_reservation makes MeterPal the sole authority; remove
 #     that line if you want LiteLLM's per-key budgets to layer on top.
 
 litellm_settings:
@@ -34,9 +34,9 @@ general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY
   database_url: os.environ/DATABASE_URL
 
-  # Disable LiteLLM's native budget reservation.  Autumn is the sole
+  # Disable LiteLLM's native budget reservation.  MeterPal is the sole
   # admission controller.  Remove this line if you want to layer
-  # LiteLLM's per-key / per-team budgets on top of Autumn.
+  # LiteLLM's per-key / per-team budgets on top of MeterPal.
   disable_budget_reservation: true
 
   # Auth hardening
@@ -94,7 +94,7 @@ model_list:
 
   # ─── Demo models (mock provider, no real keys needed) ────────────────
   # Both point at demo/mock_llm.py (localhost:9999).  "demo-gpt" is billed
-  # by Autumn as custom/demo-gpt at the rates configured in the feature's
+  # by MeterPal as custom/demo-gpt at the rates configured in the feature's
   # model_markups; "gpt-4o-mini-mock" is billed at models.dev list rates
   # for openai/gpt-4o-mini.  AUTUMN_MODEL_ID_MAP (litellm/.env) maps the
   # LiteLLM names to those billable ids.
@@ -110,7 +110,7 @@ model_list:
       api_key: os.environ/MOCK_LLM_API_KEY
   # ─── Agnes AI (real model, free trial tier, OpenAI-compatible) ────────
   # Base URL + Bearer key per https://wiki.agnes-ai.com/en/docs/overview.
-  # Billed by Autumn as custom/agnes-2.5-flash via the feature's
+  # Billed by MeterPal as custom/agnes-2.5-flash via the feature's
   # model_markups (PAB_MODEL_ID_MAP bridges the name).
   - model_name: agnes-flash
     litellm_params:

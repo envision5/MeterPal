@@ -1,6 +1,6 @@
 ---
 title: "Managing Customers"
-description: "Learn how to view and manage customer information in Autumn"
+description: "Learn how to view and manage customer information in MeterPal"
 ---
 
 The customer details page provides a comprehensive view of a customer's information, subscriptions, and usage. You can access this by clicking on any customer from the [Customers page](https://app.useautumn.com/customers).
@@ -102,7 +102,7 @@ curl -X POST "https://api.useautumn.com/v1/customers/update" \
 
 ## Billing Details
 
-Billing details are the tax and invoicing fields stored on the customer's linked Stripe customer: billing address, tax IDs (e.g. VAT), tax exemption, and custom fields printed on every invoice (e.g. a PO number). Autumn doesn't store them; it writes them to Stripe and reads them back live.
+Billing details are the tax and invoicing fields stored on the customer's linked Stripe customer: billing address, tax IDs (e.g. VAT), tax exemption, and custom fields printed on every invoice (e.g. a PO number). MeterPal doesn't store them; it writes them to Stripe and reads them back live.
 
 | Field | Behaviour |
 | --- | --- |
@@ -172,7 +172,7 @@ const customer = await autumn.customers.get({
 });
 ```
 
-You can also pass `billing_details` when creating a customer; Autumn creates the Stripe customer if needed. On update, the customer must already be linked to a Stripe customer.
+You can also pass `billing_details` when creating a customer; MeterPal creates the Stripe customer if needed. On update, the customer must already be linked to a Stripe customer.
 
 <Note>
   Invalid values (for example a malformed VAT number) are rejected with Stripe's

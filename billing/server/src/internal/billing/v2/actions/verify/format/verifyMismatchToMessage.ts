@@ -75,7 +75,7 @@ const describeItemMismatch = (mismatch: ItemMismatch): string => {
 					: ""
 			}`;
 		case "unexpected":
-			return `Stripe price unmatched — ${planPriceLabel(mismatch) ?? "item"} not in Autumn${actualPrice}`;
+			return `Stripe price unmatched — ${planPriceLabel(mismatch) ?? "item"} not in MeterPal${actualPrice}`;
 		case "quantity_mismatch": {
 			if (mismatch.price_type === "fixed") {
 				return `Base price unmatched — ${planPriceLabel(mismatch) ?? "base price"}: expected ${mismatch.expected_quantity}, Stripe has ${mismatch.actual_quantity}`;
@@ -83,7 +83,7 @@ const describeItemMismatch = (mismatch: ItemMismatch): string => {
 			return `Quantity for ${label} differs — expected ${mismatch.expected_quantity}, Stripe has ${mismatch.actual_quantity}`;
 		}
 		case "price_mismatch":
-			return `Price for ${label} differs from Autumn's record`;
+			return `Price for ${label} differs from MeterPal's record`;
 	}
 };
 
@@ -96,30 +96,30 @@ const describeScheduleMismatch = (mismatch: ScheduleMismatch): string => {
 				?.map((startSeconds) => formatUnixToDateTime(startSeconds * 1000))
 				.join(", ");
 			return phaseStarts
-				? `Stripe schedule phases not in Autumn — starting ${phaseStarts}`
-				: "Stripe has a subscription schedule Autumn doesn't expect";
+				? `Stripe schedule phases not in MeterPal — starting ${phaseStarts}`
+				: "Stripe has a subscription schedule MeterPal doesn't expect";
 		}
 		case "phase_count_mismatch":
 			return `Schedule phase count differs — expected ${mismatch.expected_phase_count}, Stripe has ${mismatch.actual_phase_count}`;
 		case "phase_start_mismatch":
-			return "A schedule phase starts at a different time than Autumn expects";
+			return "A schedule phase starts at a different time than MeterPal expects";
 		case "billing_cycle_anchor_mismatch":
-			return "Schedule billing cycle anchor differs from Autumn's record";
+			return "Schedule billing cycle anchor differs from MeterPal's record";
 	}
 };
 
 const describe = (mismatch: SubscriptionMismatch): string => {
 	switch (mismatch.type) {
 		case "stripe_sub_not_in_autumn":
-			return "Active Stripe subscription has no linked Autumn products";
+			return "Active Stripe subscription has no linked MeterPal products";
 		case "plan_on_ending_subscription":
 			return `Active Stripe subscription is unlinked while the customer's plan is linked to ${mismatch.ending_subscription_id}, which is ending — the customer loses the plan when it ends`;
 		case "stale_subscription_link":
-			return "Autumn products link to a Stripe subscription that is not in the customer's active set";
+			return "MeterPal products link to a Stripe subscription that is not in the customer's active set";
 		case "expected_state_error":
-			return `Could not compute Autumn's expected Stripe state — ${mismatch.error}`;
+			return `Could not compute MeterPal's expected Stripe state — ${mismatch.error}`;
 		case "shared_stripe_customer":
-			return `Stripe customer ${mismatch.stripe_customer_id} is also linked to Autumn customer(s): ${mismatch.other_customer_ids.join(", ")}`;
+			return `Stripe customer ${mismatch.stripe_customer_id} is also linked to MeterPal customer(s): ${mismatch.other_customer_ids.join(", ")}`;
 		case "base_price_mismatch": {
 			const { reason, expected_amount, actual_amount } = mismatch;
 			const label = planPriceLabel(mismatch);
@@ -131,7 +131,7 @@ const describe = (mismatch: SubscriptionMismatch): string => {
 				return `Base price unmatched — ${label ?? "base price"}${quantityClause}${mismatch.expected_price_id ? ` (${mismatch.expected_price_id})` : ""}`;
 			}
 			if (reason === "unexpected") {
-				return `Stripe price unmatched — ${label ?? "item"} not in Autumn${mismatch.actual_price_id ? ` (${mismatch.actual_price_id})` : ""}`;
+				return `Stripe price unmatched — ${label ?? "item"} not in MeterPal${mismatch.actual_price_id ? ` (${mismatch.actual_price_id})` : ""}`;
 			}
 			return `Base price differs — expected ${expected_amount}, Stripe has ${actual_amount}`;
 		}
@@ -145,11 +145,11 @@ const describe = (mismatch: SubscriptionMismatch): string => {
 			return describeScheduleMismatch(mismatch);
 		case "cancel_state_mismatch": {
 			if (mismatch.expected_canceling && mismatch.actual_canceling) {
-				return "Subscription cancels at a different time than Autumn expects";
+				return "Subscription cancels at a different time than MeterPal expects";
 			}
 			return mismatch.actual_canceling
-				? "Stripe shows this subscription canceling but Autumn doesn't expect it"
-				: "Autumn expects this subscription to be canceling but Stripe shows it active";
+				? "Stripe shows this subscription canceling but MeterPal doesn't expect it"
+				: "MeterPal expects this subscription to be canceling but Stripe shows it active";
 		}
 		case "reward_mismatch": {
 			const parts = [

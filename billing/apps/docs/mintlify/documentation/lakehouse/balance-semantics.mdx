@@ -5,10 +5,10 @@ description: "What v2_3_balances, v2_3_breakdowns, and v2_3_rollovers actually m
 ---
 
 <Warning>
-  **Available on request** — The Autumn Lakehouse is provisioned per customer. Contact us at [hey@useautumn.com](mailto:hey@useautumn.com) to get access.
+  **Available on request** — The MeterPal Lakehouse is provisioned per customer. Contact us at [hey@useautumn.com](mailto:hey@useautumn.com) to get access.
 </Warning>
 
-`v2_3_balances` and `v2_3_breakdowns` look like a tidy relational schema, but they aren't one. They are **denormalized snapshots of Autumn's read-time balance computation** — the same computation behind `GET /customers/:id` and the dashboard. Read them as columns named after their source values rather than as a schema you can do naive arithmetic on, and the surprises below disappear.
+`v2_3_balances` and `v2_3_breakdowns` look like a tidy relational schema, but they aren't one. They are **denormalized snapshots of MeterPal's read-time balance computation** — the same computation behind `GET /customers/:id` and the dashboard. Read them as columns named after their source values rather than as a schema you can do naive arithmetic on, and the surprises below disappear.
 
 If you only take one thing from this page: **the warehouse keeps every entitlement row, the API does not.** To reproduce an API or dashboard figure you must re-apply the filter the API applies — active products, non-expired entitlements, current cycle. And **add the rollovers back in**, because they live in their own table now.
 
@@ -76,7 +76,7 @@ Rollover balance also feeds back into overage: unspent rollover is available all
 
 There is **no overage column** on `v2_3_balances` or `v2_3_breakdowns`. Overage is computed at read time, and there are **two distinct figures** that are easy to conflate. They use the same per-row quantity (`usage - granted = -balance`) but floor at different points, so they give different answers.
 
-**Billable overage** — what Autumn invoices. Per entitlement, `max(0, -balance)`, **floored per row, then summed**. Equivalently `Σ max(0, usage - included_grant - prepaid_grant)`. An undrawn grant on one entitlement never reduces the bill on another.
+**Billable overage** — what MeterPal invoices. Per entitlement, `max(0, -balance)`, **floored per row, then summed**. Equivalently `Σ max(0, usage - included_grant - prepaid_grant)`. An undrawn grant on one entitlement never reduces the bill on another.
 
 ```text
 billable_overage = Σ  max(0, usage - included_grant - prepaid_grant)   -- floor each row, then sum
@@ -110,7 +110,7 @@ A ready-to-run query that applies all of this and reproduces the dashboard's ove
 
 ## Deduction order (why monthly drains before lifetime)
 
-When usage is recorded, Autumn deducts from entitlements **shortest-reset-interval-first** (a daily grant drains before a monthly, which drains before a lifetime/`one_off`), after a few higher-priority rules — entity-scoped before pooled when tracking an entity, unlimited first, prepaid before pay-per-use. This is why, when a customer has both a monthly grant and a lifetime grant for the same feature, the monthly empties first and overage lands on whichever pool is drained last. It matters for analytics because it determines **which** breakdown row shows the overage, not just the total.
+When usage is recorded, MeterPal deducts from entitlements **shortest-reset-interval-first** (a daily grant drains before a monthly, which drains before a lifetime/`one_off`), after a few higher-priority rules — entity-scoped before pooled when tracking an entity, unlimited first, prepaid before pay-per-use. This is why, when a customer has both a monthly grant and a lifetime grant for the same feature, the monthly empties first and overage lands on whichever pool is drained last. It matters for analytics because it determines **which** breakdown row shows the overage, not just the total.
 
 ## Footgun: `IS NULL` throws on these tables
 

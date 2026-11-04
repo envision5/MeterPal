@@ -10,6 +10,7 @@
 // affected — it is not the org's to remove.
 
 import { Scopes } from "@autumn/shared";
+import { recordConfigAudit } from "@/internal/audit/configAudit.js";
 import { getMiscRedis } from "@/external/redis/miscCache/getMiscRedis.js";
 import { createRoute } from "@/honoMiddlewares/routeHandler.js";
 import { OrgService } from "../../OrgService.js";
@@ -52,6 +53,13 @@ export const handleDeletePaypal = createRoute({
 		await getMiscRedis()
 			.del(`${org.id}:${billingEnvForPaypalEnv(paypalEnv)}:paypal_token:${paypalEnv}`)
 			.catch(() => {});
+
+		await recordConfigAudit({
+			ctx,
+			action: "paypal.disconnect",
+			resource: org.id,
+			metadata: { paypal_env: paypalEnv },
+		});
 
 		logger.info("paypal disconnected for org", {
 			orgId: org.id,

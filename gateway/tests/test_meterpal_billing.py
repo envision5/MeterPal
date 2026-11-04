@@ -2,7 +2,7 @@
 #
 # Unit tests for the MeterPalBridge CustomLogger. Run with pytest.
 #
-# These tests do NOT need a live Autumn or Redis. They mock httpx so the
+# These tests do NOT need a live MeterPal or Redis. They mock httpx so the
 # bridge's HTTP calls are deterministic. They verify:
 #   - admission short-circuit raises 402 when balance is exhausted
 #   - lock_id is plumbed through metadata when PAB_USE_LOCK=true
@@ -368,7 +368,7 @@ def test_model_id_map_normalizes_aliases(env):
 @pytest.mark.asyncio
 async def test_check_sends_required_balance(env, mock_httpx):
     """The /check body carries PAB_REQUIRED_BALANCE so admission demands
-    explicit headroom instead of relying on Autumn's server-side default."""
+    explicit headroom instead of relying on MeterPal's server-side default."""
     env.setenv("PAB_REQUIRED_BALANCE", "0.5")
     sys.modules.pop("litellm.integrations.meterpal_billing", None)
     mod = importlib.import_module("litellm.integrations.meterpal_billing")

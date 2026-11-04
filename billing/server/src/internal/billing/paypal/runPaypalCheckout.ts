@@ -12,25 +12,27 @@
 // Webhook handlers (external/paypal/runPaypalWebhookHandlers.ts) read these to
 // grant credits to the right customer without relying on emails.
 
+import type { AppEnv } from "@autumn/shared";
 import {
 	BillingInterval,
-	PriceType,
-	RecaseError,
 	customers,
-	paypalCatalogMap,
-	paypalOrderIntents,
 	type FullProduct,
 	type Organization,
 	type Price,
+	PriceType,
+	paypalCatalogMap,
+	paypalOrderIntents,
+	RecaseError,
 } from "@autumn/shared";
 import { and, desc, eq } from "drizzle-orm";
 import type { DrizzleCli } from "@/db/initDrizzle.js";
-import type { AttachParams } from "@/internal/customers/cusProducts/AttachParams.js";
+import { logger } from "@/external/logtail/logtailUtils.js";
 import { createOrder, type OrderResponse } from "@/external/paypal/orders.js";
 import {
 	getPaypalClient,
 	type PaypalClient,
 } from "@/external/paypal/paypalClient.js";
+import { activatePaypalSubscription } from "@/external/paypal/runPaypalWebhookHandlers.js";
 import {
 	approvalLink,
 	approvalTokenFromUrl,
@@ -40,16 +42,18 @@ import {
 	createSubscription,
 	getSubscription,
 	intervalToPaypalUnit,
-	reviseSubscription,
 	type PayPalSubscription,
+	reviseSubscription,
 } from "@/external/paypal/subscriptions.js";
-import { activatePaypalSubscription } from "@/external/paypal/runPaypalWebhookHandlers.js";
 import {
 	decidePaypalSubscriptionAction,
 	isLivePaypalSubscription,
 } from "@/internal/billing/paypal/decideSubscriptionAction.js";
-import type { AppEnv } from "@autumn/shared";
-import { logger } from "@/external/logtail/logtailUtils.js";
+import {
+	decidePaypalPlanResync,
+	syncPaypalCatalogForProduct,
+} from "@/internal/billing/paypal/paypalCatalogSync.js";
+import type { AttachParams } from "@/internal/customers/cusProducts/AttachParams.js";
 
 /**
  * USD amount for a price, major units.  Handles both stored shapes:
@@ -75,7 +79,7 @@ export function priceAmountUsd(price: Price): number | null {
  */
 function subAmountUsd(product: FullProduct): number {
 	const subPrice = recurringFixedPrice(product);
-	return subPrice ? priceAmountUsd(subPrice) ?? 0 : 0;
+	return subPrice ? (priceAmountUsd(subPrice) ?? 0) : 0;
 }
 
 /**
@@ -292,7 +296,39 @@ export async function ensurePaypalPlan({
 			),
 		)
 		.limit(1);
-	if (existing?.paypal_plan_id) return existing.paypal_plan_id;
+	if (existing?.paypal_plan_id) {
+		// The mapped PayPal plan must never charge a stale price: if the
+		// product's recurring price drifted from the mapping (an edit-time
+		// sync failed, or the plan was versioned), re-sync before the buyer is
+		// redirected.  In-sync products skip the PayPal call entirely.
+		const decision = decidePaypalPlanResync({ mapRow: existing, product });
+		if (decision.action !== "in_sync") {
+			try {
+				await syncPaypalCatalogForProduct({ db, org, env, product });
+				const [updated] = await db
+					.select()
+					.from(paypalCatalogMap)
+					.where(
+						and(
+							eq(paypalCatalogMap.org_id, org.id),
+							eq(paypalCatalogMap.env, env),
+							eq(paypalCatalogMap.product_id, product.id),
+						),
+					)
+					.limit(1);
+				if (updated?.paypal_plan_id) return updated.paypal_plan_id;
+			} catch (err) {
+				// Fall through to the mapped plan rather than failing checkout —
+				// the edit-time sync will surface the problem to the merchant.
+				logger.warn({
+					msg: "paypal checkout: plan re-sync failed, using the mapped plan",
+					productId: product.id,
+					error: String(err),
+				});
+			}
+		}
+		return existing.paypal_plan_id;
+	}
 
 	const price = recurringFixedPrice(product);
 	if (!price) {
@@ -358,6 +394,7 @@ export async function ensurePaypalPlan({
 				paypal_plan_id: row.paypal_plan_id,
 				amount_usd: row.amount_usd,
 				interval: row.interval,
+				name: row.name,
 			},
 		});
 
@@ -407,10 +444,10 @@ async function abandonOtherIntents({
 			// Only CREATED orders are cancellable at PayPal; best-effort either
 			// way — APPROVED-but-uncaptured ones are left to expire, charging
 			// nobody.
-			await client.fetch(
-				`/v2/checkout/orders/${intent.order_id}/cancel`,
-				{ method: "POST", body: "{}" },
-			);
+			await client.fetch(`/v2/checkout/orders/${intent.order_id}/cancel`, {
+				method: "POST",
+				body: "{}",
+			});
 		} catch {
 			// already processed / not cancellable — still stop tracking it
 		}

@@ -50,7 +50,7 @@ export const OrgDetails = () => {
 	return (
 		<SettingsGroup
 			title="General"
-			description="How your organization shows up across Autumn."
+			description="How your organization shows up across MeterPal."
 			trailing={
 				isDirty && (
 					<Button size="sm" onClick={handleSave} isLoading={saving}>

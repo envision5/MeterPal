@@ -37,28 +37,28 @@ export function PanelButton({
 			<div
 				className={`absolute top-1.5 left-1.5 w-1.5 h-1.5 rounded-full ${
 					isSelected
-						? "bg-violet-200 dark:bg-violet-800"
+						? "bg-[#e8effb] dark:bg-[#264082]"
 						: "bg-neutral-200 dark:bg-neutral-800"
 				}`}
 			/>
 			<div
 				className={`absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full ${
 					isSelected
-						? "bg-violet-200 dark:bg-violet-800"
+						? "bg-[#e8effb] dark:bg-[#264082]"
 						: "bg-neutral-200 dark:bg-neutral-800"
 				}`}
 			/>
 			<div
 				className={`absolute bottom-1.5 left-1.5 w-1.5 h-1.5 rounded-full ${
 					isSelected
-						? "bg-violet-200 dark:bg-violet-800"
+						? "bg-[#e8effb] dark:bg-[#264082]"
 						: "bg-neutral-200 dark:bg-neutral-800"
 				}`}
 			/>
 			<div
 				className={`absolute bottom-1.5 right-1.5 w-1.5 h-1.5 rounded-full ${
 					isSelected
-						? "bg-violet-200 dark:bg-violet-800"
+						? "bg-[#e8effb] dark:bg-[#264082]"
 						: "bg-neutral-200 dark:bg-neutral-800"
 				}`}
 			/>

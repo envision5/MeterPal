@@ -351,7 +351,7 @@ curl -X POST "https://api.useautumn.com/v1/billing.attach" \
 
 </CodeGroup>
 
-With 1 included seat and `quantity: 5`, the customer gets 5 seats and pays for 4. Attach again with a new `quantity` to change the count later — Autumn prorates the difference.
+With 1 included seat and `quantity: 5`, the customer gets 5 seats and pays for 4. Attach again with a new `quantity` to change the count later — MeterPal prorates the difference.
 
 <Note>
 A **priced** license plan must be attached at the customer level before it can be assigned to entities. Buying seats with `licenseQuantities` does this for you.
@@ -398,7 +398,7 @@ curl -X POST "https://api.useautumn.com/v1/licenses.attach" \
 
 </CodeGroup>
 
-`feature_id` is the entity type and is required only when the entity doesn't exist yet — Autumn creates it for you. You can pass several entities in one call.
+`feature_id` is the entity type and is required only when the entity doesn't exist yet — MeterPal creates it for you. You can pass several entities in one call.
 
 <Note>
 Assignment is idempotent. Re-assigning an entity that already holds an active license for the same plan succeeds without consuming another seat. If the pool has no seats left, the call errors — buy more seats first.

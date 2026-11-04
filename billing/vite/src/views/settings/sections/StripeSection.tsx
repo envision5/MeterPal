@@ -6,7 +6,7 @@ export const StripeSection = () => {
 	return (
 		<SettingsSection
 			title="Stripe"
-			description="How Autumn interacts and maps to your Stripe account."
+			description="How MeterPal interacts and maps to your Stripe account."
 			actions={<EnvironmentBadge />}
 		>
 			<ConfigureStripe />

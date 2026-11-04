@@ -28,7 +28,7 @@ import { useOnboardingVisibility } from "@/views/onboarding/hooks/useOnboardingP
 import { NavButton } from "./NavButton";
 
 export function SidebarContact() {
-	const email = "hey@useautumn.com";
+	const email = "support@meterpal.dev";
 	const env = useEnv();
 	const navigate = useNavigate();
 	const { show: showOnboardingGuide } = useOnboardingVisibility();
@@ -78,7 +78,7 @@ export function SidebarContact() {
 						className="cursor-pointer"
 					>
 						<div className="flex items-center justify-between w-full">
-							<span>hey@useautumn.com</span>
+							<span>support@meterpal.dev</span>
 							<CopyTextButton
 								text={email}
 								className="bg-transparent shadow-none hover:bg-zinc-200 w-6 gap-0 h-6 !px-0 py-0 flex items-center justify-center text-muted-foreground"
@@ -86,7 +86,7 @@ export function SidebarContact() {
 						</div>
 					</DropdownMenuItem>
 					<DropdownMenuItem
-						onClick={() => window.open("https://cal.com/ayrod", "_blank")}
+						onClick={() => { window.location.href = `mailto:${email}`; }}
 						className="cursor-pointer"
 					>
 						Book a call
@@ -139,7 +139,7 @@ export function SidebarContact() {
 					<LongInput
 						value={feedback}
 						onChange={(e) => setFeedback(e.target.value)}
-						placeholder={`The worst part about Autumn is...\n\nI really wish Autumn had....\n\nThe part I found most confusing was...`}
+						placeholder={`The worst part about MeterPal is...\n\nI really wish MeterPal had....\n\nThe part I found most confusing was...`}
 						className="min-h-[120px]"
 					/>
 					<DialogFooter>

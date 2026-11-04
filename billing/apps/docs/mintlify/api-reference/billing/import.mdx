@@ -10,7 +10,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
 ### Body Parameters
 
 <DynamicParamField body="customer_id" type="string" required>
-  Autumn customer to image into.
+  MeterPal customer to image into.
 </DynamicParamField>
 
 <DynamicParamField body="customer_data" type="object">
@@ -29,7 +29,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
     </DynamicParamField>
 
     <DynamicParamField body="created_at" type="integer">
-      Unix ms timestamp the customer signed up, so a migrated customer keeps its original signup date. Defaults to the import time for a customer Autumn creates here.
+      Unix ms timestamp the customer signed up, so a migrated customer keeps its original signup date. Defaults to the import time for a customer MeterPal creates here.
     </DynamicParamField>
 
   </Expandable>
@@ -78,7 +78,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
       The single plan on this billable (provide either plan or phases, not both).
       <Expandable title="properties">
         <DynamicParamField body="plan_id" type="string" required>
-          The Autumn plan to attach to the customer.
+          The MeterPal plan to attach to the customer.
         </DynamicParamField>
 
         <DynamicParamField body="version" type="number">
@@ -192,7 +192,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
     </DynamicResponseField>
 
     <DynamicResponseField name="mismatch" type="boolean">
-      True when the imaged state may be wrong — e.g. a resetting plan with no resolvable billing anchor, or a paid recurring plan with no linked subscription for Autumn to manage. The plan is still imaged; see `reason` and fix by supplying started_at or a subscription_id.
+      True when the imaged state may be wrong — e.g. a resetting plan with no resolvable billing anchor, or a paid recurring plan with no linked subscription for MeterPal to manage. The plan is still imaged; see `reason` and fix by supplying started_at or a subscription_id.
     </DynamicResponseField>
 
     <DynamicResponseField name="reason" type="string">
@@ -4353,7 +4353,7 @@ import { DynamicResponseExample } from "/snippets/dynamic-response-example.jsx";
         </DynamicResponseField>
 
         <DynamicResponseField name="disable_overage_billing" type="boolean">
-          Stops Autumn from posting usage-overage line items to Stripe for this customer. Check/track and balance resets still behave normally. When set, this overrides the organization-level disable_overage_billing setting.
+          Stops MeterPal from posting usage-overage line items to Stripe for this customer. Check/track and balance resets still behave normally. When set, this overrides the organization-level disable_overage_billing setting.
         </DynamicResponseField>
 
       </Expandable>

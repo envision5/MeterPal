@@ -19,7 +19,7 @@ export function VersionChangeRow({
 			)}
 		>
 			<div className="flex flex-row items-center flex-1 gap-2 min-w-0 overflow-hidden">
-				<GitBranchIcon size={14} weight="duotone" className="text-purple-500" />
+				<GitBranchIcon size={14} weight="duotone" className="text-[#264082]" />
 				<span className="text-sm text-muted-foreground">Plan Version</span>
 			</div>
 			<div className="flex items-center gap-1 text-xs">

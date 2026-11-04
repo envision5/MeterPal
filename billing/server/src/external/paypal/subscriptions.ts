@@ -127,7 +127,9 @@ export async function createBillingPlan({
 		tenure_type: "REGULAR",
 		sequence: billingCycles.length + 1,
 		total_cycles: 0, // infinite
-		pricing_scheme: { fixed_price: { value: toUsd(amountUsd), currency_code: "USD" } },
+		pricing_scheme: {
+			fixed_price: { value: toUsd(amountUsd), currency_code: "USD" },
+		},
 	});
 
 	return client.fetch<PayPalPlan>("/v1/billing/plans", {
@@ -150,9 +152,111 @@ export async function createBillingPlan({
 export async function getBillingPlan(
 	client: PaypalClient,
 	planId: string,
-): Promise<PayPalPlan> {
-	return client.fetch<PayPalPlan>(`/v1/billing/plans/${planId}`, {
-		method: "GET",
+): Promise<PayPalPlan & { billing_cycles?: PayPalBillingCycle[] }> {
+	return client.fetch<PayPalPlan & { billing_cycles?: PayPalBillingCycle[] }>(
+		`/v1/billing/plans/${planId}`,
+		{ method: "GET" },
+	);
+}
+
+export interface PayPalBillingCycle {
+	tenure_type: "TRIAL" | "REGULAR";
+	sequence: number;
+	total_cycles: number;
+	pricing_scheme?: { fixed_price?: { value: string; currency_code: string } };
+}
+
+/** The sequence of the plan's single REGULAR billing cycle (1, or 2 with a trial). */
+export function regularCycleSequence(plan: {
+	billing_cycles?: PayPalBillingCycle[];
+}): number {
+	return (
+		plan.billing_cycles?.find((c) => c.tenure_type === "REGULAR")?.sequence ?? 1
+	);
+}
+
+/**
+ * Updates a plan's REGULAR-cycle price in place.
+ *
+ * Spec: POST /v1/billing/plans/{id}/update-pricing-schemes.  PayPal applies
+ * the change to future subscriptions; existing ones are unaffected for
+ * payments within 10 days of the change.
+ */
+export async function updatePlanPricing({
+	client,
+	planId,
+	cycleSequence,
+	amountUsd,
+	idempotencyKey,
+}: {
+	client: PaypalClient;
+	planId: string;
+	/** The billing_cycle_sequence of the REGULAR cycle (see regularCycleSequence). */
+	cycleSequence: number;
+	amountUsd: number;
+	idempotencyKey?: string;
+}): Promise<void> {
+	await client.fetch(`/v1/billing/plans/${planId}/update-pricing-schemes`, {
+		method: "POST",
+		body: JSON.stringify({
+			pricing_schemes: [
+				{
+					billing_cycle_sequence: cycleSequence,
+					pricing_scheme: {
+						fixed_price: { value: toUsd(amountUsd), currency_code: "USD" },
+					},
+				},
+			],
+		}),
+		idempotencyKey,
+	});
+}
+
+/** Patches a plan's name / description (the only patchable plan attributes). */
+export async function patchBillingPlan({
+	client,
+	planId,
+	name,
+	description,
+}: {
+	client: PaypalClient;
+	planId: string;
+	name?: string;
+	description?: string;
+}): Promise<void> {
+	const patches = [
+		...(name
+			? [{ op: "replace", path: "/name", value: name.slice(0, 127) }]
+			: []),
+		...(description
+			? [
+					{
+						op: "replace",
+						path: "/description",
+						value: description.slice(0, 127),
+					},
+				]
+			: []),
+	];
+	if (patches.length === 0) return;
+	await client.fetch(`/v1/billing/plans/${planId}`, {
+		method: "PATCH",
+		body: JSON.stringify(patches),
+	});
+}
+
+/**
+ * Deactivates a billing plan.  PayPal plans cannot be deleted, so retiring a
+ * plan whose MeterPal definition changed shape (e.g. a different billing
+ * interval) means deactivating it and creating a new one.
+ */
+export async function deactivateBillingPlan(
+	client: PaypalClient,
+	planId: string,
+): Promise<void> {
+	await client.fetch(`/v1/billing/plans/${planId}/deactivate`, {
+		method: "POST",
+		body: JSON.stringify({}),
 	});
 }
 
@@ -297,13 +401,10 @@ export async function suspendSubscription(
 	subscriptionId: string,
 	note = "Suspended by MeterPal",
 ): Promise<void> {
-	await client.fetch(
-		`/v1/billing/subscriptions/${subscriptionId}/suspend`,
-		{
-			method: "POST",
-			body: JSON.stringify({ note }),
-		},
-	);
+	await client.fetch(`/v1/billing/subscriptions/${subscriptionId}/suspend`, {
+		method: "POST",
+		body: JSON.stringify({ note }),
+	});
 }
 
 /**
@@ -319,6 +420,25 @@ export async function cancelSubscription(
 	reason = "Cancelled by MeterPal",
 ): Promise<void> {
 	await client.fetch(`/v1/billing/subscriptions/${subscriptionId}/cancel`, {
+		method: "POST",
+		body: JSON.stringify({ reason: reason.slice(0, 128) }),
+	});
+}
+
+/**
+ * Reactivates a SUSPENDED subscription.
+ *
+ * PayPal's activate endpoint takes a `reason` (1..128 chars) which is
+ * "Required to reactivate the subscription".  A CANCELLED subscription
+ * cannot be reactivated — PayPal's API answers 422 — so callers must check
+ * the subscription's status first.
+ */
+export async function activateSubscription(
+	client: PaypalClient,
+	subscriptionId: string,
+	reason = "Reactivated by MeterPal",
+): Promise<void> {
+	await client.fetch(`/v1/billing/subscriptions/${subscriptionId}/activate`, {
 		method: "POST",
 		body: JSON.stringify({ reason: reason.slice(0, 128) }),
 	});

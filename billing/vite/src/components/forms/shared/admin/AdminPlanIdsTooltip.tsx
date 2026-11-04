@@ -24,7 +24,7 @@ export const AdminPlanIdsTooltip = ({
 			value: ids.stripe_product_id,
 		},
 		ids.internal_product_id && {
-			key: "Autumn internal id",
+			key: "MeterPal internal id",
 			value: ids.internal_product_id,
 		},
 	].filter(Boolean) as { key: string; value: string }[];

@@ -46,15 +46,15 @@ export const BASE_STYLES = `
 	}
 	
 	.icon-success {
-		background: linear-gradient(135deg, #f3e8ff 0%, #ede1ff 100%);
-		border: 2px solid #c4b5fd;
-		box-shadow: 0 2px 4px rgba(136, 56, 255, 0.15);
+		background: linear-gradient(135deg, #e8effb 0%, #e8effb 100%);
+		border: 2px solid #264082;
+		box-shadow: 0 2px 4px rgba(38, 64, 130, 0.15);
 	}
 	
 	@media (prefers-color-scheme: dark) {
 		.icon-success {
-			background: linear-gradient(135deg, #2d1f4e 0%, #3d2a5e 100%);
-			border: 2px solid #6b46c1;
+			background: linear-gradient(135deg, #264082 0%, #264082 100%);
+			border: 2px solid #264082;
 		}
 	}
 	
@@ -72,12 +72,12 @@ export const BASE_STYLES = `
 	}
 	
 	.icon-success svg {
-		color: #8838ff;
+		color: #264082;
 	}
-	
+
 	@media (prefers-color-scheme: dark) {
 		.icon-success svg {
-			color: #a855f7;
+			color: #f4bf3d;
 		}
 	}
 	

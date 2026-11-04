@@ -1,12 +1,12 @@
 ---
 title: "Slack and Discord Notifications"
-description: "Send Autumn webhook events to Slack or Discord channels with rich, formatted messages using Svix transformations."
+description: "Send MeterPal webhook events to Slack or Discord channels with rich, formatted messages using Svix transformations."
 ---
 
 import SlackTransform from "/snippets/svix-transforms/slack.mdx";
 import DiscordTransform from "/snippets/svix-transforms/discord.mdx";
 
-Forward Autumn webhook events to a Slack or Discord channel with ready-made
+Forward MeterPal webhook events to a Slack or Discord channel with ready-made
 [Svix transformations](https://docs.svix.com/transformations) that turn each
 event into a clean, formatted message.
 
@@ -35,13 +35,13 @@ transforms so they are never delivered to your Slack or Discord channel.
     `https://discord.com/api/webhooks/...`. Keep it handy for the next step.
   </Step>
 
-  <Step title="Add the webhook endpoint in Autumn">
-    In your Autumn dashboard, go to **Developer → Webhooks** and click
+  <Step title="Add the webhook endpoint in MeterPal">
+    In your MeterPal dashboard, go to **Developer → Webhooks** and click
     **Add Endpoint**. Paste in the URL from the previous step and select the
     events you want to subscribe to.
 
     <Frame>
-      <img src="/images/svix-notifications/01-add-endpoint.png" alt="Adding a webhook endpoint in the Autumn dashboard" />
+      <img src="/images/svix-notifications/01-add-endpoint.png" alt="Adding a webhook endpoint in the MeterPal dashboard" />
     </Frame>
   </Step>
 

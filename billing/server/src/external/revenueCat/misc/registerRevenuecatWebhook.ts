@@ -36,7 +36,7 @@ export const registerRevenuecatWebhook = async ({
 	if (existing.some((webhook) => webhook.url === url)) return "exists";
 
 	await rcCli.createWebhookIntegration({
-		name: `Autumn (${env})`,
+		name: `MeterPal (${env})`,
 		url,
 		authorization_header: secret,
 		environment: env === AppEnv.Live ? "production" : "sandbox",

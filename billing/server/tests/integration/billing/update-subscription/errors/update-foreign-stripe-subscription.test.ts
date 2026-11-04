@@ -98,7 +98,7 @@ test.concurrent(
 		expect(thrown).toBeDefined();
 		expect((thrown as { code?: string }).code).toBe(ErrCode.InvalidRequest);
 		expect((thrown as Error).message).toContain(
-			"Cannot update subscription because it was not created by Autumn",
+			"Cannot update subscription because it was not created by MeterPal",
 		);
 
 		const customer = await autumnV1.customers.get<ApiCustomerV3>(customerId);

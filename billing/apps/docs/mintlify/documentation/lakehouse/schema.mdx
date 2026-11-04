@@ -5,7 +5,7 @@ description: "Every Lakehouse table and column, with the keys to join on."
 ---
 
 <Warning>
-  **Available on request** — The Autumn Lakehouse is provisioned per customer. Contact us at [hey@useautumn.com](mailto:hey@useautumn.com) to get access.
+  **Available on request** — The MeterPal Lakehouse is provisioned per customer. Contact us at [hey@useautumn.com](mailto:hey@useautumn.com) to get access.
 </Warning>
 
 Every object is delivered as a table named `v2_3_<object>`, grouped below by lane. The **one exception is events**: the event log is immutable and unversioned, delivered as `events` (not `v2_3_events`) — see [Events](#events).
@@ -266,7 +266,7 @@ Active customer–product relationships: recurring subscriptions and one-off pur
 Feature balances, their per-entitlement breakdowns, rollover grants, and boolean feature flags.
 
 <Warning>
-  **These tables do not behave like a clean relational schema.** They are denormalized snapshots of Autumn's read-time balance computation, and they include **every** `customer_entitlement` row — across superseded product versions and past reset cycles — with **no active-status or current-cycle filter**. A naive `SELECT ... FROM v2_3_balances` therefore sums many lifetimes of a customer's history into one row. Before you query balances, breakdowns, or overage, read **[Working with balances](/documentation/lakehouse/balance-semantics)** — it explains what each column means, why `usage`/`granted`/`remaining` don't form a closed arithmetic triple, where overage comes from (it is **not** stored), and the active + current-cycle filter you must apply.
+  **These tables do not behave like a clean relational schema.** They are denormalized snapshots of MeterPal's read-time balance computation, and they include **every** `customer_entitlement` row — across superseded product versions and past reset cycles — with **no active-status or current-cycle filter**. A naive `SELECT ... FROM v2_3_balances` therefore sums many lifetimes of a customer's history into one row. Before you query balances, breakdowns, or overage, read **[Working with balances](/documentation/lakehouse/balance-semantics)** — it explains what each column means, why `usage`/`granted`/`remaining` don't form a closed arithmetic triple, where overage comes from (it is **not** stored), and the active + current-cycle filter you must apply.
 </Warning>
 
 <Warning>
@@ -487,7 +487,7 @@ The append-only usage event log. This is the highest-volume table and is **appen
 | `org_slug` | string | |
 | `internal_customer_id` | string | 🔗 → `v2_3_customers.internal_id` |
 | `env` | string | `sandbox` / `live` |
-| `created_at` | number (epoch ms) | when Autumn recorded the event |
+| `created_at` | number (epoch ms) | when MeterPal recorded the event |
 | `timestamp` | timestamp | event time — a **real timestamp**, use directly |
 | `event_name` | string | |
 | `idempotency_key` | string | |

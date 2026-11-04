@@ -49,7 +49,7 @@ const CHIP_STYLES: Record<PlanStatus, ChipStyle> = {
 	scheduled: {
 		icon: CalendarIcon,
 		label: "Scheduled",
-		toneClassName: "text-purple-600 dark:text-purple-400",
+		toneClassName: "text-[#264082] dark:text-[#7b90c4]",
 	},
 	paused: {
 		icon: PauseIcon,

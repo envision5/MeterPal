@@ -14,12 +14,12 @@ This is a three-step flow:
 ```mermaid
 sequenceDiagram
     participant App
-    participant Autumn
-    App->>Autumn: check (lock: { enabled: true, lock_id })
-    Autumn-->>App: allowed: true (balance held)
+    participant MeterPal
+    App->>MeterPal: check (lock: { enabled: true, lock_id })
+    MeterPal-->>App: allowed: true (balance held)
     App->>App: Do work (e.g. AI completion)
-    App->>Autumn: balances.finalize (lock_id, action)
-    Autumn-->>App: success: true
+    App->>MeterPal: balances.finalize (lock_id, action)
+    MeterPal-->>App: success: true
 ```
 
 ## Step 1: Check with lock
@@ -92,7 +92,7 @@ curl -X POST "https://api.useautumn.com/v1/check" \
 | Parameter | Type | Description |
 |---|---|---|
 | `enabled` | `boolean` | Must be `true` to enable locking |
-| `lock_id` | `string` | A unique identifier for this lock. You'll use this to finalize later. If omitted, Autumn generates one. |
+| `lock_id` | `string` | A unique identifier for this lock. You'll use this to finalize later. If omitted, MeterPal generates one. |
 | `expires_at` | `number` | Unix timestamp (ms) when the lock auto-expires and releases the held balance. Max 24 hours from now. |
 
 <Warning>
@@ -208,7 +208,7 @@ curl -X POST "https://api.useautumn.com/v1/balances.finalize" \
 
 </CodeGroup>
 
-Autumn will reconcile the difference — returning the unused 257 tokens back to the customer's balance.
+MeterPal will reconcile the difference — returning the unused 257 tokens back to the customer's balance.
 
 ## Use cases
 

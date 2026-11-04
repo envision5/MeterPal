@@ -69,7 +69,7 @@ export const StripeCheckoutSettings = () => {
 					<Input
 						value={successUrl}
 						onChange={(e) => setSuccessUrl(e.target.value)}
-						placeholder="eg. https://useautumn.com"
+						placeholder="eg. https://yourapp.com"
 						className={cn("!bg-background", urlError && "border-red-500")}
 					/>
 					{urlError && <p className="text-red-500 text-xs">{urlError}</p>}

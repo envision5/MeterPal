@@ -65,12 +65,12 @@ describe("getRcStoreIdentifier", () => {
 
 describe("getSubscriptionGroupName", () => {
 	test("default when group empty/null", () => {
-		expect(getSubscriptionGroupName()).toBe("Autumn - Default Group");
-		expect(getSubscriptionGroupName(null)).toBe("Autumn - Default Group");
-		expect(getSubscriptionGroupName("")).toBe("Autumn - Default Group");
+		expect(getSubscriptionGroupName()).toBe("MeterPal - Default Group");
+		expect(getSubscriptionGroupName(null)).toBe("MeterPal - Default Group");
+		expect(getSubscriptionGroupName("")).toBe("MeterPal - Default Group");
 	});
 	test("uses the plan group when set", () => {
-		expect(getSubscriptionGroupName("Premium")).toBe("Autumn - Premium Group");
+		expect(getSubscriptionGroupName("Premium")).toBe("MeterPal - Premium Group");
 	});
 });
 

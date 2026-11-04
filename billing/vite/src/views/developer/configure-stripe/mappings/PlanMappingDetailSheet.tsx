@@ -209,7 +209,7 @@ const PlanMappingDetailForm = ({
 							<span className="font-medium text-sm">Base prices</span>
 							<span className="text-tertiary-foreground text-xs">
 								Point any version at a Stripe price you already have. Leave it
-								empty and Autumn creates one.
+								empty and MeterPal creates one.
 							</span>
 						</div>
 						{groupRowsByPlan({ rows }).map((group) => {

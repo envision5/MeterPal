@@ -11,7 +11,7 @@ import { sendSvixEvent } from "@/external/svix/svixHelpers.js";
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
 import { CusService } from "@/internal/customers/CusService.js";
 import { generateId } from "@/utils/genUtils.js";
-import type { AutoTopupContext } from "../autoTopupContext.js";
+import type { AutoTopupAttemptContext } from "../autoTopupContext.js";
 
 const getInvoicePayload = ({
 	billingResult,
@@ -37,7 +37,7 @@ const getBalanceAfter = async ({
 	autoTopupContext,
 }: {
 	ctx: AutumnContext;
-	autoTopupContext: AutoTopupContext;
+	autoTopupContext: AutoTopupAttemptContext;
 }): Promise<number> => {
 	const feature = autoTopupContext.customerEntitlement.entitlement.feature;
 	const customerId =
@@ -69,7 +69,7 @@ export const sendAutoTopupSucceededWebhook = async ({
 	billingResult,
 }: {
 	ctx: AutumnContext;
-	autoTopupContext: AutoTopupContext;
+	autoTopupContext: AutoTopupAttemptContext;
 	billingResult: BillingResult;
 }) => {
 	try {

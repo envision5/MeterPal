@@ -10,7 +10,7 @@ export function WelcomeHeader() {
 			className="text-center mb-8"
 		>
 			<h1 className="text-2xl font-semibold text-foreground mb-1">
-				Welcome to Autumn
+				Welcome to MeterPal
 			</h1>
 			<p className="text-md text-tertiary-foreground font-normal">
 				Get started by describing your app's pricing model, or paste a

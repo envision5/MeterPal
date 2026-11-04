@@ -8,6 +8,7 @@ import { useEnv } from "@/utils/envUtils";
 import { navigateTo } from "@/utils/genUtils";
 import { LogsIcon } from "@/views/event-logs/LogsIcon";
 import { DEV_SUB_TABS } from "@/views/main-sidebar/MainSidebar";
+import { MIGRATIONS_ENABLED } from "@/views/migrations/migrationsEnabled";
 import {
 	SETTINGS_GROUPS,
 	useIsSettingsTabEnabled,
@@ -60,7 +61,8 @@ export const usePageCommands = (): PageCommand[] => {
 			icon: <ListChecksIcon className="size-4" />,
 			path: "/onboarding",
 		},
-		...(has(Scopes.Migrations.Read)
+		...(MIGRATIONS_ENABLED &&
+			has(Scopes.Migrations.Read)
 			? [
 					{
 						title: "Migrations",
@@ -86,7 +88,7 @@ export const usePageCommands = (): PageCommand[] => {
 			title: "Docs",
 			section: "Help",
 			icon: <BooksIcon className="size-4" />,
-			href: "https://docs.useautumn.com",
+			href: "https://docs.meterpal.dev",
 		},
 	];
 

@@ -29,9 +29,9 @@ const BASE_STYLES = `
 	}
 
 	.icon-success {
-		background: linear-gradient(135deg, #f3e8ff 0%, #ede1ff 100%);
-		border: 2px solid #c4b5fd;
-		color: #8838ff;
+		background: linear-gradient(135deg, #e8effb 0%, #e8effb 100%);
+		border: 2px solid #264082;
+		color: #264082;
 	}
 
 	.icon-error {
@@ -56,7 +56,7 @@ const BASE_STYLES = `
 
 	@media (prefers-color-scheme: dark) {
 		body { background: #161616; color: #ddd; }
-		.icon-success { background: linear-gradient(135deg, #2d1f4e 0%, #3d2a5e 100%); border-color: #6b46c1; color: #a855f7; }
+		.icon-success { background: linear-gradient(135deg, #264082 0%, #264082 100%); border-color: #264082; color: #f4bf3d; }
 		.icon-error { background: linear-gradient(135deg, #4a1a1a 0%, #5c2020 100%); border-color: #dc2626; color: #f87171; }
 		.error h1 { color: #f87171; }
 		.description { color: #999; }
@@ -85,7 +85,7 @@ const renderPage = ({
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>${title} - Autumn</title>
+	<title>${title} - MeterPal</title>
 	<style>${BASE_STYLES}</style>
 </head>
 <body>

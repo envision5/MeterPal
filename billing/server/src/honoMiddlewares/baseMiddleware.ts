@@ -17,7 +17,17 @@ import { buildRequestLogContexts } from "@/utils/logging/requestLogContext.js";
 import { resolveCustomerId } from "./utils/resolveCustomerId.js";
 import { resolveEntityId } from "./utils/resolveEntityId.js";
 
-const SENSITIVE_REQUEST_BODY_KEYS = new Set(["connectionString"]);
+const SENSITIVE_REQUEST_BODY_KEYS = new Set([
+	"connectionString",
+	// Credentials that must never reach the log pipeline, even on the
+	// localhost stack: the PayPal connect body carries a live client secret,
+	// and key/secret fields appear on key-creation and SSO routes.
+	"client_secret",
+	"secret",
+	"api_key",
+	"secret_key",
+	"password",
+]);
 const REDACTED_REQUEST_BODY_VALUE = "[REDACTED]";
 
 const parseMockRevenueCatFixtures = (

@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { agentRulesRpcRouter } from "@/internal/agent/rules/agentRulesRouter";
-import { referralRpcRouter } from "@/internal/api/rewards/referralRouter";
+// [REWARDS DISABLED] import { referralRpcRouter } from "@/internal/api/rewards/referralRouter";
 import { balancesRpcRouter } from "@/internal/balances/balancesRouter";
 import { billingRpcRouter } from "@/internal/billing/billingRouter";
 import { catalogRpcRouter } from "@/internal/catalog/catalogRouter";
@@ -46,7 +46,7 @@ rpcRouter.route("", billingRpcRouter);
 rpcRouter.route("", dfuRpcRouter);
 rpcRouter.route("", balancesRpcRouter);
 rpcRouter.route("", eventsRpcRouter);
-rpcRouter.route("", referralRpcRouter);
+// [REWARDS DISABLED] rpcRouter.route("", referralRpcRouter);
 rpcRouter.route("", entityRpcRouter);
 rpcRouter.route("", featureRpcRouter);
 rpcRouter.route("", invoiceRpcRouter);

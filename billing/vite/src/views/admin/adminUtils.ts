@@ -13,6 +13,7 @@ import type {
 import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
 import { setActiveOrg } from "@/lib/orgSync";
+import type { useAxiosInstance } from "@/services/useAxiosInstance";
 import { formatUnixToDate } from "../../utils/formatUtils/formatDateUtils";
 
 export const getCusProductHoverTexts = (cusProduct: FullCusProduct) => {
@@ -42,14 +43,37 @@ export const getCusProductHoverTexts = (cusProduct: FullCusProduct) => {
 	];
 };
 
+// Landing path after an admin impersonates into an org (the admin-table
+// "Impersonate" action). Unlike ImpersonateRedirect — which serves the org
+// owner's own entry and honors the onboarding flow — an impersonating admin
+// is inspecting the org, so the default target is the org's dashboard.
+// Onboarding only for orgs that haven't finished it, per the org record
+// (not the admin's browser-local onboarding-dismissed flag).
+export const resolveImpersonationLanding = async (
+	axiosInstance: ReturnType<typeof useAxiosInstance>,
+): Promise<string> => {
+	try {
+		const { data } = await axiosInstance.get("/organization");
+		if (data?.deployed) return "/products?tab=products";
+		if (data?.onboarded === false) return "/sandbox/onboarding";
+		return "/sandbox/products?tab=products";
+	} catch {
+		// Couldn't resolve the org record; the sandbox dashboard is the safe
+		// default (a live route may not exist for an undeployed org).
+		return "/sandbox/products?tab=products";
+	}
+};
+
 export const impersonateUser = async ({
 	userId,
 	organizationId,
 	isCurrentlyImpersonating = false,
+	axiosInstance,
 }: {
 	userId: string;
 	organizationId?: string;
 	isCurrentlyImpersonating?: boolean;
+	axiosInstance?: ReturnType<typeof useAxiosInstance>;
 }) => {
 	if (isCurrentlyImpersonating) {
 		const { error } = await authClient.admin.stopImpersonating();
@@ -75,6 +99,16 @@ export const impersonateUser = async ({
 		});
 		if (data?.session.activeOrganizationId !== organizationId) {
 			toast.error("Failed to switch to the target organization");
+			return;
+		}
+
+		// Land in the target org's dashboard instead of reloading the admin
+		// page in place. Without an axios instance there's no org record to
+		// resolve a landing from, so fall back to the in-place reload and let
+		// handleNoActiveOrg sort the session out (Users-tab flow passes no org).
+		if (axiosInstance) {
+			window.location.href =
+				await resolveImpersonationLanding(axiosInstance);
 			return;
 		}
 	}

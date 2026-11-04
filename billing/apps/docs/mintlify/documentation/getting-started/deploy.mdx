@@ -9,8 +9,8 @@ Once you've tested your integration in sandbox, follow this checklist to go live
 <Step>
 ### Connect your live Stripe account
 
-In the Autumn dashboard, open the **Deploy to Production** dialog from the sidebar.
-Connect your live Stripe account via OAuth — this links Autumn to your real Stripe environment.
+In the MeterPal dashboard, open the **Deploy to Production** dialog from the sidebar.
+Connect your live Stripe account via OAuth — this links MeterPal to your real Stripe environment.
 
 <Note>
 Your sandbox uses a shared Stripe test account by default. Production requires your own Stripe account.
@@ -60,7 +60,7 @@ The key prefix determines the environment automatically — `_test_` routes to s
 <Step>
 ### Verify fail-open behavior
 
-Autumn's SDK is **fail-open by default** — if Autumn is unreachable, `check`, `track`, and customer fetches return safe dummy responses instead of throwing errors. This means Autumn can never take your app down.
+MeterPal's SDK is **fail-open by default** — if MeterPal is unreachable, `check`, `track`, and customer fetches return safe dummy responses instead of throwing errors. This means MeterPal can never take your app down.
 
 You should verify this before going live. The easiest way is to point the SDK at a non-existent URL and exercise your app's core flows:
 
@@ -90,7 +90,7 @@ With this in place:
 4. Remove the `serverURL` override when done
 
 <Warning>
-While the SDK gracefully handles outages for read-path calls, write operations like `attach` (which initiate checkout or subscription changes) will still fail when Autumn is unreachable.
+While the SDK gracefully handles outages for read-path calls, write operations like `attach` (which initiate checkout or subscription changes) will still fail when MeterPal is unreachable.
 </Warning>
 
 </Step>
@@ -98,14 +98,14 @@ While the SDK gracefully handles outages for read-path calls, write operations l
 <Step>
 ### Set up webhooks (if applicable)
 
-If you're listening for Autumn [webhook events](/documentation/webhooks) (e.g. `customer.products.updated`), make sure your production webhook endpoint is configured in the dashboard. Verify you can receive a test event.
+If you're listening for MeterPal [webhook events](/documentation/webhooks) (e.g. `customer.products.updated`), make sure your production webhook endpoint is configured in the dashboard. Verify you can receive a test event.
 
 </Step>
 
 <Step>
 ### Monitor your first users
 
-After deploying, keep an eye on the [Customers](https://app.useautumn.com/production/customers) page in the Autumn dashboard. Verify that:
+After deploying, keep an eye on the [Customers](https://app.useautumn.com/production/customers) page in the MeterPal dashboard. Verify that:
 
 - New customers are created correctly
 - Subscriptions are attached as expected

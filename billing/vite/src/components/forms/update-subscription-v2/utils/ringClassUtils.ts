@@ -14,7 +14,7 @@ export function getRowRingClass(state: RowState): string {
 		case "removed":
 			return "ring-1 ring-inset ring-red-500/50";
 		case "version":
-			return "ring-1 ring-inset ring-purple-500/50";
+			return "ring-1 ring-inset ring-[#264082]/50";
 		default:
 			return "";
 	}

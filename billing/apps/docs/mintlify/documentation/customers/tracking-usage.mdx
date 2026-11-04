@@ -3,7 +3,7 @@ title: "Tracking usage"
 description: "Keep track of your customer's feature usage with the `track` route"
 ---
 
-When customers use features in your product, you'll need to record their usage so Autumn can track it against their limits or bill them for usage.
+When customers use features in your product, you'll need to record their usage so MeterPal can track it against their limits or bill them for usage.
 
 There are two ways to record usage: sending events or setting usage directly.
 
@@ -85,7 +85,7 @@ curl -X POST "https://api.useautumn.com/v1/track" \
 
 ## Setting Usage Directly
 
-For non-consumable features (such as seats or workspaces), you may prefer to set usage directly, rather than incrementing Autumn's feature balance. This enables you to sync a source of truth up on your side with Autumn, preventing any discrepancies.
+For non-consumable features (such as seats or workspaces), you may prefer to set usage directly, rather than incrementing MeterPal's feature balance. This enables you to sync a source of truth up on your side with MeterPal, preventing any discrepancies.
 
 <CodeGroup>
 
@@ -220,16 +220,16 @@ In the above examples, we used the `featureId` to identify the feature. You can 
 <Info>
 **Example Use Case:**
 
-Your AI chatbot has a daily limit of 10 messages, with a maximum monthly limit of 100 messages. Recording a message in Autumn should decrease both balances simultaneously.
+Your AI chatbot has a daily limit of 10 messages, with a maximum monthly limit of 100 messages. Recording a message in MeterPal should decrease both balances simultaneously.
 
-In Autumn, you can create two features: `daily-messages` and `monthly-messages`. You can add the same event name to both features: `message-sent`. Then, assign both features to a plan with the correct included amounts.
+In MeterPal, you can create two features: `daily-messages` and `monthly-messages`. You can add the same event name to both features: `message-sent`. Then, assign both features to a plan with the correct included amounts.
 
 Every time that event name is recorded, both the daily-messages and monthly-messages balances will be decremented.
 
 If you were to use the same feature for both in this case, the daily and monthly balances would sum, allowing the user to send 10 messages a day, with an "overage" balance of 100 messages per month if they go over the daily limit.
 </Info>
 
-You can define event names in the Autumn dashboard:
+You can define event names in the MeterPal dashboard:
 
 1. Go to the [Features Page](https://app.useautumn.com/sandbox/products?tab=features).
 2. Click on the feature you want to add an event to.

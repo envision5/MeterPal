@@ -51,7 +51,7 @@ export const getRcStoreIdentifier = ({
 
 /** Apple subscription group name for create_in_store. */
 export const getSubscriptionGroupName = (group?: string | null): string =>
-	group && group.length > 0 ? `Autumn - ${group} Group` : "Autumn - Default Group";
+	group && group.length > 0 ? `MeterPal - ${group} Group` : "MeterPal - Default Group";
 
 /** ISO-8601 duration for createProduct. Null = RC can't represent it (lossy). */
 export const autumnIntervalToRcDuration = ({

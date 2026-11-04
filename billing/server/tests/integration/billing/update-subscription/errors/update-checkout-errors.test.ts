@@ -93,7 +93,7 @@ test.concurrent(`${chalk.yellowBright("update-checkout error: cancel action with
 
 	await expectAutumnError({
 		errCode: ErrCode.InvalidRequest,
-		errMessage: "Autumn checkout does not support cancel or uncancel updates",
+		errMessage: "MeterPal checkout does not support cancel or uncancel updates",
 		func: async () => {
 			await autumnV2_1.subscriptions.update<UpdateSubscriptionV1ParamsInput>({
 				customer_id: customerId,

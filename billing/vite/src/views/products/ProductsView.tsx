@@ -6,7 +6,6 @@ import { useEffect } from "react";
 import { useAppQueryStates } from "@/hooks/common/useAppQueryStates";
 import { useFeaturesQuery } from "@/hooks/queries/useFeaturesQuery";
 import { useProductsQuery } from "@/hooks/queries/useProductsQuery";
-import { useRewardsQuery } from "@/hooks/queries/useRewardsQuery";
 import { useProductStore } from "@/hooks/stores/useProductStore";
 import { useSheetCleanup } from "@/hooks/stores/useSheetStore";
 import LoadingScreen from "../general/LoadingScreen";
@@ -14,7 +13,6 @@ import { FeaturesPage } from "./features/FeaturesPage";
 import { ModelsPage } from "./models/ModelsPage";
 import { ProductsContext } from "./ProductsContext";
 import { ProductsPage } from "./products/ProductsPage";
-import { RewardsPage } from "./rewards/RewardsPage";
 
 function ProductsView({ env: _env }: { env: AppEnv }) {
 	const { queryStates } = useAppQueryStates({
@@ -30,10 +28,8 @@ function ProductsView({ env: _env }: { env: AppEnv }) {
 
 	const { isLoading: isProductsLoading } = useProductsQuery();
 	const { isLoading: isFeaturesLoading } = useFeaturesQuery();
-	const { isLoading: isRewardsLoading } = useRewardsQuery();
 
-	if (isProductsLoading || isFeaturesLoading || isRewardsLoading)
-		return <LoadingScreen />;
+	if (isProductsLoading || isFeaturesLoading) return <LoadingScreen />;
 
 	const tab = queryStates.tab;
 	return (
@@ -41,7 +37,6 @@ function ProductsView({ env: _env }: { env: AppEnv }) {
 			<PageContainer>
 				{tab === "products" && <ProductsPage />}
 				{tab === "features" && <FeaturesPage />}
-				{tab === "rewards" && <RewardsPage />}
 				{tab === "models" && <ModelsPage />}
 			</PageContainer>
 		</ProductsContext.Provider>

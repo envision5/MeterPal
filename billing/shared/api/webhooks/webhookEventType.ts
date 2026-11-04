@@ -7,6 +7,8 @@ export enum WebhookEventType {
 
 	BillingAutoTopupFailed = "billing.auto_topup_failed",
 	BillingAutoTopupSucceeded = "billing.auto_topup_succeeded",
+	BillingDisputeCreated = "billing.dispute_created",
+	BillingDisputeUpdated = "billing.dispute_updated",
 	BillingUpdated = "billing.updated",
 
 	InvoiceFinalized = "invoice.finalized",

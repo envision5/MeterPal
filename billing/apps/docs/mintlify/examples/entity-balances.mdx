@@ -63,9 +63,9 @@ The Team plan now offers a pool of Seat licenses at \$30/month each. (Set **incl
 
 <Steps>
 <Step>
-#### Create an Autumn Customer
+#### Create an MeterPal Customer
 
-When an organization signs up, create an Autumn customer.
+When an organization signs up, create an MeterPal customer.
 
 <CodeGroup>
 
@@ -242,7 +242,7 @@ curl -X POST "https://api.useautumn.com/v1/billing.attach" \
 </CodeGroup>
 
 <Note>
-Change the seat count later by attaching again with a new `quantity`. Autumn prorates the difference.
+Change the seat count later by attaching again with a new `quantity`. MeterPal prorates the difference.
 </Note>
 </Step>
 
@@ -311,11 +311,11 @@ curl -X POST "https://api.useautumn.com/v1/licenses.attach" \
 </CodeGroup>
 
 <Note>
-`feature_id` is only required when the entity doesn't exist yet — Autumn creates it for you, so you can skip the separate entity-create call.
+`feature_id` is only required when the entity doesn't exist yet — MeterPal creates it for you, so you can skip the separate entity-create call.
 
 Assignment is idempotent: re-assigning someone who already holds an active Seat license succeeds without consuming another seat. If the pool has no seats left, the call errors — buy more seats first.
 
-After assigning, navigate to the Autumn customer page and you will see the entity and its balance.
+After assigning, navigate to the MeterPal customer page and you will see the entity and its balance.
 </Note>
 
 </Step>
@@ -581,7 +581,7 @@ curl -X POST "https://api.useautumn.com/v1/licenses.release" \
 </CodeGroup>
 
 <Note>
-Releasing a license frees the seat but does not change what the customer pays — they keep the 4 seats they bought. To stop paying for a seat, attach the Team plan again with a lower `quantity`; Autumn prorates the refund.
+Releasing a license frees the seat but does not change what the customer pays — they keep the 4 seats they bought. To stop paying for a seat, attach the Team plan again with a lower `quantity`; MeterPal prorates the refund.
 
 `license_plan_id` is optional, and only needed to disambiguate when an entity holds licenses from more than one plan.
 </Note>

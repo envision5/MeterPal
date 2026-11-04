@@ -5,14 +5,14 @@ description: "How to address tables, convert types, join, and avoid footguns."
 ---
 
 <Warning>
-  **Available on request** — The Autumn Lakehouse is provisioned per customer. Contact us at [hey@useautumn.com](mailto:hey@useautumn.com) to get access.
+  **Available on request** — The MeterPal Lakehouse is provisioned per customer. Contact us at [hey@useautumn.com](mailto:hey@useautumn.com) to get access.
 </Warning>
 
-Throughout this page, replace `<catalog>` and `<namespace>` with the names Autumn assigned you.
+Throughout this page, replace `<catalog>` and `<namespace>` with the names MeterPal assigned you.
 
 ## Find your catalog and namespace
 
-Autumn sends you both names when your Lakehouse is provisioned (see [Connecting](/documentation/lakehouse/connecting)). If you need to rediscover them in ClickHouse Cloud, the catalog mounts as a database — list databases to find it:
+MeterPal sends you both names when your Lakehouse is provisioned (see [Connecting](/documentation/lakehouse/connecting)). If you need to rediscover them in ClickHouse Cloud, the catalog mounts as a database — list databases to find it:
 
 <Tabs>
 <Tab title="ClickHouse">
@@ -26,7 +26,7 @@ The catalog appears as one of the listed databases. Your tables then live under 
 </Tab>
 <Tab title="BigQuery">
 
-BigQuery has no catalog to mount — Autumn grants you a **project** and **dataset**. List it to see what's there:
+BigQuery has no catalog to mount — MeterPal grants you a **project** and **dataset**. List it to see what's there:
 
 ```sql
 SELECT table_name
@@ -294,7 +294,7 @@ GROUP BY b.customer_id, b.feature_id;
 Overage is **derived, not stored**, and there are **two figures** — pick deliberately (see [Working with balances → Overage](/documentation/lakehouse/balance-semantics#overage-is-derived-not-stored-and-there-are-two-of-them)):
 
 - **Displayed** (`max(0, Σusage − Σgranted)` — sum first, floor once): what the **balance header / dashboard** shows. This query computes this one, so it reproduces the dashboard to within sync-lag drift.
-- **Billable** (`Σ max(0, usage − granted)` — floor per row, then sum): what Autumn **invoices**. To get it, swap the `overage` expression as noted in the query.
+- **Billable** (`Σ max(0, usage − granted)` — floor per row, then sum): what MeterPal **invoices**. To get it, swap the `overage` expression as noted in the query.
 
 Both reconstruct from `v2_3_breakdowns` over the same row set: rows whose customer plan is an **active** subscription (plus always-live `one_off` rows), restricted to each entitlement's **current cycle** (earliest upcoming reset).
 
@@ -345,7 +345,7 @@ WITH
       sum(bd.usage)   AS usage,
       -- DISPLAYED overage (matches the dashboard): sum first, floor once.
       greatest(0, sum(bd.usage) - sum(bd.granted)) AS overage
-      -- For BILLABLE overage (what Autumn invoices) instead, floor per row, then sum:
+      -- For BILLABLE overage (what MeterPal invoices) instead, floor per row, then sum:
       --   sum(greatest(0, bd.usage - bd.granted)) AS overage
     FROM bd
     LEFT JOIN cur_cycle AS cc ON cc.icid = bd.icid AND cc.icpid = bd.icpid
@@ -420,7 +420,7 @@ WITH
       SUM(bd.usage)   AS usage,
       -- DISPLAYED overage (matches the dashboard): sum first, floor once.
       GREATEST(0, SUM(bd.usage) - SUM(bd.granted)) AS overage
-      -- For BILLABLE overage (what Autumn invoices) instead, floor per row, then sum:
+      -- For BILLABLE overage (what MeterPal invoices) instead, floor per row, then sum:
       --   SUM(GREATEST(0, bd.usage - bd.granted)) AS overage
     FROM bd
     LEFT JOIN cur_cycle AS cc ON cc.icid = bd.icid AND cc.icpid = bd.icpid
@@ -905,7 +905,7 @@ INNER JOIN `<project>.analytics.accounts` AS a
 This is the single most important rule for reliable queries.
 
 - Each **plan version is its own row** in `v2_3_plans`, with its own `internal_id`. The only identifier shared *across versions* is the external `plan_id`.
-- External ids (`plan_id`, `customer_id`, `feature_id`, `entity_id`, …) are **mutable** — you can rename them in Autumn at any time — and a single external id can map to multiple versioned rows.
+- External ids (`plan_id`, `customer_id`, `feature_id`, `entity_id`, …) are **mutable** — you can rename them in MeterPal at any time — and a single external id can map to multiple versioned rows.
 
 So:
 

@@ -7,7 +7,7 @@ import {
 	type VercelSdkTestOptions,
 } from "@/external/vercel/misc/vercelSdkOptions.js";
 
-export const DEFAULT_VERCEL_REFUND_REASON = "Refund issued from Autumn";
+export const DEFAULT_VERCEL_REFUND_REASON = "Refund issued from MeterPal";
 
 /** Vercel's Invoice Actions API takes `total` as a dollar-based decimal string. */
 export const toVercelAmountString = (amount: number): string =>
@@ -82,7 +82,7 @@ export const requestVercelRefund = async ({
 	if (!vercelInvoiceId) {
 		throw new RecaseError({
 			message:
-				"This Vercel invoice has no Vercel invoice ID on record and cannot be refunded from Autumn. Please contact Vercel support.",
+				"This Vercel invoice has no Vercel invoice ID on record and cannot be refunded from MeterPal. Please contact Vercel support.",
 			code: ErrCode.InvalidRequest,
 			statusCode: 400,
 		});

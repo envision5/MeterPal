@@ -102,6 +102,7 @@ const buildCustomer = ({
 	paypal_plan_id: null,
 	paypal_payment_status: null,
 	paypal_payer_id: null,
+	paypal_billing_agreement_id: null,
 });
 
 const buildEntity = ({

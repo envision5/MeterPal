@@ -16,16 +16,7 @@ import {
 	paypalEnvStatus,
 	type PaypalEnvStatus,
 } from "./paypalConfigUtils.js";
-
-/** Where the merchant points their PayPal webhook. */
-function webhookUrlTemplate(orgId: string): string {
-	const base = (
-		process.env.AUTUMN_PUBLIC_API_URL ??
-		process.env.BETTER_AUTH_URL ??
-		"http://localhost:8080"
-	).replace(/\/+$/, "");
-	return `${base}/webhooks/paypal/${orgId}/<webhook_id>`;
-}
+import { paypalOrgWebhookUrl } from "./paypalConfigUtils.js";
 
 export const handleGetPaypalConfig = createRoute({
 	scopes: [Scopes.Organisation.Read],
@@ -52,7 +43,7 @@ export const handleGetPaypalConfig = createRoute({
 			env,
 			sandbox,
 			live,
-			webhook_url_template: webhookUrlTemplate(org.id),
+			webhook_url_template: paypalOrgWebhookUrl(org.id),
 		});
 	},
 });

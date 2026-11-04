@@ -47,7 +47,7 @@ const modelNotFoundError = (modelName: string) =>
 
 const unsupportedPricingError = (modelName: string) =>
 	new RecaseError({
-		message: `Model ${modelName} uses a models.dev pricing structure Autumn can't bill yet. Use a custom/ model with input_cost and output_cost in model_markups instead.`,
+		message: `Model ${modelName} uses a models.dev pricing structure MeterPal can't bill yet. Use a custom/ model with input_cost and output_cost in model_markups instead.`,
 		code: ErrCode.InvalidRequest,
 		statusCode: 400,
 		data: { modelName },

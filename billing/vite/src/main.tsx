@@ -16,11 +16,11 @@ Sentry.init({
 declare const __APP_ENV__: string;
 declare const __WORKTREE_NUM__: string;
 if (__APP_ENV__ === "prod") {
-	document.title = "Autumn (P)";
+	document.title = "MeterPal (P)";
 } else if (__APP_ENV__ === "staging") {
-	document.title = "Autumn (S)";
+	document.title = "MeterPal (S)";
 } else if (__APP_ENV__ === "dev") {
-	document.title = `Autumn (wt${__WORKTREE_NUM__})`;
+	document.title = `MeterPal (wt${__WORKTREE_NUM__})`;
 }
 
 const queryClient = new QueryClient({

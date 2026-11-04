@@ -15,7 +15,7 @@ These work with every command.
 | `--sandbox <id>` | Target a specific [sandbox](#sandboxes) |
 | `-c, --config <path>` | Your `autumn.config.ts`, or the folder holding it. By default the CLI looks in the current folder, then at the path `atmn init` saved in your root `package.json`. |
 | `--headless` | Never prompt. When a command needs an answer, it prints which flag to pass and stops. This is the default outside a terminal, eg in CI or when run by an agent. |
-| `-l, --local` | Send requests to a local Autumn server on `localhost:8080` |
+| `-l, --local` | Send requests to a local MeterPal server on `localhost:8080` |
 | `--port <port>` | Port of the local server. Implies `--local`. |
 | `-b, --base-url <url>` | Send requests to this URL instead |
 | `-v, -V, --version` | Print the CLI version |
@@ -45,7 +45,7 @@ In CI, set the key as a secret, install your dependencies, and push:
 
 ### `atmn init`
 
-Set up your repo end to end: connect to Autumn, create the config folder, pull what's already in your organization, and install the agent skills. See [getting started](/cli/getting-started#set-up-a-project) for what it creates.
+Set up your repo end to end: connect to MeterPal, create the config folder, pull what's already in your organization, and install the agent skills. See [getting started](/cli/getting-started#set-up-a-project) for what it creates.
 
 ```bash
 atmn init
@@ -62,7 +62,7 @@ With no key on disk, `init` asks how you want to connect. In headless mode it pr
 
 ### `atmn login`
 
-Connect to Autumn and write your organization's keys to `.env`. Opens your browser and lets you pick an organization. Outside a terminal it prints the URL for you to open.
+Connect to MeterPal and write your organization's keys to `.env`. Opens your browser and lets you pick an organization. Outside a terminal it prints the URL for you to open.
 
 ```bash
 atmn login
@@ -96,7 +96,7 @@ Key           AUTUMN_SECRET_KEY
 
 ### `atmn push`
 
-Compare your config with what's in Autumn, and apply the difference.
+Compare your config with what's in MeterPal, and apply the difference.
 
 ```bash
 atmn push          # preview
@@ -108,13 +108,13 @@ atmn push --yes    # apply
 | `-y, --yes` | Apply the changes the preview shows |
 | `-d, --dry-run` | Preview only, even with `--yes` |
 
-A plain `push` is always a preview. It shows what would be created, updated or deleted, and nothing is sent until you add `--yes`. Deletions work the same way: a plan you remove from the config is removed from Autumn on the next `push --yes`.
+A plain `push` is always a preview. It shows what would be created, updated or deleted, and nothing is sent until you add `--yes`. Deletions work the same way: a plan you remove from the config is removed from MeterPal on the next `push --yes`.
 
-If a change affects a plan version that has customers, Autumn drafts a migration and `push` prints the link to run it. After applying, the CLI writes the `internalId` of each new feature and plan back into your config files.
+If a change affects a plan version that has customers, MeterPal drafts a migration and `push` prints the link to run it. After applying, the CLI writes the `internalId` of each new feature and plan back into your config files.
 
 ### `atmn pull`
 
-Write what's in Autumn back into your config files.
+Write what's in MeterPal back into your config files.
 
 ```bash
 atmn pull
@@ -122,13 +122,13 @@ atmn pull
 
 | Flag | Description |
 |------|-------------|
-| `--overwrite` | Rewrite the config from Autumn instead of updating it in place. Needs `--yes`. |
+| `--overwrite` | Rewrite the config from MeterPal instead of updating it in place. Needs `--yes`. |
 | `-y, --yes` | Confirm the overwrite |
 | `--include-mappings` | Keep Stripe and RevenueCat mappings in the pulled config |
 
 By default, `pull` updates in place: it adds new features and plans, updates existing ones, and removes deleted ones, keeping your formatting. If you have no config yet, it asks where to create one (pass `-c <dir>` to skip the question).
 
-`--overwrite --yes` rewrites `autumn.config.ts` and the `features.ts`, `plans.ts` and `rewards.ts` beside it from Autumn. Use it after switching organizations, or to move a 1.x config to the new format. Nothing is deleted, and files that don't import from `atmn` are left alone.
+`--overwrite --yes` rewrites `autumn.config.ts` and the `features.ts`, `plans.ts` and `rewards.ts` beside it from MeterPal. Use it after switching organizations, or to move a 1.x config to the new format. Nothing is deleted, and files that don't import from `atmn` are left alone.
 
 ### `atmn reset`
 
@@ -225,7 +225,7 @@ Writes `AUTUMN_SANDBOX_ID` to your `.env`, so every later command targets that s
 
 ## Skills
 
-The CLI ships with skills that teach coding agents how to set up Autumn, model pricing, and integrate the API: `autumn-setup`, `autumn-catalog`, `autumn-integrate` and `autumn-concepts`.
+The CLI ships with skills that teach coding agents how to set up MeterPal, model pricing, and integrate the API: `autumn-setup`, `autumn-catalog`, `autumn-integrate` and `autumn-concepts`.
 
 ### `atmn skills [name]`
 

@@ -66,7 +66,7 @@ const SourceBadge = ({
 );
 
 const PlanCubeIcon = () => (
-	<CubeIcon className="size-3 shrink-0 text-violet-500" weight="duotone" />
+	<CubeIcon className="size-3 shrink-0 text-[#264082]" weight="duotone" />
 );
 
 const entityHasBillingControls = (entity: Entity) =>

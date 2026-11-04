@@ -71,7 +71,7 @@ export function AIChatView({ onBack }: AIChatViewProps) {
 									}}
 									className="absolute inset-0 pointer-events-none overflow-hidden"
 									style={{
-										backgroundImage: "url(/autumn-leaf.png)",
+										backgroundImage: undefined,
 										backgroundRepeat: "no-repeat",
 										backgroundPosition: "85% 60%",
 										backgroundSize: "30%",
@@ -85,7 +85,7 @@ export function AIChatView({ onBack }: AIChatViewProps) {
 									transition={{ duration: 1, ease: "easeOut" }}
 									className="absolute inset-0 pointer-events-none overflow-hidden"
 									style={{
-										backgroundImage: "url(/autumn-leaf.png)",
+										backgroundImage: undefined,
 										backgroundRepeat: "no-repeat",
 										backgroundPosition: "85% 60%",
 										backgroundSize: "30%",

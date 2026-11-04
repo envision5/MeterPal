@@ -38,7 +38,7 @@ openapi: "api/openapi.yml webhook invoice.finalized"
 </ParamField>
 
 <ParamField body="id" type="string" required>
-  The Autumn invoice ID
+  The MeterPal invoice ID
 </ParamField>
 
 <ParamField body="customer_id" type="string | null" required>
@@ -61,7 +61,7 @@ openapi: "api/openapi.yml webhook invoice.finalized"
   Line items on the invoice, one per line as shown in Stripe. Capped at 100. Empty for invoices recorded before line item storage.
   <Expandable title="properties">
     <ParamField body="id" type="string" required>
-      The Autumn invoice line item ID. Stable across reads, and can be used to reference this line in later calls.
+      The MeterPal invoice line item ID. Stable across reads, and can be used to reference this line in later calls.
     </ParamField>
 
     <ParamField body="description" type="string" required>
@@ -77,7 +77,7 @@ openapi: "api/openapi.yml webhook invoice.finalized"
     </ParamField>
 
     <ParamField body="plan_id" type="string | null" required>
-      The plan this line item came from. Null for lines with no Autumn plan behind them.
+      The plan this line item came from. Null for lines with no MeterPal plan behind them.
     </ParamField>
 
     <ParamField body="feature_id" type="string | null" required>

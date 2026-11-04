@@ -95,7 +95,7 @@ litellm/proxy/migrations/*config.yaml
 litellm/proxy/migrations/*
 litellm/proxy/to_delete_loadtest_work/*
 config.yaml
-# The Autumn billing-bridge proxy config is part of the product: it holds no
+# The MeterPal billing-bridge proxy config is part of the product: it holds no
 # secrets (every value is an os.environ/ reference) and losing it silently
 # disables admission + metering. Keep it versioned.
 !config.yaml

@@ -232,20 +232,25 @@ export function InvoiceDetailSheet({
 	const processorLabel =
 		invoiceProcessor === ProcessorType.RevenueCat
 			? "RevenueCat"
-			: invoiceProcessor === "vercel"
-				? "Vercel"
-				: "Stripe";
+			: invoiceProcessor === ProcessorType.PayPal
+				? "PayPal"
+				: invoiceProcessor === "vercel"
+					? "Vercel"
+					: "Stripe";
 	// Vercel invoices are still Stripe-ledgered, so the id stays a Stripe id.
 	const idLabel =
 		invoiceProcessor === "vercel" ? "Stripe ID" : `${processorLabel} ID`;
+	const invoiceIsPayPal = invoiceProcessor === ProcessorType.PayPal;
 	const refundableAmount = Math.abs(invoice.amount_paid ?? invoice.total);
 	const isFullyRefunded =
 		invoice.refunded_amount > 0 && invoice.refunded_amount >= refundableAmount;
 	// Vercel invoices before the mapping existed can't be refunded from Autumn.
 	const vercelRefundBlocked =
 		invoiceProcessor === "vercel" && !invoiceMetadata.vercel_invoice_id;
+	// PayPal invoices are refunded through MeterPal directly — the pp-cap /
+	// pp-sale external id names the instrument, so no Stripe metadata gates.
 	const canRefund =
-		invoiceIsStripe &&
+		(invoiceIsStripe || invoiceIsPayPal) &&
 		invoice.status === InvoiceStatus.Paid &&
 		!isFullyRefunded &&
 		!metadataLoading &&
@@ -494,7 +499,7 @@ export function InvoiceDetailSheet({
 							</span>
 						</TooltipTrigger>
 						<TooltipContent className="max-w-64">
-							This Vercel invoice predates refund support in Autumn. Refund it
+							This Vercel invoice predates refund support in MeterPal. Refund it
 							via Vercel support.
 						</TooltipContent>
 					</Tooltip>

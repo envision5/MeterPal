@@ -1,6 +1,6 @@
 ---
 title: "Convex"
-description: "Implementing the Autumn + Convex component"
+description: "Implementing the MeterPal + Convex component"
 ---
 
 <Note>
@@ -29,7 +29,7 @@ bun add autumn-js @useautumn/convex
 ```
 </CodeGroup>
 
-#### 2. Set the Autumn secret key in your convex environment
+#### 2. Set the MeterPal secret key in your convex environment
 <CodeGroup>
 ```bash
 npx convex env set AUTUMN_SECRET_KEY=am_sk_xxx
@@ -49,7 +49,7 @@ app.use(autumn);
 export default app;
 ```
 
-#### 4. Initialize the Autumn client
+#### 4. Initialize the MeterPal client
 
 Paste the following code into `convex/autumn.ts`
 
@@ -220,11 +220,11 @@ export function AutumnWrapper({ children }: { children: React.ReactNode }) {
 </CodeGroup>
 
 <Note>
-If you're using Autumn purely on the backend, you may skip this step.
+If you're using MeterPal purely on the backend, you may skip this step.
 </Note>
 
 
-## Using Autumn hooks and components on the frontend
+## Using MeterPal hooks and components on the frontend
 
 `<PricingTable/>`
 
@@ -246,7 +246,7 @@ Our components can be downloaded as shadcn components and are fully customizable
 
 `useCustomer`
 
-We also provide a `useCustomer` hook which lets you easily access your customer data and interact with the Autumn API directly from your frontend. For example, to upgrade a user:
+We also provide a `useCustomer` hook which lets you easily access your customer data and interact with the MeterPal API directly from your frontend. For example, to upgrade a user:
 
 ```typescript src/app/page.tsx [expandable] wrap
 import { useCustomer, CheckoutDialog } from "autumn-js/react";
@@ -269,9 +269,9 @@ export default function Home() {
 You can use all of the `useCustomer()` and `useEntity()` features as you would normally. If you aren't familiar with these,
 you can read more about them [here](/react/hooks/useCustomer).
 
-## Using Autumn on the backend
+## Using MeterPal on the backend
 
-You will also need to use Autumn on your backend for actions such as tracking or gating usage of a feature. To do so, you can use our Autumn client:
+You will also need to use MeterPal on your backend for actions such as tracking or gating usage of a feature. To do so, you can use our MeterPal client:
 
 #### Check feature access
 ```typescript
@@ -307,7 +307,7 @@ Check out our API reference [here](https://docs.useautumn.com/api-reference/core
 
 **Congrats 🎉**
 
-Nice! You've now integrated Autumn into your application with Convex.
+Nice! You've now integrated MeterPal into your application with Convex.
 
 
 

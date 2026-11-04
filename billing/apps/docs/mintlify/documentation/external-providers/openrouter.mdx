@@ -3,7 +3,7 @@ title: "OpenRouter"
 description: "Automatically track AI token usage with the OpenRouter SDK"
 ---
 
-The `@useautumn/gateway` package integrates Autumn with the [OpenRouter SDK](https://openrouter.ai/docs), automatically tracking token usage for every `chat.send` call. No manual `trackTokens` calls needed.
+The `@useautumn/gateway` package integrates MeterPal with the [OpenRouter SDK](https://openrouter.ai/docs), automatically tracking token usage for every `chat.send` call. No manual `trackTokens` calls needed.
 
 <Note>
   Using OpenRouter through the Vercel AI SDK (`@openrouter/ai-sdk-provider`)? Use the [AI SDK wrapper](/documentation/external-providers/ai-sdk) with `providerId: "openrouter"` instead.
@@ -37,12 +37,12 @@ bun add @useautumn/gateway
 
 #### 2. Wrap your client
 
-Use `withAutumn` to wrap your OpenRouter client. It intercepts `chat.send` calls, enables OpenRouter's [usage accounting](https://openrouter.ai/docs/use-cases/usage-accounting) on every request, reads the token usage from the response, and reports it to Autumn automatically.
+Use `withAutumn` to wrap your OpenRouter client. It intercepts `chat.send` calls, enables OpenRouter's [usage accounting](https://openrouter.ai/docs/use-cases/usage-accounting) on every request, reads the token usage from the response, and reports it to MeterPal automatically.
 
 ```typescript
 import { Autumn } from "autumn-js";
 import { OpenRouter } from "@openrouter/sdk";
-import { withAutumn } from "@useautumn/gateway/openrouter";
+import { withMeterPal } from "@useautumn/gateway/openrouter";
 
 const autumn = new Autumn({ secretKey: "am_sk_test_1234" });
 const openRouter = new OpenRouter({ apiKey: process.env.OPENROUTER_API_KEY });
@@ -81,15 +81,15 @@ for await (const chunk of stream) {
 
 The wrapper normalizes OpenRouter's usage accounting into the exclusive token pools that [trackTokens](/api-reference/balances/trackTokens) expects: text input (excluding cached and audio tokens), text output (excluding reasoning tokens), cache reads, cache writes, audio input, and reasoning tokens. Each pool is billed at the model's published rate.
 
-The model is reported to Autumn as `openrouter/<slug>` (e.g. `openrouter/openai/gpt-4o`), using the resolved model from the response — so router aliases like `openrouter/auto` bill against the model that actually served the request. Autumn prices usage with OpenRouter's rates from [Models.dev](https://models.dev), and OpenRouter's own reported cost is attached to each event as the `openrouter_cost` property for reconciliation.
+The model is reported to MeterPal as `openrouter/<slug>` (e.g. `openrouter/openai/gpt-4o`), using the resolved model from the response — so router aliases like `openrouter/auto` bill against the model that actually served the request. MeterPal prices usage with OpenRouter's rates from [Models.dev](https://models.dev), and OpenRouter's own reported cost is attached to each event as the `openrouter_cost` property for reconciliation.
 
 ## Options
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `autumn` | `Autumn` | Yes | Your Autumn SDK client instance |
+| `autumn` | `Autumn` | Yes | Your MeterPal SDK client instance |
 | `openRouter` | `OpenRouter` | Yes | The OpenRouter SDK client to wrap |
-| `customerId` | `string` | Yes | The Autumn customer ID to attribute usage to |
+| `customerId` | `string` | Yes | The MeterPal customer ID to attribute usage to |
 | `featureId` | `string` | No | Target a specific AI credit system feature. Auto-detected if you only have one |
 | `entityId` | `string` | No | Entity ID for entity-scoped balance tracking |
 | `properties` | `Record<string, unknown>` | No | Additional properties to attach to each usage event |
@@ -110,5 +110,5 @@ await trackOpenRouterUsage({
 ```
 
 <Tip>
-  Tracking failures are caught and logged to the console — they won't break your AI features. Check your server logs if usage isn't appearing in Autumn.
+  Tracking failures are caught and logged to the console — they won't break your AI features. Check your server logs if usage isn't appearing in MeterPal.
 </Tip>

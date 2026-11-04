@@ -1,17 +1,14 @@
 import {
 	ErrCode,
 	GetBillingPortalQuerySchema,
-	InternalError,
 	RecaseError,
 	Scopes,
 } from "@autumn/shared";
 import { StatusCodes } from "http-status-codes";
 import z from "zod/v4";
 import { createRoute } from "@/honoMiddlewares/routeHandler";
-import { createStripeCli } from "../../../../external/connect/createStripeCli";
-import { getOrCreateStripeCustomer } from "../../../../external/stripe/customers";
-import { toSuccessUrl } from "../../../orgs/orgUtils/convertOrgUtils";
 import { CusService } from "../../CusService";
+import { createBillingPortalSession } from "./createBillingPortalSession";
 
 export const handleGetBillingPortal = createRoute({
 	scopes: [Scopes.Billing.Read],
@@ -24,14 +21,12 @@ export const handleGetBillingPortal = createRoute({
 		const returnUrl = c.req.valid("query").return_url;
 		const customerId = c.req.param().customer_id;
 		const ctx = c.get("ctx");
-		const [customer] = await Promise.all([
-			CusService.get({
-				db: ctx.db,
-				idOrInternalId: customerId,
-				orgId: ctx.org.id,
-				env: ctx.env,
-			}),
-		]);
+		const customer = await CusService.get({
+			db: ctx.db,
+			idOrInternalId: customerId,
+			orgId: ctx.org.id,
+			env: ctx.env,
+		});
 
 		if (!customer) {
 			throw new RecaseError({
@@ -41,29 +36,15 @@ export const handleGetBillingPortal = createRoute({
 			});
 		}
 
-		const stripeCli = createStripeCli({ org: ctx.org, env: ctx.env });
-
-		const stripeCustomer = await getOrCreateStripeCustomer({
+		const session = await createBillingPortalSession({
 			ctx,
 			customer,
-		});
-
-		if (!stripeCustomer) {
-			throw new InternalError({
-				message: `Failed to get billing portal session for customer ${customer.id}, no stripe customer found`,
-			});
-		}
-
-		const stripeCusId = stripeCustomer.id;
-
-		const portal = await stripeCli.billingPortal.sessions.create({
-			customer: stripeCusId,
-			return_url: returnUrl || toSuccessUrl({ org: ctx.org, env: ctx.env }),
+			returnUrl,
 		});
 
 		return c.json({
 			customer_id: customer.id || null,
-			url: portal.url,
+			url: session.url,
 		});
 	},
 });

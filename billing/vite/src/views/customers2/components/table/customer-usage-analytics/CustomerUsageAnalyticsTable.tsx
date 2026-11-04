@@ -163,7 +163,7 @@ export function CustomerUsageAnalyticsTable() {
 													className="px-1! ml-2"
 													onClick={() =>
 														window.open(
-															"https://docs.useautumn.com/documentation/getting-started/gating",
+															"https://docs.meterpal.dev/documentation/getting-started/gating",
 															"_blank",
 														)
 													}

@@ -106,12 +106,13 @@ export const PayPalConnectDialog = ({
 							autoComplete="off"
 						/>
 						<p className="mt-1.5 text-subtle text-xs leading-4">
-							Add a webhook in your PayPal app pointing at{" "}
+							Optional — MeterPal registers a webhook for you at{" "}
 							<code className="font-mono text-foreground text-tiny">
 								{webhookUrlTemplate}
 							</code>{" "}
-							and paste the webhook ID here. Without it, MeterPal cannot
-							confirm that a payment completed.
+							when you connect. Paste an ID here only if you registered one
+							manually. Without a webhook, MeterPal cannot confirm that a
+							payment completed.
 						</p>
 					</div>
 

@@ -1,4 +1,4 @@
-// autumn/server/src/external/stripe/webhookSecurity.ts
+// billing/server/src/external/stripe/webhookSecurity.ts
 //
 // Webhook security wrapper. Verifies Stripe signature before any handler runs,
 // enforces timestamp tolerance, and emits a structured audit log.

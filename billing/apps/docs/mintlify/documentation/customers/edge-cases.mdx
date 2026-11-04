@@ -1,9 +1,9 @@
 ---
 title: "Billing Reliability"
-description: "How Autumn handles 3DS, payment failures, and other uncommon states"
+description: "How MeterPal handles 3DS, payment failures, and other uncommon states"
 ---
 
-In addition to the subscription lifecycle, Autumn automatically handles a number of edge cases to make sure your customers are always billed correctly.
+In addition to the subscription lifecycle, MeterPal automatically handles a number of edge cases to make sure your customers are always billed correctly.
 
 ## 3D Secure (3DS)
 
@@ -19,7 +19,7 @@ When a payment requires 3D Secure authentication, the `attach` response returns:
 }
 ```
 
-As normal, redirect the customer to the `payment_url` to complete authentication. Once they authenticate, Autumn processes the payment and activates the plan automatically via the `invoice.paid` webhook.
+As normal, redirect the customer to the `payment_url` to complete authentication. Once they authenticate, MeterPal processes the payment and activates the plan automatically via the `invoice.paid` webhook.
 
 <Warning>
 The invoice URL expires after **10 minutes**. If the customer doesn't complete authentication in time, the invoice is automatically voided and the attach must be retried.
@@ -82,19 +82,19 @@ This also applies when a subscription transitions to `past_due` and is automatic
 
 ## Proration Failures
 
-When an upgrade generates a proration invoice that fails to pay, Autumn automatically **rolls back the subscription update** to the customer's previous plan. The open invoice is then handled through the same 3DS / payment failure flow described above — the customer receives an invoice URL to resolve the payment.
+When an upgrade generates a proration invoice that fails to pay, MeterPal automatically **rolls back the subscription update** to the customer's previous plan. The open invoice is then handled through the same 3DS / payment failure flow described above — the customer receives an invoice URL to resolve the payment.
 
 ## Concurrent Requests
 
-Autumn uses distributed locking to prevent race conditions across billing operations. All mutating billing endpoints — `attach`, `multi_attach`, and `update_subscription` — share a per-customer lock. If two requests arrive simultaneously for the same customer, the second request receives a `429` response. This prevents duplicate subscriptions, double charges, or conflicting subscription updates.
+MeterPal uses distributed locking to prevent race conditions across billing operations. All mutating billing endpoints — `attach`, `multi_attach`, and `update_subscription` — share a per-customer lock. If two requests arrive simultaneously for the same customer, the second request receives a `429` response. This prevents duplicate subscriptions, double charges, or conflicting subscription updates.
 
 The same lock is shared with auto top-ups, so a top-up triggered by usage can't race against a manual attach for the same customer.
 
 ## Duplicate Webhook Delivery
 
-Stripe may deliver the same webhook event multiple times. Autumn deduplicates webhooks using a per-event idempotency key — if the same Stripe event ID is received more than once within a 5-minute window, the duplicate is acknowledged without reprocessing.
+Stripe may deliver the same webhook event multiple times. MeterPal deduplicates webhooks using a per-event idempotency key — if the same Stripe event ID is received more than once within a 5-minute window, the duplicate is acknowledged without reprocessing.
 
-Additionally, when Autumn initiates a subscription change (e.g. a cancellation or upgrade), it sets a short-lived lock on the subscription. This prevents the resulting Stripe webhook from re-processing the change that Autumn already applied, avoiding double-counting or conflicting state updates.
+Additionally, when MeterPal initiates a subscription change (e.g. a cancellation or upgrade), it sets a short-lived lock on the subscription. This prevents the resulting Stripe webhook from re-processing the change that MeterPal already applied, avoiding double-counting or conflicting state updates.
 
 ## API Idempotency
 

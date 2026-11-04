@@ -37,7 +37,7 @@ export function highlightJsonLine(line: string): string {
 			const className =
 				keyword === "null"
 					? "text-tertiary-foreground"
-					: "text-purple-700 dark:text-purple-300";
+					: "text-[#264082] dark:text-[#7b90c4]";
 			result += `<span class="${className}">${keyword}</span>`;
 		} else if (number !== undefined) {
 			result += `<span class="text-amber-700 dark:text-amber-400">${number}</span>`;

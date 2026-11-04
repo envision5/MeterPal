@@ -10,11 +10,21 @@ import {
 	sidebarRowClass,
 	sidebarRowContentClass,
 } from "@/views/main-sidebar/sidebarRowClass";
+import { useEnv } from "@/utils/envUtils";
+import { getRedirectUrl } from "@/utils/genUtils";
 
 export const WorkbenchButton = () => {
 	const { isAdmin } = useAdmin();
-	const onCustomerView = useMatch("/customers/:customer_id");
-	const onCustomerSubView = useMatch("/customers/:customer_id/*");
+	// Customer views are served under both the bare and the sandbox-prefixed
+	// route tree (envRoutes), so match the pattern the current env actually
+	// generates — a bare "/customers/..." match never hits "/sandbox/customers".
+	const env = useEnv();
+	const onCustomerView = useMatch(
+		getRedirectUrl("/customers/:customer_id", env),
+	);
+	const onCustomerSubView = useMatch(
+		getRedirectUrl("/customers/:customer_id/*", env),
+	);
 	const isMobile = useIsMobile();
 	const { expanded } = useSidebarContext();
 

@@ -138,7 +138,7 @@ describe("initRevenuecatCli product/app methods", () => {
 		await cli.createInStore("prod_1", {
 			store_information: {
 				duration: "ONE_MONTH",
-				subscription_group_name: "Autumn - Default Group",
+				subscription_group_name: "MeterPal - Default Group",
 			},
 		});
 
@@ -150,7 +150,7 @@ describe("initRevenuecatCli product/app methods", () => {
 		expect(JSON.parse(init.body as string)).toEqual({
 			store_information: {
 				duration: "ONE_MONTH",
-				subscription_group_name: "Autumn - Default Group",
+				subscription_group_name: "MeterPal - Default Group",
 			},
 		});
 	});

@@ -182,7 +182,7 @@ const FeatureMappingDetailForm = ({
 						<span className="font-medium text-sm">Prices by plan</span>
 						<span className="text-tertiary-foreground text-xs">
 							Pick a product and price for any version. Leave the price empty
-							and Autumn creates one.
+							and MeterPal creates one.
 						</span>
 					</div>
 					{groupRowsByPlan({ rows }).map((group) => {

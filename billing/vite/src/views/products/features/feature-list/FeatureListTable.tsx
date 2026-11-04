@@ -107,7 +107,7 @@ export function FeatureListTable() {
 					className="px-1! ml-2"
 					onClick={() =>
 						window.open(
-							"https://docs.useautumn.com/documentation/pricing/credits",
+							"https://docs.meterpal.dev/documentation/pricing/credits",
 							"_blank",
 						)
 					}

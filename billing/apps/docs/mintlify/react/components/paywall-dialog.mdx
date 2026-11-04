@@ -1,6 +1,6 @@
 ---
 title: "Paywall Dialog"
-description: "Drop in Autumn's Paywall Dialog component to prompt users to upgrade to the next tier when they hit a usage limit, or don't have access to a feature"
+description: "Drop in MeterPal's Paywall Dialog component to prompt users to upgrade to the next tier when they hit a usage limit, or don't have access to a feature"
 ---
 
 
@@ -52,7 +52,7 @@ const { data, error } = await check({
 });
 ```
 
-Now when you use the `check()` function, Autumn will automatically pass in the `withPreview: true` parameter. If `data.allowed: false` is returned for the feature, the paywall will open with the following details:
+Now when you use the `check()` function, MeterPal will automatically pass in the `withPreview: true` parameter. If `data.allowed: false` is returned for the feature, the paywall will open with the following details:
 
 - The feature they don't have access to, or have run out of
 - The next product tier they should upgrade to, in order to access the feature (or an add-on if no additional tier exists)

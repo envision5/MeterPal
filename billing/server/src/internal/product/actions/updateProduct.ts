@@ -14,6 +14,7 @@ import {
 } from "@autumn/shared";
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
 import { initStripeResourcesForProducts } from "@/internal/billing/v2/providers/stripe/utils/common/initStripeResourcesForProducts.js";
+import { syncPaypalPlanIfConnected } from "@/internal/billing/paypal/paypalCatalogSync.js";
 import {
 	applyPreparedPlanLicenseSync,
 	validatePlanLicenseUpdate,
@@ -385,6 +386,9 @@ export const updateProduct = async ({
 		});
 		await applyVariantUpdates({ latestBase });
 		await applyLicenseParentUpdates({ latestChild: latestBase });
+		// The catalog map is keyed by product id, so a version bump shares the
+		// PayPal plan with the old version — re-sync it to the new price.
+		await syncPaypalPlanIfConnected({ ctx, product: latestBase });
 		return newProduct;
 	};
 
@@ -493,6 +497,10 @@ export const updateProduct = async ({
 		products: [newFullProduct],
 		candidateProducts: [fullProduct],
 	});
+
+	// PayPal is the Stripe analog here: keep the mapped billing plan in step
+	// with the edited price (in-place edits change the price on the same id).
+	await syncPaypalPlanIfConnected({ ctx, product: newFullProduct });
 
 	// logger.info("Adding task to queue to detect base variant");
 	// await addTaskToQueue({

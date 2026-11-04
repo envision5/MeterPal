@@ -7,10 +7,14 @@
 // the buyer is paying RIGHT NOW — no path sweeps the backlog of older
 // intents, so one buyer approval can never turn into multiple charges.
 
-import { eq } from "drizzle-orm";
 import { paypalOrderIntents } from "@autumn/shared";
+import { eq } from "drizzle-orm";
 import { db } from "@/db/initDrizzle.js";
 import { logger } from "@/external/logtail/logtailUtils.js";
+import {
+	paypalCaptureInvoiceId,
+	recordPaypalInvoice,
+} from "@/external/paypal/invoiceRecording.js";
 import { captureOrder } from "@/external/paypal/orders.js";
 import {
 	grantWalletCredits,
@@ -46,34 +50,59 @@ export async function captureAndGrant(
 			order?.purchase_units?.[0]?.payments?.captures?.[0];
 
 		if (order?.status === "APPROVED") {
-			const capture = (await captureOrder(client, orderId)) as Record<string, any>;
+			const capture = (await captureOrder(client, orderId)) as Record<
+				string,
+				any
+			>;
 			captureResource = capture?.purchase_units?.[0]?.payments?.captures?.[0];
 		}
 
 		if (!captureResource || captureResource.status !== "COMPLETED") {
-			return { status: order?.status === "CREATED" ? "pending" : `unapproved:${order?.status}` };
+			return {
+				status:
+					order?.status === "CREATED"
+						? "pending"
+						: `unapproved:${order?.status}`,
+			};
 		}
 
 		const amount = parseFloat(captureResource.amount?.value ?? "0");
-		const currency = (captureResource.amount?.currency_code ?? "USD").toUpperCase();
+		const currency = (
+			captureResource.amount?.currency_code ?? "USD"
+		).toUpperCase();
 		const captureId = captureResource.id;
 		if (!captureId || !amount || currency !== "USD") {
-			logger.error({ msg: "paypal capture: unsupported", orderId, captureId, amount, currency });
+			logger.error({
+				msg: "paypal capture: unsupported",
+				orderId,
+				captureId,
+				amount,
+				currency,
+			});
 			return { status: "error", reason: "unsupported_capture" };
 		}
 
-		const customId: string | undefined =
-			order?.purchase_units?.[0]?.custom_id;
+		const customId: string | undefined = order?.purchase_units?.[0]?.custom_id;
 		let customCustomerId: string | undefined;
-		if (customId?.startsWith("mp:")) customCustomerId = customId.split(":")[1];
+		let customProductId: string | undefined;
+		if (customId?.startsWith("mp:")) {
+			// "mp:<customer_id>:<product_id>" — stamped at checkout creation.
+			customCustomerId = customId.split(":")[1];
+			customProductId = customId.split(":")[2];
+		}
 
 		const cust = await resolveCustomer({
 			customId: customCustomerId,
-			payerId: captureResource.payer?.payer_id ?? order?.payer?.payer_id ?? null,
+			payerId:
+				captureResource.payer?.payer_id ?? order?.payer?.payer_id ?? null,
 			email: captureResource.payer?.email_address ?? null,
 		});
 		if (!cust?.id) {
-			logger.error({ msg: "paypal capture: customer not found", orderId, customId });
+			logger.error({
+				msg: "paypal capture: customer not found",
+				orderId,
+				customId,
+			});
 			return { status: "error", reason: "no_customer" };
 		}
 
@@ -84,6 +113,13 @@ export async function captureAndGrant(
 			idempotencyKey: `paypal-capture:${captureId}`,
 			eventName: "wallet_topup",
 			metadata: { capture_id: captureId, order_id: orderId, via },
+		});
+		await recordPaypalInvoice({
+			customer: cust,
+			externalId: paypalCaptureInvoiceId(captureId),
+			amountUsd: amount,
+			productId: customProductId,
+			description: "PayPal credit pack",
 		});
 
 		// Mark any intent row captured (best-effort).
@@ -104,8 +140,12 @@ export async function captureAndGrant(
 	} catch (err) {
 		// Log the detail; return a generic reason — this response goes to
 		// unauthenticated callers and raw PayPal error text is reconnaissance.
-		logger.error({ msg: "paypal capture: failed", orderId, via, error: String(err) });
+		logger.error({
+			msg: "paypal capture: failed",
+			orderId,
+			via,
+			error: String(err),
+		});
 		return { status: "error", reason: "capture_failed" };
 	}
 }
-

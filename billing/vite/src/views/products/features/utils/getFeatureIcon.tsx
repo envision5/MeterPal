@@ -65,7 +65,7 @@ export const getFeatureIconConfig = (
 	) {
 		return {
 			icon: <ToggleRightIcon size={size} weight={weight} />,
-			color: "text-red-500",
+			color: "text-[#EE3E36]",
 			label: "Boolean",
 		};
 	}
@@ -74,7 +74,7 @@ export const getFeatureIconConfig = (
 	if (isAiCreditSystem(typeStr) || typeStr === "ai_credit_system") {
 		return {
 			icon: <CpuIcon size={size} weight={weight} />,
-			color: "text-yellow-500",
+			color: "text-[#F4BF3D]",
 			label: "AI Credit System",
 		};
 	}
@@ -97,7 +97,7 @@ export const getFeatureIconConfig = (
 	) {
 		return {
 			icon: <BatteryHighIcon size={size} weight={weight} />,
-			color: "text-fuchsia-500",
+			color: "text-[#264082]",
 			label: "Consumable",
 		};
 	}
@@ -105,7 +105,7 @@ export const getFeatureIconConfig = (
 	// Default fallback
 	return {
 		icon: <BatteryHighIcon size={size} weight={weight} />,
-		color: "text-fuchsia-500",
+		color: "text-[#264082]",
 		label: "Consumable",
 	};
 };

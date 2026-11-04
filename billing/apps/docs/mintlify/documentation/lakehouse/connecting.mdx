@@ -1,20 +1,20 @@
 ---
 title: "Connecting"
 sidebarTitle: "Connecting"
-description: "Attach ClickHouse or BigQuery to your Autumn Lakehouse catalog."
+description: "Attach ClickHouse or BigQuery to your MeterPal Lakehouse catalog."
 ---
 
 <Warning>
-  **Available on request** — The Autumn Lakehouse is provisioned per customer. Contact us at [hey@useautumn.com](mailto:hey@useautumn.com) to get access.
+  **Available on request** — The MeterPal Lakehouse is provisioned per customer. Contact us at [hey@useautumn.com](mailto:hey@useautumn.com) to get access.
 </Warning>
 
-When your Lakehouse is provisioned, Autumn privately sends you:
+When your Lakehouse is provisioned, MeterPal privately sends you:
 
 - Your **catalog** and **namespace** names (the namespace is where your `v2_3_*` tables live).
 - A **scoped access key and secret** for the underlying object storage.
 - The **region**: `us-east-2`.
 
-Keep these credentials private. If you're connecting **BigQuery**, you get a **project** and **dataset** instead of a catalog, namespace, and storage key — Autumn owns the external connection, so there are no object-storage credentials for you to hold. Then connect your engine below.
+Keep these credentials private. If you're connecting **BigQuery**, you get a **project** and **dataset** instead of a catalog, namespace, and storage key — MeterPal owns the external connection, so there are no object-storage credentials for you to hold. Then connect your engine below.
 
 <Tabs>
 <Tab title="ClickHouse">
@@ -33,7 +33,7 @@ In ClickHouse Cloud, go to **Data Sources → Add → Data Lake Catalog → AWS 
 <Step>
 #### Configure the catalog
 
-Set the **region** to `us-east-2`, then paste the **access key** and **secret** Autumn sent you.
+Set the **region** to `us-east-2`, then paste the **access key** and **secret** MeterPal sent you.
 
 <Frame>
   <img src="/assets/lakehouse/ch-add-catalog.png" alt="Selecting Data Lake Catalog then AWS Glue as the source type" />
@@ -62,7 +62,7 @@ Save the connection. The catalog mounts as a database, and your tables appear as
 <Step>
 #### Access the dataset
 
-Autumn provisions your Iceberg tables as BigLake external tables in a BigQuery dataset you're granted access to. We share the **project** and **dataset** names with you during onboarding — you don't create the external connection yourself.
+MeterPal provisions your Iceberg tables as BigLake external tables in a BigQuery dataset you're granted access to. We share the **project** and **dataset** names with you during onboarding — you don't create the external connection yourself.
 </Step>
 
 <Step>

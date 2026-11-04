@@ -25,7 +25,7 @@ const getPostHogClient = (): PostHog | null => {
 };
 
 // ============ SYSTEM PROMPT ============
-const SYSTEM_PROMPT = `You are a helpful pricing configuration assistant for Autumn, a billing and entitlements platform.
+const SYSTEM_PROMPT = `You are a helpful pricing configuration assistant for MeterPal, a billing and entitlements platform.
 
 Your job is to help users set up their pricing model through natural conversation. You should:
 1. Ask clarifying questions to understand their needs
@@ -89,7 +89,7 @@ This creates: $Y/month base price that includes 1 unit, then $Y per additional u
 
 - **NEVER** allow is_default: true for plans with prices. All prices MUST be null or undefined.
 
-- Ignore reference to "Enterprise" plans with custom pricing. They do not need to be generated here. Instead, inform the user that custom plans can be created for any customer within the Autumn dashboard.
+- Ignore reference to "Enterprise" plans with custom pricing. They do not need to be generated here. Instead, inform the user that custom plans can be created for any customer within the MeterPal dashboard.
 
 - For annual variants of plans, create another separate plan but with the annual price interval. Name it <plan_name> - Annual
 

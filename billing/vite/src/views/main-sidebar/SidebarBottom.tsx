@@ -22,13 +22,7 @@ export default function SidebarBottom() {
 					env={env}
 				/>
 				<WorkbenchButton />
-				<NavButton
-					value="docs"
-					icon={<BookOpen strokeWidth={1.5} />}
-					title="Docs"
-					env={env}
-					href="https://docs.useautumn.com"
-				/>
+				{/* MeterPal docs host pending -- the upstream Autumn docs link was removed rather than shipped misbranded. */}
 				<SidebarContact />
 			</div>
 		</div>

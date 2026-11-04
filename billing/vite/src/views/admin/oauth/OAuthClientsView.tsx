@@ -248,7 +248,7 @@ export const OAuthClientsView = () => {
 											"text-xs",
 											client.public
 												? "bg-blue-500/10 text-blue-600 border-blue-200"
-												: "bg-purple-500/10 text-purple-600 border-purple-200",
+												: "bg-[#264082]/10 text-[#264082] border-[#7b90c4]",
 										)}
 									>
 										{client.public ? "Public" : "Confidential"}

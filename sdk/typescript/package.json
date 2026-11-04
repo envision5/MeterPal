@@ -1,6 +1,7 @@
 {
   "name": "@meterpal/sdk",
   "version": "0.1.0",
+	"license": "Apache-2.0",
   "description": "MeterPal \u2014 PayPal-native AI usage billing SDK for React apps. Drop-in components + client for credits, plans, top-ups and usage history.",
   "private": true,
   "type": "module",

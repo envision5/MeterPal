@@ -109,7 +109,7 @@ export function LicensePlanPrice({
 				<TagIcon
 					size={14}
 					weight="duotone"
-					className="text-purple-600 dark:text-purple-500"
+					className="text-[#264082] dark:text-[#264082]"
 				/>
 			),
 			label: "Price per seat",

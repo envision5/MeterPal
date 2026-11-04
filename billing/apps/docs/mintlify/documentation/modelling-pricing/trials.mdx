@@ -3,7 +3,7 @@ title: Trials
 description: Let customers try paid plans before committing
 ---
 
-Free trials give customers temporary access to a paid plan before they're charged. Autumn supports two trial modes: **card required** (collect payment info upfront, bill when trial ends) and **card not required** (no payment info needed, access expires automatically).
+Free trials give customers temporary access to a paid plan before they're charged. MeterPal supports two trial modes: **card required** (collect payment info upfront, bill when trial ends) and **card not required** (no payment info needed, access expires automatically).
 
 > **Example** <br />
 > A SaaS tool offers a 14-day free trial of their Pro plan. If the customer doesn't cancel, billing begins on day 15.
@@ -193,7 +193,7 @@ for sub in response.subscriptions:
 
 Each customer can only use a plan's trial **once**. If they try to attach the same plan again, the trial is skipped and they're billed immediately.
 
-To prevent trial abuse across multiple accounts, set a `fingerprint` when creating a customer (e.g., device ID, browser fingerprint). Autumn checks whether any customer with the same fingerprint has already used the trial.
+To prevent trial abuse across multiple accounts, set a `fingerprint` when creating a customer (e.g., device ID, browser fingerprint). MeterPal checks whether any customer with the same fingerprint has already used the trial.
 
 <CodeGroup>
 

@@ -13,7 +13,15 @@
 //      says so plainly instead of pretending the org is connected.
 
 import { AppEnv, type Organization } from "@autumn/shared";
-import { paypalBaseUrl } from "@/external/paypal/paypalClient.js";
+import {
+	type PaypalClient,
+	paypalBaseUrl,
+} from "@/external/paypal/paypalClient.js";
+import {
+	createWebhook,
+	listWebhooks,
+} from "@/external/paypal/subscriptions.js";
+import { PAYPAL_WEBHOOK_EVENT_TYPES } from "@/external/paypal/webhookEventTypes.js";
 
 export type PaypalEnv = "sandbox" | "live";
 
@@ -187,4 +195,71 @@ export async function verifyPaypalCredentials({
 		accountEmail: info.email ?? null,
 		accountId: info.user_id ?? info.payer_id ?? null,
 	};
+}
+
+/**
+ * The public webhook URL for an org — the id-less per-org route.  Signature
+ * verification on that route tries each of the org's stored webhook ids, so
+ * the URL works whether the id was auto-registered or pasted by hand, and it
+ * is known before the webhook exists (auto-registration has no
+ * chicken-and-egg problem).
+ */
+export function paypalOrgWebhookUrl(orgId: string): string {
+	const base = (
+		process.env.AUTUMN_PUBLIC_API_URL ??
+		process.env.BETTER_AUTH_URL ??
+		"http://localhost:8080"
+	).replace(/\/+$/, "");
+	return `${base}/webhooks/paypal/${orgId}`;
+}
+
+/**
+ * Registers (or reuses) the org's PayPal webhook for one environment.
+ *
+ * Runs on connect so merchants don't paste a webhook id by hand: the webhook
+ * is created against the id-less per-org URL with every event type MeterPal
+ * handles, and the returned id is stored in `paypal_config.<env>.webhook_id`
+ * — the same slot a manually-registered id lands in.
+ *
+ * Idempotent: an existing stored id short-circuits, and a previous create
+ * whose DB write failed is recovered by listing the app's webhooks and
+ * matching the URL instead of creating a duplicate.
+ */
+export async function ensurePaypalWebhook({
+	org,
+	env,
+	client,
+	persist,
+}: {
+	org: Organization;
+	env: AppEnv;
+	client: PaypalClient;
+	/** Writes the webhook id into the org's config (caller owns persistence). */
+	persist: (webhookId: string) => Promise<void>;
+}): Promise<{ webhookId: string; created: boolean }> {
+	const paypalEnv = paypalEnvForBillingEnv(env);
+	const existingId =
+		paypalEnv === "live"
+			? org.paypal_config?.live?.webhook_id
+			: org.paypal_config?.test?.webhook_id;
+	if (existingId) return { webhookId: existingId, created: false };
+
+	const url = paypalOrgWebhookUrl(org.id);
+
+	// Recover an earlier create that never got persisted.
+	const listed = await listWebhooks(client).catch(() => null);
+	const prior = listed?.webhooks?.find((w) => w.url === url);
+	if (prior?.id) {
+		await persist(prior.id);
+		return { webhookId: prior.id, created: false };
+	}
+
+	const webhook = await createWebhook({
+		client,
+		url,
+		eventTypes: [...PAYPAL_WEBHOOK_EVENT_TYPES],
+		idempotencyKey: `mp-webhook-${org.id}-${paypalEnv}`,
+	});
+	await persist(webhook.id);
+	return { webhookId: webhook.id, created: true };
 }

@@ -24,7 +24,7 @@ export const OrgLogo = ({ org }: { org: FrontendOrg }) => {
 					src={org.logo}
 				/>
 			) : (
-				<span className="w-full h-full flex items-center justify-center bg-linear-to-r from-purple-600 via-purple-500 to-purple-gradient text-white text-[11px]">
+				<span className="w-full h-full flex items-center justify-center bg-linear-to-r from-[#264082] via-[#264082] to-[#264082] text-white text-[11px]">
 					{firstLetter}
 				</span>
 			)}

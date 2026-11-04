@@ -1,31 +1,31 @@
 ---
 title: "Lakehouse Overview"
 sidebarTitle: "Overview"
-description: "Query your full Autumn dataset directly from your own data warehouse."
+description: "Query your full MeterPal dataset directly from your own data warehouse."
 ---
 
 <Warning>
-  **Available on request** — The Autumn Lakehouse is provisioned per customer. Contact us at [hey@useautumn.com](mailto:hey@useautumn.com) to get access.
+  **Available on request** — The MeterPal Lakehouse is provisioned per customer. Contact us at [hey@useautumn.com](mailto:hey@useautumn.com) to get access.
 </Warning>
 
-The Autumn Lakehouse mirrors your entire Autumn dataset — customers, plans, subscriptions, invoices, balances, events, and more — into your own data warehouse as [Apache Iceberg](https://iceberg.apache.org/) tables. You read it directly with **ClickHouse** or **BigQuery**, no API pagination required.
+The MeterPal Lakehouse mirrors your entire MeterPal dataset — customers, plans, subscriptions, invoices, balances, events, and more — into your own data warehouse as [Apache Iceberg](https://iceberg.apache.org/) tables. You read it directly with **ClickHouse** or **BigQuery**, no API pagination required.
 
-It's built for analytics: BI dashboards, revenue and usage reporting, cohort analysis, and joining Autumn's billing data against your own product data — all in SQL, against the full history.
+It's built for analytics: BI dashboards, revenue and usage reporting, cohort analysis, and joining MeterPal's billing data against your own product data — all in SQL, against the full history.
 
-Every object is delivered as a table named `v2_3_<object>` (for example `v2_3_customers`, `v2_3_subscriptions`) inside a namespace Autumn assigns you. The usage event log is the one exception — it's immutable and unversioned, delivered as `events` (not `v2_3_events`).
+Every object is delivered as a table named `v2_3_<object>` (for example `v2_3_customers`, `v2_3_subscriptions`) inside a namespace MeterPal assigns you. The usage event log is the one exception — it's immutable and unversioned, delivered as `events` (not `v2_3_events`).
 
 ## How it works
 
-Autumn's pipeline continuously reshapes the live billing database into these analytics-friendly tables and syncs them to Iceberg in object storage. You attach your query engine to the catalog once — after that, data keeps flowing in and new columns appear automatically.
+MeterPal's pipeline continuously reshapes the live billing database into these analytics-friendly tables and syncs them to Iceberg in object storage. You attach your query engine to the catalog once — after that, data keeps flowing in and new columns appear automatically.
 
 ```mermaid
 flowchart LR
-  subgraph autumn["Autumn"]
+  subgraph autumn["MeterPal"]
     DB["Billing data"]
     EV["Usage events"]
   end
 
-  RW["Autumn ETL<br/>reshape and sync"]
+  RW["MeterPal ETL<br/>reshape and sync"]
 
   subgraph lake["Your lakehouse (object storage)"]
     ICE[("Iceberg tables<br/>v2_3_*")]
@@ -48,7 +48,7 @@ flowchart LR
 ## Data freshness
 
 <Tip>
-  **State tables** (everything except events) sync under normal load within **~5 minutes** of a change in Autumn.
+  **State tables** (everything except events) sync under normal load within **~5 minutes** of a change in MeterPal.
 </Tip>
 
 <Warning>
@@ -57,7 +57,7 @@ flowchart LR
 
 ## Schema versioning
 
-The `v2_3` in every table name is the **schema version**. The Lakehouse schema changes far less often than Autumn's main API, and **all schema updates are applied automatically** — you never run a migration.
+The `v2_3` in every table name is the **schema version**. The Lakehouse schema changes far less often than MeterPal's main API, and **all schema updates are applied automatically** — you never run a migration.
 
 There are two kinds of change:
 

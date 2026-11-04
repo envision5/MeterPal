@@ -291,7 +291,7 @@ testSequentially(
 			reason: "unexpected_schedule",
 			actual_phase_starts_at: [currentPhase.end_date],
 		});
-		expect(scheduleMismatch?.message).toContain("not in Autumn");
+		expect(scheduleMismatch?.message).toContain("not in MeterPal");
 		expect(
 			result.subscriptions[0].mismatches.some(
 				(mismatch) => mismatch.type === "cancel_state_mismatch",
