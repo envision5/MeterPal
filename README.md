@@ -92,13 +92,16 @@ checkout URL.
 **2. The CLI — let the tool write the integration.**
 
 ```bash
-npx @meterpal/sdk init
+# from your app, with the SDK installed from this repo
+bun add file:../meterpal/sdk/typescript
+bunx meterpal init
 ```
 
 `init` detects the framework (Next, Express, Hono, Fastify, plain Node), writes
 the environment and a server-side handler that keeps the secret key off the
 browser, and prints the snippet to start from. It is deterministic: it does not
-guess, it installs a known-good integration for the framework it found.
+guess, it installs a known-good integration for the framework it found. The SDK
+is not on npm yet, so it comes from this repo.
 
 **3. MCP — let your coding agent do it.**
 
