@@ -11,6 +11,7 @@ import { getBearerToken } from "@autumn/auth";
 import { ErrCode, RecaseError } from "@autumn/shared";
 import type { Context } from "hono";
 import type { HonoEnv } from "@/honoUtils/HonoEnv.js";
+import { decryptVirtualKey } from "@/internal/keys/virtualKeyCrypto.js";
 import { resolveInferenceCaller } from "../inferenceAuth.js";
 import {
 	CustomerNotFoundForInference,
@@ -56,9 +57,12 @@ export const handleGetKey = async (c: Context<HonoEnv>) => {
 	});
 	if (!customer) throw new CustomerNotFoundForInference(customerId);
 
+	// The stored value is encrypted at rest; the merchant's secret-key
+	// caller gets the live key back.
+	const liveKey = decryptVirtualKey(customer.litellm_virtual_key);
 	return c.json({
 		customer_id: customer.id,
-		key: customer.litellm_virtual_key ?? null,
+		key: liveKey,
 		provisioned: Boolean(customer.litellm_virtual_key),
 	});
 };

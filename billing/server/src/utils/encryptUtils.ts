@@ -25,6 +25,33 @@ export function encryptData(data: string) {
 	return result.toString("base64");
 }
 
+/**
+ * Deterministic encryption: the IV is derived from the plaintext (HMAC),
+ * so the same input always yields the same ciphertext.
+ *
+ * Used for values that must remain LOOKUP-able by equality while not
+ * sitting in the database as plaintext (e.g. customer virtual keys: the
+ * auth path finds the customer row by the presented key).  The tradeoff —
+ * an observer can tell two equal values are equal — is acceptable for
+ * high-entropy credentials that are unique per row.
+ */
+export function encryptDataDeterministic(data: string) {
+	const key = getKey();
+	const iv = crypto
+		.createHmac("sha256", key)
+		.update(data)
+		.digest()
+		.subarray(0, 16);
+	const cipher = crypto.createCipheriv("aes-256-cbc", key, iv);
+
+	const encrypted = Buffer.concat([
+		cipher.update(data, "utf8"),
+		cipher.final(),
+	]);
+
+	return Buffer.concat([iv, encrypted]).toString("base64");
+}
+
 export function decryptData(encryptedData: string) {
 	const buffer = Buffer.from(encryptedData, "base64");
 

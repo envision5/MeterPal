@@ -102,6 +102,10 @@ async function verifyAndDispatchPaypalEvent({
 				resource: event.resource,
 			},
 			client,
+			// Scope the payer/email customer fallbacks to THIS org: the
+			// webhook URL named it, so a grant can never land on another
+			// org's customer.
+			org.id,
 		);
 	} catch (e) {
 		// Returning 5xx triggers PayPal's 25-retry-over-3-days policy.

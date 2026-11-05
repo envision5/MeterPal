@@ -68,7 +68,8 @@ app; MeterPal is never in their UI unless they embed the billing components.
 | 3 | **The SDK is a billing-UI SDK, not an inference SDK.** | `sdk/typescript/src/index.ts` exports React components + `createMeterPalClient`. The client is a thin `createAutumnClient` wrapper (`sdk/typescript/src/client.ts`) that requires the host to wrap the tree in `<AutumnProvider>` *and* mount `autumn-js/backend` routes server-side. | §4.4, §4.5 |
 | 4 | **No install/provision step.** | Nothing in the repo writes config or provisions an app. `demo-app/server.ts` shows the manual wiring (4 route mounts + 2 env vars) that a merchant would have to copy. | §4.5 |
 | 5 | **The metering bridge is disabled in the running stack.** | The local LiteLLM logs `MeterPalBridge: PAB_API_KEY missing -- bridge disabled`. `gateway/.env` *does* define `PAB_API_KEY`; the process was launched without that file in its environment. **Real inference calls are not metered today** — the demo's usage rows are seeded by `demo/bootstrap.py`. | P0 in §6 |
-| 6 | **No model allow-list or per-tenant routing in the gateway.** | `gateway/litellm/integrations/meterpal_billing.py` reads the customer from `PAB_CUSTOMER_HEADER` (default `user`) and calls `POST /check`, `POST /balances.finalize`, `POST /track_tokens`. Nothing resolves a tenant from the credential. | §4.3 |
+| 6 | **No model allow-list reaches the gateway.** | The gateway's own `model_list` is static YAML. The org's allow-list does reach the gateway, but through the virtual key: `internal/keys/litellmKeys.ts` writes the org's enabled models onto every key it mints and refreshes, and LiteLLM enforces that list. A model the merchant stops serving therefore arrives on the next key refresh, not on a poll. | §4.2 |
+| 7 | **Concurrent requests were not bounded.** | The admission gate was a point-in-time balance check behind a one-second cache, the balance reservation was off by default and never reached the server in a valid shape, and no per-customer in-flight ceiling existed. N concurrent requests could each see the full balance and all be admitted. Fixed by `docs/plan.md` — reservation on by default and sized from the request's price, per-customer `max_parallel_requests` on the key, and no cached verdict. | `docs/plan.md` |
 
 Everything else the vision needs already exists: the PayPal subscription lifecycle (§8), the
 reservation pattern and concurrency primitives (`docs/plan.md` §4–5), the MeterPal↔LiteLLM contract
@@ -181,11 +182,14 @@ the model id on `/check`; the reservation must carry the **unit price** it reser
 settle must use the pinned value. `docs/plan.md` §4 covers this pattern — it is the one place
 where "live pricing" and "reserved pricing" must not diverge.
 
-**Gateway consumption.** The gateway stops owning the model list in YAML. It polls
-`GET /v1/catalog?served_models=1` from the billing server (Redis-cached, short TTL, e.g. 30s),
-building its LiteLLM `model_list` dynamically, with the static YAML as a fallback when the billing
-server is unreachable. `PAB_MODEL_ID_MAP` becomes unnecessary: the id the gateway serves *is* the
-billable id.
+**Gateway consumption.** The gateway does not poll `GET /v1/catalog`; the allow-list travels with the
+key instead. When MeterPal provisions or refreshes a customer's virtual key it writes the org's
+enabled models onto it (`internal/keys/litellmKeys.ts` → `getOrgAllowedModels`), and LiteLLM enforces
+that list. So a model that the merchant stops serving reaches the gateway on the next key refresh
+(`handleUpsertServedModel.ts` → `syncOrgLitellmKeys`), not on a poll. Prices need no refresh at all:
+they are resolved by the billing server on every `/check` and returned as `pricing.pinned_rates`, so
+the price a request is admitted at is always the current one. `PAB_MODEL_ID_MAP` still bridges the
+gateway's model naming to the billable id.
 
 **Dashboard.** A "Served models" tab under `views/products/`: a searchable catalog (from models.dev
 plus the models MeterPal operates), toggles for what to serve, inline-editable input/output price
@@ -440,7 +444,7 @@ Publish `@meterpal/sdk` and the Python package; `meterpal` CLI; hosted gateway e
 | --- | --- |
 | The PayPal subscription lifecycle (create / revise / cancel, approval → activation → plan attach, the redirect-token resolution) | `billing/server/src/internal/billing/paypal/`, `billing/server/src/external/paypal/` |
 | The MeterPal↔LiteLLM contract (`/check`, `/balances.finalize`, `/track_tokens`) | `docs/bridge.md`, `gateway/litellm/integrations/meterpal_billing.py` |
-| The reservation pattern, concurrency primitives, the 402 wall | `docs/plan.md` §4–5, §7 |
+| The reservation pattern, concurrency primitives, the 402 wall | `docs/plan.md` §2–5 |
 | The customer-facing billing components and their contract | `docs/customer-ui.md`, `sdk/typescript/src/components/` |
 | The per-org payment-processor pattern to copy | `billing/shared/models/orgModels/orgTable.ts` (`paypal_config`), `billing/vite/src/views/developer/configure-paypal/` |
 | The metering bridge (admission, commit/release, per-token debit) | `gateway/litellm/integrations/meterpal_billing.py` |

@@ -90,6 +90,51 @@ export function litellmRequiredBalance(): number {
 }
 
 /**
+ * The org's shared rate limits, as the gateway enforces them.
+ *
+ * Read from the gateway's env for the same reason as the feature id: one
+ * definition.  These used to be hardcoded on both sides -- here and in the
+ * gateway's Python bridge -- so the two could drift and a merchant would be
+ * limited by one number while the gateway enforced another.
+ */
+export function litellmOrgRateLimits(): { rpm: number; tpm: number } {
+	const rawRpm =
+		process.env.PAB_ORG_RPM_LIMIT ??
+		gatewayEnv().PAB_ORG_RPM_LIMIT ??
+		process.env.AUTUMN_ORG_RPM_LIMIT ??
+		gatewayEnv().AUTUMN_ORG_RPM_LIMIT ??
+		"600";
+	const rawTpm =
+		process.env.PAB_ORG_TPM_LIMIT ??
+		gatewayEnv().PAB_ORG_TPM_LIMIT ??
+		process.env.AUTUMN_ORG_TPM_LIMIT ??
+		gatewayEnv().AUTUMN_ORG_TPM_LIMIT ??
+		"4000000";
+	const rpm = Number(rawRpm);
+	const tpm = Number(rawTpm);
+	return {
+		rpm: Number.isFinite(rpm) ? rpm : 600,
+		tpm: Number.isFinite(tpm) ? tpm : 4_000_000,
+	};
+}
+
+/**
+ * An override for every customer's in-flight request ceiling.
+ *
+ * The per-plan defaults live next to the rate limits they belong with; this
+ * overrides all of them, which is what an operator wants when a provider
+ * changes its capacity.  Unset means "use the per-plan value".
+ */
+export function litellmMaxParallelOverride(): number | undefined {
+	const raw =
+		process.env.LITELLM_MAX_PARALLEL ?? gatewayEnv().LITELLM_MAX_PARALLEL;
+	if (raw === undefined || raw === "") return undefined;
+	const parsed = Number(raw);
+	if (!Number.isFinite(parsed) || parsed < 0) return undefined;
+	return parsed;
+}
+
+/**
  * The shared secret the hosted gateway presents to this API.
  *
  * The gateway serves every merchant, so it cannot present one merchant's

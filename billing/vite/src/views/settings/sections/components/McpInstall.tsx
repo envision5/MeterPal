@@ -146,7 +146,12 @@ export const McpInstall = () => {
 						</span>
 					)}
 					{client.install && (
-						<Button variant="secondary" className="w-fit" asChild>
+						<Button
+							variant="secondary"
+							className="w-fit"
+							asChild
+							nativeButton={false}
+						>
 							<a
 								href={client.install.href}
 								target="_blank"

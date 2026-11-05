@@ -394,7 +394,13 @@ const instanceSummary = (d: ServedModelDeployment): string[] => {
 	return parts;
 };
 
-export const DeploymentsSection = ({
+/**
+ * The instances behind a model, without a collapse around them.
+ *
+ * The card on the page wraps this in a disclosure; the editor sheet shows it
+ * open.  Either way it is the same list and the same form.
+ */
+export const DeploymentsList = ({
 	deployments,
 	onCreate,
 	onUpdate,
@@ -410,7 +416,6 @@ export const DeploymentsSection = ({
 	onRemove: (deploymentId: string) => Promise<void>;
 	isBusy: boolean;
 }) => {
-	const [open, setOpen] = useState(false);
 	const [adding, setAdding] = useState(false);
 	const [addValues, setAddValues] = useState<DeploymentFormValues>(emptyForm);
 	const [editingId, setEditingId] = useState<string | null>(null);
@@ -435,7 +440,7 @@ export const DeploymentsSection = ({
 			await onUpdate(deploymentId, values);
 			setEditingId(null);
 		} catch {
-			// The caller toasted the failure; keep the form and its values up.
+			// The caller toasted the failure.
 		}
 	};
 
@@ -449,6 +454,114 @@ export const DeploymentsSection = ({
 			setRemovingId(null);
 		}
 	};
+
+	return (
+		<div className="flex flex-col gap-2">
+			<p className="text-subtle text-xs leading-4">
+				Each instance is one provider account and key. The gateway
+				load-balances across them, so more instances spread the model's
+				traffic past one account's rate limit.
+			</p>
+
+			{deployments.map((deployment) =>
+				editingId === deployment.id ? (
+					<DeploymentForm
+						key={deployment.id}
+						values={editValues}
+						setValues={setEditValues}
+						requireKey={false}
+						currentExtraKeys={deployment.extra_params_keys}
+						onSubmit={(values) => handleUpdate(deployment.id, values)}
+						onCancel={() => setEditingId(null)}
+						isSaving={isBusy}
+					/>
+				) : (
+					<div
+						key={deployment.id}
+						className="flex flex-wrap items-center gap-3 rounded-lg border bg-background px-3 py-2"
+					>
+						<div className="flex min-w-0 flex-1 flex-col gap-0.5">
+							<span className="truncate font-medium text-foreground text-sm">
+								{deployment.provider_model}
+							</span>
+							<span className="truncate text-tertiary-foreground text-xs">
+								{instanceSummary(deployment).map((part, i) => (
+									<span key={part} className="ml-1.5 first:ml-0">
+										{i > 0 && <span className="mr-1.5">·</span>}
+										{part}
+									</span>
+								))}
+							</span>
+						</div>
+						<Button
+							variant="secondary"
+							size="sm"
+							className="shrink-0"
+							onClick={() => {
+								setEditingId(deployment.id);
+								setEditValues(toFormValues(deployment));
+							}}
+						>
+							Edit
+						</Button>
+						<Button
+							variant="muted"
+							size="sm"
+							className="shrink-0"
+							isLoading={removingId === deployment.id}
+							onClick={() => handleRemove(deployment.id)}
+							aria-label="Remove instance"
+						>
+							<TrashIcon className="size-3.5" />
+						</Button>
+					</div>
+				),
+			)}
+
+			{adding ? (
+				<DeploymentForm
+					values={addValues}
+					setValues={setAddValues}
+					requireKey={true}
+					currentExtraKeys={[]}
+					onSubmit={(values) => handleCreate(values as DeploymentCreateValues)}
+					onCancel={() => {
+						setAddValues(emptyForm);
+						setAdding(false);
+					}}
+					isSaving={isBusy}
+				/>
+			) : (
+				<Button
+					variant="secondary"
+					size="sm"
+					className="w-fit"
+					onClick={() => setAdding(true)}
+				>
+					Add instance
+				</Button>
+			)}
+		</div>
+	);
+};
+
+export const DeploymentsSection = ({
+	deployments,
+	onCreate,
+	onUpdate,
+	onRemove,
+	isBusy,
+}: {
+	deployments: ServedModelDeployment[];
+	onCreate: (values: DeploymentCreateValues) => Promise<void>;
+	onUpdate: (
+		deploymentId: string,
+		values: DeploymentUpdate,
+	) => Promise<void>;
+	onRemove: (deploymentId: string) => Promise<void>;
+	isBusy: boolean;
+}) => {
+	const [open, setOpen] = useState(false);
 
 	return (
 		<div className="flex flex-col gap-2 border-t pt-3">
@@ -469,92 +582,13 @@ export const DeploymentsSection = ({
 			</button>
 
 			{open && (
-				<div className="flex flex-col gap-2">
-					<p className="text-subtle text-xs leading-4">
-						Each instance is one provider account and key. The gateway
-						load-balances across them, so more instances spread the model's
-						traffic past one account's rate limit.
-					</p>
-
-					{deployments.map((deployment) =>
-						editingId === deployment.id ? (
-							<DeploymentForm
-								key={deployment.id}
-								values={editValues}
-								setValues={setEditValues}
-								requireKey={false}
-								currentExtraKeys={deployment.extra_params_keys}
-								onSubmit={(values) => handleUpdate(deployment.id, values)}
-								onCancel={() => setEditingId(null)}
-								isSaving={isBusy}
-							/>
-						) : (
-							<div
-								key={deployment.id}
-								className="flex flex-wrap items-center gap-3 rounded-lg border bg-background px-3 py-2"
-							>
-								<div className="flex min-w-0 flex-1 flex-col gap-0.5">
-									<span className="truncate font-medium text-foreground text-sm">
-										{deployment.provider_model}
-									</span>
-									<span className="truncate text-tertiary-foreground text-xs">
-										{instanceSummary(deployment).map((part, i) => (
-											<span key={part} className="ml-1.5 first:ml-0">
-												{i > 0 && <span className="mr-1.5">·</span>}
-												{part}
-											</span>
-										))}
-									</span>
-								</div>
-								<Button
-									variant="secondary"
-									size="sm"
-									className="shrink-0"
-									onClick={() => {
-										setEditingId(deployment.id);
-										setEditValues(toFormValues(deployment));
-									}}
-								>
-									Edit
-								</Button>
-								<Button
-									variant="muted"
-									size="sm"
-									className="shrink-0"
-									isLoading={removingId === deployment.id}
-									onClick={() => handleRemove(deployment.id)}
-									aria-label="Remove instance"
-								>
-									<TrashIcon className="size-3.5" />
-								</Button>
-							</div>
-						),
-					)}
-
-					{adding ? (
-						<DeploymentForm
-							values={addValues}
-							setValues={setAddValues}
-							requireKey={true}
-							currentExtraKeys={[]}
-							onSubmit={(values) => handleCreate(values as DeploymentCreateValues)}
-							onCancel={() => {
-								setAddValues(emptyForm);
-								setAdding(false);
-							}}
-							isSaving={isBusy}
-						/>
-					) : (
-						<Button
-							variant="secondary"
-							size="sm"
-							className="w-fit"
-							onClick={() => setAdding(true)}
-						>
-							Add instance
-						</Button>
-					)}
-				</div>
+				<DeploymentsList
+					deployments={deployments}
+					onCreate={onCreate}
+					onUpdate={onUpdate}
+					onRemove={onRemove}
+					isBusy={isBusy}
+				/>
 			)}
 		</div>
 	);

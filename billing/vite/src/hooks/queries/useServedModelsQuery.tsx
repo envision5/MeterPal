@@ -1,7 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback } from "react";
 import { useQueryKeyFactory } from "@/hooks/common/useQueryKeyFactory";
 import { useAxiosInstance } from "@/services/useAxiosInstance";
 import { useEnv } from "@/utils/envUtils";
+
+/** Stable empty lists, so a caller does not re-render on every render. */
+const EMPTY_SERVED_MODELS: ServedModel[] = [];
+const EMPTY_AVAILABLE_MODELS: AvailableModel[] = [];
 
 /** One instance behind a served model: a provider account and key. The key
  *  itself never comes back — only its last four characters, and the extra
@@ -33,6 +38,20 @@ export interface ServedModel {
 	output_cost_usd_1m: number | null;
 	/** The merchant's markup, in percent. Null = inherit the plan's markup. */
 	markup_pct: number | null;
+	/**
+	 * The markup that will actually be charged, in percent.
+	 *
+	 * The server resolves this the way the request path resolves it, so the
+	 * price the dashboard shows is the price on the invoice.
+	 */
+	effective_markup_pct: number;
+	/** Where the charged markup comes from. */
+	effective_markup_source: "model" | "plan" | "none";
+	/**
+	 * The markup the plan applies on its own -- what this model is charged
+	 * when the merchant's own markup is unset.
+	 */
+	plan_markup_pct: number;
 	updated_at?: number | null;
 	deployments?: ServedModelDeployment[];
 }
@@ -54,6 +73,13 @@ export interface ServedModelUpdate {
 	input_cost_usd_1m?: number | null;
 	output_cost_usd_1m?: number | null;
 	markup_pct?: number | null;
+}
+
+/** The markup the org's plan applies to one model, on its own. */
+export interface ModelPlanMarkup {
+	model_id: string;
+	plan_markup_pct: number;
+	plan_markup_source: "model" | "provider" | "default" | "none";
 }
 
 /** An instance to register on the gateway. On update, an empty or absent
@@ -178,9 +204,31 @@ export const useServedModelsQuery = () => {
 		onSuccess: invalidate,
 	});
 
+	/**
+	 * The markup the plan applies to a model, on its own.
+	 *
+	 * Fetched rather than computed: a model the provider feed does not know,
+	 * or a custom model the credit system has no cost for, is charged at no
+	 * markup at all, and only the server knows which case a model is.
+	 *
+	 * Stable identity on purpose -- the editor fetches this as the model id
+	 * changes, and a new function identity every render would refetch
+	 * forever.
+	 */
+	const fetchPlanMarkup = useCallback(
+		async (modelId: string): Promise<ModelPlanMarkup> => {
+			const { data } = await axiosInstance.get<ModelPlanMarkup>(
+				"/v1/served_models/markup",
+				{ params: { model_id: modelId } },
+			);
+			return data;
+		},
+		[axiosInstance],
+	);
+
 	return {
-		models: list.data?.models ?? [],
-		availableModels: available.data?.models ?? [],
+		models: list.data?.models ?? EMPTY_SERVED_MODELS,
+		availableModels: available.data?.models ?? EMPTY_AVAILABLE_MODELS,
 		isLoading: list.isLoading,
 		isLoadingAvailable: available.isLoading,
 		error: list.error,
@@ -194,5 +242,6 @@ export const useServedModelsQuery = () => {
 		isUpdatingDeployment: updateDeployment.isPending,
 		removeDeployment: removeDeployment.mutateAsync,
 		isRemovingDeployment: removeDeployment.isPending,
+		fetchPlanMarkup,
 	};
 };

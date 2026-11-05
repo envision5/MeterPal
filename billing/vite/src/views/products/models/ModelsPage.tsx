@@ -5,6 +5,12 @@
 // The prices shown here are the MERCHANT's prices.  They become the runtime
 // authority the moment they are saved: a change in the provider's price
 // cannot move them afterwards.
+//
+// The page reads, and the sheet writes.  Editing a price here is a two-step
+// affair on purpose -- pick a model, then set what it costs in the editor --
+// because the price, the markup, the display name and the gateway name all
+// belong to one row, and a row edited field-by-field in place is a row that
+// can be left half-configured.
 
 import { Button, Input, Skeleton, Switch } from "@autumn/ui";
 import { TrashIcon } from "lucide-react";
@@ -21,21 +27,46 @@ import {
 	SETTINGS_LIST_CLASS,
 	SettingsGroup,
 } from "@/views/settings/components/SettingsGroup";
-import { type DeploymentCreateValues, DeploymentsSection } from "./DeploymentsSection";
+import {
+	type DeploymentCreateValues,
+	DeploymentsSection,
+} from "./DeploymentsSection";
+import { DeleteModelDialog } from "./DeleteModelDialog";
+import { type ModelSheetTarget, ModelSheet } from "./ModelSheet";
+import {
+	baseInputPrice,
+	baseOutputPrice,
+	formatUsd,
+	marginPct,
+	markupLabel,
+	markupSourceLabel,
+	withMarkup,
+} from "./modelPricing";
 
-/** What one megabyte of tokens costs, for a quick sanity read. */
-const formatCost = (value: number | null | undefined) => {
-	if (value == null) return "—";
-	return `$${value.toFixed(value < 1 ? 4 : 2)}`;
-};
+/** One labelled number in a model's stat strip. */
+const Stat = ({
+	label,
+	value,
+	hint,
+}: {
+	label: string;
+	value: string;
+	hint?: string;
+}) => (
+	<div className="flex flex-col gap-0.5">
+		<span className="text-subtle text-tiny">{label}</span>
+		<span className="font-medium text-foreground text-sm">{value}</span>
+		{hint && <span className="text-subtle text-tiny">{hint}</span>}
+	</div>
+);
 
-const ServedModelRow = ({
+const ServedModelCard = ({
 	model,
 	providerInput,
 	providerOutput,
-	onChange,
+	onEdit,
+	onToggle,
 	onRemove,
-	isSaving,
 	onCreateDeployment,
 	onUpdateDeployment,
 	onRemoveDeployment,
@@ -44,9 +75,9 @@ const ServedModelRow = ({
 	model: ServedModel;
 	providerInput: number | null;
 	providerOutput: number | null;
-	onChange: (update: Partial<ServedModel>) => void;
+	onEdit: () => void;
+	onToggle: (enabled: boolean) => void;
 	onRemove: () => void;
-	isSaving: boolean;
 	onCreateDeployment: (values: DeploymentCreateValues) => Promise<void>;
 	onUpdateDeployment: (
 		deploymentId: string,
@@ -55,41 +86,30 @@ const ServedModelRow = ({
 	onRemoveDeployment: (deploymentId: string) => Promise<void>;
 	isDeploymentBusy: boolean;
 }) => {
-	const [input, setInput] = useState(
-		model.input_cost_usd_1m?.toString() ?? "",
-	);
-	const [output, setOutput] = useState(
-		model.output_cost_usd_1m?.toString() ?? "",
-	);
-	const [markup, setMarkup] = useState(model.markup_pct?.toString() ?? "");
+	/**
+	 * A row states a price for both directions or for neither: half a price
+	 * is "no opinion" to the runtime, and the provider's price applies then.
+	 */
+	const ownPriced =
+		model.input_cost_usd_1m != null && model.output_cost_usd_1m != null;
 
-	const commit = (field: "input" | "output" | "markup") => {
-		const raw = field === "input" ? input : field === "output" ? output : markup;
-		const parsed = raw.trim() === "" ? null : Number(raw);
-		if (parsed != null && Number.isNaN(parsed)) return;
+	const baseInput = ownPriced
+		? model.input_cost_usd_1m
+		: baseInputPrice(null, providerInput);
+	const baseOutput = ownPriced
+		? model.output_cost_usd_1m
+		: baseOutputPrice(null, providerOutput);
 
-		if (field === "input") {
-			onChange({ input_cost_usd_1m: parsed });
-		} else if (field === "output") {
-			onChange({ output_cost_usd_1m: parsed });
-		} else {
-			onChange({ markup_pct: parsed });
-		}
-	};
-
-	// The effective price: the merchant's price plus their markup.
-	const markupPct = markup.trim() === "" ? 0 : Number(markup);
-	const effectiveInput =
-		model.input_cost_usd_1m == null
-			? null
-			: model.input_cost_usd_1m * (1 + (Number.isNaN(markupPct) ? 0 : markupPct) / 100);
-	const margin =
-		providerInput && effectiveInput
-			? ((effectiveInput - providerInput) / effectiveInput) * 100
-			: null;
+	// The markup the server resolved, the same one the request path charges.
+	const markup = model.effective_markup_pct;
+	const effectiveInput = withMarkup(baseInput, markup);
+	const effectiveOutput = withMarkup(baseOutput, markup);
+	const margin = marginPct(effectiveInput, providerInput);
 
 	return (
-		<div className="flex flex-col gap-3 px-4 py-3.5">
+		<div
+			className={`flex flex-col gap-3 px-4 py-3.5 ${model.enabled ? "" : "opacity-60"}`}
+		>
 			<div className="flex items-center gap-3">
 				<div className="flex min-w-0 flex-1 flex-col gap-0.5">
 					<span className="truncate font-medium text-foreground text-sm">
@@ -99,21 +119,29 @@ const ServedModelRow = ({
 						{model.model_id}
 						{providerInput != null && (
 							<span className="ml-2 text-subtle">
-								provider {formatCost(providerInput)} / {formatCost(providerOutput)}
+								provider {formatUsd(providerInput)} /{" "}
+								{formatUsd(providerOutput)}
 							</span>
 						)}
 					</span>
 				</div>
-				<div className="flex w-16 shrink-0 items-center justify-end">
-					<span className="font-medium text-subtle text-xs">
-						{model.enabled ? "Served" : "Off"}
-					</span>
-					<Switch
-						checked={model.enabled}
-						onCheckedChange={(checked) => onChange({ enabled: checked })}
-						aria-label={`Serve ${model.model_id}`}
-					/>
-				</div>
+
+				<span className="shrink-0 font-medium text-subtle text-xs">
+					{model.enabled ? "Served" : "Off"}
+				</span>
+				<Switch
+					checked={model.enabled}
+					onCheckedChange={onToggle}
+					aria-label={`Serve ${model.model_id}`}
+				/>
+				<Button
+					variant="secondary"
+					size="sm"
+					className="shrink-0"
+					onClick={onEdit}
+				>
+					Edit
+				</Button>
 				<Button
 					variant="muted"
 					size="sm"
@@ -125,52 +153,30 @@ const ServedModelRow = ({
 				</Button>
 			</div>
 
-			<div className="flex flex-wrap items-end gap-3">
-				<div className="flex flex-col gap-1">
-					<span className="text-subtle text-tiny">Input $/1M</span>
-					<Input
-						className="w-28"
-						value={input}
-						onChange={(e) => setInput(e.target.value)}
-						onBlur={() => commit("input")}
-						placeholder="0.00"
-						inputMode="decimal"
-					/>
-				</div>
-				<div className="flex flex-col gap-1">
-					<span className="text-subtle text-tiny">Output $/1M</span>
-					<Input
-						className="w-28"
-						value={output}
-						onChange={(e) => setOutput(e.target.value)}
-						onBlur={() => commit("output")}
-						placeholder="0.00"
-						inputMode="decimal"
-					/>
-				</div>
-				<div className="flex flex-col gap-1">
-					<span className="text-subtle text-tiny">Markup %</span>
-					<Input
-						className="w-24"
-						value={markup}
-						onChange={(e) => setMarkup(e.target.value)}
-						onBlur={() => commit("markup")}
-						placeholder="plan"
-						inputMode="decimal"
-					/>
-				</div>
-				<div className="flex flex-col gap-1 pb-1">
-					<span className="text-subtle text-tiny">Effective input</span>
-					<span className="font-medium text-foreground text-sm">
-						{formatCost(effectiveInput)}
-						{margin != null && (
-							<span className="ml-1.5 text-subtle text-tiny">
-								{margin.toFixed(0)}% margin
-							</span>
-						)}
-					</span>
-				</div>
-				{isSaving && <span className="pb-1.5 text-subtle text-tiny">Saving…</span>}
+			<div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
+				<Stat
+					label="PRICE $/1M"
+					value={`${formatUsd(baseInput)} / ${formatUsd(baseOutput)}`}
+					hint={ownPriced ? "yours" : "the provider's"}
+				/>
+				<Stat
+					label="MARKUP"
+					value={markupLabel({
+						source: model.effective_markup_source,
+						effectivePct: model.effective_markup_pct,
+					})}
+					hint={markupSourceLabel(model.effective_markup_source)}
+				/>
+				<Stat
+					label="EFFECTIVE $/1M"
+					value={`${formatUsd(effectiveInput)} / ${formatUsd(effectiveOutput)}`}
+					hint="what you charge"
+				/>
+				<Stat
+					label="MARGIN"
+					value={margin == null ? "—" : `${margin.toFixed(1)}%`}
+					hint={margin == null ? "no provider price" : "over the provider"}
+				/>
 			</div>
 
 			<DeploymentsSection
@@ -193,6 +199,7 @@ export const ModelsPage = () => {
 		upsert,
 		isUpserting,
 		remove,
+		isRemoving,
 		createDeployment,
 		isCreatingDeployment,
 		updateDeployment,
@@ -202,16 +209,8 @@ export const ModelsPage = () => {
 	} = useServedModelsQuery();
 
 	const [search, setSearch] = useState("");
-	const [adding, setAdding] = useState<string | null>(null);
-
-	// The custom-model form: any "<provider>/<name>" the catalog does not
-	// know -- a self-hosted endpoint, an OpenAI-compatible provider.
-	const [customOpen, setCustomOpen] = useState(false);
-	const [customModelId, setCustomModelId] = useState("");
-	const [customDisplayName, setCustomDisplayName] = useState("");
-	const [customInput, setCustomInput] = useState("");
-	const [customOutput, setCustomOutput] = useState("");
-	const isCustomModelIdValid = /.+\/.+/.test(customModelId.trim());
+	const [sheetTarget, setSheetTarget] = useState<ModelSheetTarget | null>(null);
+	const [deleting, setDeleting] = useState<ServedModel | null>(null);
 
 	const providerCosts = useMemo(() => {
 		const map = new Map<string, AvailableModel>();
@@ -228,39 +227,20 @@ export const ModelsPage = () => {
 			.slice(0, 40);
 	}, [availableModels, models, search]);
 
-	const handleChange = async (
-		model: ServedModel,
-		update: Partial<ServedModel>,
-	) => {
+	const handleToggle = async (model: ServedModel, enabled: boolean) => {
 		try {
-			await upsert({ model_id: model.model_id, ...update });
+			await upsert({ model_id: model.model_id, enabled });
 		} catch (error) {
 			toast.error(getBackendErr(error, "Failed to update the model"));
 		}
 	};
 
-	const handleAdd = async (candidate: AvailableModel) => {
-		setAdding(candidate.model_id);
+	const handleRemove = async () => {
+		if (!deleting) return;
 		try {
-			await upsert({
-				model_id: candidate.model_id,
-				display_name: candidate.display_name,
-				enabled: true,
-				input_cost_usd_1m: candidate.provider_input_cost_usd_1m,
-				output_cost_usd_1m: candidate.provider_output_cost_usd_1m,
-			});
-			toast.success(`${candidate.model_id} added`);
-		} catch (error) {
-			toast.error(getBackendErr(error, "Failed to add the model"));
-		} finally {
-			setAdding(null);
-		}
-	};
-
-	const handleRemove = async (model: ServedModel) => {
-		try {
-			await remove(model.model_id);
-			toast.success(`${model.model_id} removed`);
+			await remove(deleting.model_id);
+			toast.success(`${deleting.model_id} removed`);
+			setDeleting(null);
 		} catch (error) {
 			toast.error(getBackendErr(error, "Failed to remove the model"));
 		}
@@ -297,7 +277,10 @@ export const ModelsPage = () => {
 		}
 	};
 
-	const handleRemoveDeployment = async (model: ServedModel, deploymentId: string) => {
+	const handleRemoveDeployment = async (
+		model: ServedModel,
+		deploymentId: string,
+	) => {
 		try {
 			await removeDeployment({ modelId: model.model_id, deploymentId });
 			toast.success("Instance removed");
@@ -307,32 +290,10 @@ export const ModelsPage = () => {
 		}
 	};
 
-	const handleAddCustomModel = async () => {
-		try {
-			await upsert({
-				model_id: customModelId.trim(),
-				display_name: customDisplayName.trim() || null,
-				enabled: true,
-				input_cost_usd_1m:
-					customInput.trim() === "" ? null : Number(customInput),
-				output_cost_usd_1m:
-					customOutput.trim() === "" ? null : Number(customOutput),
-			});
-			toast.success(`${customModelId.trim()} added`);
-			setCustomOpen(false);
-			setCustomModelId("");
-			setCustomDisplayName("");
-			setCustomInput("");
-			setCustomOutput("");
-		} catch (error) {
-			toast.error(getBackendErr(error, "Failed to add the model"));
-		}
-	};
-
 	return (
 		<div className="flex flex-col gap-10">
 			<SettingsGroup
-				title="Served models"
+				title="Your price sheet"
 				description="The models your users can call, and what you charge for them. Once a model is listed, your price is yours: a change in the provider's price will not move it."
 			>
 				{isLoading ? (
@@ -351,7 +312,7 @@ export const ModelsPage = () => {
 				) : (
 					<div className={SETTINGS_LIST_CLASS}>
 						{models.map((model) => (
-							<ServedModelRow
+							<ServedModelCard
 								key={model.model_id}
 								model={model}
 								providerInput={
@@ -362,9 +323,11 @@ export const ModelsPage = () => {
 									providerCosts.get(model.model_id)
 										?.provider_output_cost_usd_1m ?? null
 								}
-								onChange={(update) => handleChange(model, update)}
-								onRemove={() => handleRemove(model)}
-								isSaving={isUpserting}
+								onEdit={() =>
+									setSheetTarget({ kind: "edit", model: model })
+								}
+								onToggle={(enabled) => handleToggle(model, enabled)}
+								onRemove={() => setDeleting(model)}
 								onCreateDeployment={(values) =>
 									handleCreateDeployment(model, values)
 								}
@@ -387,7 +350,7 @@ export const ModelsPage = () => {
 
 			<SettingsGroup
 				title="Add a model"
-				description="Every model MeterPal can serve, with the provider's current price. Adding one copies that price as your starting point."
+				description="Every model MeterPal can serve, with the provider's current price. Add one to set what you charge for it before it goes live."
 			>
 				<div className="flex flex-col gap-3">
 					<Input
@@ -417,107 +380,78 @@ export const ModelsPage = () => {
 										</span>
 									</div>
 									<span className="shrink-0 text-subtle text-xs">
-										{formatCost(candidate.provider_input_cost_usd_1m)} /{" "}
-										{formatCost(candidate.provider_output_cost_usd_1m)}
+										{formatUsd(candidate.provider_input_cost_usd_1m)} /{" "}
+										{formatUsd(candidate.provider_output_cost_usd_1m)}
 									</span>
 									<Button
 										variant="secondary"
 										size="sm"
 										className="w-20 shrink-0"
-										isLoading={adding === candidate.model_id}
-										onClick={() => handleAdd(candidate)}
+										onClick={() =>
+											setSheetTarget({
+												kind: "create",
+												model_id: candidate.model_id,
+												display_name: candidate.display_name,
+												provider_input:
+													candidate.provider_input_cost_usd_1m,
+												provider_output:
+													candidate.provider_output_cost_usd_1m,
+											})
+										}
 									>
 										Add
 									</Button>
 								</div>
-								))}
-							</div>
-						)}
+							))}
+						</div>
+					)}
 
-						{customOpen ? (
-							<div className="flex flex-col gap-3 rounded-lg border bg-background px-3 py-3">
-								<div className="flex flex-wrap items-end gap-3">
-									<div className="flex flex-col gap-1">
-										<span className="text-subtle text-tiny">Model id</span>
-										<Input
-											className="w-56"
-											value={customModelId}
-											onChange={(e) => setCustomModelId(e.target.value)}
-											placeholder="custom/my-model"
-											autoComplete="off"
-										/>
-									</div>
-									<div className="flex flex-col gap-1">
-										<span className="text-subtle text-tiny">Display name</span>
-										<Input
-											className="w-44"
-											value={customDisplayName}
-											onChange={(e) => setCustomDisplayName(e.target.value)}
-											placeholder="Optional"
-											autoComplete="off"
-										/>
-									</div>
-									<div className="flex flex-col gap-1">
-										<span className="text-subtle text-tiny">Input $/1M</span>
-										<Input
-											className="w-28"
-											value={customInput}
-											onChange={(e) => setCustomInput(e.target.value)}
-											placeholder="0.00"
-											inputMode="decimal"
-										/>
-									</div>
-									<div className="flex flex-col gap-1">
-										<span className="text-subtle text-tiny">Output $/1M</span>
-										<Input
-											className="w-28"
-											value={customOutput}
-											onChange={(e) => setCustomOutput(e.target.value)}
-											placeholder="0.00"
-											inputMode="decimal"
-										/>
-									</div>
-								</div>
-								<p className="text-subtle text-xs leading-4">
-									Anything the catalog does not know: a self-hosted endpoint,
-									an OpenAI-compatible provider. Use a{" "}
-									<code className="font-mono text-foreground text-tiny">
-										provider/name
-									</code>{" "}
-									id, then add instances for it on the model above.
-								</p>
-								<div className="flex gap-2">
-									<Button
-										size="sm"
-										onClick={handleAddCustomModel}
-										isLoading={isUpserting}
-										disabled={!isCustomModelIdValid}
-									>
-										Add model
-									</Button>
-									<Button
-										size="sm"
-										variant="secondary"
-										type="button"
-										onClick={() => setCustomOpen(false)}
-									>
-										Cancel
-									</Button>
-								</div>
-							</div>
-						) : (
-							<div>
-								<Button
-									variant="secondary"
-									size="sm"
-									onClick={() => setCustomOpen(true)}
-								>
-									Add a custom model
-								</Button>
-							</div>
-						)}
+					<div>
+						<Button
+							variant="secondary"
+							size="sm"
+							onClick={() =>
+								setSheetTarget({
+									kind: "create",
+									model_id: "",
+									display_name: null,
+									provider_input: null,
+									provider_output: null,
+								})
+							}
+						>
+							Add a custom model
+						</Button>
+						<p className="mt-2 text-subtle text-xs leading-4">
+							Anything the catalog does not know: a self-hosted endpoint, an
+							OpenAI-compatible provider. Use a{" "}
+							<code className="font-mono text-foreground text-tiny">
+								provider/name
+							</code>{" "}
+							id.
+						</p>
 					</div>
-				</SettingsGroup>
-			</div>
-		);
-	};
+				</div>
+			</SettingsGroup>
+
+			<ModelSheet
+				open={sheetTarget !== null}
+				onOpenChange={(open) => {
+					if (!open) setSheetTarget(null);
+				}}
+				target={sheetTarget}
+				availableModels={availableModels}
+			/>
+
+			<DeleteModelDialog
+				model={deleting}
+				open={deleting !== null}
+				onOpenChange={(open) => {
+					if (!open) setDeleting(null);
+				}}
+				onConfirm={handleRemove}
+				isDeleting={isRemoving}
+			/>
+		</div>
+	);
+};

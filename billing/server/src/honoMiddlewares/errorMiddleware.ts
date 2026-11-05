@@ -15,6 +15,36 @@ export const errorMiddleware = (err: Error, c: Context<HonoEnv>) => {
 	const ctx = c.get("ctx");
 	const logger = ctx?.logger;
 
+	// 1. Handle RecaseError (our custom errors) — these are expected user-facing
+	// errors, so warn-log and respond WITHOUT capturing to Sentry.
+	// This runs before the no-context fallback: some routes (e.g. /api/auth/*)
+	// are registered before baseMiddleware, so `ctx` is never set there, and
+	// without this branch their expected 401s surfaced as 500s.
+	if (err instanceof RecaseError) {
+		if (logger) {
+			logger.warn(
+				`RECASE WARNING (${ctx.org?.slug || "unknown"}): ${err.message} [${err.code}]`,
+				{
+					error: err.data ?? err,
+				},
+			);
+		} else {
+			console.warn(
+				`RECASE WARNING (no context): ${err.message} [${err.code}]`,
+			);
+		}
+
+		if (err.statusCode === 503) c.header("Retry-After", "1");
+		return c.json(
+			{
+				message: err.message,
+				code: err.code,
+				...(ctx?.env ? { env: ctx.env } : undefined),
+			},
+			err.statusCode as ContentfulStatusCode,
+		);
+	}
+
 	// If no context/logger available, fallback to console
 	if (!logger) {
 		console.error("Error occurred before context was set:", err);
@@ -31,27 +61,6 @@ export const errorMiddleware = (err: Error, c: Context<HonoEnv>) => {
 	// Check for error skip cases first (warn-level errors that don't need Sentry)
 	const skipResponse = handleErrorSkip(err, c);
 	if (skipResponse) return skipResponse;
-
-	// 1. Handle RecaseError (our custom errors) — these are expected user-facing
-	// errors, so warn-log and respond WITHOUT capturing to Sentry.
-	if (err instanceof RecaseError) {
-		logger.warn(
-			`RECASE WARNING (${ctx.org?.slug || "unknown"}): ${err.message} [${err.code}]`,
-			{
-				error: err.data ?? err,
-			},
-		);
-
-		if (err.statusCode === 503) c.header("Retry-After", "1");
-		return c.json(
-			{
-				message: err.message,
-				code: err.code,
-				env: ctx.env,
-			},
-			err.statusCode as ContentfulStatusCode,
-		);
-	}
 
 	// If we got here, it's an error worth tracking - capture to Sentry
 	Sentry.captureException(err, {
@@ -73,11 +82,13 @@ export const errorMiddleware = (err: Error, c: Context<HonoEnv>) => {
 		);
 		logger.error(err);
 
+		// Details go to the logs and Sentry above — the response stays
+		// generic so an internal bug (schema shapes, table names) does not
+		// become client-side reconnaissance.
 		return c.json(
 			{
-				message: formattedError,
-				code: ErrCode.InvalidInputs,
-				env: ctx.env,
+				message: "Internal server error",
+				code: ErrCode.InternalError,
 			},
 			500,
 		);
@@ -94,11 +105,13 @@ export const errorMiddleware = (err: Error, c: Context<HonoEnv>) => {
 		},
 	);
 
+	// The raw error message (Drizzle/PG internals, provider responses, stack
+	// fragments) must not reach the client on an unexpected 500 — expected,
+	// user-facing errors are RecaseErrors handled above.
 	return c.json(
 		{
-			message: err.message || "Unknown error",
+			message: "Internal server error",
 			code: ErrCode.InternalError,
-			env: ctx.env,
 		},
 		500,
 	);

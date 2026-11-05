@@ -57,6 +57,10 @@ if (process.env.AUTUMN_SECRET_KEY) {
 	internalRouter.use(
 		"/api/autumn/*",
 		autumnHandler({
+			// Without an explicit URL the SDK falls back to api.useautumn.com,
+			// which rejects local (dogfood) secret keys — always point it at the
+			// API URL this server itself serves.
+			autumnURL: process.env.AUTUMN_API_URL,
 			identify: async (c) => {
 				const ctx = c.get("ctx");
 

@@ -216,13 +216,21 @@ async function dropCachedToken(key: string): Promise<void> {
  * The PayPal REST host for an environment.
  *
  * PAYPAL_BASE_URL override exists for local end-to-end tests (mock PayPal);
- * production always uses the sandbox/live hosts.
+ * it is IGNORED in production — an override that survives into a prod
+ * process sends every PayPal API call, credentials included, to that host.
  */
 export function paypalBaseUrl(paypalEnv: "sandbox" | "live"): string {
-	return (
-		process.env.PAYPAL_BASE_URL ??
-		(paypalEnv === "live" ? LIVE : SANDBOX)
-	);
+	const override = process.env.PAYPAL_BASE_URL;
+	if (override) {
+		if (process.env.NODE_ENV === "production") {
+			console.warn(
+				"PAYPAL_BASE_URL is set but IGNORED in production; using the PayPal sandbox/live host.",
+			);
+		} else {
+			return override;
+		}
+	}
+	return paypalEnv === "live" ? LIVE : SANDBOX;
 }
 
 /**

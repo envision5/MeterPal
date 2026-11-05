@@ -26,6 +26,7 @@ import {
 	sortFeatures,
 } from "@autumn/shared";
 import { eq } from "drizzle-orm";
+import { encryptVirtualKey } from "@/internal/keys/virtualKeyCrypto.js";
 import { verifyKey } from "@/internal/dev/apiKeys/actions/verifyKey.js";
 import { getOrgWithFeaturesCached } from "@/internal/orgs/orgUtils/getOrgWithFeaturesCached.js";
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
@@ -80,9 +81,25 @@ export const resolveInferenceCaller = async ({
 	}
 
 	if (token.startsWith(VIRTUAL_KEY_PREFIX)) {
-		const customer = await ctx.db.query.customers.findFirst({
-			where: eq(customers.litellm_virtual_key, token),
+		// Virtual keys are encrypted at rest (deterministically, so lookup by
+		// equality still works).  A miss falls back to the legacy plaintext
+		// value, and a legacy hit is upgraded in place so the plaintext never
+		// outlives its first use.
+		const encryptedToken = encryptVirtualKey(token);
+		let customer = await ctx.db.query.customers.findFirst({
+			where: eq(customers.litellm_virtual_key, encryptedToken),
 		});
+		if (!customer) {
+			customer = await ctx.db.query.customers.findFirst({
+				where: eq(customers.litellm_virtual_key, token),
+			});
+			if (customer) {
+				await ctx.db
+					.update(customers)
+					.set({ litellm_virtual_key: encryptedToken })
+					.where(eq(customers.id, customer.id as string));
+			}
+		}
 		if (!customer) throw invalidCredential("Invalid virtual key");
 
 		const env = customer.env as AppEnv;

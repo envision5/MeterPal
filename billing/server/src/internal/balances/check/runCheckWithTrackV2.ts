@@ -10,6 +10,7 @@ import {
 	orgToInStatuses,
 	type ParsedCheckParams,
 	RecaseError,
+	Scopes,
 	type TrackParams,
 	UsageLimitExceededError,
 } from "@autumn/shared";
@@ -26,13 +27,27 @@ export const runCheckWithTrackV2 = async ({
 	ctx,
 	body,
 	requiredBalance,
+	lockValue,
 	checkData,
 }: {
 	ctx: AutumnContext;
 	body: ParsedCheckParams;
 	requiredBalance: number;
+	lockValue?: number;
 	checkData: CheckDataV2;
 }) => {
+	// Two different numbers, and conflating them is what made the
+	// reservation useless:
+	//
+	//   requiredBalance  the caller's minimum-balance policy -- the balance
+	//                    a call may start with.
+	//   lockValue        what this request can cost, priced at the org's
+	//                    rates.  This is what the hold reserves.
+	//
+	// A hold sized by the policy floor is a flat amount that does not bound
+	// the request, so N concurrent requests could each take it and spend
+	// past it.
+	const holdValue = lockValue ?? requiredBalance;
 	if (!body.feature_id) {
 		throw new InternalError({
 			message: "ran check with track but no feature ID",
@@ -44,6 +59,20 @@ export const runCheckWithTrackV2 = async ({
 			message:
 				"Can't use send_event: true with a publishable key. Use your secret API key instead.",
 			statusCode: 400,
+		});
+	}
+
+	// send_event DEBITS the customer.  The check route carries only
+	// balances.read, so a key scoped read-only could otherwise move money.
+	// Publishable keys are refused above; scoped keys must prove
+	// balances.write.  Unscoped legacy auth (empty scopes) keeps the legacy
+	// fail-open behavior.
+	if (ctx.scopes?.length && !ctx.scopes.includes(Scopes.Balances.Write)) {
+		throw new RecaseError({
+			message:
+				"send_event: true requires the balances.write scope. This key is read-only.",
+			code: ErrCode.InsufficientScopes,
+			statusCode: 403,
 		});
 	}
 
@@ -62,6 +91,23 @@ export const runCheckWithTrackV2 = async ({
 			code: ErrCode.InvalidRequest,
 			statusCode: 400,
 		});
+	}
+
+	// The threshold is the caller's minimum-balance policy and it applies on
+	// the lock path too.  Without this the threshold would only be enforced
+	// by the deduction, and the deduction now reserves the request's own
+	// cost -- which for a cheap request is less than the policy floor, so a
+	// customer below the floor would be admitted.
+	if (body.lock?.enabled && requiredBalance > 0) {
+		const thresholdCheck = await getCheckResponseV2({
+			ctx,
+			checkData,
+			requiredBalance,
+			properties: body.properties,
+		});
+		if (!thresholdCheck.allowed) {
+			return thresholdCheck;
+		}
 	}
 
 	// No entitlement means the Lua deduction script no-ops successfully,
@@ -97,14 +143,14 @@ export const runCheckWithTrackV2 = async ({
 		ctx,
 		featureId: body.feature_id,
 		lock: body.lock,
-		value: requiredBalance,
+		value: holdValue,
 	}).map((deduction) => ({ ...deduction, enforceOverdueBlock: true }));
 
 	const trackBody: TrackParams = {
 		customer_id: body.customer_id,
 		entity_id: body.entity_id,
 		feature_id: body.feature_id,
-		value: requiredBalance,
+		value: holdValue,
 		properties: body.properties,
 		skip_event: body.skip_event,
 		overage_behavior: body.lock?.overage_behavior ?? "reject",
@@ -172,5 +218,16 @@ export const runCheckWithTrackV2 = async ({
 		balance: checkData.apiBalance ?? null,
 		balances: trackBalances,
 		flag: checkData.apiFlag ?? null,
+		// The reservation, when one was actually taken.  Without it in the
+		// response the caller has no id to finalize, so the hold could only
+		// ever be released by its expiry.
+		...(allowed && body.lock?.lock_id
+			? {
+					lock: {
+						lock_id: body.lock.lock_id,
+						expires_at: body.lock.expires_at,
+					},
+				}
+			: {}),
 	});
 };

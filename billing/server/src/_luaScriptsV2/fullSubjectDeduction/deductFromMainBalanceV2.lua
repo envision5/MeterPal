@@ -110,7 +110,22 @@ local function deduct_from_main_balance(params)
   if not ent_data then
     return 0
   end
-  
+
+  -- Guard: the mutation sites below divide by credit_cost, so a zero,
+  -- negative, non-finite or absurdly tiny value turns value_delta into
+  -- inf/nan and corrupts the ledger.  The TS layer validates prices, but
+  -- the ledger is the last line of defense — skip the deduction loudly
+  -- rather than write a corrupt delta.
+  local cc = params.credit_cost
+  if cc == nil or cc ~= cc or cc == math.huge or cc <= 0 or cc < 1e-12 then
+    logger.log(
+      "%s invalid credit_cost %s — deduction skipped",
+      params.log_prefix or "",
+      tostring(cc)
+    )
+    return 0
+  end
+
   local amount = params.amount * params.credit_cost
   local deducted = 0
   local prefix = params.log_prefix or ""

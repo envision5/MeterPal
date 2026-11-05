@@ -224,6 +224,11 @@ export function createRoute<
 		//   - Legacy API keys created before the scopes column existed
 		//   - Public keys (by design bypass the scope system)
 		//   - Cached API key payloads from before the deploy
+		//   - The gateway credential on the routes ITS middleware allowlists
+		//     (gatewayAuthMiddleware runs first for every /v1 request and
+		//     403s the gateway credential everywhere except the metering
+		//     contract — check / track_tokens / balances.finalize — so this
+		//     fail-open can never widen the gateway's surface).
 		if (!granted || granted.length === 0) {
 			// ctx.logger?.warn("Scope check skipped: no scopes on request auth", {
 			// 	path: c.req.path,

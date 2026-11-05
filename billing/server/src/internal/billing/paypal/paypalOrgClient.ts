@@ -47,12 +47,14 @@ export async function getPaypalClientForOrder(
 }
 
 /**
- * The PayPal client for a subscription, resolved from the checkout that
- * created it.
+ * The PayPal client AND owning org for a subscription, resolved from the
+ * checkout that created it.  The org scopes the customer-resolution
+ * fallbacks on activation — a buyer's payer id or email may exist under
+ * another org, and an unscoped lookup would credit the wrong wallet.
  */
-export async function getPaypalClientForSubscription(
+export async function getPaypalContextForSubscription(
 	subscriptionId: string,
-): Promise<PaypalClient | null> {
+): Promise<{ client: PaypalClient; orgId: string } | null> {
 	if (!subscriptionId) return null;
 	const [intent] = await db
 		.select({ org_id: paypalOrderIntents.org_id, env: paypalOrderIntents.env })
@@ -60,5 +62,7 @@ export async function getPaypalClientForSubscription(
 		.where(eq(paypalOrderIntents.subscription_id, subscriptionId))
 		.limit(1);
 	if (!intent) return null;
-	return getPaypalClientForOrg(intent.org_id, intent.env as AppEnv);
+	const client = await getPaypalClientForOrg(intent.org_id, intent.env as AppEnv);
+	if (!client) return null;
+	return { client, orgId: intent.org_id };
 }

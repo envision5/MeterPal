@@ -17,23 +17,67 @@
 // that org, so a request that names a customer of another org is refused
 // rather than billed.
 
-import { AppEnv, AuthType, ErrCode, RecaseError, sortFeatures } from "@autumn/shared";
+import { timingSafeEqual } from "node:crypto";
+import {
+	AppEnv,
+	AuthType,
+	ErrCode,
+	RecaseError,
+	sortFeatures,
+} from "@autumn/shared";
 import type { Context, Next } from "hono";
 import type { HonoEnv } from "@/honoUtils/HonoEnv.js";
 import { gatewayTrustSecret } from "@/internal/keys/litellmEnv.js";
 import { getOrgWithFeaturesCached } from "@/internal/orgs/orgUtils/getOrgWithFeaturesCached.js";
 
-/** Is this the shared gateway secret? */
+/**
+ * Is this the shared gateway secret?
+ *
+ * Constant-time compare: the secret authenticates as ANY org on its
+ * allowlisted routes, so a byte-at-a-time oracle on it would be a
+ * platform-level prize.
+ */
 export const isGatewayCredential = (token: string): boolean => {
 	const secret = gatewayTrustSecret();
-	return secret.length > 0 && token === secret;
+	if (!secret || !token) return false;
+	const a = Buffer.from(token, "utf8");
+	const b = Buffer.from(secret, "utf8");
+	if (a.length !== b.length) {
+		// Burn a same-length compare so a length mismatch is not
+		// distinguishable from a value mismatch by timing.
+		timingSafeEqual(b, b);
+		return false;
+	}
+	return timingSafeEqual(a, b);
 };
+
+/**
+ * The only routes the gateway credential may call: exactly the metering
+ * contract the bridge implements.  Everything else — customers, invoices,
+ * org config, PayPal connection — is out of reach even for the gateway,
+ * because with empty scopes the legacy fail-open would otherwise let it
+ * through as any org.
+ */
+const GATEWAY_ALLOWED_ROUTES = new Set([
+	"POST /v1/check",
+	"POST /v1/track_tokens",
+	"POST /v1/balances.finalize",
+]);
 
 export const gatewayAuthMiddleware = async (
 	c: Context<HonoEnv>,
 	next: Next,
 ) => {
 	const ctx = c.get("ctx");
+
+	const routeKey = `${c.req.method} ${c.req.path.split("?")[0]}`;
+	if (!GATEWAY_ALLOWED_ROUTES.has(routeKey)) {
+		throw new RecaseError({
+			message: `The gateway credential cannot access ${routeKey}`,
+			code: ErrCode.InsufficientScopes,
+			statusCode: 403,
+		});
+	}
 
 	// The gateway names the tenant it resolved from the virtual key.
 	const body = (await c.req.json().catch(() => null)) as {

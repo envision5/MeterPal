@@ -7,7 +7,7 @@
 // the buyer is paying RIGHT NOW — no path sweeps the backlog of older
 // intents, so one buyer approval can never turn into multiple charges.
 
-import { paypalOrderIntents } from "@autumn/shared";
+import { paypalOrderIntents, type AppEnv } from "@autumn/shared";
 import { eq } from "drizzle-orm";
 import { db } from "@/db/initDrizzle.js";
 import { logger } from "@/external/logtail/logtailUtils.js";
@@ -21,7 +21,7 @@ import {
 	resolveCustomer,
 	stampPayerId,
 } from "@/external/paypal/runPaypalWebhookHandlers.js";
-import { getPaypalClientForOrder } from "./paypalOrgClient.js";
+import { getPaypalClientForOrg } from "./paypalOrgClient.js";
 
 /**
  * Capture an order (if approved) and grant the wallet credits.  Shared by
@@ -34,10 +34,27 @@ export async function captureAndGrant(
 ): Promise<{ status: string; credits?: number; reason?: string }> {
 	try {
 		// The order was created for one org, so that org's PayPal account is
-		// the only one allowed to capture it.
-		const client = await getPaypalClientForOrder(orderId);
-		if (!client) {
+		// the only one allowed to capture it — and that org also scopes the
+		// customer-resolution fallbacks below (a buyer's email or payer id
+		// may exist under another org).
+		const [intent] = await db
+			.select({
+				org_id: paypalOrderIntents.org_id,
+				env: paypalOrderIntents.env,
+			})
+			.from(paypalOrderIntents)
+			.where(eq(paypalOrderIntents.order_id, orderId))
+			.limit(1);
+		if (!intent) {
 			logger.error({ msg: "paypal capture: no org for order", orderId, via });
+			return { status: "error", reason: "no_org" };
+		}
+		const client = await getPaypalClientForOrg(
+			intent.org_id,
+			intent.env as AppEnv,
+		);
+		if (!client) {
+			logger.error({ msg: "paypal capture: no client for org", orderId, via });
 			return { status: "error", reason: "no_org" };
 		}
 
@@ -95,6 +112,7 @@ export async function captureAndGrant(
 			customId: customCustomerId,
 			payerId:
 				captureResource.payer?.payer_id ?? order?.payer?.payer_id ?? null,
+			orgId: intent.org_id,
 			email: captureResource.payer?.email_address ?? null,
 		});
 		if (!cust?.id) {

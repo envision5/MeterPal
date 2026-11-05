@@ -5,6 +5,26 @@ inference gateway.  The patches below are local changes on top of upstream
 LiteLLM.  Re-apply them after any re-sync of the checkout, and remove them
 once upstream carries the same fix.
 
+## 0. Files that are OURS, not patches to upstream
+
+The sections below are modifications to upstream files.  This section is not:
+it lists files that MeterPal **added** to the vendored tree.  A re-sync that
+replaces the checkout deletes them, and unlike a patch they leave no trace in
+`git diff` - the requests simply stop being metered.
+
+- **`litellm/integrations/meterpal_billing.py`** - the entire MeterPal
+  billing bridge: admission (`/check` with a balance reservation), the
+  per-token settle (`/track_tokens`), and the hold release
+  (`/balances.finalize`).  Registered in `config.yaml` as
+  `litellm.integrations.meterpal_billing.proxy_handler_instance`.
+
+  **Re-add it after every re-sync**, and check that `config.yaml` still
+  names it.  If it is missing, every model call is served unmetered.
+
+  Nothing in this file modifies upstream behaviour; it is a LiteLLM custom
+  callback.  The safest long-term home for it is outside the vendored tree,
+  but while it lives here this entry is the thing that keeps it alive.
+
 ## 1. Windows: the query-engine liveness probe killed the engine
 
 `litellm/proxy/utils.py` polled the Prisma query engine for liveness with

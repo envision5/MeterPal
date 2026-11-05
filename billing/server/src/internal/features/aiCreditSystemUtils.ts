@@ -205,7 +205,16 @@ const computeCost = ({
 	};
 };
 
-const resolveAiMarkup = ({
+/**
+ * The markup chain for a model: the model's own markup, else its provider's,
+ * else the credit system's default, else none.
+ *
+ * Exported because the price sheet has to show the same number the request
+ * path will charge at -- a dashboard that resolves markup its own way drifts
+ * from the runtime, and the merchant sees a price that is not the one they
+ * are billed.
+ */
+export const resolveAiMarkup = ({
 	modelName,
 	creditSystem,
 	modelMarkup,
@@ -238,6 +247,7 @@ export const getModelCreditCostBreakdown = async ({
 	modelName,
 	creditSystem,
 	servedModel,
+	pricingData,
 	...tokens
 }: {
 	modelName: string;
@@ -251,10 +261,20 @@ export const getModelCreditCostBreakdown = async ({
 	 * markup still applies).  When absent, nothing changes.
 	 */
 	servedModel?: ServedModelPricing | null;
+	/**
+	 * The provider feed, when the caller already has it.
+	 *
+	 * Reading the feed parses a large payload, so a caller resolving many
+	 * models reads it once and passes it in rather than paying for it per
+	 * model.  Omitted, the feed is read here.
+	 */
+	pricingData?: ModelPricingData;
 } & TokenInput): Promise<ModelCostBreakdown> => {
 	const markups = creditSystem.model_markups || {};
-	const pricingData = await getModelsDevPricing();
-	const resolved = resolveModel({ modelName, pricingData });
+	const resolved = resolveModel({
+		modelName,
+		pricingData: pricingData ?? (await getModelsDevPricing()),
+	});
 
 	const markupEntry = markups[modelName];
 	const featureMarkup = resolveAiMarkup({
@@ -325,7 +345,9 @@ export const getModelCreditCost = async (
  *
  * Used when the caller settled at a price it was admitted at: the merchant's
  * price sheet may have changed in between, and the charge must still be the
- * one that was quoted.  No price lookup happens here at all.
+ * one that was quoted.  No price lookup happens here at all — which is
+ * exactly why the rates are validated hard: a negative or non-finite rate
+ * would mint or destroy balance through the deduction.
  */
 export const getPinnedModelCostBreakdown = ({
 	rates,
@@ -342,6 +364,28 @@ export const getPinnedModelCostBreakdown = ({
 		markup: number;
 	};
 } & TokenInput): ModelCostBreakdown => {
+	const rateValues = [
+		rates.input,
+		rates.output,
+		rates.cache_read,
+		rates.cache_write,
+		rates.audio_input,
+		rates.audio_output,
+		rates.reasoning,
+		rates.markup,
+	];
+	if (
+		!rateValues.every(
+			(v) => v === undefined || (Number.isFinite(v) && v >= 0),
+		)
+	) {
+		throw new RecaseError({
+			message:
+				"pinned_rates must be finite, non-negative numbers. The server only honors rates it issued at check time.",
+			code: ErrCode.InvalidRequest,
+			statusCode: 400,
+		});
+	}
 	const computed = computeCost({
 		cost: {
 			input: rates.input,

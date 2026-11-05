@@ -48,6 +48,16 @@ export const TrackTokensParamsSchema = z.object({
 	idempotency_key: z.string().optional().meta({
 		internal: true,
 	}),
+	// The gateway names the tenant it resolved from the caller's virtual key.
+	// These are read off the raw request body by the gateway auth middleware;
+	// declaring them here keeps the contract explicit instead of relying on
+	// the body carrying fields the schema does not mention.
+	org_id: z.string().optional().meta({
+		internal: true,
+	}),
+	env: z.string().optional().meta({
+		internal: true,
+	}),
 	timestamp: TrackTimestampSchema.optional(),
 	overage_behavior: OverageBehaviorSchema.optional(),
 	customer_data: CustomerDataSchema.optional().meta({
@@ -74,10 +84,17 @@ export const TrackTokensParamsSchema = z.object({
 			reasoning: z.number().optional(),
 			markup: z.number(),
 		})
+		.refine(
+			(rates) => Object.values(rates).every((v) => Number.isFinite(v) && v >= 0),
+			{
+				message:
+					"pinned_rates must be finite, non-negative numbers. They are advisory — the server only honors rates it issued at check time.",
+			},
+		)
 		.optional()
 		.meta({
 			description:
-				"The unit prices returned by an earlier check for the same model. When present they are used verbatim, so the reservation and the charge are made at the same price even if the merchant changes their prices in between.",
+				"The unit prices returned by an earlier check for the same model. The server honors these only when they match the quote it stored at check time under the same idempotency key; otherwise the charge is computed from the org's current price sheet.",
 		}),
 });
 

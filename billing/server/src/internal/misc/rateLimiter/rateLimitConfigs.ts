@@ -240,11 +240,16 @@ export const RATE_LIMIT_CONFIGS: Record<RateLimitType, RateLimitConfig> = {
 		notInRedis: false,
 		scope: RateLimitScope.Org,
 	},
+	// Track and Check run in Redis, not in process memory.  An in-process
+	// counter is per instance, so the effective limit is the configured
+	// limit multiplied by the number of instances -- a cap that silently
+	// stops being a cap as the fleet grows.  These two are the AI metering
+	// path, so they are the ones that must hold across instances.
 	[RateLimitType.Track]: {
 		name: "track",
 		limit: 10000,
 		windowMs: 1000,
-		notInRedis: true,
+		notInRedis: false,
 		scope: RateLimitScope.Customer,
 	},
 	[RateLimitType.BatchTrack]: {
@@ -258,7 +263,7 @@ export const RATE_LIMIT_CONFIGS: Record<RateLimitType, RateLimitConfig> = {
 		name: "check",
 		limit: 10000,
 		windowMs: 1000,
-		notInRedis: true,
+		notInRedis: false,
 		scope: RateLimitScope.CustomerWithUrlFallback,
 	},
 	[RateLimitType.Events]: {

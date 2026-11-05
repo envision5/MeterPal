@@ -14,6 +14,7 @@ export const RESERVED_SANDBOX_SLUGS = new Set([
 	"chat",
 	"quickstart",
 	"onboarding",
+	"setup",
 	"impersonate-redirect",
 	"trmnl",
 ]);

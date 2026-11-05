@@ -9,10 +9,12 @@ export const runCheckV2 = async ({
 	ctx,
 	body,
 	requiredBalance,
+	lockValue,
 }: {
 	ctx: AutumnContext;
 	body: ParsedCheckParams;
 	requiredBalance: number;
+	lockValue?: number;
 }): Promise<{
 	checkData: CheckDataV2;
 	response: CheckResponseV3;
@@ -29,6 +31,7 @@ export const runCheckV2 = async ({
 					ctx,
 					body,
 					requiredBalance,
+					lockValue,
 					checkData,
 				})
 			: await getCheckResponseV2({

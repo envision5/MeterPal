@@ -75,6 +75,13 @@ export interface ButtonProps
 	disableActive?: boolean;
 	hide?: boolean;
 	render?: React.ReactElement;
+	/**
+	 * Base UI renders a native <button> by default and warns when `render` (or
+	 * `asChild`) points at something else, because a non-<button> loses native
+	 * button semantics. Set this to false when the rendered element is
+	 * deliberately not a button — an <a> link, for instance.
+	 */
+	nativeButton?: boolean;
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
@@ -88,6 +95,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 			transition = false,
 			disableActive = true,
 			hide = false,
+			nativeButton,
 			children,
 			render: renderProp,
 			...props
@@ -131,6 +139,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 				ref={ref}
 				data-slot="button"
 				render={effectiveRender}
+				nativeButton={nativeButton}
 				className={cn(
 					buttonVariants({ variant, size, className }),
 					getDisableActiveStyles(),

@@ -10,8 +10,16 @@
 
 import { AppEnv, type Feature } from "@autumn/shared";
 import type { DrizzleCli } from "@/db/initDrizzle.js";
-import { getModelCreditCostBreakdown } from "@/internal/features/aiCreditSystemUtils.js";
-import { getServedModelPricing } from "./servedModelService.js";
+import {
+	getModelCreditCostBreakdown,
+	type ModelCostBreakdown,
+} from "@/internal/features/aiCreditSystemUtils.js";
+import type { ModelPricingData } from "@/external/redis/actions/modelPricingCache/modelPricingCache.js";
+import {
+	getServedModelPricing,
+	pricingFromRow,
+	type ServedModelPricing,
+} from "./servedModelService.js";
 
 /** The unit rates a request is charged at, in USD per 1M tokens. */
 export type PinnedModelRates = {
@@ -24,6 +32,76 @@ export type PinnedModelRates = {
 	reasoning?: number;
 	/** The markup already folded into the charge, in percent. */
 	markup: number;
+};
+
+/** Where a markup number came from. */
+export type MarkupSource = ModelCostBreakdown["markupSource"];
+
+/**
+ * The markup a model is charged at, and where that number came from.
+ *
+ * This is the same answer `resolveModelRates` gives, reached without
+ * re-reading the row and without the cost computation -- so the price sheet
+ * can resolve a whole sheet of models in one pass and show the merchant the
+ * number that will actually be charged.
+ *
+ * The merchant's own markup wins, and only when their row is the authority:
+ * a row with no usable prices is no opinion, so the plan's markup applies
+ * then, exactly as it would at request time.
+ *
+ * `planMarkup` is the markup the plan applies on its own -- the number a
+ * merchant gets when they put their model's markup back to "inherit the
+ * plan's".  The dashboard shows it as the alternative to a custom markup,
+ * so it has to come from the same resolution the runtime uses.
+ */
+export const resolveEffectiveMarkup = async ({
+	modelId,
+	creditSystem,
+	served,
+	pricingData,
+}: {
+	modelId: string;
+	creditSystem: Feature | null;
+	served: ServedModelPricing | null;
+	pricingData?: ModelPricingData;
+}): Promise<{
+	markup: number;
+	source: "model" | "plan" | "none";
+	planMarkup: number;
+	planSource: MarkupSource;
+}> => {
+	if (!creditSystem) {
+		return {
+			markup: 0,
+			source: "none",
+			planMarkup: 0,
+			planSource: "none",
+		};
+	}
+
+	const fallback = await resolveFeatureRates({
+		modelId,
+		creditSystem,
+		pricingData,
+	});
+	const planMarkup = fallback?.markup ?? 0;
+	const planSource = fallback?.markupSource ?? "none";
+
+	if (served?.markupPct != null) {
+		return {
+			markup: served.markupPct,
+			source: "model",
+			planMarkup,
+			planSource,
+		};
+	}
+
+	return {
+		markup: planMarkup,
+		source: planSource === "none" ? "none" : "plan",
+		planMarkup,
+		planSource,
+	};
 };
 
 /**
@@ -39,25 +117,26 @@ export const resolveModelRates = async ({
 	env,
 	modelId,
 	creditSystem,
+	pricingData,
 }: {
 	db: DrizzleCli;
 	orgId: string;
 	env: AppEnv;
 	modelId: string;
 	creditSystem: Feature;
+	/** The provider feed, when the caller already has it. */
+	pricingData?: ModelPricingData;
 }): Promise<PinnedModelRates | null> => {
 	const served = await getServedModelPricing({ db, orgId, env, modelId });
 	if (served) {
 		// The merchant's markup wins when they set one; otherwise the plan's
 		// markup still applies, so listing a model never drops the margin.
-		let markup = served.markupPct;
-		if (markup == null) {
-			const fallback = await resolveFeatureRates({
-				modelId,
-				creditSystem,
-			});
-			markup = fallback?.markup ?? 0;
-		}
+		const { markup } = await resolveEffectiveMarkup({
+			modelId,
+			creditSystem,
+			served,
+			pricingData,
+		});
 		return {
 			input: served.input,
 			output: served.output,
@@ -70,7 +149,7 @@ export const resolveModelRates = async ({
 		};
 	}
 
-	return resolveFeatureRates({ modelId, creditSystem });
+	return resolveFeatureRates({ modelId, creditSystem, pricingData });
 };
 
 /**
@@ -80,14 +159,17 @@ export const resolveModelRates = async ({
 const resolveFeatureRates = async ({
 	modelId,
 	creditSystem,
+	pricingData,
 }: {
 	modelId: string;
 	creditSystem: Feature;
-}): Promise<PinnedModelRates | null> => {
+	pricingData?: ModelPricingData;
+}): Promise<(PinnedModelRates & { markupSource: MarkupSource }) | null> => {
 	try {
 		const breakdown = await getModelCreditCostBreakdown({
 			modelName: modelId,
 			creditSystem,
+			pricingData,
 			input: 0,
 			output: 0,
 		});
@@ -100,6 +182,7 @@ const resolveFeatureRates = async ({
 			audio_output: breakdown.rates.audioOutput,
 			reasoning: breakdown.rates.reasoning,
 			markup: breakdown.markup,
+			markupSource: breakdown.markupSource,
 		};
 	} catch {
 		// An unpriceable model is not a crash: the caller decides what to do
@@ -107,3 +190,11 @@ const resolveFeatureRates = async ({
 		return null;
 	}
 };
+
+/**
+ * The pricing a row states, or null when the row states none.
+ *
+ * Re-exported here so the price sheet resolves a sheet of rows without
+ * reaching into two modules for the same idea.
+ */
+export { pricingFromRow };

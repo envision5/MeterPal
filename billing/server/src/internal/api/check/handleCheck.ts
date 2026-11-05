@@ -5,13 +5,17 @@ import {
 	CheckParamsSchema,
 	CheckQuerySchema,
 	type CheckResponseV3,
+	ErrCode,
+	isLockRequested,
 	type ParsedCheckParams,
+	RecaseError,
 	RouteGroup,
 	Scopes,
 } from "@autumn/shared";
 import { createRoute } from "@/honoMiddlewares/routeHandler.js";
 import { runCheckWithRollout } from "@/internal/balances/check/index.js";
 import { parseCheckParamsForLock } from "@/internal/balances/utils/lock/parseCheckParamsForLock.js";
+import { savePinnedQuote } from "@/internal/balances/track/utils/pinnedRatesStore.js";
 import { getCheckFailOpenFallback } from "./checkUtils/getCheckFailOpenFallback.js";
 import { getCheckPreview } from "./getCheckPreview.js";
 import { handleProductCheck } from "./handlers/handleProductCheck.js";
@@ -30,7 +34,7 @@ export const handleCheck = createRoute({
 		// receipt → leaked reservation); product checks return a non-feature shape.
 		skip: (c) => {
 			const body = c.req.valid("json");
-			return Boolean(body.lock?.enabled || body.product_id);
+			return isLockRequested(body.lock) || Boolean(body.product_id);
 		},
 		respond: (c) => {
 			const ctx = c.get("ctx");
@@ -89,10 +93,63 @@ export const handleCheck = createRoute({
 		const requiredBalance =
 			required_balance ?? required_quantity ?? DEFAULT_REQUIRED_BALANCE;
 
+		// Price pinning: when the caller says which model it is about to use,
+		// the response carries the unit rates it is admitted at.  The caller
+		// passes them back on the settle call, so the reservation and the
+		// charge are made at the same price even if the merchant edits their
+		// price sheet in between.
+		//
+		// When a reservation is requested the pricing has to be resolved
+		// BEFORE the check runs, because the hold is sized from it: a
+		// reservation of the caller's policy floor (often $1.00) does not
+		// bound a request that can cost $40, and N concurrent requests would
+		// each see the whole balance.  A check without a reservation keeps the
+		// old ordering and resolves pricing after the balance check.
+		const needsPricingForHold = isLockRequested(body.lock) && Boolean(model_id);
+		const holdPricing = needsPricingForHold
+			? await resolveCheckPricing({
+					ctx,
+					modelId: model_id,
+					inputTokens: input_tokens,
+					outputTokens: output_tokens,
+					featureId: body.feature_id,
+				})
+			: null;
+
+		// Fail closed: a reserved request MUST have a priced hold.  Letting an
+		// unpriceable model through reserves only the policy floor (every
+		// concurrent request sees "balance − floor"), and the settle cannot
+		// price it either — usage served, nothing billed.  The gateway's
+		// require_lock turns the error into a 402 for the caller.
+		if (needsPricingForHold && !holdPricing) {
+			throw new RecaseError({
+				message: `Model ${model_id} cannot be priced for this organization. Add it to the served models / price sheet before serving traffic.`,
+				code: ErrCode.InvalidRequest,
+				statusCode: 422,
+			});
+		}
+
+		// Two different numbers, and they must not be conflated:
+		//
+		//   requiredBalance  the caller's minimum-balance policy -- the
+		//                    balance a call may start with.
+		//   lockValue        what this request can cost, priced at the org's
+		//                    rates.  This is what the hold reserves, and it
+		//                    is what bounds concurrent spend: the sum of all
+		//                    outstanding holds can never exceed the balance.
+		//
+		// When the model cannot be priced there is no estimate to hold, and
+		// the hold falls back to the policy floor.
+		const lockValue =
+			holdPricing && holdPricing.estimated_cost > 0
+				? holdPricing.estimated_cost
+				: undefined;
+
 		const result = await runCheckWithRollout({
 			ctx,
 			body,
 			requiredBalance,
+			lockValue,
 		});
 		if (!result.checkData) {
 			return c.json(result.response, 202);
@@ -100,18 +157,27 @@ export const handleCheck = createRoute({
 
 		const { checkData, response } = result;
 
-		// Price pinning: when the caller says which model it is about to use,
-		// the response carries the unit rates it is admitted at.  The caller
-		// passes them back on the settle call, so the reservation and the
-		// charge are made at the same price even if the merchant edits their
-		// price sheet in between.
-		const pricing = await resolveCheckPricing({
-			ctx,
-			modelId: model_id,
-			inputTokens: input_tokens,
-			outputTokens: output_tokens,
-			featureId: body.feature_id,
-		});
+		const pricing =
+			holdPricing ??
+			(await resolveCheckPricing({
+				ctx,
+				modelId: model_id,
+				inputTokens: input_tokens,
+				outputTokens: output_tokens,
+				featureId: body.feature_id,
+			}));
+
+		// Persist the quote so the settle can only bill at rates the SERVER
+		// issued (see pinnedRatesStore).  Bound to the caller's idempotency
+		// key — the bridge sends litellm_call_id as both the check key and
+		// the settle key, so a settle resolves the quote its check pinned.
+		if (pricing && body.idempotency_key) {
+			await savePinnedQuote({
+				ctx,
+				idempotencyKey: body.idempotency_key,
+				pricing,
+			});
+		}
 
 		const preview = with_preview
 			? await getCheckPreview({
@@ -140,7 +206,11 @@ export const handleCheck = createRoute({
 			...transformedResponse,
 			preview,
 			...(pricing ? { pricing } : {}),
-			// lock_id: body.lock?.lock_id ?? undefined,
+			// The reservation taken for this request.  Added after the version
+			// transform so it survives every API version: without it the
+			// caller has no id to finalize and the hold can only be released
+			// by its expiry.
+			...(response.lock ? { lock: response.lock } : {}),
 		});
 	},
 });

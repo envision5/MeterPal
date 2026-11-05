@@ -18,6 +18,10 @@ import {
 	getPinnedModelCostBreakdown,
 } from "@/internal/features/aiCreditSystemUtils.js";
 import { getServedModelPricing } from "@/internal/models/servedModelService.js";
+import {
+	loadPinnedQuote,
+	warnQuoteMismatch,
+} from "./pinnedRatesStore.js";
 import type { FeatureDeduction } from "../../utils/types/featureDeduction.js";
 
 const resolveAiCreditFeatureById = ({
@@ -161,21 +165,53 @@ export const getTokenTrackParams = async ({
 }): Promise<{ body: TrackParams; featureDeductions: FeatureDeduction[] }> => {
 	const aiCreditFeature = await resolveAiCreditFeature({ ctx, input });
 
+	// The settle may only bill at rates the SERVER issued.  The check that
+	// admitted this request stored its quote under the idempotency key; a
+	// stored quote replaces whatever the caller echoed (rates AND the
+	// billable model id), and with no stored quote the caller's
+	// `pinned_rates` are ignored entirely — the charge is computed from the
+	// org's current price sheet.  Billing caller-supplied numbers verbatim
+	// is how an org key could price arbitrary usage at zero.
+	const storedQuote = await loadPinnedQuote({
+		ctx,
+		idempotencyKey: input.idempotency_key,
+	});
+	if (storedQuote && input.pinned_rates) {
+		const echoed = JSON.stringify(input.pinned_rates);
+		const issued = JSON.stringify(storedQuote.pinned_rates);
+		if (echoed !== issued || input.model_id !== storedQuote.model_id) {
+			warnQuoteMismatch({
+				ctx,
+				idempotencyKey: input.idempotency_key,
+				reason: "replaced_stored",
+			});
+		}
+	} else if (input.pinned_rates && !storedQuote) {
+		warnQuoteMismatch({
+			ctx,
+			idempotencyKey: input.idempotency_key,
+			reason: "no_quote",
+		});
+	}
+	const pinnedRates = storedQuote?.pinned_rates;
+	const billableModelId = storedQuote?.model_id ?? input.model_id;
+
 	// The org's own price sheet is the runtime authority for this model.
 	// An org with no row for it keeps the old behaviour exactly.
 	const servedModel = await getServedModelPricing({
 		db: ctx.db,
 		orgId: ctx.org.id,
 		env: ctx.env,
-		modelId: input.model_id,
+		modelId: billableModelId,
 	});
 
 	// A pinned rate sheet means the caller was admitted at a known price:
 	// use it verbatim, so a price change between admission and settlement
-	// cannot move what the customer is charged.
-	const pricing = input.pinned_rates
+	// cannot move what the customer is charged.  Only the server's own
+	// stored quote may appear here (see above).
+	const pricing = pinnedRates
 		? getPinnedModelCostBreakdown({
-				rates: input.pinned_rates,
+				rates: pinnedRates,
 				input: input.input_tokens,
 				output: input.output_tokens,
 				cacheRead: input.cache_read_tokens,
@@ -185,7 +221,7 @@ export const getTokenTrackParams = async ({
 				reasoning: input.reasoning_tokens,
 			})
 		: await getModelCreditCostBreakdown({
-				modelName: input.model_id,
+				modelName: billableModelId,
 				creditSystem: aiCreditFeature,
 				servedModel,
 				input: input.input_tokens,
@@ -204,7 +240,7 @@ export const getTokenTrackParams = async ({
 			deduction: 1,
 			tokens: {
 				usage: {
-					modelName: input.model_id,
+					modelName: billableModelId,
 					inputTokens: input.input_tokens,
 					outputTokens: input.output_tokens,
 				},
@@ -220,7 +256,7 @@ export const getTokenTrackParams = async ({
 		value: cost,
 		properties: {
 			...input.properties,
-			model: input.model_id,
+			model: billableModelId,
 			input_tokens: input.input_tokens,
 			output_tokens: input.output_tokens,
 			cache_read_tokens: input.cache_read_tokens,

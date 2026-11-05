@@ -156,9 +156,10 @@ The same operations are also exposed via the RPC router at `/v1/rpc/customers.ba
 {
   "customer_id": "cus_abc123",       // required — your stable external customer id
   "feature_id":  "ai_tokens",        // required — your credit_system feature id
-  "required_balance": 1,             // optional — pre-flight cost estimate (credits)
+  "required_balance": 1,             // optional — the minimum balance a call may start with
   "send_event":    false,            // we do NOT want a debit on admission
-  "lock":          false,            // (optional) if true: reserves and returns lock_id
+  "lock": { "enabled": true },        // optional — reserve against the balance (see below)
+  "idempotency_key": "req_abc123",   // optional — makes the reservation idempotent
   "with_preview":  false
 }
 
@@ -175,41 +176,80 @@ The same operations are also exposed via the RPC router at `/v1/rpc/customers.ba
 
 If `allowed` is false, the bridge raises `HTTPException(402)`. If `allowed` is true, the request proceeds. **Fail-open semantics**: if the MeterPal request exceeds the 3-second timeout, the handler returns `202 Accepted` with `allowed: true` (controlled by `failOpen` on the route; see `server/src/internal/api/check/handleCheck.ts:24`).
 
-**Optional reservation — `POST /check` with `lock: true`** returns the same response plus a `lock` field with a `lock_id`. The bridge holds onto that id until it knows the final cost, then commits or releases via `/balances/finalize`.
+**Optional reservation — `POST /check` with a `lock`** returns the same response plus a `lock` field
+with a `lock_id`. The bridge holds onto that id until it knows the final cost, then releases it via
+`/balances/finalize`.
+
+The `lock` field takes the **object** form, `{"enabled": true}`, or the boolean shorthand `true`.
+The object form is what the schema documents; the shorthand is accepted as equivalent. A bare
+boolean in any other shape is a 400 — and a 400 on the admission path is swallowed by the
+bridge's fail-open handling, which would admit the request with no reservation and no price pin.
+Do not send `lock: true` *as a string*, and do not omit `enabled`.
 
 ```jsonc
-// Response (with lock)
+// Request — with a reservation
+{
+  "customer_id": "cus_abc123",
+  "feature_id": "ai_tokens",
+  "required_balance": 1,
+  "model_id": "openai/gpt-4o",       // optional — prices the reservation
+  "input_tokens": 1200,              // optional — worst-case estimate
+  "output_tokens": 800,              // optional — worst-case estimate
+  "lock": {
+    "enabled": true,
+    "expires_at": 1794000000000      // optional — ms epoch; the hold is auto-released then
+  },
+  "idempotency_key": "req_abc123"    // optional — the reservation id is derived from this
+}
+
+// Response (with a reservation)
 {
   "allowed": true,
   "customer_id": "cus_abc123",
   "feature_id": "ai_tokens",
   "balance": { "remaining": 1247.83, "max": 2000, "units": "credits" },
-  "lock": { "lock_id": "lock_3f9a..." }
+  "lock": { "lock_id": "lock_3f9a...", "expires_at": 1794000000000 }
 }
 ```
+
+Three things about the reservation matter:
+
+- **The server mints the `lock_id`** when the caller does not name one. Send `idempotency_key` and
+  the id is derived from it, so a repeated check for the same request resolves to the same hold
+  rather than taking a second one.
+- **The hold is sized from the request's price**, not from a flat amount: `model_id` plus the token
+  estimates are priced at the org's rates, and that is what is held. `required_balance` is the
+  *floor* — the minimum balance a call may start with — not the reservation.
+- **`expires_at` bounds the hold.** Without it the reservation is only released by
+  `/balances/finalize`; with it the billing server releases the hold itself when it passes, which
+  is what keeps an unsettled request from holding a balance indefinitely.
 
 **Commit/release — `POST /balances/finalize`** (`handleFinalizeLock`, scope `balances.write`)
 
 ```jsonc
-// Request — commit (deduct actual cost)
+// Request — release the hold (the charge already went through /track_tokens)
 {
   "customer_id": "cus_abc123",
   "lock_id": "lock_3f9a...",
-  "action": "commit",                 // "commit" or "release"
-  "feature_id": "ai_tokens",
-  "amount": 4                         // optional override (actual cost in credits)
-}
-
-// Request — release (refund the reserved amount)
-{
-  "customer_id": "cus_abc123",
-  "lock_id": "lock_3f9a...",
-  "action": "release"
+  "action": "release",
+  "override_value": 0,               // release the hold in full; the usage is billed separately
+  "feature_id": "ai_tokens"
 }
 
 // Response
 { "success": true }
 ```
+
+**Order matters: charge first, release second.** The bridge calls `/track_tokens` and then
+`/balances/finalize`. Releasing first put the whole balance back while the charge was still
+pending, and another request could take it in that window — which is exactly how N concurrent
+requests end up spending more than the balance. Charging first means the balance only ever goes
+down; the release afterwards gives back what the request did not use.
+
+Because the hold is still in place when the charge lands, `/track_tokens` must be sent with
+`overage_behavior: "overflow"` when a reservation is held: the charge is allowed past the
+remaining balance and the release brings it back. Capping it would leave the customer
+under-charged for a request the hold already admitted.
 
 **Billable event — `POST /track_tokens`** (`handleTrackTokens`, scope `balances.write`)
 

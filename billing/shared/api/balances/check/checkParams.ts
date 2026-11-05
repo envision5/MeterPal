@@ -4,7 +4,7 @@ import { EntityDataSchema } from "../../common/entityData";
 import { queryStringArray } from "../../common/queryHelpers";
 import { BalanceParamsBaseSchema } from "../common/balanceParamsBase";
 import {
-	CheckLockParamsSchema,
+	CheckLockRequestSchema,
 	ParsedLockParamsSchema,
 } from "../common/lockParams";
 import { CheckExpand } from "./enums/CheckExpand";
@@ -33,9 +33,9 @@ export const ExtCheckParamsSchema = BalanceParamsBaseSchema.extend({
 			"If true, atomically records a usage event while checking access. The required_balance value is used as the usage amount. Combines check + track in one call.",
 	}),
 
-	lock: CheckLockParamsSchema.optional().meta({
+	lock: CheckLockRequestSchema.optional().meta({
 		description:
-			"Reserve units of a feature upfront by passing a lock_id, then call balances.finalize to confirm or release the hold.",
+			"Reserve units of a feature upfront, then call balances.finalize to confirm or release the hold. Send `true` (or `{ enabled: true }`) to have the server reserve on your behalf; it mints the lock id and returns it.",
 	}),
 
 	with_preview: z.boolean().optional().meta({
@@ -56,6 +56,11 @@ export const ExtCheckParamsSchema = BalanceParamsBaseSchema.extend({
 	output_tokens: z.number().int().nonnegative().optional().meta({
 		description:
 			"Estimated output tokens, used with model_id to estimate the cost of the request.",
+	}),
+
+	idempotency_key: z.string().max(256).optional().meta({
+		description:
+			"Makes the check idempotent. When a reservation is requested, two checks carrying the same key resolve to the same lock instead of creating a second hold.",
 	}),
 
 	customer_data: CustomerDataSchema.optional().meta({

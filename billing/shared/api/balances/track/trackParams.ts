@@ -35,6 +35,17 @@ export const TrackParamsSchema = BalanceParamsBaseSchema.extend({
 		internal: true,
 	}),
 
+	// The gateway names the tenant it resolved from the caller's virtual key.
+	// These are read off the raw request body by the gateway auth middleware;
+	// declaring them here keeps the contract explicit instead of relying on
+	// the body carrying fields the schema does not mention.
+	org_id: z.string().optional().meta({
+		internal: true,
+	}),
+	env: z.string().optional().meta({
+		internal: true,
+	}),
+
 	timestamp: TrackTimestampSchema.optional(),
 
 	overage_behavior: OverageBehaviorSchema.optional(),

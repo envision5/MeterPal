@@ -88,6 +88,30 @@ export const getServedModel = async ({
 };
 
 /**
+ * The pricing a row states, or null when the row states none.
+ *
+ * A row with no usable costs is treated as no opinion: the caller falls back
+ * to the provider price rather than billing at zero.
+ *
+ * Split out from `getServedModelPricing` so a caller that already holds the
+ * row (a price sheet listing every row) does not re-read it per model.
+ */
+export const pricingFromRow = (
+	row: ServedModelRow | null | undefined,
+): ServedModelPricing | null => {
+	if (!row) return null;
+	if (row.input_cost_usd_1m == null || row.output_cost_usd_1m == null) {
+		return null;
+	}
+	return {
+		input: row.input_cost_usd_1m,
+		output: row.output_cost_usd_1m,
+		markupPct: row.markup_pct,
+		model: row,
+	};
+};
+
+/**
  * The pricing to use for a model, or null when the org has no opinion.
  *
  * A row with no usable costs is treated as no opinion: the caller falls back
@@ -105,16 +129,7 @@ export const getServedModelPricing = async ({
 	modelId: string;
 }): Promise<ServedModelPricing | null> => {
 	const row = await getServedModel({ db, orgId, env, modelId });
-	if (!row) return null;
-	if (row.input_cost_usd_1m == null || row.output_cost_usd_1m == null) {
-		return null;
-	}
-	return {
-		input: row.input_cost_usd_1m,
-		output: row.output_cost_usd_1m,
-		markupPct: row.markup_pct,
-		model: row,
-	};
+	return pricingFromRow(row);
 };
 
 /** The org's served models, as the gateway sees them. */

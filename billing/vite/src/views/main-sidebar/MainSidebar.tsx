@@ -16,6 +16,7 @@ import { useLocalStorage } from "@/hooks/common/useLocalStorage";
 import { useScopes } from "@/hooks/useScopes";
 import { cn } from "@/lib/utils";
 import { useEnv } from "@/utils/envUtils";
+import { useSetupComplete } from "@/views/setup/hooks/useSetupState";
 import { OrgDropdown } from "./components/OrgDropdown";
 import { EnvDropdown } from "./EnvDropdown";
 import { NavButton } from "./NavButton";
@@ -49,6 +50,11 @@ export const MainSidebar = ({
 
 	const { has } = useScopes();
 	const canSeeDev = has(Scopes.ApiKeys.Read);
+
+	// The wizard is a one-time path to a working billing loop, so once the
+	// product shows every step done, the entry leaves the nav. It stays while
+	// the state is unknown (still loading) rather than pop the item in later.
+	const setupComplete = useSetupComplete();
 
 	const [storedExpanded, setExpanded] = useLocalStorage<boolean>(
 		"sidebar.expanded",
@@ -100,12 +106,14 @@ export const MainSidebar = ({
 					<EnvDropdown env={env} />
 					<nav className="flex flex-col gap-[18px]">
 						<SidebarSearchButton />
-						<NavButton
-							value="setup"
-							icon={<Rocket strokeWidth={ICON_STROKE} />}
-							title="Setup"
-							env={env}
-						/>
+							{!setupComplete && (
+								<NavButton
+									value="setup"
+									icon={<Rocket strokeWidth={ICON_STROKE} />}
+									title="Setup"
+									env={env}
+								/>
+							)}
 						<NavSection title="Catalog">
 							<NavButton
 								value="products"

@@ -70,6 +70,9 @@ export async function handlePaypalEvent(
 	/** The ORG's PayPal client.  The webhook route resolves the org from
 	 *  the URL, so the event is handled against the right PayPal account. */
 	client?: PaypalClient,
+	/** The org the event belongs to.  Scopes the payer-id/email customer
+	 *  fallbacks so a grant can never land on another org's customer. */
+	orgId?: string,
 ): Promise<void> {
 	if (!HANDLED_TYPES.has(event.type)) {
 		logger.info({
@@ -79,52 +82,63 @@ export async function handlePaypalEvent(
 		return;
 	}
 
-	// Idempotency: skip if we've already processed this event id.
+	// Idempotency: CLAIM the event id atomically before dispatching.  The
+	// previous select-then-dispatch-then-insert left a window where two
+	// concurrent deliveries of the same event both passed the check and both
+	// dispatched; claiming first closes it (event_id is the primary key).
 	// The "paypal:" prefix disambiguates PayPal ids from other processors'.
-	const [seen] = await db
-		.select({ eventId: webhookEvents.event_id })
-		.from(webhookEvents)
-		.where(eq(webhookEvents.event_id, `paypal:${event.id}`))
-		.limit(1);
-	if (seen) {
+	// If the dispatch fails the claim is released — recording a FAILED
+	// dispatch would defeat PayPal's 25-retry policy and lose the money
+	// event entirely, and grant/activation idempotency makes a replay of an
+	// already-applied event a safe no-op.
+	const claimId = `paypal:${event.id}`;
+	const claimed = await db
+		.insert(webhookEvents)
+		.values({
+			event_id: claimId,
+			payload: event as unknown as Record<string, unknown>,
+		})
+		.onConflictDoNothing()
+		.returning({ eventId: webhookEvents.event_id });
+	if (claimed.length === 0) {
 		logger.info({ msg: "paypal: event already processed", eventId: event.id });
 		return;
 	}
 
-	// Record AFTER successful dispatch. Grant/activation idempotency makes a
-	// PayPal retry of an already-applied event a safe no-op, but recording a
-	// FAILED dispatch would defeat PayPal's 25-retry policy and lose the
-	// money event entirely.
 	try {
-		await dispatch(event, client);
+		await dispatch(event, client, orgId);
 	} catch (error) {
 		logger.error({
-			msg: "paypal: dispatch failed — leaving event unrecorded so PayPal retries",
+			msg: "paypal: dispatch failed — claim released so PayPal retries",
 			eventId: event.id,
 			eventType: event.type,
 			error: String(error),
 		});
+		await db
+			.delete(webhookEvents)
+			.where(eq(webhookEvents.event_id, claimId))
+			.catch((deleteErr) => {
+				logger.error({
+					msg: "paypal: failed to release event claim after dispatch failure",
+					eventId: event.id,
+					error: String(deleteErr),
+				});
+			});
 		throw error;
 	}
-	await db
-		.insert(webhookEvents)
-		.values({
-			event_id: `paypal:${event.id}`,
-			payload: event as unknown as Record<string, unknown>,
-		})
-		.onConflictDoNothing();
 }
 
 async function dispatch(
 	event: PayPalEvent,
 	client?: PaypalClient,
+	orgId?: string,
 ): Promise<void> {
 	switch (event.type) {
 		case "BILLING.SUBSCRIPTION.ACTIVATED":
 		case "BILLING.SUBSCRIPTION.CREATED":
 		case "BILLING.SUBSCRIPTION.RE-ACTIVATED":
 		case "BILLING.SUBSCRIPTION.UPDATED":
-			await onSubscriptionActive(event);
+			await onSubscriptionActive(event, orgId);
 			break;
 		case "BILLING.SUBSCRIPTION.SUSPENDED":
 		case "BILLING.SUBSCRIPTION.CANCELLED":
@@ -135,21 +149,21 @@ async function dispatch(
 			await onPaymentFailed(event);
 			break;
 		case "PAYMENT.SALE.COMPLETED":
-			await onSaleCompleted(event);
+			await onSaleCompleted(event, orgId);
 			break;
 		case "PAYMENT.SALE.REFUNDED":
 		case "PAYMENT.SALE.REVERSED":
 		case "PAYMENT.CAPTURE.REFUNDED":
 		case "PAYMENT.CAPTURE.REVERSED":
-			await onRefund(event);
+			await onRefund(event, orgId);
 			break;
 		case "PAYMENT.CAPTURE.COMPLETED":
-			await onCaptureCompleted(event, client);
+			await onCaptureCompleted(event, client, orgId);
 			break;
 		case "CUSTOMER.DISPUTE.CREATED":
 		case "CUSTOMER.DISPUTE.UPDATED":
 		case "CUSTOMER.DISPUTE.RESOLVED":
-			await onDispute(event);
+			await onDispute(event, orgId);
 			break;
 		case "CHECKOUT.ORDER.APPROVED":
 			// Early signal only — the money event is PAYMENT.CAPTURE.COMPLETED.
@@ -159,7 +173,7 @@ async function dispatch(
 			});
 			break;
 		case "INVOICING.INVOICE.PAID":
-			await onInvoicePaid(event);
+			await onInvoicePaid(event, orgId);
 			break;
 		default:
 			// already filtered above
@@ -186,6 +200,13 @@ export async function resolveCustomer(opts: {
 		if (cus) return cus;
 	}
 
+	// The payer-id and email fallbacks MUST be scoped to the org that owns
+	// the event whenever the org is known (the webhook URL names it, the
+	// checkout intent row carries it).  Both fields identify the BUYER, not
+	// the merchant — the same buyer can be a customer of two orgs, and an
+	// unscoped `.limit(1)` picks an arbitrary one of those rows.  Before the
+	// org scoping this was a cross-tenant wallet attribution bug: a grant
+	// (or refund debit) landing on another org's customer.
 	if (payerId) {
 		const conds = orgId
 			? and(eq(customers.paypal_payer_id, payerId), eq(customers.org_id, orgId))
@@ -195,11 +216,10 @@ export async function resolveCustomer(opts: {
 	}
 
 	if (email) {
-		const [cus] = await db
-			.select()
-			.from(customers)
-			.where(eq(customers.email, email))
-			.limit(1);
+		const conds = orgId
+			? and(eq(customers.email, email), eq(customers.org_id, orgId))
+			: eq(customers.email, email);
+		const [cus] = await db.select().from(customers).where(conds).limit(1);
 		if (cus) return cus;
 	}
 
@@ -536,13 +556,18 @@ async function markApprovalIntentsActivated(
 		);
 }
 
-export async function activatePaypalSubscription(sub: {
-	id?: string;
-	plan_id?: string;
-	status?: string;
-	custom_id?: string | null;
-	subscriber?: { payer_id?: string | null; email_address?: string | null };
-}): Promise<boolean> {
+export async function activatePaypalSubscription(
+	sub: {
+		id?: string;
+		plan_id?: string;
+		status?: string;
+		custom_id?: string | null;
+		subscriber?: { payer_id?: string | null; email_address?: string | null };
+	},
+	/** The org whose checkout/webhook produced this subscription.  Scopes
+	 *  the payer/email customer fallbacks (cross-tenant attribution guard). */
+	orgId?: string,
+): Promise<boolean> {
 	const paypalSubscriptionId = sub?.id;
 	const planId = sub?.plan_id;
 	const payerId = sub?.subscriber?.payer_id ?? null;
@@ -556,6 +581,7 @@ export async function activatePaypalSubscription(sub: {
 	const cust = await resolveCustomer({
 		customId,
 		payerId,
+		orgId,
 		email: subscriberEmail,
 	});
 	if (!cust?.id) {
@@ -676,8 +702,11 @@ export async function activatePaypalSubscription(sub: {
 	return true;
 }
 
-async function onSubscriptionActive(event: PayPalEvent): Promise<void> {
-	await activatePaypalSubscription(event.resource);
+async function onSubscriptionActive(
+	event: PayPalEvent,
+	orgId?: string,
+): Promise<void> {
+	await activatePaypalSubscription(event.resource, orgId);
 }
 
 async function onSubscriptionEnded(event: PayPalEvent): Promise<void> {
@@ -732,7 +761,10 @@ async function onPaymentFailed(event: PayPalEvent): Promise<void> {
 	}
 }
 
-async function onSaleCompleted(event: PayPalEvent): Promise<void> {
+async function onSaleCompleted(
+	event: PayPalEvent,
+	orgId?: string,
+): Promise<void> {
 	// A recurring subscription payment landed.  Resolve the subscriber via the
 	// billing agreement (subscription id), then credit the wallet by the sale
 	// amount (1 credit = 1 USD).
@@ -765,6 +797,7 @@ async function onSaleCompleted(event: PayPalEvent): Promise<void> {
 	if (!cust) {
 		cust = await resolveCustomer({
 			email: event.resource?.payer?.email_address ?? null,
+			orgId,
 		});
 	}
 	if (!cust) {
@@ -823,7 +856,7 @@ async function onSaleCompleted(event: PayPalEvent): Promise<void> {
 	});
 }
 
-async function onRefund(event: PayPalEvent): Promise<void> {
+async function onRefund(event: PayPalEvent, orgId?: string): Promise<void> {
 	// Reversal / chargeback.  Negative wallet grant, idempotent by refund id.
 	const amount = parseFloat(event.resource?.amount?.total ?? "0");
 	if (!amount) return;
@@ -900,6 +933,7 @@ async function onRefund(event: PayPalEvent): Promise<void> {
 		// Fall back to the payer id from the refund event; never email.
 		cust = await resolveCustomer({
 			payerId: event.resource?.payer?.payer_id ?? null,
+			orgId,
 		});
 	}
 	if (!cust) {
@@ -912,10 +946,24 @@ async function onRefund(event: PayPalEvent): Promise<void> {
 		return;
 	}
 
-	const refundAmount = Math.min(
-		Math.abs(amount),
-		refundCap != null && refundCap > 0 ? refundCap : Math.abs(amount),
-	);
+	// Never debit more than the grant this refund links back to.  When the
+	// original ledger row cannot be found (pre-convention grant, or the
+	// resolution fell back to the payer id) the cap is UNKNOWN — debiting
+	// the full event amount with no cap is how a wallet gets drained by a
+	// refund that never matched a grant.  Skip and leave it for manual
+	// reconciliation instead.
+	if (refundCap == null || refundCap <= 0) {
+		logger.warn({
+			msg: "paypal refund: no linked grant found — skipping wallet debit",
+			refundId: event.resource?.id,
+			captureId,
+			saleId,
+			customerId: cust.id,
+		});
+		return;
+	}
+
+	const refundAmount = Math.min(Math.abs(amount), refundCap);
 
 	const grantApplied = await grantWalletCredits({
 		customer: cust,
@@ -976,6 +1024,7 @@ export async function incrementPaypalInvoiceRefund({
 async function onCaptureCompleted(
 	event: PayPalEvent,
 	client?: PaypalClient,
+	orgId?: string,
 ): Promise<void> {
 	// A one-shot wallet top-up landed.  The capture webhook carries the order
 	// id in supplementary_data.related_ids.order_id — fetch the order to read
@@ -1028,6 +1077,7 @@ async function onCaptureCompleted(
 	const cust = await resolveCustomer({
 		customId: customCustomerId,
 		payerId: capture?.payer?.payer_id ?? null,
+		orgId,
 		email: capture?.payer?.email_address ?? null,
 	});
 	if (!cust) {
@@ -1053,7 +1103,7 @@ async function onCaptureCompleted(
 	});
 }
 
-async function onInvoicePaid(event: PayPalEvent): Promise<void> {
+async function onInvoicePaid(event: PayPalEvent, orgId?: string): Promise<void> {
 	// An overage invoice was paid.  The invoice resource carries our reference
 	// ("mp:<customer_id>") and the item total.
 	const invoice = event.resource;
@@ -1086,6 +1136,7 @@ async function onInvoicePaid(event: PayPalEvent): Promise<void> {
 
 	const cust = await resolveCustomer({
 		customId: customCustomerId,
+		orgId,
 		email:
 			invoice?.primary_recipients?.[0]?.billing_info?.email_address ?? null,
 	});
@@ -1120,7 +1171,7 @@ async function onInvoicePaid(event: PayPalEvent): Promise<void> {
  * PAYMENT.SALE.REVERSED), which already applies the negative grant —
  * correcting twice would debit the wallet once per dispute stage.
  */
-async function onDispute(event: PayPalEvent): Promise<void> {
+async function onDispute(event: PayPalEvent, orgId?: string): Promise<void> {
 	const dispute = event.resource;
 	const disputeId = dispute?.dispute_id;
 	if (!disputeId) return;
@@ -1157,6 +1208,7 @@ async function onDispute(event: PayPalEvent): Promise<void> {
 	if (!cust) {
 		cust = await resolveCustomer({
 			payerId: dispute?.payer?.payer_id ?? null,
+			orgId,
 		});
 	}
 
@@ -1226,15 +1278,15 @@ async function onDispute(event: PayPalEvent): Promise<void> {
 
 function planKeyForPlanId(planId: string | undefined): string {
 	if (!planId) return "pro";
-	// Legacy fallback when the plan is not in paypal_catalog_map:
-	if (planId.includes("ultra")) return "ultra";
-	if (
-		planId.includes("pro_plus") ||
-		planId.includes("pro-plus") ||
-		planId.includes("proplus")
-	)
+	// Legacy fallback when the plan is not in paypal_catalog_map.  Match on
+	// word boundaries after normalizing separators: a bare substring match
+	// put every plan whose id merely CONTAINS "pro" ("premium",
+	// "professional"…) on the hardcoded pro plan's budget/entitlements.
+	const normalized = planId.toLowerCase().replace(/[\s-]/g, "_");
+	if (normalized.includes("pro_plus") || normalized.includes("proplus"))
 		return "pro_plus";
-	if (planId.includes("pro")) return "pro";
+	if (/\bultra\b/.test(normalized)) return "ultra";
+	if (/\bpro\b/.test(normalized)) return "pro";
 	return "free";
 }
 

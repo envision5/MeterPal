@@ -42,15 +42,37 @@ export const handleUpsertServedModel = createRoute({
 			),
 		});
 
+		/**
+		 * One field, read the way the merchant means it.
+		 *
+		 * A field that is ABSENT keeps its stored value.  A field that is
+		 * explicitly null CLEARS it.  `??` cannot express that -- null is
+		 * nullish, so `body.x ?? existing.x` silently keeps the old value,
+		 * and a merchant who once set a markup could never put the model
+		 * back to "inherit the plan's markup" again.
+		 */
 		const values = {
-			display_name: body.display_name ?? existing?.display_name ?? null,
-			upstream_model: body.upstream_model ?? existing?.upstream_model ?? null,
+			display_name:
+				"display_name" in body
+					? (body.display_name ?? null)
+					: (existing?.display_name ?? null),
+			upstream_model:
+				"upstream_model" in body
+					? (body.upstream_model ?? null)
+					: (existing?.upstream_model ?? null),
 			enabled: body.enabled ?? existing?.enabled ?? true,
 			input_cost_usd_1m:
-				body.input_cost_usd_1m ?? existing?.input_cost_usd_1m ?? null,
+				"input_cost_usd_1m" in body
+					? (body.input_cost_usd_1m ?? null)
+					: (existing?.input_cost_usd_1m ?? null),
 			output_cost_usd_1m:
-				body.output_cost_usd_1m ?? existing?.output_cost_usd_1m ?? null,
-			markup_pct: body.markup_pct ?? existing?.markup_pct ?? null,
+				"output_cost_usd_1m" in body
+					? (body.output_cost_usd_1m ?? null)
+					: (existing?.output_cost_usd_1m ?? null),
+			markup_pct:
+				"markup_pct" in body
+					? (body.markup_pct ?? null)
+					: (existing?.markup_pct ?? null),
 			updated_at: now,
 		};
 

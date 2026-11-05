@@ -30,6 +30,12 @@ export const LockOverageBehaviorSchema = z
 	});
 
 export const CheckLockParamsSchema = LockParamsSchema.extend({
+	// The server mints the id when the caller does not name one, so a caller
+	// that only wants "reserve for me" does not have to invent one.
+	lock_id: z.string().max(256).optional().meta({
+		description:
+			"A unique identifier for this lock. Used to finalize the lock later via balances.finalize. Optional on check: the server mints one when it is omitted.",
+	}),
 	overage_behavior: LockOverageBehaviorSchema.optional(),
 });
 
@@ -38,7 +44,32 @@ export const ParsedLockParamsSchema = CheckLockParamsSchema.extend({
 	hashed_key: z.string(),
 });
 
+/**
+ * The `lock` field as a caller may send it on a check.
+ *
+ * `false` (or absent) disables locking; `true` is shorthand for
+ * `{ enabled: true }`; the object form carries the options.  The boolean
+ * shorthand exists because it is the form the gateway and the published
+ * docs use, and a reservation that 400s is worse than no reservation at
+ * all -- the caller cannot tell that the hold never happened.
+ */
+export const CheckLockRequestSchema = z.union([
+	z.boolean(),
+	CheckLockParamsSchema,
+]);
+
+/**
+ * Whether the caller asked for a reservation.
+ *
+ * Handles the boolean shorthand, so a caller that sends `lock: true` gets
+ * the same treatment as one that sends `lock: { enabled: true }`.
+ */
+export const isLockRequested = (
+	lock: z.infer<typeof CheckLockRequestSchema> | undefined,
+): boolean => (typeof lock === "boolean" ? lock : Boolean(lock?.enabled));
+
 export type LockParams = z.infer<typeof LockParamsSchema>;
 export type LockOverageBehavior = z.infer<typeof LockOverageBehaviorSchema>;
 export type CheckLockParams = z.infer<typeof CheckLockParamsSchema>;
 export type ParsedLockParams = z.infer<typeof ParsedLockParamsSchema>;
+export type CheckLockRequest = z.infer<typeof CheckLockRequestSchema>;

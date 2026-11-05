@@ -26,6 +26,10 @@ import {
 	resolveCustomerPlanKey,
 } from "@/internal/keys/litellmKeys.js";
 import {
+	decryptVirtualKey,
+	encryptVirtualKey,
+} from "@/internal/keys/virtualKeyCrypto.js";
+import {
 	getServedModel,
 	getServedModelAllowList,
 } from "@/internal/models/servedModelService.js";
@@ -197,7 +201,20 @@ export const getOrProvisionVirtualKey = async ({
 	ctx: AutumnContext;
 	customer: DbCustomer;
 }): Promise<string> => {
-	if (customer.litellm_virtual_key) return customer.litellm_virtual_key;
+	// The stored value is encrypted at rest — hand back the live key.
+	// A legacy plaintext row is upgraded in place on this touch, so existing
+	// keys stop sitting in the clear as soon as their owner calls in.
+	const stored = customer.litellm_virtual_key;
+	const existingKey = decryptVirtualKey(stored);
+	if (existingKey) {
+		if (stored?.startsWith("sk-")) {
+			await ctx.db
+				.update(customers)
+				.set({ litellm_virtual_key: encryptVirtualKey(existingKey) })
+				.where(eq(customers.id, customer.id as string));
+		}
+		return existingKey;
+	}
 
 	const planKey = await resolveCustomerPlanKey({ ctx, customer });
 	const provisioned = await provisionLitellmKey(ctx, {

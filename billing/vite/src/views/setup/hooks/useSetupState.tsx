@@ -85,6 +85,31 @@ export interface SmokeTestResult {
 	};
 }
 
+/**
+ * Setup is complete when every wizard step reads done from the product:
+ * PayPal connected, a plan PayPal can bill, a model enabled, and a smoke
+ * test that actually ran. Mirrors the per-step completion in SetupView, so
+ * the sidebar can hide the entry for the same state the wizard shows.
+ */
+export const isSetupComplete = (state: SetupState | undefined): boolean =>
+	!!state &&
+	state.paypal.connected &&
+	(state.plans ?? []).some(
+		(plan) => plan.amount_usd != null && plan.paypal_plan_id != null,
+	) &&
+	(state.models ?? []).some((model) => model.enabled) &&
+	state.smoke_test != null;
+
+/**
+ * Sidebar-sized view of the wizard state: true only once setup is complete.
+ * Shares the wizard's query key, so completing a step in the wizard (or
+ * connecting PayPal in settings) updates the sidebar through the same cache.
+ */
+export const useSetupComplete = () => {
+	const { state } = useSetupState();
+	return isSetupComplete(state);
+};
+
 export const useSetupState = () => {
 	const axiosInstance = useAxiosInstance();
 	const buildKey = useQueryKeyFactory();

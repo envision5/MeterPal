@@ -12,10 +12,12 @@ export const runCheckWithRollout = async ({
 	ctx,
 	body,
 	requiredBalance,
+	lockValue,
 }: {
 	ctx: AutumnContext;
 	body: ParsedCheckParams;
 	requiredBalance: number;
+	lockValue?: number;
 }): Promise<RunCheckResult<CheckData | CheckDataV2>> => {
 	if (ctx.orgRateLimitDegraded) {
 		return {
@@ -32,7 +34,7 @@ export const runCheckWithRollout = async ({
 
 	return withRedisFailOpen<RunCheckResult<CheckData | CheckDataV2>>({
 		source: "runCheckWithRollout",
-		run: () => runCheckV2({ ctx, body, requiredBalance }),
+		run: () => runCheckV2({ ctx, body, requiredBalance, lockValue }),
 		alsoFailOpen: isFullSubjectGateRejection,
 		fallback: (error) => ({
 			checkData: null,

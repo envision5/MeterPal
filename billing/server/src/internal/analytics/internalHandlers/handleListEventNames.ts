@@ -1,6 +1,6 @@
 import { Scopes } from "@autumn/shared";
 import { z } from "zod/v4";
-import { assertTinybirdAvailable } from "@/external/tinybird/tinybirdUtils.js";
+import { isTinybirdConfigured } from "@/external/tinybird/tinybirdUtils.js";
 import { createRoute } from "@/honoMiddlewares/routeHandler.js";
 import { eventActions } from "../actions/eventActions.js";
 
@@ -21,10 +21,16 @@ export const handleListEventNames = createRoute({
 	scopes: [Scopes.Analytics.Read],
 	query: ListEventNamesSchema,
 	handler: async (c) => {
-		assertTinybirdAvailable();
 		const ctx = c.get("ctx");
 		const { customer_id, entity_id, limit, interval, bin_size, start, end } =
 			c.req.valid("query");
+
+		// No Tinybird means no analytics pipeline, so there are no event names to
+		// list. The dashboard queries this on every page load, and a 503 here is
+		// pure noise in a stack that doesn't run the cloud analytics backend.
+		if (!isTinybirdConfigured()) {
+			return c.json({ eventNames: [] });
+		}
 
 		const customRange =
 			interval === "custom" && start !== undefined && end !== undefined

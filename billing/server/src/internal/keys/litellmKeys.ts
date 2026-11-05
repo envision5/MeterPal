@@ -25,7 +25,16 @@ import {
 import type { DrizzleCli } from "@/db/initDrizzle.js";
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
 import { logger } from "@/external/logtail/logtailUtils.js";
-import { litellmBase, litellmMasterKey } from "@/internal/keys/litellmEnv.js";
+import {
+  litellmBase,
+  litellmMasterKey,
+  litellmMaxParallelOverride,
+  litellmOrgRateLimits,
+} from "@/internal/keys/litellmEnv.js";
+import {
+  decryptVirtualKey,
+  encryptVirtualKey,
+} from "@/internal/keys/virtualKeyCrypto.js";
 
 // The LiteLLM master key has to be the SAME value for the gateway and this
 // server.  gateway/.env is the canonical source — see litellmEnv.ts.
@@ -47,15 +56,23 @@ const LITELLM_BUDGET_DURATION = "30d";
  *
  * These sit on the key, so they protect the merchant from a runaway end
  * user: one customer cannot spend the merchant's whole provider quota.
+ *
+ * `maxParallel` is how many requests one customer may have in flight at
+ * once.  Rate limits bound how fast a customer arrives; they say nothing
+ * about how many are running at the same moment, so a customer on a 600 rpm
+ * plan could still open 600 concurrent requests and have every one of them
+ * admitted against the same balance.  The gateway's parallel request
+ * limiter enforces this, and it is the ceiling that makes the balance
+ * reservation mean something.
  */
 const LITELLM_RATE_LIMITS_PER_PLAN: Record<
   string,
-  { rpm: number; tpm: number }
+  { rpm: number; tpm: number; maxParallel: number }
 > = {
-  free: { rpm: 20, tpm: 50_000 },
-  pro: { rpm: 120, tpm: 400_000 },
-  pro_plus: { rpm: 300, tpm: 1_000_000 },
-  ultra: { rpm: 600, tpm: 4_000_000 },
+  free: { rpm: 20, tpm: 50_000, maxParallel: 2 },
+  pro: { rpm: 120, tpm: 400_000, maxParallel: 8 },
+  pro_plus: { rpm: 300, tpm: 1_000_000, maxParallel: 16 },
+  ultra: { rpm: 600, tpm: 4_000_000, maxParallel: 32 },
 };
 
 /**
@@ -63,10 +80,26 @@ const LITELLM_RATE_LIMITS_PER_PLAN: Record<
  *
  * These are enforced by the gateway, against a shared Redis counter, so
  * one merchant cannot exhaust the shared provider quota however many
- * customers it has.  They live here so the gateway and the billing server
- * read the same numbers.
+ * customers it has.  They are read from the gateway's env so the gateway
+ * and the billing server read the same numbers instead of two copies of
+ * the same constant drifting apart.
  */
-export const ORG_RATE_LIMITS = { rpm: 600, tpm: 4_000_000 };
+export const orgRateLimits = (): { rpm: number; tpm: number } =>
+	litellmOrgRateLimits();
+
+/**
+ * The in-flight request ceiling for a customer's key.
+ *
+ * A plan's own value, unless the operator overrode every plan.
+ */
+const maxParallelForPlan = (planKey: string): number => {
+	const override = litellmMaxParallelOverride();
+	if (override !== undefined) return override;
+	return (
+		LITELLM_RATE_LIMITS_PER_PLAN[planKey]?.maxParallel ??
+		LITELLM_RATE_LIMITS_PER_PLAN.free.maxParallel
+	);
+};
 
 /**
  * The identity a virtual key carries: `<org>:<customer>`.
@@ -112,7 +145,8 @@ async function findVirtualKey(
     .from(customers)
     .where(eq(customers.id, customerId))
     .limit(1);
-  return row?.litellmVirtualKey ?? null;
+  // The value at rest is encrypted; LiteLLM calls need the live key.
+  return decryptVirtualKey(row?.litellmVirtualKey);
 }
 
 function hashKey(key: string): string {
@@ -292,12 +326,14 @@ export async function provisionLitellmKey(
     .from(customers)
     .where(eq(customers.id, customerId))
     .limit(1);
+  // The value at rest is encrypted; the LiteLLM call needs the live key.
+  const existingKey = decryptVirtualKey(existing?.litellmVirtualKey);
 
   // Idempotent: if we already have a key, just update its limits and
   // identity.
-  if (existing?.litellmVirtualKey) {
+  if (existingKey) {
     const upd = await litellmFetch("/key/update", {
-      key: existing.litellmVirtualKey,
+      key: existingKey,
       key_alias: keyAlias,
       user_id: identity,
       max_budget: maxBudget,
@@ -305,6 +341,7 @@ export async function provisionLitellmKey(
       models: allowedModels,
       rpm_limit: limits.rpm,
       tpm_limit: limits.tpm,
+      max_parallel_requests: maxParallelForPlan(planKey),
       metadata: {
         autumn_org_id: orgId,
         autumn_customer_id: customerId,
@@ -312,11 +349,11 @@ export async function provisionLitellmKey(
       },
     });
     if (upd.status >= 400) {
-      await audit(ctx, customerId, "update", "system", existing.litellmVirtualKey, null, JSON.stringify(upd.body));
+      await audit(ctx, customerId, "update", "system", existingKey, null, JSON.stringify(upd.body));
       throw new Error(`litellm /key/update ${upd.status}: ${JSON.stringify(upd.body)}`);
     }
-    await audit(ctx, customerId, "update", "system", existing.litellmVirtualKey, { planKey, maxBudget, identity, allowedModels, limits }, null);
-    return { key: existing.litellmVirtualKey, created: false };
+    await audit(ctx, customerId, "update", "system", existingKey, { planKey, maxBudget, identity, allowedModels, limits }, null);
+    return { key: existingKey, created: false };
   }
 
   const generateBody = {
@@ -327,6 +364,7 @@ export async function provisionLitellmKey(
     models: allowedModels,
     rpm_limit: limits.rpm,
     tpm_limit: limits.tpm,
+    max_parallel_requests: maxParallelForPlan(planKey),
     metadata: {
       autumn_org_id: orgId,
       autumn_customer_id: customerId,
@@ -356,9 +394,11 @@ export async function provisionLitellmKey(
     throw new Error(`litellm /key/generate ${gen.status}: ${JSON.stringify(gen.body)}`);
   }
 
+  // Encrypted at rest — see virtualKeyCrypto.ts.  The live key exists only
+  // in the LiteLLM call above and the provision response.
   await ctx.db
     .update(customers)
-    .set({ litellm_virtual_key: gen.body.key })
+    .set({ litellm_virtual_key: encryptVirtualKey(gen.body.key) })
     .where(eq(customers.id, customerId));
 
   await audit(ctx, customerId, "provision", "system", gen.body.key, { planKey, maxBudget }, null);

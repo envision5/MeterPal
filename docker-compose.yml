@@ -29,7 +29,7 @@ services:
       POSTGRES_PASSWORD: autumn_dev_only
       POSTGRES_DB: autumn
     ports:
-      - "5433:5432"
+      - "127.0.0.1:5433:5432"
     volumes:
       - meterpal_billing_pg:/var/lib/postgresql/data
       - ./docker/pg-init:/docker-entrypoint-initdb.d:ro
@@ -48,7 +48,7 @@ services:
       POSTGRES_PASSWORD: litellm_dev_only
       POSTGRES_DB: litellm
     ports:
-      - "5434:5432"
+      - "127.0.0.1:5434:5432"
     volumes:
       - meterpal_gateway_pg:/var/lib/postgresql/data
     healthcheck:
@@ -63,7 +63,7 @@ services:
     restart: unless-stopped
     command: redis-server --appendonly yes --requirepass autumn_dev_only
     ports:
-      - "6380:6379"
+      - "127.0.0.1:6380:6379"
     volumes:
       - meterpal_billing_redis:/data
 
@@ -73,7 +73,7 @@ services:
     restart: unless-stopped
     command: redis-server --appendonly yes --requirepass litellm_dev_only
     ports:
-      - "6381:6379"
+      - "127.0.0.1:6381:6379"
     volumes:
       - meterpal_gateway_redis:/data
 

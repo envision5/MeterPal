@@ -20,6 +20,7 @@ import { handleDeleteDeployment } from "./handlers/handleDeleteDeployment.js";
 import { handleDeleteServedModel } from "./handlers/handleDeleteServedModel.js";
 import { handleGetAvailableModels } from "./handlers/handleGetAvailableModels.js";
 import { handleGetCatalog } from "./handlers/handleGetCatalog.js";
+import { handleGetModelMarkup } from "./handlers/handleGetModelMarkup.js";
 import { handleListServedModels } from "./handlers/handleListServedModels.js";
 import { handleUpdateDeployment } from "./handlers/handleUpdateDeployment.js";
 import { handleUpsertServedModel } from "./handlers/handleUpsertServedModel.js";
@@ -28,6 +29,7 @@ export const servedModelRouter = new Hono<HonoEnv>();
 
 servedModelRouter.get("/served_models", ...handleListServedModels);
 servedModelRouter.get("/served_models/available", ...handleGetAvailableModels);
+servedModelRouter.get("/served_models/markup", ...handleGetModelMarkup);
 servedModelRouter.post("/served_models", ...handleUpsertServedModel);
 servedModelRouter.delete("/served_models/:model_id", ...handleDeleteServedModel);
 

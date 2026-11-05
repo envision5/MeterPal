@@ -38,10 +38,16 @@ export const CheckResponseV3Schema = z.object({
 		description: "The flag associated with this check, if any.",
 	}),
 
-	// lock_id: z.string().optional().meta({
-	// 	description:
-	// 		"The lock ID associated with this check when lock mode is enabled.",
-	// }),
+	lock: z
+		.object({
+			lock_id: z.string(),
+			expires_at: z.number().optional(),
+		})
+		.optional()
+		.meta({
+			description:
+				"The reservation taken for this check. Present only when a reservation was requested and the hold was actually taken. Pass lock_id to balances.finalize to settle it.",
+		}),
 
 	preview: CheckFeaturePreviewSchema.optional().meta({
 		description:

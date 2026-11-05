@@ -130,8 +130,14 @@ def main() -> None:
     step("1. Bootstrap org + secret key (psql)")
     r = psql(f"""
         INSERT INTO organizations (id, slug, name, "createdAt", created_at, config, is_sandbox, onboarded)
-        VALUES ('{ORG_ID}', '{ORG_SLUG}', 'Demo Org', NOW(), {int(time.time() * 1000)}, '{{}}'::jsonb, true, true)
+        VALUES ('{ORG_ID}', '{ORG_SLUG}', 'Demo Org', NOW(), {int(time.time() * 1000)}, '{{}}'::jsonb, false, true)
         ON CONFLICT (slug) DO NOTHING;
+        -- The demo org is the merchant's OWN org, not a sandbox sub-org: is_sandbox
+        -- marks a sub-org of a master. The demo runs in the sandbox *env* through
+        -- its key below. Older seeds set is_sandbox = true, which made the
+        -- dashboard refuse /v1/sandboxes.list with a 400 ("sandboxes are managed
+        -- from your main organization"). Repair it on every bootstrap.
+        UPDATE organizations SET is_sandbox = false WHERE id = '{ORG_ID}';
         INSERT INTO api_keys (id, name, prefix, org_id, env, hashed_key, scopes)
         VALUES ('{KEY_ID}', 'Demo bridge key', 'am_sk_test', '{ORG_ID}', 'sandbox', '{hashed}', NULL)
         ON CONFLICT DO NOTHING;

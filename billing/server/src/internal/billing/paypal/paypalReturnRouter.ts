@@ -15,7 +15,7 @@
 //      default http://localhost:5173)
 
 import { and, desc, eq, isNotNull } from "drizzle-orm";
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { paypalOrderIntents, type AppEnv } from "@autumn/shared";
 import { db } from "@/db/initDrizzle.js";
 import { logger } from "@/external/logtail/logtailUtils.js";
@@ -25,40 +25,81 @@ import { isLivePaypalSubscription } from "@/internal/billing/paypal/decideSubscr
 import { activatePaypalSubscription } from "@/external/paypal/runPaypalWebhookHandlers.js";
 import { captureAndGrant } from "./captureAndGrant.js";
 import {
-	getPaypalClientForOrg,
 	getPaypalClientForOrder,
-	getPaypalClientForSubscription,
+	getPaypalClientForOrg,
+	getPaypalContextForSubscription,
 } from "./paypalOrgClient.js";
+import { getTrustedClientIp } from "@/internal/misc/rateLimiter/public/getTrustedClientIp.js";
 import type { HonoEnv } from "@/honoUtils/HonoEnv.js";
 
 export const paypalReturnRouter = new Hono<HonoEnv>();
 
 // These routes are public by design (the buyer's browser and the host app's
-// onApprove call them), so they get a coarse per-IP limiter: they proxy
-// PayPal API calls and act on payment state, and an unthrottled version is
-// both an enumeration oracle and a free PayPal-API amplification proxy.
+// onApprove call them), so they get a coarse limiter: they proxy PayPal API
+// calls and act on payment state, and an unthrottled version is both an
+// enumeration oracle and a free PayPal-API amplification proxy.
+//
+// Two buckets per request:
+//   - per CLIENT IP — the peer address from the socket when available
+//     (never client-spoofable); XFF is only consulted through the
+//     TRUSTED_PROXY_DEPTH-aware helper, never taken at face value.  The
+//     old first-XFF-entry key let an attacker rotate the header per
+//     request and render the limiter decorative.
+//   - per ROUTE ARGUMENT (customer_id / order id / subscription id) — so
+//     enumerating many ids from one address is bounded on both axes.
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 60;
+const RATE_LIMIT_MAX_PER_ARG = 30;
 const rateBuckets = new Map<string, { count: number; windowStart: number }>();
 
-paypalReturnRouter.use("*", async (c, next) => {
-	const ip =
-		c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
-		"x-unknown-ip";
+const hitBucket = (key: string, max: number): boolean => {
 	const now = Date.now();
-	let bucket = rateBuckets.get(ip);
+	let bucket = rateBuckets.get(key);
 	if (!bucket || now - bucket.windowStart >= RATE_LIMIT_WINDOW_MS) {
 		bucket = { count: 0, windowStart: now };
-		rateBuckets.set(ip, bucket);
+		rateBuckets.set(key, bucket);
 		// bound the map — drop stale buckets once it grows past 10k entries
 		if (rateBuckets.size > 10_000) {
-			for (const [key, b] of rateBuckets) {
-				if (now - b.windowStart >= RATE_LIMIT_WINDOW_MS) rateBuckets.delete(key);
+			for (const [k, b] of rateBuckets) {
+				if (now - b.windowStart >= RATE_LIMIT_WINDOW_MS) rateBuckets.delete(k);
 			}
 		}
 	}
 	bucket.count += 1;
-	if (bucket.count > RATE_LIMIT_MAX) {
+	return bucket.count > max;
+};
+
+/** The client's real peer address, falling back to proxy-aware headers. */
+const clientIp = (c: Context<HonoEnv>): string => {
+	try {
+		const incoming = (
+			c.env as unknown as {
+				incoming?: { socket?: { remoteAddress?: string } };
+			}
+		)?.incoming;
+		const peer = incoming?.socket?.remoteAddress;
+		if (peer) return peer;
+	} catch {
+		// fall through to header-based resolution
+	}
+	return getTrustedClientIp({ c });
+};
+
+paypalReturnRouter.use("*", async (c, next) => {
+	const ip = clientIp(c);
+	if (hitBucket(`ip:${ip}`, RATE_LIMIT_MAX)) {
+		return c.json({ error: "rate_limited" }, 429);
+	}
+	// Per-argument buckets: the poller names a customer, capture/activate
+	// name an order or subscription.  Rotating either no longer buys
+	// unlimited probes.
+	const customerId = c.req.query("customer_id");
+	if (customerId && hitBucket(`cus:${customerId}`, RATE_LIMIT_MAX_PER_ARG)) {
+		return c.json({ error: "rate_limited" }, 429);
+	}
+	const argId =
+		c.req.param("order_id") ?? c.req.param("subscriptionId") ?? undefined;
+	if (argId && hitBucket(`arg:${argId}`, RATE_LIMIT_MAX_PER_ARG)) {
 		return c.json({ error: "rate_limited" }, 429);
 	}
 	await next();
@@ -67,6 +108,7 @@ paypalReturnRouter.use("*", async (c, next) => {
 type SubscriptionLookup = {
 	subscriptionId: string;
 	client: PaypalClient;
+	orgId: string;
 } | null;
 
 /**
@@ -99,7 +141,12 @@ async function findSubscriptionForKey(key: string): Promise<SubscriptionLookup> 
 		intent.env as AppEnv,
 	);
 	if (!client) return null;
-	return { subscriptionId: intent.subscription_id, client };
+	return {
+		subscriptionId: intent.subscription_id,
+		client,
+		// Scopes the customer fallbacks on activation to THIS org.
+		orgId: intent.org_id,
+	};
 }
 
 /**
@@ -154,7 +201,7 @@ async function findApprovedSubscriptionByPayer(
 				sub?.subscriber?.payer_id === payerId &&
 				isLivePaypalSubscription(sub.status)
 			) {
-				return { subscriptionId: sub.id, client };
+				return { subscriptionId: sub.id, client, orgId: row.org_id };
 			}
 		} catch {
 			// subscription gone at PayPal — try the next pending one
@@ -191,8 +238,9 @@ paypalReturnRouter.get("/return", async (c) => {
 
 	logger.info({
 		msg: "paypal return: buyer came back",
-		token,
-		checkout,
+		// Payment tokens are credentials — log a prefix only, never the value.
+		token: token?.slice(0, 8),
+		checkout: checkout?.slice(0, 8),
 	});
 
 	// Subscriptions: resolve the key back to the subscription id.  The
@@ -204,15 +252,15 @@ paypalReturnRouter.get("/return", async (c) => {
 		(await findSubscriptionForKey(token ?? ""));
 
 	if (lookup) {
-		const { subscriptionId, client } = lookup;
+		const { subscriptionId, client, orgId } = lookup;
 		try {
 			const sub = await getSubscription(client, subscriptionId);
-			const activated = await activatePaypalSubscription(sub);
+			const activated = await activatePaypalSubscription(sub, orgId);
 			if (activated) {
 				logger.info({
 					msg: "paypal return: subscription activated",
-					token,
-					checkout,
+					token: token?.slice(0, 8),
+					checkout: checkout?.slice(0, 8),
 					subscriptionId,
 					status: sub?.status,
 				});
@@ -220,8 +268,8 @@ paypalReturnRouter.get("/return", async (c) => {
 			}
 			logger.warn({
 				msg: "paypal return: subscription not activatable",
-				token,
-				checkout,
+				token: token?.slice(0, 8),
+				checkout: checkout?.slice(0, 8),
 				subscriptionId,
 				status: sub?.status,
 			});
@@ -229,8 +277,8 @@ paypalReturnRouter.get("/return", async (c) => {
 		} catch (err) {
 			logger.error({
 				msg: "paypal return: subscription handler failed",
-				token,
-				checkout,
+				token: token?.slice(0, 8),
+				checkout: checkout?.slice(0, 8),
 				error: String(err),
 			});
 			return c.redirect(`${appUrl}?payment=error&reason=exception`, 302);
@@ -238,19 +286,19 @@ paypalReturnRouter.get("/return", async (c) => {
 	}
 
 	// PayPal redirects a subscription approval with the express-checkout token
-	// of the order it created for the approval, not with the BA- token.  Find
+	// of the order it created for that approval, not with the BA- token.  Find
 	// the subscription that approval belongs to through the payer.
 	if (token) {
 		const approved = await findApprovedSubscriptionByPayer(token);
 		if (approved) {
-			const { subscriptionId: approvedId, client } = approved;
+			const { subscriptionId: approvedId, client, orgId } = approved;
 			try {
 				const sub = await getSubscription(client, approvedId);
-				const activated = await activatePaypalSubscription(sub);
+				const activated = await activatePaypalSubscription(sub, orgId);
 				if (activated) {
 					logger.info({
 						msg: "paypal return: subscription activated via payer match",
-						token,
+						token: token?.slice(0, 8),
 						subscriptionId: approvedId,
 						status: sub?.status,
 					});
@@ -262,7 +310,7 @@ paypalReturnRouter.get("/return", async (c) => {
 			} catch (err) {
 				logger.error({
 					msg: "paypal return: payer-matched subscription failed",
-					token,
+					token: token?.slice(0, 8),
 					subscriptionId: approvedId,
 					error: String(err),
 				});
@@ -273,30 +321,31 @@ paypalReturnRouter.get("/return", async (c) => {
 	// PayPal subscription ids are "I-" prefixed; order ids are not.
 	if (token?.startsWith("I-")) {
 		try {
-			const client = await getPaypalClientForSubscription(token);
-			if (!client) {
+			const context = await getPaypalContextForSubscription(token);
+			if (!context) {
 				return c.redirect(`${appUrl}?payment=error&reason=no_org`, 302);
 			}
+			const { client, orgId } = context;
 			const sub = await getSubscription(client, token);
-			const activated = await activatePaypalSubscription(sub);
+			const activated = await activatePaypalSubscription(sub, orgId);
 			if (activated) {
 				logger.info({
 					msg: "paypal return: subscription activated",
-					token,
+					token: token.slice(0, 8),
 					status: sub?.status,
 				});
 				return c.redirect(`${appUrl}?payment=success`, 302);
 			}
 			logger.warn({
 				msg: "paypal return: subscription not activatable",
-				token,
+				token: token.slice(0, 8),
 				status: sub?.status,
 			});
 			return c.redirect(`${appUrl}?payment=error&reason=not_approved`, 302);
 		} catch (err) {
 			logger.error({
 				msg: "paypal return: subscription handler failed",
-				token,
+				token: token.slice(0, 8),
 				error: String(err),
 			});
 			return c.redirect(`${appUrl}?payment=error&reason=exception`, 302);
@@ -394,12 +443,14 @@ paypalReturnRouter.post("/capture/:order_id", async (c) => {
 paypalReturnRouter.get("/activate/:subscriptionId", async (c) => {
 	const subscriptionId = c.req.param("subscriptionId");
 	try {
-		const client = await getPaypalClientForSubscription(subscriptionId);
-		if (!client) {
+		const context = await getPaypalContextForSubscription(subscriptionId);
+		if (!context) {
 			return c.json({ error: "unknown subscription" }, 404);
 		}
+		const { client, orgId } = context;
 		const sub = await getSubscription(client, subscriptionId);
-		const activated = await activatePaypalSubscription(sub);
+		// The org scopes the customer fallbacks inside activation.
+		const activated = await activatePaypalSubscription(sub, orgId);
 		return c.json({
 			subscriptionId,
 			status: sub?.status,
