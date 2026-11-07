@@ -1,4 +1,5 @@
 import { Tinybird } from "@chronark/zod-bird";
+import { ErrCode, RecaseError } from "@autumn/shared";
 import { createAggregateDeductionsPipe } from "./pipes/aggregateDeductionsPipe.js";
 import { createAggregateGroupablePipe } from "./pipes/aggregateGroupablePipe.js";
 import { createAggregatePipe } from "./pipes/aggregatePipe.js";
@@ -72,7 +73,12 @@ export const tinybirdIngest = tinybirdClient
 /** Get Tinybird pipes, throws if not configured. */
 export const getTinybirdPipes = () => {
 	if (!tinybirdPipes) {
-		throw new Error("Tinybird is not configured");
+		throw new RecaseError({
+			message:
+				"Usage analytics isn't configured on this server, so event data is unavailable.",
+			code: ErrCode.AnalyticsNotConfigured,
+			statusCode: 503,
+		});
 	}
 	return tinybirdPipes;
 };
@@ -80,7 +86,12 @@ export const getTinybirdPipes = () => {
 /** Get Tinybird ingest endpoints, throws if not configured. */
 export const getTinybirdIngest = () => {
 	if (!tinybirdIngest) {
-		throw new Error("Tinybird is not configured");
+		throw new RecaseError({
+			message:
+				"Usage analytics isn't configured on this server, so events can't be recorded.",
+			code: ErrCode.AnalyticsNotConfigured,
+			statusCode: 503,
+		});
 	}
 	return tinybirdIngest;
 };

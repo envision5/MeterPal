@@ -28,7 +28,17 @@ export const handleLegacyApiCheckout = createRoute({
 			}
 		}
 
-		const checkoutRes = await runCheckout({ ctx, checkoutParams: body });
+		// The v2 attach pipeline keys the target on `plan_id`; the legacy V0
+		// contract (SDK topUp(), the buyer agent) sends `product_id`.  Without
+		// this mapping the pipeline looked up "Product undefined" and every
+		// top-up 404'd.
+		const checkoutRes = await runCheckout({
+			ctx,
+			checkoutParams: {
+				...body,
+				plan_id: body.product_id,
+			} as typeof body,
+		});
 
 		return c.json(checkoutRes);
 	},

@@ -26,7 +26,11 @@ import {
 	settleMeterpalBlock,
 } from "@/internal/inference/inferenceService.js";
 import { listServedModels } from "@/internal/models/servedModelService.js";
-import { ensureSetupCustomer, SETUP_CUSTOMER_ID } from "../setupUtils.js";
+import {
+	ensureSetupCustomer,
+	ensureSetupCustomerBalance,
+	SETUP_CUSTOMER_ID,
+} from "../setupUtils.js";
 
 const bodySchema = z.object({
 	/** The model to call. Defaults to the first model on the price sheet. */
@@ -73,6 +77,14 @@ export const handleRunSmokeTest = createRoute({
 			});
 		}
 
+		// The test must always be runnable: earlier runs may have drained the
+		// test user's credits, so restore them before the call.
+		await ensureSetupCustomerBalance({
+			ctx,
+			customerId: customer.id,
+			customerInternalId: customer.internal_id,
+		});
+
 		// The same resolution the public endpoint does: the org's price sheet
 		// decides which model this is and what it bills as.
 		const resolvedModel = await resolveInferenceModel({ ctx, model: modelId });
@@ -92,15 +104,11 @@ export const handleRunSmokeTest = createRoute({
 		const gatewayResponse = await callGateway({ virtualKey, callId, payload });
 
 		if (!gatewayResponse.ok) {
-			const detail = await gatewayResponse.text();
-			return c.json(
-				{
-					error: "The gateway rejected the test call.",
-					status: gatewayResponse.status,
-					detail: detail.slice(0, 500),
-				},
-				502,
-			);
+			throw new RecaseError({
+				message: await gatewayRejectionMessage(gatewayResponse),
+				code: ErrCode.ProcessorError,
+				statusCode: 502,
+			});
 		}
 
 		const json = (await gatewayResponse.json()) as {
@@ -120,7 +128,14 @@ export const handleRunSmokeTest = createRoute({
 	},
 });
 
-/** The first model on the org's price sheet. */
+/**
+ * The first model on the org's price sheet the gateway can actually serve.
+ *
+ * A sheet model is only callable once it has an upstream mapping (an
+ * instance/deployment behind it); one added without that would send its own
+ * id to the gateway and be rejected as an unknown model.  Those are skipped
+ * so the test exercises a model that can really answer.
+ */
 async function pickDefaultModel({
 	ctx,
 }: {
@@ -131,6 +146,39 @@ async function pickDefaultModel({
 		orgId: ctx.org.id,
 		env: ctx.env,
 	});
-	const enabled = models.find((m) => m.enabled);
-	return enabled?.model_id ?? models[0]?.model_id ?? null;
+	const enabled = models.filter((m) => m.enabled);
+	return (
+		enabled.find((m) => m.upstream_model)?.model_id ??
+		enabled[0]?.model_id ??
+		models[0]?.model_id ??
+		null
+	);
+}
+
+/**
+ * A one-line, actionable reason the gateway refused the test call.
+ *
+ * The gateway's 402 body ("insufficient_balance" for the test end user) is
+ * the one merchants will actually hit -- name it and the fix, rather than
+ * echoing the raw LiteLLM error object.
+ */
+async function gatewayRejectionMessage(
+	response: Response,
+): Promise<string> {
+	const detail = await response.text().catch(() => "");
+	try {
+		const parsed = JSON.parse(detail) as {
+			error?: { message?: string; code?: string };
+		};
+		const code = parsed.error?.code ?? String(response.status);
+		if (code === "402" || parsed.error?.message === "insufficient_balance") {
+			return "The test end user is out of credits, so the gateway declined the test call (insufficient balance). Run the test again -- the wizard restores the test user's balance automatically.";
+		}
+		if (parsed.error?.message) {
+			return `The gateway rejected the test call: ${parsed.error.message}`;
+		}
+	} catch {
+		// Not JSON -- fall through to the generic message.
+	}
+	return `The gateway rejected the test call (status ${response.status}).`;
 }

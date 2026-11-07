@@ -1,9 +1,11 @@
 import {
+	events,
 	isBillablePlanV2,
 	mapToProductV2,
 	type OnboardingStatus,
 	Scopes,
 } from "@autumn/shared";
+import { and, eq, sql } from "drizzle-orm";
 import { isTinybirdConfigured } from "@/external/tinybird/tinybirdUtils.js";
 import { createRoute } from "@/honoMiddlewares/routeHandler.js";
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
@@ -39,17 +41,33 @@ const hasTrackedUsage = async ({
 }: {
 	ctx: AutumnContext;
 }): Promise<boolean | null> => {
-	if (!isTinybirdConfigured()) return null;
+	if (isTinybirdConfigured()) {
+		const timeout = new Promise<null>((resolve) =>
+			setTimeout(() => resolve(null), USAGE_TIMEOUT_MS),
+		);
+		const query = eventActions
+			.getTopEventNames({ ctx, limit: 1 })
+			.then(({ eventNames }) => eventNames.length > 0)
+			.catch(() => null);
 
-	const timeout = new Promise<null>((resolve) =>
-		setTimeout(() => resolve(null), USAGE_TIMEOUT_MS),
-	);
-	const query = eventActions
-		.getTopEventNames({ ctx, limit: 1 })
-		.then(({ eventNames }) => eventNames.length > 0)
-		.catch(() => null);
+		const analytics = await Promise.race([query, timeout]);
+		if (analytics != null) return analytics;
+	}
 
-	return Promise.race([query, timeout]);
+	// Analytics unavailable (unconfigured or too slow): every track also
+	// writes a Postgres event row, so the database can answer honestly. This
+	// is what keeps a local dev org's checklist moving after its first
+	// metered call -- the smoke test's events live here too.
+	try {
+		const rows = await ctx.db
+			.select({ one: sql`1` })
+			.from(events)
+			.where(and(eq(events.org_id, ctx.org.id), eq(events.env, ctx.env)))
+			.limit(1);
+		return rows.length > 0;
+	} catch {
+		return null;
+	}
 };
 
 /**

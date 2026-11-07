@@ -69,7 +69,10 @@ const LITELLM_RATE_LIMITS_PER_PLAN: Record<
   string,
   { rpm: number; tpm: number; maxParallel: number }
 > = {
-  free: { rpm: 20, tpm: 50_000, maxParallel: 2 },
+  // 50k TPM tripped inside a single demo/agent loop (each call ~12k tokens);
+  // a real agentic workload bursts past it in seconds.  These ceilings still
+  // cap a runaway end user hard, without making ordinary bursts 429.
+  free: { rpm: 120, tpm: 500_000, maxParallel: 8 },
   pro: { rpm: 120, tpm: 400_000, maxParallel: 8 },
   pro_plus: { rpm: 300, tpm: 1_000_000, maxParallel: 16 },
   ultra: { rpm: 600, tpm: 4_000_000, maxParallel: 32 },

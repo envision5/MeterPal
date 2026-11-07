@@ -10,12 +10,16 @@ import {
 	AppEnv,
 	customers,
 	events,
+	FeatureType,
+	features,
 	paypalCatalogMap,
 	type FullProduct,
+	customerEntitlements,
 } from "@autumn/shared";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
 import { createCustomerWithDefaults } from "@/internal/customers/actions/createWithDefaults/createCustomerWithDefaults.js";
+import { adjustBalanceDbAndCache } from "@/internal/customers/cusProducts/cusEnts/actions/adjustBalanceDbAndCache.js";
 import { ProductService } from "@/internal/products/ProductService.js";
 import { priceAmountUsd } from "@/internal/billing/paypal/runPaypalCheckout.js";
 import { getFeatureBalance } from "@/internal/inference/usageSettlement.js";
@@ -140,6 +144,76 @@ export async function ensureSetupCustomer({
 	return { ...created, id: created.id };
 }
 
+/** Below this the smoke test cannot be trusted to go through. */
+const SMOKE_TEST_MIN_BALANCE = 0.5;
+/** What a top-up restores the test user's credits to. */
+const SMOKE_TEST_TOP_UP_TO = 1;
+
+/**
+ * The smoke test must always be runnable, so keep the test end user funded.
+ *
+ * Every call the gateway serves is metered against the org's AI credit
+ * system, and a used demo org will have drained the test user's credits with
+ * earlier runs.  When the spendable balance drops below the floor, top the
+ * most spendable entitlement up to the test budget -- the same balance a real
+ * top-up would move, in Postgres and the cache.
+ */
+export async function ensureSetupCustomerBalance({
+	ctx,
+	customerId,
+	customerInternalId,
+}: {
+	ctx: AutumnContext;
+	customerId: string;
+	customerInternalId: string;
+}): Promise<void> {
+	const { db, org, env } = ctx;
+
+	// The gateway meters every call against the org's AI credit system feature.
+	const creditSystem = await db.query.features.findFirst({
+		where: and(
+			eq(features.org_id, org.id),
+			eq(features.env, env),
+			eq(features.type, FeatureType.AiCreditSystem),
+		),
+	});
+	if (!creditSystem) return;
+
+	const rows = await db
+		.select({
+			id: customerEntitlements.id,
+			balance: customerEntitlements.balance,
+		})
+		.from(customerEntitlements)
+		.where(
+			and(
+				eq(customerEntitlements.internal_customer_id, customerInternalId),
+				eq(customerEntitlements.internal_feature_id, creditSystem.internal_id),
+				sql`${customerEntitlements.expired} IS NOT TRUE`,
+			),
+		);
+
+	// A null balance is unlimited -- nothing to top up.  No rows means the
+	// customer has nothing spendable to attach a grant to.
+	const spendable = rows.filter((row) => row.balance != null);
+	if (spendable.length === 0) return;
+
+	const balance = Math.max(...spendable.map((row) => Number(row.balance)));
+	if (balance >= SMOKE_TEST_MIN_BALANCE) return;
+
+	const target = spendable.reduce((best, row) =>
+		Number(row.balance) > Number(best.balance) ? row : best,
+	);
+
+	await adjustBalanceDbAndCache({
+		ctx,
+		customerId,
+		cusEntId: target.id,
+		delta: SMOKE_TEST_TOP_UP_TO - balance,
+		featureId: creditSystem.id,
+	});
+}
+
 export type SetupSmokeTest = {
 	/** Credits the call cost. */
 	credits_charged: number | null;
@@ -166,11 +240,16 @@ export async function getLastSetupSmokeTest({
 }): Promise<SetupSmokeTest | null> {
 	const { db, org, env } = ctx;
 
+	// The bridge's metered event carries the call's idempotency key.  A run
+	// also writes the check-time reservation and its refund around it, both
+	// internal and signed the wrong way to be a cost -- so only the keyed
+	// event counts as "the last test".
 	const event = await db.query.events.findFirst({
 		where: and(
 			eq(events.org_id, org.id),
 			eq(events.env, env),
 			eq(events.customer_id, SETUP_CUSTOMER_ID),
+			isNotNull(events.idempotency_key),
 		),
 		orderBy: desc(events.created_at),
 	});

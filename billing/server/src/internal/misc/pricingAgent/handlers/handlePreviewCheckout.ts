@@ -4,11 +4,10 @@ import { createRoute } from "@/honoMiddlewares/routeHandler.js";
 import { runCheckout } from "@/internal/billing/checkout/runCheckout.js";
 import {
 	buildPreviewContext,
+	ensurePreviewCustomer,
 	getSessionPreviewOrg,
+	PREVIEW_CUSTOMER_ID,
 } from "./previewOrgUtils.js";
-
-/** Every preview checkout runs against this single throwaway customer. */
-const PREVIEW_CUSTOMER_ID = "preview_customer";
 
 const PreviewCheckoutSchema = z.object({
 	product_id: z.string(),
@@ -67,13 +66,22 @@ export const handlePreviewCheckout = createRoute({
 			withFeatures: true,
 		});
 
+		// The checkout bills the preview org's throwaway end user; create it
+		// on first use so a synced preview org can always check out.
+		await ensurePreviewCustomer({ ctx: previewCtx });
+
 		const checkoutRes = await runCheckout({
 			ctx: previewCtx,
 			checkoutParams: {
+				// The v2 attach pipeline keys the target on `plan_id`; the preview
+				// UI sends the legacy `product_id` (same mapping the legacy API
+				// checkout does).  Without it the pipeline looked up "Product
+				// undefined" and every preview checkout 404'd.
+				...body,
 				customer_id: PREVIEW_CUSTOMER_ID,
-				product_id: body.product_id,
+				plan_id: body.product_id,
 				success_url: buildSuccessUrl({ successPath: body.success_path }),
-			},
+			} as Parameters<typeof runCheckout>[0]["checkoutParams"],
 		});
 
 		// Only the checkout URL is needed by the preview UI — the rest of the

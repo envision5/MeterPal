@@ -14,8 +14,6 @@ const getWelcomeEmailBody = (userFirstName: string) => {
 
 <p>Ayush<br>
 Co-founder, MeterPal</p>
-
-<p>Oh, and join our <a href="https://discord.gg/STqxY92zuS">Discord community</a> to connect with us and other users</p>
   `;
 };
 
@@ -28,7 +26,7 @@ export const sendOnboardingEmail = safeResend({
 			to: email,
 			subject: "Anything I can help with?",
 			body: getWelcomeEmailBody(firstName),
-			replyTo: "support@meterpal.dev",
+			replyTo: "meterpal@envision5.com",
 		});
 	},
 	action: "send onboarding email",

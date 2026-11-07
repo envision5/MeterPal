@@ -3203,7 +3203,9 @@ export const Customer$inboundSchema: z.ZodMiniType<Customer, unknown> = z.pipe(
     email: types.nullable(types.string()),
     created_at: types.number(),
     fingerprint: types.nullable(types.string()),
-    processor_invoice_id: types.nullable(types.string()),
+    // The server no longer emits this (PayPal-only billing removed the
+    // top-level processor invoice id), so it must parse responses without it.
+    processor_invoice_id: z.optional(z.nullable(types.string())),
     env: CustomerEnv$inboundSchema,
     metadata: z.record(z.string(), z.any()),
     send_email_receipts: types.boolean(),
