@@ -17,6 +17,7 @@ import { autumnHandler } from "autumn-js/hono";
 import { createMeterPal, InsufficientBalanceError } from "@meterpal/sdk";
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
+import { decideTopUp, type BuyerMandate, type Pack } from "./agent/mandate";
 
 const ROOT = import.meta.dir;
 const DEFAULT_CUSTOMER = process.env.DEMO_CUSTOMER_ID ?? "demo-customer";
@@ -196,16 +197,91 @@ app.post("/api/chat", async (c) => {
 	} catch (error) {
 		// The paywall: the end user must buy credits before the model runs.
 		if (error instanceof InsufficientBalanceError) {
-			return c.json(
-				{
-					error: "insufficient_balance",
-					message: error.message,
-					customer_id: error.customerId,
-					balance: error.balance,
-					requiredCredits: error.requiredCredits,
-				},
-				402,
-			);
+			const paywall = {
+				error: "insufficient_balance",
+				message: error.message,
+				customer_id: error.customerId,
+				balance: error.balance,
+				requiredCredits: error.requiredCredits,
+			};
+
+			// The buyer agent gets the 402 first: if the customer gave their AI
+			// a mandate, the agent decides — buy now (≤ auto-approve line,
+			// PayPal still gates the payment), draft an authorization above the
+			// line, or stand down at the budget.  Without a mandate this is the
+			// plain paywall.
+			try {
+				const customer = await getCustomer(customerId);
+				const mandate = customer?.metadata?.buyer_agent_mandate as
+					| BuyerMandate
+					| undefined;
+				if (mandate?.enabled) {
+					const monthSpend = await getMonthSpend(customerId);
+					const decision = decideTopUp({
+						mandate,
+						monthSpend,
+						packs: TOPUP_PACKS,
+						requiredCredits: error.requiredCredits ?? 0.5,
+					});
+
+					if (decision.action === "initiate" && decision.pack) {
+						const checkout = await billingApi<any>("POST", "/checkout", {
+							customer_id: customerId,
+							product_id: decision.pack.product_id,
+						});
+						return c.json(
+							{
+								...paywall,
+								agent_action: "initiated",
+								agent_reason: decision.reason,
+								agent_pack: decision.pack,
+								checkout: { product_id: decision.pack.product_id, url: checkout?.url ?? null },
+							},
+							402,
+						);
+					}
+
+					if (decision.action === "ask" && decision.pack) {
+						const { proposal } = await billingApi<any>(
+							"POST",
+							"/sales-agent/authorize-topup",
+							{
+								customer_id: customerId,
+								product_id: decision.pack.product_id,
+								credits: decision.pack.credits,
+								price_usd: decision.pack.price_usd,
+								reason: decision.reason,
+							},
+						);
+						return c.json(
+							{
+								...paywall,
+								agent_action: "approval_required",
+								agent_reason: decision.reason,
+								agent_pack: decision.pack,
+								proposal_id: proposal?.id ?? null,
+							},
+							402,
+						);
+					}
+
+					return c.json(
+						{
+							...paywall,
+							agent_action: "denied",
+							agent_reason: decision.reason,
+						},
+						402,
+					);
+				}
+			} catch (agentError) {
+				console.error(
+					`buyer-agent decision failed for ${customerId}: ${agentError}`,
+				);
+				// Fall through to the plain paywall — the agent never blocks it.
+			}
+
+			return c.json(paywall, 402);
 		}
 		throw error;
 	}
@@ -224,6 +300,148 @@ app.get("/api/models", async (c) => {
 		})),
 	});
 });
+
+// ---- the buyer agent: mandate, spend math, and the 402 decision ----
+// The agent runs HERE, in the merchant's app — the same place the MeterPal
+// SDK lives.  Mandate lives in the customer's metadata on the billing server;
+// spend math comes from this app's direct events read (the established local
+// pattern above).
+
+/** The packs this merchant sells — the buyer agent may only buy these.
+ *  (The same ids the Top-up section offers; prices are 1:1 credits→USD,
+ *  matching bootstrap.py's catalog.) */
+const TOPUP_PACKS: Pack[] = [
+	{ product_id: "topup_10", credits: 10, price_usd: 10 },
+	{ product_id: "topup_50", credits: 50, price_usd: 50 },
+	{ product_id: "topup_200", credits: 200, price_usd: 200 },
+];
+
+async function billingApi<T = any>(
+	method: string,
+	path: string,
+	body?: unknown,
+): Promise<T> {
+	const res = await fetch(`${API_URL}/v1${path}`, {
+		method,
+		headers: {
+			Authorization: `Bearer ${SECRET_KEY}`,
+			"Content-Type": "application/json",
+		},
+		body: body === undefined ? undefined : JSON.stringify(body),
+	});
+	const text = await res.text();
+	const data = text ? JSON.parse(text) : null;
+	if (!res.ok) {
+		throw new Error(`billing ${method} ${path} -> ${res.status}: ${text.slice(0, 300)}`);
+	}
+	return data as T;
+}
+
+async function getCustomer(customerId: string): Promise<any> {
+	return await billingApi(
+		"GET",
+		`/customers/${encodeURIComponent(customerId)}?expand=balances.feature`,
+	);
+}
+
+async function getMonthSpend(customerId: string): Promise<number> {
+	const now = new Date();
+	const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+	const sql = getBillingSql();
+	const rows = await sql`
+		select coalesce(sum(value), 0) as spent
+		from events
+		where env = 'sandbox'
+			and event_name = ${process.env.METERPAL_FEATURE_ID ?? "ai_tokens"}
+			and customer_id = ${customerId}
+			and "timestamp" >= ${monthStart.toISOString()}
+	`;
+	return Number(rows[0]?.spent ?? 0);
+}
+
+app.get("/api/agent-settings", async (c) => {
+	const customerId = c.req.header("x-meterpal-customer") ?? DEFAULT_CUSTOMER;
+	const customer = await getCustomer(customerId);
+	let insights: any = null;
+	try {
+		insights = await billingApi(
+			"GET",
+			`/sales-agent/insights?customer_id=${encodeURIComponent(customerId)}`,
+		);
+	} catch {
+		// The panel still renders with mandate + balance if insights fail.
+	}
+	return c.json({
+		mandate: customer?.metadata?.buyer_agent_mandate ?? null,
+		balance: customer?.balances?.ai_tokens?.remaining ?? null,
+		insights,
+	});
+});
+
+app.post("/api/agent-settings", async (c) => {
+	const customerId = c.req.header("x-meterpal-customer") ?? DEFAULT_CUSTOMER;
+	const body = await c.req.json().catch(() => ({}) as any);
+	const mandate = body?.mandate;
+	if (
+		!mandate ||
+		typeof mandate !== "object" ||
+		typeof mandate.enabled !== "boolean" ||
+		![mandate.max_per_purchase, mandate.monthly_budget, mandate.auto_approve_below].every(
+			(v: any) => typeof v === "number" && v >= 0,
+		)
+	) {
+		return c.json({ error: "invalid mandate" }, 400);
+	}
+	// Metadata merges shallowly per key, so replacing this one key is safe.
+	const customer = await billingApi("POST", `/customers/${encodeURIComponent(customerId)}`, {
+		metadata: { buyer_agent_mandate: mandate },
+	});
+	return c.json({ mandate: customer?.metadata?.buyer_agent_mandate ?? mandate });
+});
+
+// ---- sales-rep agent proxy (negotiation + offers) ----
+
+app.post("/api/sales/chat", async (c) => {
+	const customerId = c.req.header("x-meterpal-customer") ?? DEFAULT_CUSTOMER;
+	const body = await c.req.json().catch(() => ({}) as any);
+	if (!body?.message) return c.json({ error: "message required" }, 400);
+	const res = await fetch(`${API_URL}/v1/sales-agent/chat`, {
+		method: "POST",
+		headers: {
+			Authorization: `Bearer ${SECRET_KEY}`,
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify({
+			customer_id: customerId,
+			message: body.message,
+			history: Array.isArray(body.history) ? body.history.slice(-30) : [],
+		}),
+	});
+	return c.json(await res.json(), res.status as any);
+});
+
+app.get("/api/sales/offers", async (c) => {
+	const customerId = c.req.header("x-meterpal-customer") ?? DEFAULT_CUSTOMER;
+	const res = await fetch(
+		`${API_URL}/v1/sales-agent/offers?customer_id=${encodeURIComponent(customerId)}`,
+		{ headers: { Authorization: `Bearer ${SECRET_KEY}` } },
+	);
+	return c.json(await res.json(), res.status as any);
+});
+
+for (const action of ["decline", "purchased"] as const) {
+	app.post(`/api/sales/proposals/:id/${action}`, async (c) => {
+		const proposalId = c.req.param("id");
+		const res = await fetch(
+			`${API_URL}/v1/sales-agent/proposals/${encodeURIComponent(proposalId)}/${action}`,
+			{
+				method: "POST",
+				headers: { Authorization: `Bearer ${SECRET_KEY}` },
+			},
+		);
+		return c.json(await res.json(), res.status as any);
+	});
+}
 
 // ---- static frontend ----
 const dist = join(ROOT, "dist");

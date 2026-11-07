@@ -3,13 +3,20 @@
 @tailwind utilities;
 
 :root {
-	--background: 240 10% 6%;
+	--background: 240 12% 5%;
 	--foreground: 0 0% 96%;
-	--border: 240 6% 18%;
-	--primary: 219 53% 33%;
+	--border: 240 6% 15%;
+	--primary: 213 85% 50%;
 	--primary-foreground: 0 0% 100%;
-	--muted: 240 6% 14%;
-	--muted-foreground: 240 5% 65%;
+	--muted: 240 6% 12%;
+	--muted-foreground: 240 5% 62%;
+
+	/* demo accents: one per money concept, used consistently */
+	--credits: 40 95% 55%; /* wallet / credits */
+	--agent: 262 80% 68%; /* the AI agents */
+	--paywall: 351 85% 62%; /* the 402 wall */
+	--ok: 158 60% 46%; /* success / approved */
+	--info: 200 90% 58%; /* information */
 
 	color-scheme: dark;
 }
@@ -19,4 +26,39 @@ body {
 	color: hsl(var(--foreground));
 	font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 	margin: 0;
+}
+
+@layer components {
+	/* cards & chips */
+	.mp-card {
+		@apply rounded-2xl border border-border bg-muted/40;
+	}
+	.mp-chip {
+		@apply inline-flex items-center gap-1 rounded-full border border-border bg-muted/60 px-2 py-0.5 text-[11px] text-muted-foreground;
+	}
+
+	/* conversation bubbles — Claude/ChatGPT shape: users in bubbles,
+	   assistants full-width next to an avatar */
+	.mp-bubble-user {
+		@apply ml-auto max-w-[78%] rounded-2xl rounded-br-md bg-primary px-4 py-2.5 text-sm text-primary-foreground;
+	}
+	.mp-msg-agent {
+		@apply flex gap-3;
+	}
+
+	/* the composer */
+	.mp-composer {
+		@apply flex items-center gap-2 rounded-2xl border border-border bg-muted/60 p-2 shadow-lg shadow-black/30 backdrop-blur;
+	}
+	.mp-composer-input {
+		@apply flex-1 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground;
+	}
+
+	/* segmented rail tabs */
+	.mp-rail-tab {
+		@apply flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-medium text-muted-foreground transition hover:text-foreground;
+	}
+	.mp-rail-tab-active {
+		@apply bg-primary/15 text-primary-foreground;
+	}
 }

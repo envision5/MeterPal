@@ -7,6 +7,10 @@ import {
 } from "@meterpal/sdk";
 import { AutumnProvider } from "autumn-js/react";
 import { useEffect, useState } from "react";
+import AgentSettings from "./components/AgentSettings";
+import Offers from "./components/Offers";
+import SalesChat from "./components/SalesChat";
+import SpendAlerts from "./components/SpendAlerts";
 
 type Message = {
 	role: "user" | "assistant";
@@ -56,6 +60,7 @@ function Dashboard({
 	const [paypalClientId, setPaypalClientId] = useState<string | null>(null);
 	const [models, setModels] = useState<ServedModel[]>([]);
 	const [modelId, setModelId] = useState("custom/demo-gpt");
+	const [chatTab, setChatTab] = useState<"assistant" | "sales">("assistant");
 
 	useEffect(() => {
 		fetch("/api/paypal/config")
@@ -132,6 +137,52 @@ function Dashboard({
 			if (res.status === 402) {
 				// Admission control refused the call before the model ran.
 				const data = await res.json().catch(() => ({}));
+				const numbers =
+					data?.balance !== undefined
+						? ` Balance: ${data.balance}, needed: ${data.requiredCredits}.`
+						: "";
+
+				// The buyer agent saw the 402 first when a mandate exists.
+				if (data?.agent_action === "initiated" && data?.checkout?.url) {
+					setMessages((m) => [
+						...m,
+						{
+							role: "assistant",
+							content:
+								`🤖 Your agent is on it: buying ${data.agent_pack?.credits} credits ` +
+								`for $${data.agent_pack?.price_usd} within your mandate. ` +
+								"Approve the PayPal payment in the tab it opened — this page updates automatically." +
+								` (${data.agent_reason})`,
+						},
+					]);
+					window.open(data.checkout.url, "_blank");
+					return;
+				}
+				if (data?.agent_action === "approval_required") {
+					setMessages((m) => [
+						...m,
+						{
+							role: "assistant",
+							content:
+								`🤖 Your agent drafted a top-up for you: ${data.agent_pack?.credits} ` +
+								`credits for $${data.agent_pack?.price_usd} — above your auto-approve ` +
+								"line, so it waits for you in **Offers**. " +
+								`(${data.agent_reason})`,
+						},
+					]);
+					return;
+				}
+				if (data?.agent_action === "denied") {
+					setMessages((m) => [
+						...m,
+						{
+							role: "assistant",
+							content: `⛔ 402 — and your agent stood down: ${data.agent_reason}`,
+						},
+					]);
+					return;
+				}
+
 				setMessages((m) => [
 					...m,
 					{
@@ -139,9 +190,7 @@ function Dashboard({
 						content:
 							"⛔ 402 — insufficient credits. The call was refused before " +
 							"the model provider was touched." +
-							(data?.balance !== undefined
-								? ` Balance: ${data.balance}, needed: ${data.requiredCredits}.`
-								: "") +
+							numbers +
 							" Top up with PayPal to continue.",
 					},
 				]);
@@ -223,14 +272,38 @@ function Dashboard({
 				</div>
 			)}
 
+			<SpendAlerts customerId={customerId} />
+
 			<LowBalanceBanner
 				onAddCredits={() => window.dispatchEvent(new Event("open-topup-modal"))}
 			/>
 
 			<main className="grid flex-1 grid-cols-1 gap-4 overflow-hidden md:grid-cols-[1fr_380px]">
-				{/* chat */}
+				{/* assistant chat + sales-agent negotiation, tabbed */}
 				<section className="flex flex-col overflow-hidden rounded-xl border border-border">
-					<div className="flex-1 space-y-3 overflow-y-auto p-4">
+					<div className="flex gap-1 border-b border-border px-3 pt-2">
+						{(["assistant", "sales"] as const).map((tab) => (
+							<button
+								key={tab}
+								type="button"
+								onClick={() => setChatTab(tab)}
+								className={[
+									"rounded-t-md px-3 py-1.5 text-sm",
+									chatTab === tab
+										? "border-b-2 border-primary font-medium"
+										: "text-muted-foreground hover:text-foreground",
+								].join(" ")}
+								data-testid={`tab-${tab}`}
+							>
+								{tab === "assistant" ? "Assistant" : "Talk to sales 🤖"}
+							</button>
+						))}
+					</div>
+					{chatTab === "sales" ? (
+						<SalesChat customerId={customerId} />
+					) : (
+						<>
+							<div className="flex-1 space-y-3 overflow-y-auto p-4">
 						{messages.length === 0 && (
 							<p className="text-sm text-muted-foreground">
 								Send a message — each call is metered (token pools → base cost →
@@ -282,6 +355,8 @@ function Dashboard({
 							Send
 						</button>
 					</form>
+						</>
+					)}
 				</section>
 
 				{/* billing sidebar */}
@@ -333,12 +408,24 @@ function Dashboard({
 						</button>
 					</section>
 					<section className="rounded-xl border border-border p-4">
+						<h2 className="mb-3 text-sm font-semibold">Agent offers</h2>
+						<Offers customerId={customerId} onNotice={setPaymentNotice} />
+						<p className="mt-2 text-xs text-muted-foreground">
+							Packages your sales-agent negotiation produced (merchant-approved)
+							and top-ups your buyer agent is waiting on you for.
+						</p>
+					</section>
+					<section className="rounded-xl border border-border p-4">
 						<h2 className="mb-3 text-sm font-semibold">Plans</h2>
 						<PlanCard />
 					</section>
 					<section className="rounded-xl border border-border p-4">
 						<h2 className="mb-3 text-sm font-semibold">Usage</h2>
 						<UsageHistoryPanel />
+					</section>
+					<section className="rounded-xl border border-border p-4">
+						<h2 className="mb-3 text-sm font-semibold">Buyer agent</h2>
+						<AgentSettings customerId={customerId} />
 					</section>
 				</aside>
 			</main>

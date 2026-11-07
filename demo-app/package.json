@@ -1,16 +1,18 @@
 {
   "name": "@meterpal/demo-app",
   "version": "0.1.0",
-  "description": "MeterPal demo app \u2014 a chat app whose AI usage is billed through PayPal",
+  "description": "MeterPal demo app — a chat app whose AI usage is billed through PayPal",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "vite build",
     "dev": "bun run build && bun server.ts",
-    "start": "bun server.ts"
+    "start": "bun server.ts",
+    "test": "bun test agent/"
   },
   "dependencies": {
     "@meterpal/sdk": "workspace:*",
+    "@tabler/icons-react": "^3.50.0",
     "@tanstack/react-query": "^5.62.0",
     "autumn-js": "1.2.17",
     "hono": "^4.6.0",
