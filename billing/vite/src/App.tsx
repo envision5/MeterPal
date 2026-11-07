@@ -71,6 +71,7 @@ const AnalyticsView = React.lazy(() =>
 		({ AnalyticsView }) => ({ default: AnalyticsView }),
 	),
 );
+const ApprovalsView = React.lazy(() => import("./views/approvals/ApprovalsView"));
 const LogsView = React.lazy(() =>
 	import("./views/event-logs/LogsView").then(({ LogsView }) => ({
 		default: LogsView,
@@ -213,6 +214,7 @@ export default function App() {
 							)}
 							{envRoutes("dev", <DevScreen />)}
 							{envRoutes("analytics", <AnalyticsView />)}
+							{envRoutes("approvals", <ApprovalsView />)}
 							{envRoutes("logs", <LogsView />)}
 							{envRoutes("onboarding", <OnboardingView />)}
 							{envRoutes("setup", <SetupView />)}

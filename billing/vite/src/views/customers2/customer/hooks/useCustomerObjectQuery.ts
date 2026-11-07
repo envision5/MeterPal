@@ -11,7 +11,6 @@ const CUSTOMER_EXPAND_PARAMS = [
 	"rewards",
 	"entities",
 	"referrals",
-	"payment_method",
 	"billing_controls.auto_topups.purchase_limit",
 ].join(",");
 

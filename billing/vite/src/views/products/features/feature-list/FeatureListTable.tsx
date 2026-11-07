@@ -142,7 +142,9 @@ export function FeatureListTable() {
 								enableSorting,
 								isLoading: false,
 								onRowClick: openSheet,
-								emptyStateText: "You haven't archived any features yet.",
+								emptyStateText: queryStates.showArchivedFeatures
+									? "You haven't archived any features yet."
+									: "No features yet. Create one to attach to plans.",
 								rowClassName: "h-10",
 							}}
 						>

@@ -1,6 +1,7 @@
 import { Scopes } from "@autumn/shared";
 import { Button } from "@autumn/ui";
 import {
+	Bell,
 	ChartColumn,
 	Cpu,
 	KeyRound,
@@ -135,6 +136,14 @@ export const MainSidebar = ({
 								subValue="models"
 								icon={<Cpu strokeWidth={ICON_STROKE} />}
 								title="Models"
+								env={env}
+							/>
+						</NavSection>
+						<NavSection title="Agents">
+							<NavButton
+								value="approvals"
+								icon={<Bell strokeWidth={ICON_STROKE} />}
+								title="Approvals"
 								env={env}
 							/>
 						</NavSection>

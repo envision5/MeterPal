@@ -1,5 +1,7 @@
 import type { ApiEventsListItem } from "@autumn/shared";
+import type { AxiosError } from "axios";
 import { useState } from "react";
+import { getBackendErr } from "@/utils/genUtils";
 import { UsagePageHeader } from "@/views/customers/customer/analytics/components/UsagePageHeader";
 import { LogDetailPane } from "./components/LogDetailPane";
 import { LogsList } from "./components/LogsList";
@@ -19,6 +21,13 @@ export const LogsView = () => {
 		fetchNextPage,
 	} = useLogsEvents();
 	const [selected, setSelected] = useState<ApiEventsListItem | null>(null);
+
+	// The analytics backend can be absent (self-hosted without Tinybird) —
+	// that is a configuration state, not a failed request, so it gets its own
+	// empty state rather than an error line.
+	const analyticsNotConfigured =
+		(error as AxiosError | undefined)?.response?.data?.code ===
+		"analytics_not_configured";
 
 	// Drop the open event once the list it came from is filtered away.
 	const { filters } = useLogsFilters();
@@ -45,9 +54,21 @@ export const LogsView = () => {
 				<LogsVolumeStrip />
 			</div>
 			{error ? (
-				<div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-					Couldn't load events. {error.message}
-				</div>
+				analyticsNotConfigured ? (
+					<div className="flex flex-1 flex-col items-center justify-center gap-1 text-sm">
+						<p className="text-muted-foreground">
+							Usage analytics isn't connected on this server.
+						</p>
+						<p className="text-muted-foreground text-xs">
+							Events will appear here once the analytics backend is
+							configured.
+						</p>
+					</div>
+				) : (
+					<div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+						Couldn't load events. {getBackendErr(error, error.message)}
+					</div>
+				)
 			) : (
 				<div className="flex flex-1 min-h-0">
 					<LogsList

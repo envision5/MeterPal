@@ -17,6 +17,7 @@ export const RESERVED_SANDBOX_SLUGS = new Set([
 	"setup",
 	"impersonate-redirect",
 	"trmnl",
+	"approvals",
 ]);
 
 // A sandbox slug can stand in for an env name, so it must never read as one.

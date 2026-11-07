@@ -27,7 +27,11 @@ export function SmokeTestStep({
 	isRunning: boolean;
 }) {
 	const enabled = models.filter((m) => m.enabled);
-	const firstModel = enabled[0];
+	// The chip names the model the test will actually call: the server picks
+	// the first enabled model that has an upstream mapping (one without is not
+	// routable by the gateway), falling back to the first enabled model.
+	const defaultModel =
+		enabled.find((m) => m.upstream_model) ?? enabled[0];
 
 	const handleRun = async () => {
 		try {
@@ -66,7 +70,7 @@ export function SmokeTestStep({
 					Send a metered test call
 				</Button>
 				<span className="text-subtle text-xs">
-					{firstModel.display_name || firstModel.model_id}
+					{defaultModel.display_name || defaultModel.model_id}
 				</span>
 			</div>
 

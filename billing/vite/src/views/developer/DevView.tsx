@@ -55,9 +55,30 @@ export default function DevScreen() {
 					<ConfigureWebhookSection dashboardUrl={svixDashboardUrl} />
 				</div>
 			)}
+			{tab === "webhooks" && !(webhooks && svixDashboardUrl) && (
+				<WebhooksUnavailable webhooksEnabled={webhooks} />
+			)}
 		</PageContainer>
 	);
 }
+
+const WebhooksUnavailable = ({
+	webhooksEnabled,
+}: {
+	webhooksEnabled: boolean;
+}) => (
+	<div className="flex flex-col gap-2">
+		<PageHeader
+			icon={<WebhooksLogoIcon size={16} weight="fill" className="text-subtle" />}
+			title="Webhooks"
+		/>
+		<p className="text-muted-foreground text-sm">
+			{webhooksEnabled
+				? "Webhook delivery isn't connected on this server yet. Once it's set up, subscribe to events here and inspect every delivery."
+				: "Webhooks aren't available for this workspace yet."}
+		</p>
+	</div>
+);
 
 const withNoGutters = (dashboardUrl: string) => {
 	const url = new URL(dashboardUrl);

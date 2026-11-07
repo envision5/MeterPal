@@ -19,7 +19,7 @@ import {
 import { ChatCircleTextIcon } from "@phosphor-icons/react";
 import { CircleQuestionMark, GraduationCap } from "lucide-react";
 import { useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { useAxiosInstance } from "@/services/useAxiosInstance";
 import { useEnv } from "@/utils/envUtils";
@@ -28,7 +28,7 @@ import { useOnboardingVisibility } from "@/views/onboarding/hooks/useOnboardingP
 import { NavButton } from "./NavButton";
 
 export function SidebarContact() {
-	const email = "support@meterpal.dev";
+	const email = "meterpal@envision5.com";
 	const env = useEnv();
 	const navigate = useNavigate();
 	const { show: showOnboardingGuide } = useOnboardingVisibility();
@@ -78,30 +78,12 @@ export function SidebarContact() {
 						className="cursor-pointer"
 					>
 						<div className="flex items-center justify-between w-full">
-							<span>support@meterpal.dev</span>
+							<span>{email}</span>
 							<CopyTextButton
 								text={email}
 								className="bg-transparent shadow-none hover:bg-zinc-200 w-6 gap-0 h-6 !px-0 py-0 flex items-center justify-center text-muted-foreground"
 							/>
 						</div>
-					</DropdownMenuItem>
-					<DropdownMenuItem
-						onClick={() => { window.location.href = `mailto:${email}`; }}
-						className="cursor-pointer"
-					>
-						Book a call
-					</DropdownMenuItem>
-					<DropdownMenuItem
-						className="cursor-pointer h-[30px] flex justify-start"
-						asChild
-					>
-						<Link to="https://discord.gg/STqxY92zuS" target="_blank">
-							We're online on Discord
-							<span className="relative flex h-2 w-2">
-								<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-lime-400 opacity-75"></span>
-								<span className="relative inline-flex rounded-full h-2 w-2 bg-lime-500"></span>
-							</span>
-						</Link>
 					</DropdownMenuItem>
 					<DropdownMenuSeparator />
 					<DropdownMenuItem
