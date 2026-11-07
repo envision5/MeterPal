@@ -41,3 +41,12 @@ MeterPal*.zip
 # Local agent / IDE session artifacts -- never part of the project
 .workbuddy-ai/
 .zcode/
+
+# Research working material -- competitor repos, harvested READMEs and source
+# trees.  Local scratch only: it is other people's code and must never ship
+# in the submission repository.
+research/
+
+# Windows shell redirect artifact ("... > nul" in a POSIX-style shell)
+demo-app/nul
+nul

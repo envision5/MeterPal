@@ -1,9 +1,16 @@
-# Deploying MeterPal
+# Running the MeterPal stack (self-hosting / evaluation)
 
 MeterPal is a metering and billing server plus a metered AI gateway. PayPal is
 the money rail: **Orders v2** for credit packs, **Subscriptions** for plans,
 **Invoicing** for overage, and **webhooks** that grant entitlements the moment
 money lands.
+
+> **Who this guide is for:** MeterPal's own operators (and anyone evaluating the
+> stack locally). The hosted product runs this whole stack for its merchants —
+> a merchant's only steps are connect PayPal, install the SDK, swap one import;
+> they never deploy or touch the gateway (`docs/architecture.md` §0). This guide
+> exists so the full stack can be run and inspected outside that hosted
+> environment.
 
 ```
                        +--------------------------------------------+
@@ -146,8 +153,14 @@ LiteLLM core files are modified.
 cd gateway
 cp .env.example .env
 pip install -e .
+set -a && source .env && set +a
 litellm --config config.yaml --port 4000
 ```
+
+(The `source` step is the explicit form. As a fallback, the MeterPal bridge
+also reads `gateway/.env` itself at import, so a bare
+`litellm --config config.yaml --port 4000` starts the bridge configured too;
+values already in the process environment always win.)
 
 The bridge configuration:
 

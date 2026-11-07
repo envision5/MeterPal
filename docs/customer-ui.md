@@ -62,7 +62,7 @@ export function Providers({ children, user }: { children: React.ReactNode; user:
   return (
     <QueryClientProvider client={queryClient}>
       <AutumnProvider
-        // point at the MeterPal server you deployed
+        // point at your MeterPal environment (hosted; see docs/architecture.md §0)
         backendUrl={process.env.NEXT_PUBLIC_AUTUMN_URL!}
         // identifies the customer — call this with your app's authenticated user
         identify={async () => ({ customerId: user.id, customerData: { name: user.name, email: user.email } })}

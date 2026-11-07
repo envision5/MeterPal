@@ -55,7 +55,6 @@ def load_env(path: Path) -> dict[str, str]:
 
 
 ENV = load_env(ROOT / "gateway" / ".env")
-MASTER_KEY = ENV.get("LITELLM_MASTER_KEY", "")
 AUTUMN_KEY = ENV.get("PAB_API_KEY") or ENV.get("AUTUMN_API_KEY", "")
 
 C = "\033[0m"
@@ -130,8 +129,20 @@ def ledger(limit: int = 8) -> None:
 
 
 def main() -> None:
-    litellm_c = httpx.Client(base_url=LITELLM, headers={"Authorization": f"Bearer {MASTER_KEY}"}, timeout=60)
     autumn_c = httpx.Client(base_url=AUTUMN, headers={"Authorization": f"Bearer {AUTUMN_KEY}"}, timeout=30)
+
+    # The gateway bills the tenant carried by the KEY, not by a request
+    # header — an admin/master key without a tenant is REFUSED (that is the
+    # tenant-isolation guarantee working).  So the demo calls the gateway
+    # the way a merchant SDK does: provision the customer's virtual key
+    # first, then present it as the bearer.
+    vk_resp = autumn_c.post("/v1/keys", json={"customer_id": CUSTOMER_ID})
+    if vk_resp.status_code != 200:
+        sys.exit(f"  virtual key provisioning failed: {vk_resp.status_code} {vk_resp.text[:200]}")
+    virtual_key = vk_resp.json().get("key")
+    if not virtual_key:
+        sys.exit("  virtual key provisioning returned no key")
+    litellm_c = httpx.Client(base_url=LITELLM, headers={"Authorization": f"Bearer {virtual_key}"}, timeout=60)
 
     # Preflight
     print(f"{B}AI billing demo -- LiteLLM :4000  →  MeterPal :8080  →  mock LLM :9999{C}")
@@ -159,7 +170,8 @@ def main() -> None:
     chat(litellm_c, "demo-gpt",
          "cache me [usage: in=2000 out=2000 cache_read=8000]",
          "call 3 (8,000 of 10,000 input CACHED)")
-    print(f"    {DI}custom models bill cache at $0 -- only 2,000 fresh input is charged: $0.20{C}")
+    print(f"    {DI}the merchant's sheet prices every pool: cached input bills at the "
+          f"input rate unless the sheet discounts it -- $0.36{C}")
     show_balance(autumn_c)
 
     phase(3, "A second model priced from models.dev (gpt-4o-mini list rates)")
@@ -193,8 +205,8 @@ def main() -> None:
 
     print(f"\n{B}Demo complete.{C} Every call above was metered and debited by MeterPal,")
     print("and when the wallet ran dry, admission was refused BEFORE hitting the provider.")
-    print(f"{DI}The status=failure row with 0 tokens is the 402-denied call -- recorded")
-    print(f"by the bridge's failure hook, billed at 0.{C}")
+    print(f"{DI}The 402-denied call is NOT in the ledger: it never reached the provider,")
+    print(f"so there is nothing to bill -- the refusal itself is the product.{C}")
     print("What you did NOT see: PayPal webhooks driving these balances --")
     print("that is the only part to swap in when you wire real keys.")
 

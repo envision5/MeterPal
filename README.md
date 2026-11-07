@@ -11,8 +11,11 @@ grant entitlements the moment money lands. An **MCP server** lets AI agents
 run the whole commercial loop — including an agent that buys its own credits
 when it runs out.
 
-PayPal has no metered/usage-based billing product (there is no usage-recording
-endpoint anywhere in its REST catalog). MeterPal is that missing layer.
+PayPal's **Usage Based Billing API v1** records usage events, settles them
+against a prepaid wallet, and issues credit notes — and PayPal's own agent
+tooling does not reach it. What it does not do is meter AI inference: per-token
+cost attribution, admission control before the provider is touched, and a ledger
+that can be projected forward. MeterPal is that layer.
 
 ```
                          ┌────────────────────────────────────────────┐
@@ -43,7 +46,13 @@ endpoint anywhere in its REST catalog). MeterPal is that missing layer.
 ## Try it in 60 seconds
 
 You do not need a PayPal account, a provider key, or any setup to see the
-paywall work. The bundled demo runs the whole loop against a mock LLM:
+paywall work. The bundled demo runs the whole loop against a mock LLM.
+
+**What you're running:** this repo is the full product source — billing server,
+metered gateway, dashboard — cloned here for evaluation. The merchant journey
+in production is shorter: sign up, install the SDK, swap one import. Merchants
+never run the gateway (`docs/architecture.md` §1); running it here is how you
+see inside it:
 
 ```bash
 git clone <this repo> && cd meterpal
@@ -200,7 +209,7 @@ The full record, with file-level detail, is in [`CHANGELOG.md`](CHANGELOG.md).
 | `agent/` | MCP server + merchant/buyer demo agents |
 | `demo-app/` | The demo chat app whose AI usage is billed live |
 | `demo/` | Mock LLM provider, bootstrap seeding, scripted billing-loop walkthrough |
-| `docs/` | Design research and the fork lineage; `docs/architecture.md` is the product design, `docs/DEPLOY.md` is the PayPal-native deployment guide |
+| `docs/` | Design research and the fork lineage; `docs/architecture.md` is the product design, `docs/DEPLOY.md` is the run-the-stack-yourself guide (self-hosting/evaluation — in production MeterPal is hosted; merchants install the SDK) |
 
 ---
 

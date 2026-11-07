@@ -1,5 +1,10 @@
 # Bridging MeterPal and LiteLLM — Integration Guide
 
+> **Who runs the bridge:** MeterPal's own gateway operators. This runbook configures
+> the shared, multi-tenant gateway that MeterPal hosts — a merchant never deploys
+> the bridge or runs LiteLLM (docs/architecture.md §0: merchants install the SDK
+> and swap one import). It is kept as the operator contract for the metering hook.
+
 This is the technical bridge between the two repos you have locally. It is based on direct reads of the source code in `C:\Users\craig\Desktop\AI billing\autumn\` and `C:\Users\craig\Desktop\AI billing\litellm\`, not on documentation summaries.
 
 The short version: **MeterPal is a merchant-side billing backend with a merchant admin dashboard.** The `vite/` dashboard is for the SaaS owner (you) to model products, plans, and prices, view customers and analytics — *not* an end-customer account portal. End customers see the LiteLLM UI you build, which calls MeterPal over HTTP for credit checks and usage recording. MeterPal ships one customer-facing surface (`apps/checkout/`, a hosted checkout page); the rest of the customer UI ("you have X credits", upgrade buttons, usage history) is yours to build into LiteLLM.
@@ -946,7 +951,7 @@ Run these steps in sequence. Each step ends with a verification you can perform 
    ```
    Verify: hit `POST /attach` with a test customer; the `trigger/subscriptions.ts` handler should fire and create a LiteLLM virtual key.
 
-4. **Deploy the bridge file.**
+4. **Install the bridge file** (gateway operators only — merchants never do this).
    ```bash
    cp litellm/integrations/autumn_billing.py C:\Users\craig\Desktop\AI billing\litellm\litellm\integrations\autumn_billing.py
    ```

@@ -67,7 +67,7 @@ app; MeterPal is never in their UI unless they embed the billing components.
 | 2 | **Models and costs live in a YAML file.** No merchant-facing model configuration exists. | `gateway/config.yaml` `model_list` hardcodes `model_name → provider → os.environ/OPENAI_API_KEY_A`. Costs are resolved from models.dev (`internal/features/utils/getModelPricing.ts`) with plan-level overrides in `features.model_markups`. The alias→billable-id bridge is `PAB_MODEL_ID_MAP` in `gateway/.env`. | §4.2 |
 | 3 | **The SDK is a billing-UI SDK, not an inference SDK.** | `sdk/typescript/src/index.ts` exports React components + `createMeterPalClient`. The client is a thin `createAutumnClient` wrapper (`sdk/typescript/src/client.ts`) that requires the host to wrap the tree in `<AutumnProvider>` *and* mount `autumn-js/backend` routes server-side. | §4.4, §4.5 |
 | 4 | **No install/provision step.** | Nothing in the repo writes config or provisions an app. `demo-app/server.ts` shows the manual wiring (4 route mounts + 2 env vars) that a merchant would have to copy. | §4.5 |
-| 5 | **The metering bridge is disabled in the running stack.** | The local LiteLLM logs `MeterPalBridge: PAB_API_KEY missing -- bridge disabled`. `gateway/.env` *does* define `PAB_API_KEY`; the process was launched without that file in its environment. **Real inference calls are not metered today** — the demo's usage rows are seeded by `demo/bootstrap.py`. | P0 in §6 |
+| 5 | ~~**The metering bridge is disabled in the running stack.**~~ **RESOLVED 2026-11-06.** The bridge now self-loads `gateway/.env` at import (`_load_env_file_fallback` in `gateway/litellm/integrations/meterpal_billing.py`) when the launcher didn't, so any launch — harness, `source`, or bare `litellm --config config.yaml` — starts it configured (set `PAB_ENV_FILE=0` to disable). Verified live: gateway started with every `PAB_*`/`LITELLM_*` var unset, no "disabled" warning, and `demo/run_demo.py` metered real calls to a 402 and back (ledger rows from live calls, not seeds). | Was: the bridge read `os.environ` once at import and nothing loaded `gateway/.env` for it; `demo/bootstrap.py` had to seed usage rows. | ~~P0 in §6~~ done |
 | 6 | **No model allow-list reaches the gateway.** | The gateway's own `model_list` is static YAML. The org's allow-list does reach the gateway, but through the virtual key: `internal/keys/litellmKeys.ts` writes the org's enabled models onto every key it mints and refreshes, and LiteLLM enforces that list. A model the merchant stops serving therefore arrives on the next key refresh, not on a poll. | §4.2 |
 | 7 | **Concurrent requests were not bounded.** | The admission gate was a point-in-time balance check behind a one-second cache, the balance reservation was off by default and never reached the server in a valid shape, and no per-customer in-flight ceiling existed. N concurrent requests could each see the full balance and all be admitted. Fixed by `docs/plan.md` — reservation on by default and sized from the request's price, per-customer `max_parallel_requests` on the key, and no cached verdict. | `docs/plan.md` |
 
@@ -381,11 +381,14 @@ This is the highest-risk area, and the failure mode is silent: one merchant bill
 
 Each phase is independently shippable and has an acceptance test you can run.
 
-**P0 — Make the existing loop measurable.** *(~1 day)*
-Start LiteLLM with `gateway/.env` loaded so the bridge is live; make the master-key drift
+**P0 — Make the existing loop measurable.** *(~1 day)* ~~Start LiteLLM with `gateway/.env` loaded so the bridge is live; make the master-key drift
 impossible (one source of truth for `LITELLM_MASTER_KEY`); run one real metered call and show the
-credit debit.
-*Accept:* a chat call through the gateway debits the wallet; `MeterPalBridge` logs no
+credit debit.~~ **DONE 2026-11-06.** The bridge self-loads `gateway/.env` regardless of launcher
+(`_load_env_file_fallback`), master-key drift is impossible (`litellmEnv.ts` keeps one source in
+`gateway/.env`), and the loop was run for real: gateway launched with every `PAB_*` env var unset,
+`demo/run_demo.py` drained the wallet across pinned-price metered calls, hit the 402, topped up,
+and the ledger showed rows from live calls.
+*Accept (met):* a chat call through the gateway debits the wallet; `MeterPalBridge` logs no
 "disabled" warning.
 
 **P1 — Multi-tenant PayPal.** *(~1–2 weeks)*

@@ -32,7 +32,9 @@ sys.path.insert(0, str(ROOT / "gateway"))
 
 BASE_URL = "http://localhost:8080"
 PG_CONTAINER = "meterpal-postgres-billing"
-PG_USER, PG_DB = "meterpal", "meterpal"
+# Matches docker-compose.yml (POSTGRES_USER/POSTGRES_DB on the billing
+# instance) and billing/server/.env.example.
+PG_USER, PG_DB = "autumn", "autumn"
 
 PAYPAL_EVENTS = [
     "BILLING.SUBSCRIPTION.ACTIVATED",
@@ -91,7 +93,10 @@ METERPAL_SECRET_KEY = "am_sk_test_JvWnILAeT5zTxPfHTPvJKV6NNDTn8uF97Np38YRe6d"
 
 FEATURE_ID = "ai_tokens"
 CUSTOMER_ID = "demo-customer"
-STARTING_BALANCE = 2.0
+# Sized so the walkthrough's phases land: phases 2-3 spend ~0.92, phase 4's
+# drain loop crosses the reservation hold (~0.82) mid-loop and the NEXT call
+# is refused with 402.
+STARTING_BALANCE = 3.0
 
 # $/M tokens for custom/demo-gpt: billed straight from these numbers, since
 # custom/ models skip models.dev entirely (see aiCreditSystemUtils.ts).
@@ -149,37 +154,72 @@ def main() -> None:
 
     step("2. Create ai_tokens feature (AI credit system)")
     with httpx.Client(base_url=BASE_URL, headers={"Authorization": f"Bearer {METERPAL_SECRET_KEY}"}, timeout=15) as c:
-        if c.get(f"/v1/features/{FEATURE_ID}").status_code == 200:
-            ok(f"feature '{FEATURE_ID}' already exists -- leaving as-is")
-        else:
-            body = {
-                "id": FEATURE_ID,
-                "name": "AI Tokens",
-                "type": "ai_credit_system",
-                "consumable": True,
-                "display": {"singular": "credit", "plural": "credits"},
-                "default_markup": 0,
-                "model_markups": {
-                    "custom/demo-gpt": {
-                        "markup": 0,
-                        "input_cost": DEMO_RATES["input_cost"],
-                        "output_cost": DEMO_RATES["output_cost"],
-                    },
-                    # Agnes AI (real model, free trial tier) — same demo rates
-                    # so the wallet visibly drains. Real list prices are
-                    # $0.05/M in, $0.15/M out.
-                    "custom/agnes-2.5-flash": {
-                        "markup": 0,
-                        "input_cost": DEMO_RATES["input_cost"],
-                        "output_cost": DEMO_RATES["output_cost"],
-                    },
+        feature_body = {
+            "id": FEATURE_ID,
+            "feature_id": FEATURE_ID,
+            "name": "AI Tokens",
+            "type": "ai_credit_system",
+            "consumable": True,
+            "display": {"singular": "credit", "plural": "credits"},
+            "default_markup": 0,
+            "model_markups": {
+                "custom/demo-gpt": {
+                    "markup": 0,
+                    "input_cost": DEMO_RATES["input_cost"],
+                    "output_cost": DEMO_RATES["output_cost"],
                 },
-            }
-            resp = api_call(c, "POST", "/v1/features", json=body)
+                # Agnes AI (real model, free trial tier) — same demo rates
+                # so the wallet visibly drains. Real list prices are
+                # $0.05/M in, $0.15/M out.
+                "custom/agnes-2.5-flash": {
+                    "markup": 0,
+                    "input_cost": DEMO_RATES["input_cost"],
+                    "output_cost": DEMO_RATES["output_cost"],
+                },
+            },
+        }
+        if c.get(f"/v1/features/{FEATURE_ID}").status_code == 200:
+            # Reset the demo rates on every run so the walkthrough's printed
+            # expected-cost lines always match the live price sheet, even if
+            # the dashboard was used to experiment between runs.
+            resp = api_call(c, "POST", "/v1/features.update", json=feature_body)
+            if resp.status_code >= 300:
+                sys.exit(f"  feature update failed: {resp.status_code} {resp.text[:400]}")
+            ok(f"feature '{FEATURE_ID}' rates reset to "
+               f"${DEMO_RATES['input_cost']}/M in, ${DEMO_RATES['output_cost']}/M out")
+        else:
+            resp = api_call(c, "POST", "/v1/features", json=feature_body)
             if resp.status_code >= 300:
                 sys.exit(f"  feature create failed: {resp.status_code} {resp.text[:400]}")
             ok(f"feature '{FEATURE_ID}' (1 credit = $1 of model cost; custom/demo-gpt at "
                f"${DEMO_RATES['input_cost']}/M in, ${DEMO_RATES['output_cost']}/M out)")
+
+        step("2b. Reset the served-model price sheet (the org's own prices -- "
+             "they WIN over the feature markups, so the walkthrough's printed "
+             "expected-costs stay truthful even after dashboard edits)")
+        for sheet in [
+            # model_id, display name, input $/1M, output $/1M
+            ("custom/demo-gpt", "Demo GPT (mock)", DEMO_RATES["input_cost"], DEMO_RATES["output_cost"]),
+            # gpt-4o-mini at true models.dev list rates for phase 3.
+            ("openai/gpt-4o-mini", "GPT-4o mini (mock)", 0.15, 0.60),
+            # Agnes AI — the real model the sales agent's own brain runs on.
+            # MeterPal meters its own agents: every negotiation turn costs the
+            # agent-sales wallet (see step 4c below).
+            ("custom/agnes-2.5-flash", "Agnes 2.5 Flash (real)", DEMO_RATES["input_cost"], DEMO_RATES["output_cost"]),
+        ]:
+            model_id, display, cin, cout = sheet
+            resp = api_call(c, "POST", "/v1/served_models", json={
+                "model_id": model_id,
+                "display_name": display,
+                "enabled": True,
+                "input_cost_usd_1m": cin,
+                "output_cost_usd_1m": cout,
+                "markup_pct": 0,
+            })
+            if resp.status_code >= 300:
+                sys.exit(f"  served-model upsert failed for {model_id}: "
+                         f"{resp.status_code} {resp.text[:300]}")
+            ok(f"price sheet: {model_id} at ${cin}/M in, ${cout}/M out")
 
         step("3. Create free plan granting credits (auto-attaches on signup -- "
              "the role a subscription plays in production)")
@@ -285,6 +325,19 @@ def main() -> None:
             print(f"  ! customer-2 create failed: {resp.status_code} {resp.text[:300]}")
         else:
             ok("customer 'demo-customer-2' created (auto-attached to 'demo-starter')")
+
+        step("4b2. Create the sales agent's own wallet (its brain is metered too)")
+        resp = api_call(c, "DELETE", "/v1/customers/agent-sales")
+        resp = api_call(c, "POST", "/v1/customers", json={
+            "id": "agent-sales",
+            "name": "MeterPal Sales Agent",
+            "email": "sales-agent@example.com",
+        })
+        if resp.status_code >= 300:
+            print(f"  ! agent-sales create failed: {resp.status_code} {resp.text[:300]}")
+        else:
+            ok("customer 'agent-sales' created (auto-attached to 'demo-starter'; "
+               "engine.ts AGENT_CUSTOMER_ID bills every negotiation turn here)")
 
         step("4c. Register the PayPal webhook (sandbox) if keys are configured")
         if os.environ.get("PAYPAL_CLIENT_ID") and os.environ.get("PAYPAL_WEBHOOK_URL"):

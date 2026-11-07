@@ -1,0 +1,231 @@
+# Presentation Plan — PayPal AI Hackathon (video + Devpost)
+
+Companion to `docs/HACKATHON-SUBMISSION-CHECKLIST.md`. This is the record-and-submit
+playbook: script, staging, recording setup, and the written Devpost copy — all drafted
+so you only have to execute.
+
+**The strategy in one paragraph.** Your implementation is already top-decile; your
+Design surface is not. So the video must (1) put the *consumer-grade* surface — the
+demo chat app with the credits badge and top-up modal — on screen instead of the
+terminal, (2) make "an agent that ran out of money and bought its own credits on
+PayPal" the memorable sentence of the whole event, and (3) spend 25 seconds proving
+the depth is real (forged webhook → 401, live ledger) so the judges' "Technological
+Implementation" score has evidence, not vibes. Every judging criterion gets a
+dedicated beat. Nothing here can *guarantee* a win — it removes the reasons you'd
+lose one.
+
+---
+
+## 1. The video script (target 2:50; hard limit 3:00)
+
+Narration is written to be read verbatim. [Screen] lines are what the viewer sees.
+Timecodes assume a normal speaking pace — rehearse with a stopwatch and cut, don't
+speed up the audio.
+
+### Beat 1 — The missing layer (0:00–0:20)
+**[Screen: black title card → "PayPal can move the money. Who stops the spend?"]**
+
+> "Every AI product has the same missing piece. When your user runs out of credits,
+> the call just fails — and nothing in PayPal's catalog stops the call that spends
+> the last credit. Orders, subscriptions, invoices — PayPal moves the money
+> beautifully. Its Usage Based Billing API meters usage and invoices after the
+> fact, in arrears. But arrears means the overspend already happened. So we built
+> the layer that's missing: the meter that sits in the request path and refuses
+> with HTTP 402 before any spend."
+
+**Why this opener:** it makes a verifiable claim about the sponsor's own catalog
+(their Usage Based Billing API is arrears-only — no admission control, no hard
+cap; see `research/paypal-agentic-commerce-and-metered-billing-brief.md` — say it
+with confidence), positions you as infrastructure, and tells judges
+in 20 seconds what they're looking at. Most entries open with "imagine a world
+where…" — don't.
+
+### Beat 2 — The paywall, in a real app (0:20–0:55)
+**[Screen: demo-app chat UI. A user chats with the AI; the credits badge ticks down
+after each reply. The next reply returns 402 → the app shows the
+`InsufficientBalanceError` card with a **Top up** button → click → PayPal sandbox
+popup → approve → back in the app → credits badge jumps → the same message
+succeeds.]**
+
+> "This is a working chat app. Every reply is metered per token — input, output,
+> cache — priced from the merchant's own sheet, and debited from a prepaid wallet
+> atomically, before the model is called. Watch the badge. When the wallet runs
+> dry, the next call is refused with 402 — before any provider spend. The SDK
+> turns that into a typed error with a top-up button. The buyer approves on
+> PayPal, the webhook lands, the wallet fills — instantly, not in a nightly
+> batch — and the user keeps going."
+
+**Staging note:** this beat runs through the demo-app's **in-page capture** path
+(`POST /paypal/capture` → credit), which works fully on localhost — no public
+webhook tunnel needed, nothing to time out on camera. The webhook beat is Beat 4.
+
+### Beat 3 — The agent that buys its own credits (0:55–1:35)
+**[Screen: terminal, large font. `python agent/buyer_demo.py`. The agent's call
+hits 402. It decides, creates a PayPal order, prints the approval link. Switch to
+browser: sandbox approval, click Pay. Back to terminal: "waiting for webhook…" →
+balance credited → the agent retries and succeeds. Show the wallet_ledger rows
+landing.]**
+
+> "Now the part that matters for agentic commerce. This is an autonomous agent.
+> Its task failed with 402 — insufficient balance. Nobody is watching. The agent
+> decides on its own to buy a credit pack, creates the PayPal order through the
+> API, the buyer approves with real sandbox consent, the capture webhook credits
+> the wallet, and the agent retries its task and succeeds. An AI agent paid for
+> its own compute on PayPal. That loop — refuse, purchase, resume — is the
+> commercial primitive every agent economy needs."
+
+**Staging note:** pre-drain the wallet below headroom BEFORE recording so the 402
+lands on the first call (run_demo phase 4, stop before the top-up). The buyer
+approval click is the only manual step — practice it once; keep the sandbox buyer
+already logged in on that browser profile.
+
+### Beat 4 — Merchant side + proof of depth (1:35–2:25)
+**[Screen: dashboard. PayPal connect panel (masked client id, verified check). Then
+the served-models price sheet: edit demo-gpt output price → save. Then terminal:
+the next call bills at the new price — show the ledger row. Then: `curl` a FORGED
+PayPal webhook → server answers `401 invalid signature`. Then the ledger query
+showing per-call token pools, base cost, markup.]**
+
+> "Merchants bring their own PayPal account — credentials are verified before
+> they're stored, encrypted at rest, and scoped per organization. What a merchant
+> charges is the merchant's decision: change the price in the sheet, and the very
+> next call bills at the new price — the reservation and the settle are pinned to
+> the same quote. And because this is money, we audited it like money: a forged
+> webhook is refused with an invalid-signature 401. Every grant is idempotent.
+> Every dollar reconciles to a ledger row. The full security assessment is in the
+> repo."
+
+**Why the forged webhook:** it is the single most convincing 3-second shot you own
+— an attacker attempt, refused, on camera. It converts "trust me" into
+"demonstrated."
+
+### Beat 5 — The loop where both sides are AI (2:25–3:10)
+**[Screen: split — demo-app "Talk to sales" tab (customer) + dashboard "Agent approvals" (merchant).
+Customer types their need → the agent quotes real ledger math → drafts the package. Cut to the
+merchant: the draft sits in Approvals with the math beside it → one click → "Approved — plan minted".
+Back to the customer: the offer card appears → Accept → the PayPal sandbox checkout opens. Then the
+paywall moment with the buyer agent: 402 → "your agent is on it" → PayPal approves → back in chat.]**
+
+> "Now the part only MeterPal can do. The customer's side is an agent too: it hears what they need,
+> reads their real usage from the ledger — burn rate, runway, down to the call — and drafts a
+> package sized to it. Nothing takes effect without a human: the merchant approves with one click,
+> the plan is minted instantly, and PayPal itself approves the payment. The buyer's AI runs inside a
+> hard mandate — when the wallet runs dry it tops up on its own, and the same 402 wall that stops a
+> human stops it the moment the budget says so. Both sides of the transaction are agents acting on
+> the same ledger — and neither can overspend."
+
+**Why this beat:** it is the agentic-commerce entry PayPal built this hackathon for — usage-grounded
+negotiation, a merchant approval gate, a buyer mandate, and PayPal rails end to end. The agent's own
+tokens are metered by MeterPal (a dedicated agent wallet): say it — "our sales rep pays for its own
+inference."
+
+### Beat 6 — Close (3:10–3:30)
+**[Screen: the architecture diagram from the README → repo URL → title card
+"MeterPal — the billing rail for the agent economy."]**
+
+> "MeterPal is the billing rail for the agent economy: one SDK swap, every call
+> admitted, metered and charged through the merchant's own PayPal. No overspend.
+> Instant access after payment. No double billing. No cross-tenant charges.
+> Install the SDK, and your AI app bills itself — clone the repo to run the whole
+> stack yourself. The repo and full docs are linked below."
+
+**Cut checklist:** no dead cursor time >2s; every terminal shot has zoomed font;
+no email/usernames/real paths with your name visible; no OpenAI/Anthropic logos;
+no music you don't own (silent with good VO beats bad music).
+
+---
+
+## 2. Pre-staging choreography (do this before hitting record)
+
+- [ ] `docker compose up -d`, billing server, mock LLM, gateway up and healthy (curl all three)
+- [ ] `python demo/bootstrap.py` — fresh state, price sheet at $20/M / $80/M
+- [ ] Demo-customer wallet set to a value that drains in ~4 chat replies for Beat 2
+      (set via `POST /v1/balances/update {remaining: X}`)
+- [ ] For Beat 3: wallet drained below headroom; sandbox **buyer** account logged in
+      on the recording browser profile; `topup_10` pack visible in checkout
+- [ ] Browser zoom 125–150%, terminal font 18–20pt, dark theme everywhere, one
+      clean desktop, notifications off, bookmarks bar hidden
+- [ ] All five terminals/tabs pre-positioned in the order the script visits them
+- [ ] Two full dry runs (untimed), then one timed take. Record 3 takes; pick the best;
+      splice only if the joins are invisible
+- [ ] Record at 1920×1080 or higher, 30fps+, mic close and quiet room; VO over
+      screen capture (no face cam needed — judges score the product, not you)
+
+**Webhook note:** the demo-app beat credits via in-page capture (localhost-safe).
+If you want the *webhook* visible on camera (Beat 3's "waiting for webhook…"),
+register the PayPal webhook to a cloudflared/ngrok tunnel BEFORE recording and
+confirm one real `PAYMENT.CAPTURE.COMPLETED` arrives end-to-end in rehearsal. If
+the tunnel is flaky that day, record the capture-path version — never gamble the
+take on a tunnel.
+
+---
+
+## 3. Devpost written description (paste, then personalize)
+
+> **MeterPal — the billing rail for the agent economy**
+>
+> PayPal can move money for AI products — but nothing in its catalog enforces a
+> spend cap in real time. PayPal's Usage Based Billing API meters usage and
+> invoices in arrears: the overspend happens first, the invoice follows, and a
+> prepaid balance is a display, not a gate. MeterPal is the enforcement layer —
+> the meter that sits in the request path and refuses the call before the spend
+> exists.
+>
+> One SDK swap: your app's AI calls are admitted against a prepaid wallet
+> (refused with HTTP 402 *before* any model spend), metered per token from the
+> merchant's own price sheet, and debited atomically. When the wallet runs dry,
+> the SDK raises a typed `InsufficientBalanceError` with a top-up helper — and an
+> autonomous agent can use it to buy its own credits: it creates a PayPal order,
+> the buyer approves, and the signature-verified `PAYMENT.CAPTURE.COMPLETED`
+> webhook fills the wallet in real time. Credit packs ride Orders v2, plans ride
+> Subscriptions, overage rides Invoicing, disputes and refunds reconcile back to
+> the wallet. Every merchant connects their own PayPal account — credentials are
+> verified live, encrypted per org, and every webhook signature is verified
+> against that org's own webhook id.
+>
+> Under the hood: a Redis/Lua atomic reservation core (N concurrent requests can
+> never spend past the balance), an idempotent ledger (no double billing on
+> retries), and a shared LiteLLM gateway whose metering hook carries the tenant
+> in the key itself — a spoofed customer header or an admin key cannot redirect a
+> charge. We ran an adversarial security audit of our own money path
+> (docs/SECURITY-ASSESSMENT.md) and fixed everything it found.
+>
+> Run it yourself: this repo is the full product source — in production merchants
+> install the SDK and never see the gateway, but here you can clone,
+> `docker compose up`, bootstrap, and run the guided demo: it drains a wallet,
+> hits the 402 paywall, and tops up — start to finish in about
+> five minutes. **AI tools used:** [FILL: your models/agents — e.g. the demo
+> models via the bundled mock provider, the AI onboarding assistant, the MCP
+> agent surface] — every one of them is metered and billed by the platform it
+> runs on.
+
+**Title options (pick one):**
+1. "MeterPal — the billing rail for the agent economy" (recommended)
+2. "MeterPal — usage-based billing for AI, on your own PayPal"
+3. "Your AI agent just paid for itself — MeterPal"
+
+**Screenshots to attach (5):** credits badge mid-drain in the chat app · the 402
+insufficient-balance card with Top up · the agent's 402→purchase→resume terminal
+flow · the served-models price sheet · the forged-webhook 401 next to a live
+ledger query.
+
+---
+
+## 4. Category targeting (decide once, don't waffle)
+
+- **Best Use of PayPal + AI** and **Best Use of Agentic Commerce** — enter both
+  emphatically; your Beats 3–4 are literal demonstrations of both.
+- **Best Demo Delivery** — winnable with this script; the 402 moment and the
+  webhook credit are the two beats judges remember.
+- Do **not** claim sponsor tools you don't genuinely use (AG Grid/APIMatic/etc.).
+  Judges check, and one inflated claim costs more than three missing boxes.
+
+## 5. Rehearsal protocol
+
+1. Read the script aloud twice, alone, with a timer — rewrite any sentence you stumble on.
+2. Full dress rehearsal with the real stack; watch the take with fresh eyes the next morning.
+3. The 30-second test: show the video to someone who knows nothing; if they can't
+   repeat back "PayPal has no usage billing, MeterPal meters AI calls, and an agent
+   bought its own credits," re-cut.
+4. Submit 48 hours before the deadline — the form itself takes an hour and the
+   upload always needs a retry.

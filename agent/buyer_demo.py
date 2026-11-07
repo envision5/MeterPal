@@ -16,8 +16,10 @@ The purest agentic-commerce loop on PayPal rails:
 Run (after `python demo/bootstrap.py`, gateway + mock LLM + billing up):
   python agent/buyer_demo.py
 
-Env: METERPAL_SECRET_KEY (billing), LITELLM_MASTER_KEY + LITELLM_URL
-(gateway, default :4000), CUSTOMER_ID (default demo-customer).
+Env: METERPAL_SECRET_KEY (billing), LITELLM_URL (gateway, default :4000),
+CUSTOMER_ID (default demo-customer).  The gateway credential is the
+customer's virtual key, provisioned through the billing API below — a
+master/admin key without a tenant is refused by design.
 """
 
 from __future__ import annotations
@@ -34,15 +36,36 @@ from meterpal import MeterPalClient, MeterPalError
 BILLING_URL = os.environ.get("METERPAL_BASE_URL", "http://localhost:8080/v1")
 SECRET_KEY = os.environ.get("METERPAL_SECRET_KEY", "")
 GATEWAY = os.environ.get("LITELLM_URL", "http://localhost:4000")
-MASTER_KEY = os.environ.get("LITELLM_MASTER_KEY", "")
 CUSTOMER_ID = os.environ.get("CUSTOMER_ID", "demo-customer")
-TOPUP_PRODUCT = os.environ.get("METERPAL_TOPUP_PRODUCT", "topup_1k")
+TOPUP_PRODUCT = os.environ.get("METERPAL_TOPUP_PRODUCT", "topup_10")
 FEATURE_ID = os.environ.get("METERPAL_FEATURE_ID", "ai_tokens")
 
-if not SECRET_KEY or not MASTER_KEY:
-    sys.exit("Set METERPAL_SECRET_KEY and LITELLM_MASTER_KEY (see demo/README.md).")
+if not SECRET_KEY:
+    sys.exit("Set METERPAL_SECRET_KEY (see demo/README.md).")
 
 billing = MeterPalClient(secret_key=SECRET_KEY, base_url=BILLING_URL)
+
+
+def virtual_key() -> str:
+    """The customer's gateway credential.
+
+    The gateway bills the tenant carried by the KEY — an admin/master key
+    without a tenant is refused (tenant isolation working as intended) —
+    so the agent calls the gateway with the customer's virtual key, the
+    same way the merchant SDK does.
+    """
+    resp = httpx.post(
+        f"{BILLING_URL}/keys",
+        headers={"Authorization": f"Bearer {SECRET_KEY}"},
+        json={"customer_id": CUSTOMER_ID},
+        timeout=15,
+    )
+    if resp.status_code != 200:
+        sys.exit(f"  virtual key provisioning failed: {resp.status_code} {resp.text[:200]}")
+    key = resp.json().get("key")
+    if not key:
+        sys.exit("  virtual key provisioning returned no key")
+    return key
 
 
 def show_balance(label: str) -> float:
@@ -52,11 +75,11 @@ def show_balance(label: str) -> float:
     return float(remaining or 0)
 
 
-def agent_task(prompt: str) -> httpx.Response:
+def agent_task(prompt: str, vk: str) -> httpx.Response:
     """The agent's actual work: one AI call through the metered gateway."""
     return httpx.post(
         f"{GATEWAY}/v1/chat/completions",
-        headers={"Authorization": f"Bearer {MASTER_KEY}"},
+        headers={"Authorization": f"Bearer {vk}"},
         json={
             "model": "demo-gpt",
             "messages": [{"role": "user", "content": prompt}],
@@ -72,9 +95,10 @@ def main() -> None:
 
     print("1) Agent starts working; wallet has whatever is left:")
     show_balance("balance before")
+    vk = virtual_key()
 
     print("\n2) Agent calls the gateway — admission control decides:")
-    resp = agent_task("Summarize the MeterPal billing loop in one sentence.")
+    resp = agent_task("Summarize the MeterPal billing loop in one sentence.", vk)
     if resp.status_code == 402:
         print("  -> HTTP 402 insufficient_balance (refused BEFORE the provider was touched)")
     elif resp.status_code == 200:
@@ -120,7 +144,7 @@ def main() -> None:
     show_balance("balance after top-up")
 
     print("\n5) Agent retries its task and succeeds:")
-    resp = agent_task("Summarize the MeterPal billing loop in one sentence.")
+    resp = agent_task("Summarize the MeterPal billing loop in one sentence.", vk)
     if resp.status_code == 200:
         reply = resp.json()["choices"][0]["message"]["content"]
         print(f"  -> 200 OK: {reply.strip()[:120]}...")
