@@ -39,6 +39,7 @@ import { cusRouter } from "../internal/customers/cusRouter";
 import { entityRouter } from "../internal/entities/entityRouter";
 import { featureRouter } from "../internal/features/featureRouter";
 import { servedModelRouter } from "../internal/models/servedModelRouter";
+import { salesAgentRouter } from "../internal/salesAgent/salesAgentRouter";
 import { honoOrgRouter } from "../internal/orgs/orgRouter";
 import { platformBetaRouter } from "../internal/platform/platformBeta/platformBetaRouter";
 import {
@@ -75,6 +76,7 @@ apiRouter.route("", balancesRouter);
 apiRouter.route("", servedModelRouter);
 apiRouter.route("", entityRouter);
 apiRouter.route("/customers", cusRouter);
+apiRouter.route("/sales-agent", salesAgentRouter);
 
 apiRouter.route("/products_beta", honoProductBetaRouter);
 apiRouter.route("/products", honoProductRouter);

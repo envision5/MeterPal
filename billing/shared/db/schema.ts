@@ -96,6 +96,7 @@ import {
 	pooledBalanceContributions,
 	pooledBalances,
 } from "../models/pooledBalanceModels/pooledBalanceTable.js";
+import { agentProposals } from "../models/agentModels/agentProposalTable.js";
 import { webhookEvents } from "../models/processorModels/webhookEventsTable.js";
 // Product Relations
 import { entitlementsRelations } from "../models/productModels/entModels/entRelations.js";
@@ -156,6 +157,7 @@ export {
 	walletLedger,
 	paypalCatalogMap,
 	paypalOrderIntents,
+	agentProposals,
 	webhookEvents,
 	customerJwtFamilies,
 	autoTopupLimitStates as autoTopupLimits,

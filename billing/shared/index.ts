@@ -90,6 +90,7 @@ export * from "./models/litellmModels/bridgeTables";
 // PayPal catalog map (product_id <-> paypal_plan_id, written by catalog sync)
 export * from "./models/paypalModels/paypalCatalogMap";
 export * from "./models/paypalModels/paypalOrderIntents";
+export * from "./models/agentModels/agentProposalTable";
 export * from "./models/pooledBalanceModels/pooledBalanceIdentity";
 export * from "./models/pooledBalanceModels/pooledBalanceTable";
 // Processor Models
