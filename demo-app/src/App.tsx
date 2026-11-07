@@ -1,14 +1,22 @@
 import {
-	CreditsBadge,
-	LowBalanceBanner,
-	PlanCard,
-	TopUpModal,
-	UsageHistoryPanel,
-} from "@meterpal/sdk";
-import { AutumnProvider } from "autumn-js/react";
+	IconBolt,
+	IconBrandPaypal,
+	IconChartBar,
+	IconCoins,
+	IconGift,
+	IconLock,
+	IconRobot,
+	IconSend,
+	IconShieldCheck,
+	IconUser,
+	IconWallet,
+} from "@tabler/icons-react";
+import { AutumnProvider, useCustomer } from "autumn-js/react";
 import { useEffect, useState } from "react";
+import { PlanCard, TopUpModal, UsageHistoryPanel } from "@meterpal/sdk";
 import AgentSettings from "./components/AgentSettings";
 import Offers from "./components/Offers";
+import PaywallCard, { type PaywallData } from "./components/PaywallCard";
 import SalesChat from "./components/SalesChat";
 import SpendAlerts from "./components/SpendAlerts";
 
@@ -17,6 +25,10 @@ type Message = {
 	content: string;
 	/** Credits this turn cost, when it was a metered call. */
 	charged?: number;
+	/** Token counts for the metering chip. */
+	tokens?: { input: number; output: number };
+	/** The 402 moment, when admission control refused the call. */
+	paywall?: PaywallData;
 };
 
 type ServedModel = {
@@ -28,6 +40,15 @@ type ServedModel = {
 };
 
 const CUSTOMERS = ["demo-customer", "demo-customer-2"];
+
+type RailTab = "wallet" | "agent" | "offers" | "usage";
+
+const RAIL_TABS: { id: RailTab; label: string; icon: typeof IconWallet }[] = [
+	{ id: "wallet", label: "Wallet", icon: IconWallet },
+	{ id: "agent", label: "Agent", icon: IconRobot },
+	{ id: "offers", label: "Offers", icon: IconGift },
+	{ id: "usage", label: "Usage", icon: IconChartBar },
+];
 
 export default function App() {
 	const [customerId, setCustomerId] = useState(CUSTOMERS[0]);
@@ -42,6 +63,28 @@ export default function App() {
 		>
 			<Dashboard customerId={customerId} onCustomerChange={setCustomerId} />
 		</AutumnProvider>
+	);
+}
+
+function WalletPill() {
+	const { data: customer } = useCustomer();
+	const balance = customer?.balances?.ai_tokens?.remaining;
+	const unlimited = customer?.balances?.ai_tokens?.unlimited;
+	const low = typeof balance === "number" && balance < 1;
+
+	return (
+		<div
+			className="flex items-center gap-1.5 rounded-full border border-amber-400/30 bg-amber-400/10 px-3 py-1.5 text-sm font-semibold text-amber-200"
+			data-testid="wallet-pill"
+			title="The customer's credit wallet — every call debits it"
+		>
+			<IconWallet size={15} />
+			{unlimited ? "∞" : typeof balance === "number" ? balance.toFixed(2) : "—"}
+			<span className="text-[10px] font-normal text-amber-200/70">credits</span>
+			{low && !unlimited && (
+				<span className="size-1.5 animate-pulse rounded-full bg-rose-400" />
+			)}
+		</div>
 	);
 }
 
@@ -61,6 +104,7 @@ function Dashboard({
 	const [models, setModels] = useState<ServedModel[]>([]);
 	const [modelId, setModelId] = useState("custom/demo-gpt");
 	const [chatTab, setChatTab] = useState<"assistant" | "sales">("assistant");
+	const [railTab, setRailTab] = useState<RailTab>("wallet");
 
 	useEffect(() => {
 		fetch("/api/paypal/config")
@@ -135,66 +179,24 @@ function Dashboard({
 				body: JSON.stringify({ prompt, model: modelId }),
 			});
 			if (res.status === 402) {
-				// Admission control refused the call before the model ran.
+				// Admission control refused the call before the model ran — the
+				// paywall card carries the buyer agent's decision with it.
 				const data = await res.json().catch(() => ({}));
-				const numbers =
-					data?.balance !== undefined
-						? ` Balance: ${data.balance}, needed: ${data.requiredCredits}.`
-						: "";
-
-				// The buyer agent saw the 402 first when a mandate exists.
-				if (data?.agent_action === "initiated" && data?.checkout?.url) {
-					setMessages((m) => [
-						...m,
-						{
-							role: "assistant",
-							content:
-								`🤖 Your agent is on it: buying ${data.agent_pack?.credits} credits ` +
-								`for $${data.agent_pack?.price_usd} within your mandate. ` +
-								"Approve the PayPal payment in the tab it opened — this page updates automatically." +
-								` (${data.agent_reason})`,
-						},
-					]);
-					window.open(data.checkout.url, "_blank");
-					return;
-				}
-				if (data?.agent_action === "approval_required") {
-					setMessages((m) => [
-						...m,
-						{
-							role: "assistant",
-							content:
-								`🤖 Your agent drafted a top-up for you: ${data.agent_pack?.credits} ` +
-								`credits for $${data.agent_pack?.price_usd} — above your auto-approve ` +
-								"line, so it waits for you in **Offers**. " +
-								`(${data.agent_reason})`,
-						},
-					]);
-					return;
-				}
-				if (data?.agent_action === "denied") {
-					setMessages((m) => [
-						...m,
-						{
-							role: "assistant",
-							content: `⛔ 402 — and your agent stood down: ${data.agent_reason}`,
-						},
-					]);
-					return;
-				}
-
 				setMessages((m) => [
 					...m,
 					{
 						role: "assistant",
 						content:
-							"⛔ 402 — insufficient credits. The call was refused before " +
-							"the model provider was touched." +
-							numbers +
-							" Top up with PayPal to continue.",
+							data?.agent_action === "initiated"
+								? "Your agent stepped in."
+								: data?.agent_action === "approval_required"
+									? "Your agent drafted a top-up for your approval."
+									: data?.agent_action === "denied"
+										? "Your agent stood down."
+										: "Call refused.",
+						paywall: data,
 					},
 				]);
-				window.dispatchEvent(new Event("open-topup-modal"));
 				return;
 			}
 			const data = await res.json();
@@ -204,6 +206,12 @@ function Dashboard({
 					role: "assistant",
 					content: data?.choices?.[0]?.message?.content ?? "(empty reply)",
 					charged: data?.meterpal?.credits_charged ?? undefined,
+					tokens: data?.meterpal
+						? {
+								input: data.meterpal.input_tokens ?? 0,
+								output: data.meterpal.output_tokens ?? 0,
+							}
+						: undefined,
 				},
 			]);
 		} catch (err) {
@@ -217,25 +225,29 @@ function Dashboard({
 	}
 
 	return (
-		<div className="mx-auto flex h-screen max-w-6xl flex-col gap-4 p-6">
-			<header className="flex items-center justify-between gap-4">
-				<div>
-					<h1 className="text-xl font-bold">
-						MeterPal <span className="text-muted-foreground">demo</span>
-					</h1>
-					<p className="text-xs text-muted-foreground">
-						AI usage metered per call · wallet debited · PayPal buys the credits
-					</p>
+		<div className="mx-auto flex h-screen max-w-7xl flex-col p-4">
+			<header className="flex items-center justify-between gap-3">
+				<div className="flex items-center gap-2.5">
+					<span className="flex size-9 items-center justify-center rounded-xl bg-primary/20 text-primary">
+						<IconBolt size={20} />
+					</span>
+					<div>
+						<h1 className="text-base font-bold leading-tight">MeterPal</h1>
+						<p className="text-[11px] leading-tight text-muted-foreground">
+							metered AI · hard paywall · PayPal
+						</p>
+					</div>
 				</div>
-				<div className="flex items-center gap-3">
+				<div className="flex items-center gap-2">
 					<select
 						value={customerId}
 						onChange={(e) => {
 							setCustomerId(e.target.value);
 							setMessages([]);
 						}}
-						className="rounded-md border border-border bg-background px-2 py-1 text-sm"
+						className="rounded-full border border-border bg-muted/60 px-3 py-1.5 text-xs outline-none"
 						data-testid="customer-switcher"
+						title="The end user being billed"
 					>
 						{CUSTOMERS.map((c) => (
 							<option key={c} value={c}>
@@ -246,19 +258,18 @@ function Dashboard({
 					<select
 						value={modelId}
 						onChange={(e) => setModelId(e.target.value)}
-						className="rounded-md border border-border bg-background px-2 py-1 text-sm"
+						className="max-w-[240px] rounded-full border border-border bg-muted/60 px-3 py-1.5 text-xs outline-none"
 						data-testid="model-switcher"
 						title="The models this merchant serves, and what they charge"
 					>
 						{models.map((m) => (
 							<option key={m.model_id} value={m.model_id}>
-								{m.display_name ?? m.model_id} · $
-								{m.input_cost_usd_1m}/$
+								{m.display_name ?? m.model_id} · ${m.input_cost_usd_1m}/$
 								{m.output_cost_usd_1m} per 1M
 							</option>
 						))}
 					</select>
-					<CreditsBadge />
+					<WalletPill />
 				</div>
 			</header>
 
@@ -266,7 +277,7 @@ function Dashboard({
 				<div
 					role="status"
 					data-testid="payment-notice"
-					className="rounded-md border border-emerald-500/50 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-900 dark:text-emerald-100"
+					className="mt-3 rounded-xl border border-emerald-500/50 bg-emerald-500/10 px-4 py-2.5 text-sm text-emerald-900 dark:text-emerald-100"
 				>
 					{paymentNotice}
 				</div>
@@ -274,159 +285,277 @@ function Dashboard({
 
 			<SpendAlerts customerId={customerId} />
 
-			<LowBalanceBanner
-				onAddCredits={() => window.dispatchEvent(new Event("open-topup-modal"))}
-			/>
-
-			<main className="grid flex-1 grid-cols-1 gap-4 overflow-hidden md:grid-cols-[1fr_380px]">
-				{/* assistant chat + sales-agent negotiation, tabbed */}
-				<section className="flex flex-col overflow-hidden rounded-xl border border-border">
-					<div className="flex gap-1 border-b border-border px-3 pt-2">
-						{(["assistant", "sales"] as const).map((tab) => (
-							<button
-								key={tab}
-								type="button"
-								onClick={() => setChatTab(tab)}
-								className={[
-									"rounded-t-md px-3 py-1.5 text-sm",
-									chatTab === tab
-										? "border-b-2 border-primary font-medium"
-										: "text-muted-foreground hover:text-foreground",
-								].join(" ")}
-								data-testid={`tab-${tab}`}
-							>
-								{tab === "assistant" ? "Assistant" : "Talk to sales 🤖"}
-							</button>
-						))}
+			<main className="mt-3 grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-[1fr_400px]">
+				{/* conversation canvas */}
+				<section className="flex min-h-0 flex-col rounded-2xl border border-border bg-muted/20">
+					<div className="flex items-center gap-1 border-b border-border px-3 py-2">
+						<button
+							type="button"
+							onClick={() => setChatTab("assistant")}
+							className={[
+								"flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition",
+								chatTab === "assistant"
+									? "bg-primary/20 text-foreground"
+									: "text-muted-foreground hover:text-foreground",
+							].join(" ")}
+							data-testid="tab-assistant"
+						>
+							<IconBolt size={14} />
+							Assistant
+						</button>
+						<button
+							type="button"
+							onClick={() => setChatTab("sales")}
+							className={[
+								"flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition",
+								chatTab === "sales"
+									? "bg-violet-500/20 text-violet-200"
+									: "text-muted-foreground hover:text-foreground",
+							].join(" ")}
+							data-testid="tab-sales"
+						>
+							<IconRobot size={14} />
+							Talk to sales
+						</button>
 					</div>
+
 					{chatTab === "sales" ? (
 						<SalesChat customerId={customerId} />
 					) : (
-						<>
-							<div className="flex-1 space-y-3 overflow-y-auto p-4">
-						{messages.length === 0 && (
-							<p className="text-sm text-muted-foreground">
-								Send a message — each call is metered (token pools → base cost →
-								markup → credits). Drain the wallet to see the 402 wall.
-							</p>
-						)}
-						{messages.map((m, i) => (
-							<div
-								key={i}
-								className={[
-									"rounded-lg px-3 py-2 text-sm whitespace-pre-wrap",
-									m.role === "user"
-										? "ml-auto max-w-[80%] bg-primary text-primary-foreground"
-										: "max-w-[90%] border border-border bg-muted",
-								].join(" ")}
-							>
-								{m.content}
-								{m.charged !== undefined && (
-									<span
-										className="mt-1 block text-[11px] text-muted-foreground"
-										data-testid="chat-charge"
-									>
-										charged {m.charged} credits
-									</span>
+						<div className="flex min-h-0 flex-1 flex-col">
+							<div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
+								{messages.length === 0 && (
+									<div className="flex h-full flex-col items-center justify-center gap-3 text-center">
+										<span className="flex size-12 items-center justify-center rounded-2xl bg-primary/15 text-primary">
+											<IconBolt size={26} />
+										</span>
+										<p className="text-sm font-medium">
+											Every call is metered, admitted, and charged.
+										</p>
+										<div className="flex flex-wrap justify-center gap-1.5">
+											<span className="mp-chip">
+												<IconCoins size={12} className="text-amber-300" />
+												per-token → cost → credits
+											</span>
+											<span className="mp-chip">
+												<IconLock size={12} className="text-rose-300" />
+												402 before any model spend
+											</span>
+											<span className="mp-chip">
+												<IconRobot size={12} className="text-violet-300" />
+												your agent handles the paywall
+											</span>
+										</div>
+										<p className="max-w-md text-xs text-muted-foreground">
+											Send a message — token pools → base cost → markup →
+											credits, debited from the wallet atomically. Drain it to
+											see the wall.
+										</p>
+									</div>
+								)}
+								{messages.map((m, i) =>
+									m.role === "user" ? (
+										<div
+											key={i}
+											className="mp-bubble-user"
+											data-testid="chat-user-msg"
+										>
+											{m.content}
+										</div>
+									) : (
+										<div key={i} className="mp-msg-agent">
+											<span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
+												<IconBolt size={15} />
+											</span>
+											<div className="min-w-0 flex-1 space-y-1.5">
+												<p className="text-[11px] font-semibold text-muted-foreground">
+													Assistant
+												</p>
+												<div className="whitespace-pre-wrap text-sm">
+													{m.content}
+												</div>
+												{m.charged !== undefined && (
+													<div
+														className="flex flex-wrap items-center gap-1.5"
+														data-testid="chat-charge"
+													>
+														<span className="mp-chip !text-amber-200">
+															<IconCoins size={11} className="text-amber-300" />
+															charged {m.charged} credits
+														</span>
+														{m.tokens && (
+															<span className="mp-chip">
+																{m.tokens.input.toLocaleString()} in /{" "}
+																{m.tokens.output.toLocaleString()} out
+															</span>
+														)}
+													</div>
+												)}
+												{m.paywall && (
+													<PaywallCard
+														data={m.paywall}
+														onTopUp={() =>
+															window.dispatchEvent(new Event("open-topup-modal"))
+														}
+													/>
+												)}
+											</div>
+										</div>
+									),
+								)}
+								{busy && (
+									<div className="mp-msg-agent">
+										<span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
+											<IconBolt size={15} />
+										</span>
+										<p className="text-xs text-muted-foreground">thinking…</p>
+									</div>
 								)}
 							</div>
-						))}
-						{busy && <p className="text-xs text-muted-foreground">thinking…</p>}
-					</div>
-					<form
-						className="flex gap-2 border-t border-border p-3"
-						onSubmit={(e) => {
-							e.preventDefault();
-							send(input);
-						}}
-					>
-						<input
-							value={input}
-							onChange={(e) => setInput(e.target.value)}
-							placeholder="Ask the demo model something…"
-							className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm outline-none"
-							data-testid="chat-input"
-						/>
-						<button
-							type="submit"
-							disabled={busy}
-							className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
-						>
-							Send
-						</button>
-					</form>
-						</>
+							<form
+								className="px-4 pb-4"
+								onSubmit={(e) => {
+									e.preventDefault();
+									send(input);
+								}}
+							>
+								<div className="mp-composer">
+									<input
+										value={input}
+										onChange={(e) => setInput(e.target.value)}
+										placeholder="Ask the demo model something…"
+										className="mp-composer-input"
+										data-testid="chat-input"
+									/>
+									<button
+										type="submit"
+										disabled={busy}
+										className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground transition hover:bg-primary/90 disabled:opacity-40"
+										data-testid="chat-send"
+										title="Send (metered per token)"
+									>
+										<IconSend size={17} />
+									</button>
+								</div>
+								<p className="mt-1.5 px-1 text-[10px] text-muted-foreground">
+									Each send is admitted against the wallet, then metered per
+									token from the merchant's price sheet.
+								</p>
+							</form>
+						</div>
 					)}
 				</section>
 
-				{/* billing sidebar */}
-				<aside className="flex flex-col gap-4 overflow-y-auto pr-1">
-					<section className="rounded-xl border border-border p-4">
-						<h2 className="mb-3 text-sm font-semibold">Top up (PayPal)</h2>
-						<TopUpModal
-							productIds={["topup_10", "topup_50", "topup_200"]}
-							labels={["10 credits", "50 credits", "200 credits"]}
-							prices={[10, 50, 200]}
-							inPageCheckout={
-								paypalClientId
-									? {
-											clientId: paypalClientId,
-											capture: async (orderId: string) => {
-												const res = await fetch(
-													`/api/paypal/capture/${encodeURIComponent(orderId)}`,
-													{ method: "POST" },
-												);
-												return res.json();
-											},
+				{/* billing rail */}
+				<aside className="flex min-h-0 flex-col rounded-2xl border border-border bg-muted/20">
+					<div className="flex gap-1 border-b border-border p-2">
+						{RAIL_TABS.map(({ id, label, icon: Icon }) => (
+							<button
+								key={id}
+								type="button"
+								onClick={() => setRailTab(id)}
+								className={`mp-rail-tab ${railTab === id ? "mp-rail-tab-active" : ""}`}
+								data-testid={`rail-${id}`}
+							>
+								<Icon size={14} />
+								{label}
+							</button>
+						))}
+					</div>
+					<div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-3">
+						{railTab === "wallet" && (
+							<>
+								<section className="mp-card p-4">
+									<h2 className="mb-3 flex items-center gap-1.5 text-sm font-semibold">
+										<IconBrandPaypal size={16} className="text-amber-300" />
+										Top up with PayPal
+									</h2>
+									<TopUpModal
+										productIds={["topup_10", "topup_50", "topup_200"]}
+										labels={["10 credits", "50 credits", "200 credits"]}
+										prices={[10, 50, 200]}
+										inPageCheckout={
+											paypalClientId
+												? {
+														clientId: paypalClientId,
+														capture: async (orderId: string) => {
+															const res = await fetch(
+																`/api/paypal/capture/${encodeURIComponent(orderId)}`,
+																{ method: "POST" },
+															);
+															return res.json();
+														},
+													}
+												: undefined
 										}
-									: undefined
-							}
-							pollFinalize={async () => {
-								const res = await fetch("/api/paypal/poll");
-								if (!res.ok) return null;
-								const data = await res.json();
-								if (data?.status === "captured") {
-									return { captured: true, credits: data.credits };
-								}
-								return { captured: false };
-							}}
-							onCaptured={(credits) => {
-								setPaymentNotice(
-									credits
-										? `✅ Payment captured — ${credits} credits added to your wallet.`
-										: "✅ Payment captured — credits added to your wallet.",
-								);
-							}}
-						/>
-						<button
-							type="button"
-							onClick={() => window.dispatchEvent(new Event("open-topup-modal"))}
-							className="w-full rounded-md border border-border px-3 py-2 text-sm hover:bg-muted"
-							data-testid="open-topup"
-						>
-							Buy credits with PayPal
-						</button>
-					</section>
-					<section className="rounded-xl border border-border p-4">
-						<h2 className="mb-3 text-sm font-semibold">Agent offers</h2>
-						<Offers customerId={customerId} onNotice={setPaymentNotice} />
-						<p className="mt-2 text-xs text-muted-foreground">
-							Packages your sales-agent negotiation produced (merchant-approved)
-							and top-ups your buyer agent is waiting on you for.
-						</p>
-					</section>
-					<section className="rounded-xl border border-border p-4">
-						<h2 className="mb-3 text-sm font-semibold">Plans</h2>
-						<PlanCard />
-					</section>
-					<section className="rounded-xl border border-border p-4">
-						<h2 className="mb-3 text-sm font-semibold">Usage</h2>
-						<UsageHistoryPanel />
-					</section>
-					<section className="rounded-xl border border-border p-4">
-						<h2 className="mb-3 text-sm font-semibold">Buyer agent</h2>
-						<AgentSettings customerId={customerId} />
-					</section>
+										pollFinalize={async () => {
+											const res = await fetch("/api/paypal/poll");
+											if (!res.ok) return null;
+											const data = await res.json();
+											if (data?.status === "captured") {
+												return { captured: true, credits: data.credits };
+											}
+											return { captured: false };
+										}}
+										onCaptured={(credits) => {
+											setPaymentNotice(
+												credits
+													? `✅ Payment captured — ${credits} credits added to your wallet.`
+													: "✅ Payment captured — credits added to your wallet.",
+											);
+										}}
+									/>
+									<button
+										type="button"
+										onClick={() =>
+											window.dispatchEvent(new Event("open-topup-modal"))
+										}
+										className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-sm font-medium text-amber-200 hover:bg-amber-400/20"
+										data-testid="open-topup"
+									>
+										<IconBrandPaypal size={16} />
+										Buy credits
+									</button>
+								</section>
+								<section className="mp-card p-4">
+									<h2 className="mb-3 text-sm font-semibold">Plans</h2>
+									<PlanCard />
+								</section>
+							</>
+						)}
+						{railTab === "agent" && (
+							<section className="mp-card p-4">
+								<h2 className="mb-1 flex items-center gap-1.5 text-sm font-semibold">
+									<IconShieldCheck size={16} className="text-violet-300" />
+									Buyer agent mandate
+								</h2>
+								<AgentSettings customerId={customerId} />
+							</section>
+						)}
+						{railTab === "offers" && (
+							<section className="mp-card p-4">
+								<h2 className="mb-1 flex items-center gap-1.5 text-sm font-semibold">
+									<IconGift size={16} className="text-emerald-300" />
+									Agent offers
+								</h2>
+								<p className="mb-3 text-xs text-muted-foreground">
+									Packages your sales-agent negotiation produced
+									(merchant-approved) and top-ups your buyer agent is waiting
+									on you for.
+								</p>
+								<Offers customerId={customerId} onNotice={setPaymentNotice} />
+							</section>
+						)}
+						{railTab === "usage" && (
+							<section className="mp-card p-4">
+								<h2 className="mb-3 flex items-center gap-1.5 text-sm font-semibold">
+									<IconChartBar size={16} className="text-sky-300" />
+									Usage ledger
+								</h2>
+								<UsageHistoryPanel />
+							</section>
+						)}
+					</div>
 				</aside>
 			</main>
 		</div>
