@@ -8,9 +8,10 @@ import {
 	IconAlertTriangle,
 	IconArrowRight,
 	IconBrandPaypal,
-	IconClock,
+	IconCoins,
 	IconLock,
 	IconRobot,
+	IconWallet,
 } from "@tabler/icons-react";
 
 export type PaywallData = {
@@ -100,7 +101,7 @@ export default function PaywallCard({
 					<div className="mt-2 flex flex-wrap gap-1.5">
 						<span className="mp-chip">
 							<IconWallet size={12} className="text-amber-300" />
-							balance {data.balance?.toFixed?.(2) ?? data.balance}
+							balance {typeof data.balance === "number" ? data.balance.toFixed(2) : data.balance}
 						</span>
 						<span className="mp-chip">
 							<IconCoins size={12} className="text-rose-300" />
@@ -124,8 +125,3 @@ export default function PaywallCard({
 		</div>
 	);
 }
-
-// Small imports used above but declared late for readability.
-import { IconCoins, IconWallet } from "@tabler/icons-react";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const _clock = IconClock;
