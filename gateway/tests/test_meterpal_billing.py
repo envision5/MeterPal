@@ -6,9 +6,10 @@
 # bridge's HTTP calls are deterministic. They verify:
 #   - admission short-circuit raises 402 when balance is exhausted
 #   - lock_id is plumbed through metadata when PAB_USE_LOCK=true
-#   - success path commits the lock and calls track_tokens with the right shape
-#   - failure path releases the lock and calls track_tokens with status=failure
-#   - /check short-circuit cache works
+#   - success path settles track_tokens before committing the lock
+#   - failure path settles track_tokens before releasing the lock
+#   - /check is never cached (each request gets its own check and hold)
+#   - billing unreachable + fail-open is refused unless require_lock=false
 #   - customer_id extraction from kwargs / data / metadata
 #   - no hardcoded secrets in code
 #
@@ -24,6 +25,23 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
+
+@pytest.fixture(autouse=True)
+def clean_env(monkeypatch):
+    """Keep the real gateway/.env out of the test process.
+
+    Two import-time loaders refill deleted vars otherwise: litellm's package
+    __init__ calls load_dotenv() in DEV mode (finds gateway/.env from cwd),
+    and the bridge's own _load_env_file_fallback.  LITELLM_MODE=PROD silences
+    the first, PAB_ENV_FILE=0 the second; the sweep clears anything an
+    earlier import leaked.  Tests must see exactly what they set."""
+    for name in list(os.environ):
+        if name.startswith(("PAB_", "AUTUMN_")):
+            monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("LITELLM_MODE", "PROD")
+    monkeypatch.setenv("PAB_ENV_FILE", "0")
+    yield
 
 
 @pytest.fixture
@@ -106,9 +124,13 @@ async def test_admission_blocked_raises_402(bridge, mock_httpx):
 
 
 @pytest.mark.asyncio
-async def test_check_short_circuit_cache(bridge, mock_httpx):
-    """Two calls in quick succession should produce only one HTTP call."""
+async def test_check_is_never_cached(bridge, mock_httpx):
+    """Admission is never cached: two requests each get their own check and
+    their own reservation.  (An earlier version cached the /check response
+    for PAB_CHECK_TTL_SEC, which let N concurrent requests bill against a
+    single hold -- the cache is gone for exactly that reason.)"""
     mock_httpx.append({"body": {"allowed": True, "lock": {"lock_id": "lock_x"}}})
+    mock_httpx.append({"body": {"allowed": True, "lock": {"lock_id": "lock_y"}}})
     uak = MagicMock()
     uak.end_user_id = None
     data = {"user": "cus_cached"}
@@ -117,15 +139,23 @@ async def test_check_short_circuit_cache(bridge, mock_httpx):
     r2 = await bridge.async_pre_call_hook(uak, MagicMock(), dict(data), "completion")
 
     assert r1["metadata"]["_autumn_lock_id"] == "lock_x"
-    assert r2["metadata"]["_autumn_lock_id"] == "lock_x"
-    # queue exhausted -> only one HTTP call made
+    assert r2["metadata"]["_autumn_lock_id"] == "lock_y"
+    # queue exhausted -> two HTTP calls made
     assert len(mock_httpx) == 0
 
 
 @pytest.mark.asyncio
 async def test_check_fail_open_when_billing_unreachable(env, mock_httpx):
-    """When PAB_FAIL_MODE=open and /check raises, admission should still succeed."""
+    """PAB_FAIL_MODE=open with the billing server unreachable.
+
+    An unreserved request is still an unheld charge, so with
+    PAB_REQUIRE_LOCK=true (the hardened default) the request is refused even
+    in fail-open mode; require_lock=false is the degradation valve that
+    admits it unbilled."""
     import httpx
+    from fastapi import HTTPException
+
+    mock_httpx.append(httpx.ConnectError("connection refused"))
     mock_httpx.append(httpx.ConnectError("connection refused"))
 
     sys.modules.pop("litellm.integrations.meterpal_billing", None)
@@ -135,8 +165,14 @@ async def test_check_fail_open_when_billing_unreachable(env, mock_httpx):
     uak.end_user_id = None
     data = {"user": "cus_degraded"}
 
-    # Should not raise
-    result = await b.async_pre_call_hook(uak, MagicMock(), data, "completion")
+    # Hardened default: no reservation -> no admission.
+    with pytest.raises(HTTPException) as exc_info:
+        await b.async_pre_call_hook(uak, MagicMock(), dict(data), "completion")
+    assert exc_info.value.status_code == 402
+
+    # The valve: require_lock=false serves the request degraded.
+    b.require_lock = False
+    result = await b.async_pre_call_hook(uak, MagicMock(), dict(data), "completion")
     assert result["user"] == "cus_degraded"
 
 
@@ -180,10 +216,12 @@ async def test_success_commits_lock_and_calls_track(bridge):
     await bridge.async_log_success_event(kwargs, None, None, None)
 
     paths = [c[0] for c in calls]
-    assert paths == ["/balances.finalize", "/track_tokens"]
-    assert calls[0][1]["action"] == "commit"
+    # The charge is settled before the hold is released: releasing first put
+    # the whole balance back while the charge was still pending.
+    assert paths == ["/track_tokens", "/balances.finalize"]
+    assert calls[1][1]["action"] == "confirm"
 
-    track_body = calls[1][1]
+    track_body = calls[0][1]
     assert track_body["customer_id"] == "cus_123"
     # prompt_tokens includes cached input: non-cached input = 150 - 50.
     assert track_body["input_tokens"] == 100
@@ -212,9 +250,10 @@ async def test_failure_releases_lock_and_records_failure(bridge):
     await bridge.async_log_failure_event(kwargs, None, None, None)
 
     paths = [c[0] for c in calls]
-    assert paths == ["/balances.finalize", "/track_tokens"]
-    assert calls[0][1]["action"] == "release"
-    track_body = calls[1][1]
+    # Same charge-before-release ordering as the success path.
+    assert paths == ["/track_tokens", "/balances.finalize"]
+    assert calls[1][1]["action"] == "release"
+    track_body = calls[0][1]
     assert track_body["customer_id"] == "cus_456"
     assert track_body["properties"]["status"] == "failure"
     assert track_body["properties"]["error_type"] == "RuntimeError"
@@ -382,7 +421,11 @@ async def test_check_sends_required_balance(env, mock_httpx):
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.raise_for_status = MagicMock()
-        mock_resp.json = MagicMock(return_value={"allowed": True})
+        # A reservation comes back, or PAB_REQUIRE_LOCK=true refuses the
+        # request no matter what /check said about the balance.
+        mock_resp.json = MagicMock(
+            return_value={"allowed": True, "lock": {"lock_id": "lock_req"}}
+        )
         return mock_resp
 
     b._client = MagicMock()
@@ -411,3 +454,86 @@ def test_legacy_autumn_env_fallback(monkeypatch):
     sys.modules.pop("litellm.integrations.meterpal_billing", None)
     mod = importlib.import_module("litellm.integrations.meterpal_billing")
     assert mod.MeterPalBridge().api_key == "am_sk_test_new"
+
+
+def test_env_file_fallback_fills_missing_vars(monkeypatch, tmp_path):
+    """A launcher that skipped gateway/.env gets its keys back: the bridge
+    parses the file itself.  Surrounding quotes are stripped, matching every
+    other loader in the repo (stack.ps1 Import-EnvFile, run_demo.load_env)."""
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "# a comment line\n"
+        "PAB_API_KEY=am_sk_from_file\n"
+        "PAB_BASE_URL='https://quoted.test/v1'\n"
+        'PAB_FEATURE_ID="ai_tokens"\n'
+        "PAB_MODEL_ID_MAP='{\"demo-gpt\":\"custom/demo-gpt\"}'\n"
+        "MALFORMED LINE WITHOUT EQUALS\n",
+        encoding="utf-8",
+    )
+    # Register for teardown, then remove, so nothing leaks into other tests.
+    for name in ("PAB_API_KEY", "PAB_BASE_URL", "PAB_FEATURE_ID", "PAB_MODEL_ID_MAP"):
+        monkeypatch.setenv(name, "__registered_for_teardown__")
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.delenv("AUTUMN_API_KEY", raising=False)
+    monkeypatch.delenv("PAB_ENV_FILE", raising=False)  # re-enable the fallback
+
+    mod = importlib.import_module("litellm.integrations.meterpal_billing")
+    mod._load_env_file_fallback(env_file)
+
+    assert os.environ["PAB_API_KEY"] == "am_sk_from_file"
+    assert os.environ["PAB_BASE_URL"] == "https://quoted.test/v1"
+    assert os.environ["PAB_FEATURE_ID"] == "ai_tokens"
+    assert os.environ["PAB_MODEL_ID_MAP"] == '{"demo-gpt":"custom/demo-gpt"}'
+    # A value that parses as valid JSON after quote-stripping configures the map.
+    b = mod.MeterPalBridge()
+    assert b.model_id_map == {"demo-gpt": "custom/demo-gpt"}
+
+
+def test_env_file_fallback_never_overrides_launcher(monkeypatch, tmp_path):
+    """An explicit launcher value wins; the file only fills what is missing.
+    An empty launcher value counts as unset, so the file may fill it."""
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "PAB_API_KEY=am_sk_from_file\nPAB_BASE_URL=https://file.test/v1\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("PAB_API_KEY", "am_sk_from_launcher")
+    monkeypatch.setenv("PAB_BASE_URL", "")  # empty configures nothing
+    monkeypatch.delenv("PAB_ENV_FILE", raising=False)  # re-enable the fallback
+
+    mod = importlib.import_module("litellm.integrations.meterpal_billing")
+    mod._load_env_file_fallback(env_file)
+
+    assert os.environ["PAB_API_KEY"] == "am_sk_from_launcher"
+    assert os.environ["PAB_BASE_URL"] == "https://file.test/v1"
+
+
+def test_env_file_fallback_missing_file_is_a_noop(monkeypatch, tmp_path):
+    mod = importlib.import_module("litellm.integrations.meterpal_billing")
+    # Must not raise and must not touch the environment.
+    before = dict(os.environ)
+    mod._load_env_file_fallback(tmp_path / "does-not-exist" / ".env")
+    assert os.environ == before
+
+
+def test_model_id_map_survives_shell_quoting(env):
+    """A launcher that injected the raw single-quoted .env value still parses:
+    one layer of surrounding quotes is stripped before json.loads (seen live
+    2026-11-06: PAB_MODEL_ID_MAP passed through with its quoting intact)."""
+    env.setenv("PAB_MODEL_ID_MAP", '\'{"demo-gpt":"custom/demo-gpt"}\'')
+    sys.modules.pop("litellm.integrations.meterpal_billing", None)
+    mod = importlib.import_module("litellm.integrations.meterpal_billing")
+    b = mod.MeterPalBridge()
+
+    assert b.model_id_map == {"demo-gpt": "custom/demo-gpt"}
+    assert b._model_id({"model": "demo-gpt"}) == "custom/demo-gpt"
+
+
+def test_model_id_map_garbage_stays_empty(env):
+    """Genuinely invalid JSON still fails loudly and leaves the map empty."""
+    env.setenv("PAB_MODEL_ID_MAP", "not-json{")
+    sys.modules.pop("litellm.integrations.meterpal_billing", None)
+    mod = importlib.import_module("litellm.integrations.meterpal_billing")
+    b = mod.MeterPalBridge()
+
+    assert b.model_id_map == {}

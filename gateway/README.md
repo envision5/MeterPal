@@ -1,3 +1,8 @@
+> **MeterPal note:** MeterPal runs this gateway as a hosted, multi-tenant
+> service with the usage-billing hook in `litellm/integrations/meterpal_billing.py`
+> — merchants install the SDK and never touch LiteLLM. Everything below is
+> upstream LiteLLM documentation.
+
 <h1 align="center">
         🚅 LiteLLM
     </h1>

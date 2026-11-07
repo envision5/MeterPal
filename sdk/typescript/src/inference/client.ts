@@ -235,7 +235,9 @@ export function createMeterPal(config: MeterPalConfig): MeterPal {
 		const response = await request({
 			path: "/v1/customers",
 			method: "POST",
-			body: { customer_id: customerId },
+			// The billing server's get-or-create contract keys the body on `id`
+			// (handleGetOrCreateCustomer reads createCusParams.id).
+			body: { id: customerId },
 			credential: config.apiKey,
 		});
 		const data = await readJson(response);

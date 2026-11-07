@@ -83,15 +83,24 @@ honored as fallbacks so pre-existing deployments keep working:
                          a bare alias or a deployment string like
                          "openai/demo-gpt".  Map one to the other, e.g.:
                            {"demo-gpt": "custom/demo-gpt"}
+
+Env loading: if the launcher did not put gateway/.env in the process env
+(the scheduled-task harness and `set -a && source .env` do; a bare
+`litellm --config config.yaml` does not), this module reads gateway/.env
+directly as a fallback at import.  Values already set in the environment
+always win.
 """
 from __future__ import annotations
 
 import asyncio
 import json
 import os
+import re
+import sys
 import time
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional, Tuple
 
 import httpx
@@ -111,6 +120,48 @@ def _env(name: str, default: Optional[str] = None) -> Optional[str]:
     """Read PAB_<name>, falling back to legacy AUTUMN_<name>."""
     val = os.environ.get(_PREFIX + name) or os.environ.get(_LEGACY_PREFIX + name)
     return val if val else default
+
+
+def _load_env_file_fallback(path: Optional[Path] = None) -> None:
+    """Populate the process env from the repo's gateway/.env when the launcher didn't.
+
+    Everything this module configures is read from os.environ exactly once,
+    at import.  Whether gateway/.env actually reached the process depends on
+    who launched LiteLLM: the scheduled-task harness imports it
+    (scripts/lib/run-service.ps1), the manual flow sources it
+    (demo/README.md) -- but a bare `litellm --config config.yaml` does not,
+    and the bridge then starts disabled, or worse, with a shell-mangled
+    value (a raw-quoted PAB_MODEL_ID_MAP) that parses as garbage.
+
+    Same fix the demo-app uses (demo-app/server.ts readEnvFile): parse the
+    file next to this source tree.  Keys already set to a non-empty value
+    are left alone: an explicit launcher value always wins, and a mis-set
+    one is the launcher's bug to surface, not ours to hide.  An empty value
+    counts as unset -- it configures nothing, so the file may fill it.
+
+    Set PAB_ENV_FILE=0 to disable the fallback entirely (the unit tests use
+    this: they construct their own environment and must not see the repo's).
+    """
+    if os.environ.get(_PREFIX + "ENV_FILE") == "0":
+        return
+    if path is None:
+        path = Path(__file__).resolve().parents[2] / ".env"
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return
+    for line in lines:
+        match = re.match(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$", line)
+        if not match:
+            continue
+        name, value = match.group(1), match.group(2)
+        if name in os.environ and os.environ[name] != "":
+            continue
+        # Trim one layer of matching surrounding quotes, like every other
+        # loader in the repo (stack.ps1 Import-EnvFile, run_demo.load_env).
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+            value = value[1:-1]
+        os.environ[name] = value
 
 
 def _now_iso() -> str:
@@ -249,8 +300,13 @@ class MeterPalBridge(CustomLogger):
         self.model_id_map: dict[str, str] = {}
         raw_map = _env("MODEL_ID_MAP", "") or ""
         if raw_map.strip():
+            candidate = raw_map.strip()
+            # A launcher that injects the raw file value keeps its quoting
+            # ("'{"demo-gpt": ...}'"); strip one layer before parsing.
+            if len(candidate) >= 2 and candidate[0] == candidate[-1] and candidate[0] in "\"'":
+                candidate = candidate[1:-1]
             try:
-                self.model_id_map = {str(k): str(v) for k, v in json.loads(raw_map).items()}
+                self.model_id_map = {str(k): str(v) for k, v in json.loads(candidate).items()}
             except json.JSONDecodeError as exc:
                 # A silently-empty map bills under the raw model id, which
                 # the billing server then rejects -- surface the misconfiguration.
@@ -259,10 +315,16 @@ class MeterPalBridge(CustomLogger):
                 self.model_id_map = {}
 
         if not self.bearer:
-            # Logged once at startup.  Bridge will no-op until configured.
+            # Logged once at startup, on stderr so it is visible regardless of
+            # LiteLLM's log level.  The bridge will no-op until configured:
+            # no admission, no metering.  Both credential names are named
+            # because either one configures the bearer.
+            disabled = (f"MeterPalBridge: {_PREFIX}TRUST_SECRET and {_PREFIX}API_KEY "
+                        f"are both missing -- bridge disabled")
+            print(f"[MeterPalBridge] {disabled}", file=sys.stderr, flush=True)
             try:
                 from litellm._logging import verbose_proxy_logger
-                verbose_proxy_logger.warning(f"MeterPalBridge: {_PREFIX}API_KEY missing -- bridge disabled")
+                verbose_proxy_logger.warning(disabled)
             except Exception:
                 pass
 
@@ -503,7 +565,9 @@ class MeterPalBridge(CustomLogger):
         body: dict[str, Any] = {
             "customer_id": customer_id,
             "lock_id": lock_id,
-            "action": action,
+            # The billing API's verbs are confirm/release; the bridge's
+            # internal name for a successful settle is "commit".
+            "action": "confirm" if action == "commit" else action,
             # Commit releases the reservation in full -- the actual usage is
             # billed separately by /track_tokens.  Without this the reserved
             # amount is kept AND the real cost is deducted on top
@@ -916,6 +980,16 @@ class MeterPalBridge(CustomLogger):
         md = self._litellm_metadata(kwargs)
         lock_id = md.get("_autumn_lock_id")
         usage = _usage_breakdown(kwargs, response_obj)
+        # A refusal at admission (402) never touched the provider: there is
+        # no hold to release and nothing to record — the request never ran.
+        # Without this guard the failure hook would POST a zero-token event
+        # the billing server rejects (4xx, dead-letter noise on every
+        # paywall hit).
+        if not lock_id and _usage_is_empty(usage):
+            await self._log(
+                "call refused before admission (no reservation, no usage) — nothing to settle"
+            )
+            return
         exc = kwargs.get("exception")
         # A failure that produced usage is charged for it: the provider did
         # the work.  A failure that produced no usage is unknown usage, not
@@ -950,6 +1024,10 @@ class MeterPalBridge(CustomLogger):
 # config to name an *instance* (a class is neither a CustomLogger instance nor
 # a callable), so config.yaml registers:
 #   callbacks: ["litellm.integrations.meterpal_billing.proxy_handler_instance"]
+# Self-configure first: a launcher that did not put gateway/.env in the
+# process env (a bare `litellm --config config.yaml`) would otherwise start
+# the bridge disabled or with shell-mangled values.
+_load_env_file_fallback()
 # Instantiated at import time, which is when env vars are read.
 proxy_handler_instance = MeterPalBridge()
 meterpal_bridge_instance = proxy_handler_instance

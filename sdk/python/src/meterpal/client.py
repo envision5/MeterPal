@@ -138,9 +138,20 @@ class MeterPalClient:
     ) -> dict[str, Any]:
         """Convenience: {feature_id, remaining, max, ...} for one balance."""
         customer = self.get_customer(customer_id, expand=["balances.feature"])
-        for bal in customer.get("balances") or []:
-            if (bal.get("feature_id") or bal.get("feature", {}).get("id")) == feature_id:
+        balances = customer.get("balances") or {}
+        if isinstance(balances, dict):
+            # API shape: {"balances": {"ai_tokens": {...}}}
+            bal = balances.get(feature_id)
+            if bal is not None:
                 return bal
+        else:
+            for bal in balances:
+                if (
+                    isinstance(bal, dict)
+                    and (bal.get("feature_id") or bal.get("feature", {}).get("id"))
+                    == feature_id
+                ):
+                    return bal
         raise MeterPalError(
             404, {"detail": f"no balance for feature {feature_id!r} on {customer_id}"}
         )

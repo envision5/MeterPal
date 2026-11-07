@@ -12,7 +12,38 @@ pip install "meterpal[litellm]" # + gateway hook re-export
 
 Or from this repo: `pip install -e sdk/python`.
 
-## Client quickstart
+## One import: metered inference
+
+Swap `from openai import OpenAI` for `from meterpal import create_meterpal`
+and every call is admitted, metered and charged to the end user — the same
+`chat.completions` shape their app already speaks:
+
+```python
+from meterpal import create_meterpal, InsufficientBalanceError
+
+meterpal = create_meterpal(api_key="am_sk_test_...")   # server-side only
+
+try:
+    completion = meterpal.chat.completions.create(
+        model="custom/demo-gpt",
+        messages=[{"role": "user", "content": "hi"}],
+        user="cus_123",        # the end user being billed
+    )
+    completion["meterpal"]["credits_charged"]   # what it cost
+except InsufficientBalanceError as err:
+    # The paywall, as a typed error: open the PayPal checkout for them.
+    checkout = err.top_up()
+    send_user_to(checkout["url"])   # err.balance, err.required_credits too
+```
+
+Streaming works the same way (`meterpal.chat.completions.stream(...)` yields
+OpenAI chunks; the final payload is the `meterpal` charge block), and
+`meterpal.keys.provision(customer_id)` / `meterpal.models.list()` cover the
+rest of the merchant surface. The secret key is exchanged for a per-customer
+virtual key on first use and cached, so one merchant's traffic can never
+spend another merchant's budget.
+
+## Billing client quickstart
 
 ```python
 from meterpal import MeterPalClient
