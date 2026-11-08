@@ -502,16 +502,26 @@ export async function runPaypalCheckout({
 
 	if (pricesAreOneOff(prices)) {
 		// One-off credit pack -> Orders v2.
-		// ORDER REUSE: every pack click must NOT mint a new PayPal order —
-		// each approval is a real buyer charge.  Reuse the customer's latest
-		// pending order if PayPal still has it in CREATED (approvable) state;
-		// APPROVED ones are captured by the poll/capture endpoints.
+		// ORDER REUSE: repeated clicks on the SAME pack must not mint new
+		// PayPal orders — each approval is a real buyer charge, so stacked
+		// approvable orders would double-charge.  Reuse the customer's latest
+		// pending order for THIS product if PayPal still has it in CREATED
+		// (approvable) state; APPROVED ones are captured by the poll/capture
+		// endpoints.
+		//
+		// The match is per product: a checkout for a different pack must not
+		// silently hand the buyer an approval link priced for something else
+		// (a buyer agent drafting a $10 top-up must never surface the $80
+		// package someone left pending).  Mismatched pendings fall through to
+		// the fresh-mint path, whose abandonOtherIntents cancels them — the
+		// one-live-order invariant still holds, just per requested product.
 		const [pendingIntent] = await db
 			.select()
 			.from(paypalOrderIntents)
 			.where(
 				and(
 					eq(paypalOrderIntents.customer_id, customerId),
+					eq(paypalOrderIntents.product_id, product.id),
 					eq(paypalOrderIntents.status, "pending"),
 				),
 			)
@@ -540,6 +550,7 @@ export async function runPaypalCheckout({
 							msg: "paypal checkout: reusing pending order",
 							orderId: pendingIntent.order_id,
 							customerId,
+							productId: product.id,
 						});
 						// Keep the one-live-order invariant: honor any approvals
 						// in older intents, cancel + abandon the rest.
