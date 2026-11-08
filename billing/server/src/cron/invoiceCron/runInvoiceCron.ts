@@ -7,6 +7,7 @@ import {
 	metadata,
 } from "@autumn/shared";
 import { and, asc, eq, isNotNull, lt, or, sql } from "drizzle-orm";
+import type { DrizzleCli } from "@/db/initDrizzle.js";
 import { withStatementTimeout } from "@/db/withStatementTimeout.js";
 import { resolveRedisV2 } from "@/external/redis/resolveRedisV2.js";
 import { expirePendingCustomerProducts } from "@/internal/billing/v2/execute/pendingCustomerProducts/expirePendingCustomerProducts";
@@ -73,23 +74,6 @@ export const handleVoidInvoiceCron = async ({
 	const processorInvoiceId = metadata.processor_invoice_id;
 	if (!processorInvoiceId) return;
 
-	const expirePendingRows = async () => {
-		try {
-			await expirePendingCustomerProducts({
-				ctx: {
-					db,
-					logger,
-					org: { id: org.id },
-					env: customer.env,
-					redisV2: resolveRedisV2(),
-				},
-				metadataId: metadata.id,
-			});
-		} catch (error) {
-			logger.error(`Error expiring pending customer products: ${error}`);
-		}
-	};
-
 	const [invoice] = await db
 		.select({ status: invoices.status })
 		.from(invoices)
@@ -103,11 +87,49 @@ export const handleVoidInvoiceCron = async ({
 	// A paid invoice was collected — leave the metadata row alone.
 	if (invoice?.status === InvoiceStatus.Paid) return;
 
-	await expirePendingRows();
-	await MetadataService.delete({
-		db,
-		id: metadata.id,
-	});
+	// Claim the invoice row for the expire. The stale read above races with
+	// (a) a checkout capture marking the invoice Paid and (b) another cron
+	// instance processing the same metadata row — both are resolved by
+	// re-reading the committed status under the row lock: a concurrent
+	// capture commits first and this transaction sees Paid; a concurrent
+	// instance blocks here, then re-runs the guard on the committed state.
+	// The expire itself is Pending-guarded, so a re-run no-ops its writes.
+	try {
+		await db.transaction(async (tx) => {
+			const [fresh] = await tx
+				.select({ status: invoices.status })
+				.from(invoices)
+				.where(eq(invoices.processor_invoice_id, processorInvoiceId))
+				.limit(1)
+				.for("update");
+
+			if (fresh?.status === InvoiceStatus.Paid) return;
+
+			await expirePendingCustomerProducts({
+				ctx: {
+					db: tx as unknown as DrizzleCli,
+					logger,
+					org: { id: org.id },
+					env: customer.env,
+					redisV2: resolveRedisV2(),
+				},
+				metadataId: metadata.id,
+			});
+
+			await MetadataService.delete({
+				db: tx as unknown as DrizzleCli,
+				id: metadata.id,
+			});
+		});
+	} catch (error) {
+		// Leave the metadata row for the next tick — the expire rolled back
+		// with it, so nothing was half-applied.
+		logger.error(
+			`Error voiding unpaid invoice ${processorInvoiceId} for customer ${customer.id} (org: ${org.slug}): ${error}`,
+		);
+		return;
+	}
+
 	logger.info(
 		`Cleaned up unpaid invoice ${processorInvoiceId} for customer ${customer.id} (org: ${org.slug})`,
 	);

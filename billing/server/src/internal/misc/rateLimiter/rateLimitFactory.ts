@@ -5,6 +5,7 @@ import { logger } from "@/external/logtail/logtailUtils.js";
 import { shouldUseRedis } from "@/external/redis/initRedis";
 import type { HonoEnv } from "@/honoUtils/HonoEnv";
 import { queueRateLimitedCustomerCreation } from "@/internal/customers/recovery/queueRateLimitedCustomerCreation.js";
+import { dependencyUnavailableBody, isDepFailClosed } from "@/internal/misc/dependencyPolicy/dependencyPolicy.js";
 import {
 	isCheckFailOpenRoute,
 	RATE_LIMIT_CONFIGS,
@@ -152,7 +153,20 @@ export const rateLimitFactory = ({
 
 		if (!shouldUseRedis()) {
 			warnRateLimitBypass();
-			return notInRedis ? getInMemoryLimiter()(c, next) : next();
+			// An in-memory limiter still bounds traffic without Redis. For
+			// configs without one, fail-closed sheds instead of serving
+			// unthrottled. Direct response (not a throw): this closure runs
+			// inside rateLimitMiddleware's catch-all try, which would bypass
+			// a thrown error.
+			if (notInRedis) return getInMemoryLimiter()(c, next);
+			if (isDepFailClosed()) {
+				const ctx = (c as Context<HonoEnv>).get("ctx");
+				return c.json(
+					dependencyUnavailableBody({ ctx: { env: ctx?.env } }),
+					503,
+				);
+			}
+			return next();
 		}
 
 		return getRedisLimiter()(c, next);

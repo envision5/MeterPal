@@ -1,4 +1,5 @@
 import type { Redis } from "ioredis";
+import { logger } from "@/external/logtail/logtailUtils.js";
 import { getMiscRedis } from "@/external/redis/initRedis.js";
 import { runRedisOp } from "@/external/redis/utils/runRedisOp.js";
 import { getQueueConcurrencyPolicy } from "@/queue/concurrency/getQueueConcurrencyPolicy.js";
@@ -21,6 +22,21 @@ export type QueueCapacityLease = {
 };
 
 const releaseImmediately = () => Promise.resolve();
+
+// Pollers hit this on every batch while Redis is down — throttle the warn.
+const CAPACITY_FAIL_OPEN_WARN_INTERVAL_MS = 30_000;
+let lastCapacityFailOpenWarnAt = 0;
+
+const logCapacityLeaseFailOpen = (error: unknown) => {
+	const now = Date.now();
+	if (now - lastCapacityFailOpenWarnAt < CAPACITY_FAIL_OPEN_WARN_INTERVAL_MS)
+		return;
+	lastCapacityFailOpenWarnAt = now;
+	logger.warn("[queue-capacity] redis unavailable, failing open to unlimited", {
+		type: "queue_capacity_fail_open",
+		error,
+	});
+};
 
 const releasePermits = async (permits: QueueConcurrencyPermit[]) => {
 	await Promise.allSettled(permits.map((permit) => permit.release()));
@@ -135,8 +151,13 @@ export const reserveQueueCapacity = async ({
 				createPermit({ redis, redisKey: policy.redisKey, token }),
 			);
 		return createLimitedLease({ permits });
-	} catch {
-		// Fail open to normal SQS capacity so Redis cannot stop queue processing.
+	} catch (error) {
+		// Fail open to normal SQS capacity so Redis cannot stop queue
+		// processing. This is a throughput cap, not a correctness guard —
+		// deductions stay serialized by the Lua script regardless — so it
+		// fails open even under DEP_FAILURE_POLICY=fail_closed. The warn
+		// keeps the outage visible in logs/metrics.
+		logCapacityLeaseFailOpen(error);
 		return createUnlimitedLease({ requested: requestedCount });
 	}
 };

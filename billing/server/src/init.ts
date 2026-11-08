@@ -207,7 +207,12 @@ if (process.env.NODE_ENV === "development") {
 		console.log(`Forking ${numWorkers} workers`);
 
 		for (let i = 0; i < numWorkers; i++) {
-			cluster.fork();
+			// Pin the resolved fleet size into each child so per-process
+			// caps (getFullSubjectGate) divide by the same number the
+			// primary resolved — no operator hand-syncing of env vars.
+			cluster.fork({
+				env: { ...process.env, SERVER_FLEET_SIZE: String(numWorkers) },
+			});
 		}
 
 		const forkRecycling = attachPrimaryForkRecycling({

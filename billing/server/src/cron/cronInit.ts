@@ -7,6 +7,7 @@ import { logger } from "../external/logtail/logtailUtils.js";
 import { refreshCeBalancesCache } from "../external/motherduck/refreshCeBalancesCache.js";
 import { runResetLoopV2 } from "../internal/balances/batchReset/runResetLoopV2.js";
 import { stopAllEdgeConfigPolling } from "../internal/misc/edgeConfig/edgeConfigRegistry.js";
+import { withSingleFlight } from "./utils/singleFlight.js";
 import { isMotherduckCacheRefreshDisabled } from "../internal/misc/miscellaneousEdgeConfig/miscellaneousEdgeConfigStore.js";
 import {
 	describeSlotGate,
@@ -78,14 +79,16 @@ const shouldRunTick = () => {
 const main = async () => {
 	if (!shouldRunTick()) return;
 
-	logCronHeartbeat();
+	await withSingleFlight({ name: "main", logger }, async () => {
+		logCronHeartbeat();
 
-	await Promise.all([
-		runProductCron({ ctx }),
-		runInvoiceCron({ ctx }),
-		runOneOffExpiry({ ctx }),
-		// runClearExpiredResetCron({ ctx }),
-	]);
+		await Promise.all([
+			runProductCron({ ctx }),
+			runInvoiceCron({ ctx }),
+			runOneOffExpiry({ ctx }),
+			// runClearExpiredResetCron({ ctx }),
+		]);
+	});
 };
 
 // Cleanup re-derives "depleted one-off" candidates from scratch (no time
@@ -93,13 +96,15 @@ const main = async () => {
 const oneOffCleanupTick = async () => {
 	if (!shouldRunTick()) return;
 
-	logCronHeartbeat("one_off_cleanup");
+	await withSingleFlight({ name: "one_off_cleanup", logger }, async () => {
+		logCronHeartbeat("one_off_cleanup");
 
-	await Promise.all([
-		runOneOffCleanup({ ctx }),
-		runSeatSyncCron({ ctx }),
-		runExpiredGrantCleanup({ ctx }),
-	]);
+		await Promise.all([
+			runOneOffCleanup({ ctx }),
+			runSeatSyncCron({ ctx }),
+			runExpiredGrantCleanup({ ctx }),
+		]);
+	});
 };
 
 // DB health probes (long-txn / xmin pin, ...) — a separate tick so a heavy

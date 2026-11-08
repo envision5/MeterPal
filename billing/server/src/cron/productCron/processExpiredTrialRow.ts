@@ -15,7 +15,10 @@ import { billingPlanToSendProductsUpdated } from "@/internal/billing/v2/workflow
 import { CusService } from "@/internal/customers/CusService";
 import { activateFreeDefaultProduct } from "@/internal/customers/cusProducts/actions/activateFreeDefaultProduct";
 import { tryProcessRevertExpiry } from "@/internal/customers/cusProducts/actions/revertTrialExpiry";
-import { CusProductService } from "@/internal/customers/cusProducts/CusProductService";
+import {
+	ACTIVE_STATUSES,
+	CusProductService,
+} from "@/internal/customers/cusProducts/CusProductService";
 import { deleteCachedFullCustomer } from "@/internal/customers/cusUtils/fullCustomerCacheUtils/deleteCachedFullCustomer";
 
 export const processExpiredTrialRow = async ({
@@ -75,6 +78,21 @@ export const processExpiredTrialRow = async ({
 		customerProduct: trialFullCusProduct,
 		defaultProducts,
 	});
+
+	// Claim before the first mutation: exactly one concurrent instance gets to
+	// flip the row out of ACTIVE_STATUSES and run the side-effect chain below
+	// (default activation, billing plan, pooled transitions, webhooks). The
+	// conditional UPDATE re-evaluates its predicate after any competing
+	// transaction commits, so the winner is decided by the row lock, not by
+	// the stale cron read — a loser sees 0 rows and skips, no duplicate
+	// transitions or trial_ended webhooks.
+	const claim = await CusProductService.update({
+		ctx,
+		cusProductId: trialFullCusProduct.id,
+		updates: { status: CusProductStatus.Expired },
+		inStatuses: ACTIVE_STATUSES,
+	});
+	if (claim.length === 0) return;
 
 	let activatedDefault: FullCusProduct | undefined;
 	if (defaultProduct) {

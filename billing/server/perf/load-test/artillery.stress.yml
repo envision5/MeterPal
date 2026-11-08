@@ -1,0 +1,92 @@
+# Stress profile — extended evidence run: ~8.7 min, arrival up to 200 VU/s
+# (~300-600 req/s with the 9:1 core/attach mix). Use this for committed
+# benchmark evidence; the default artillery.yml stays the quick smoke run.
+# Phase durations are sized so the whole run fits one 10-minute command
+# window (bun loadtest:stress).
+# Usage: cd server && bun loadtest:stress
+#
+# Prerequisites:
+#   Run setup first: cd server && bun loadtest:setup
+
+config:
+  target: "http://localhost:8080"
+  processor: "./processor.mjs"
+
+  phases:
+    - duration: 30
+      arrivalRate: 5
+      rampTo: 25
+      name: "Warm-up"
+
+    - duration: 60
+      arrivalRate: 25
+      rampTo: 50
+      name: "Ramp to default peak"
+
+    - duration: 180
+      arrivalRate: 50
+      name: "Sustained default peak"
+
+    - duration: 60
+      arrivalRate: 50
+      rampTo: 100
+      name: "Spike"
+
+    - duration: 90
+      arrivalRate: 100
+      name: "Beyond default peak"
+
+    - duration: 60
+      arrivalRate: 100
+      rampTo: 200
+      name: "Stress climb"
+
+    - duration: 45
+      arrivalRate: 200
+      name: "Stress plateau"
+
+  defaults:
+    headers:
+      Authorization: "Bearer {{ $processEnvironment.UNIT_TEST_AUTUMN_SECRET_KEY }}"
+      Content-Type: "application/json"
+
+scenarios:
+  # ~90% of VUs: lightweight check/track/get loop
+  - name: "Core API loop"
+    weight: 9
+    beforeScenario: "setCustomerContext"
+    flow:
+      - post:
+          url: "/v1/check"
+          json:
+            customer_id: "{{ customerId }}"
+            feature_id: "{{ featureId }}"
+
+      - post:
+          url: "/v1/track"
+          json:
+            customer_id: "{{ customerId }}"
+            feature_id: "{{ featureId }}"
+            value: 1
+
+      - get:
+          url: "/v1/customers/{{ customerId }}"
+
+  # ~10% of VUs: attach (upgrade/downgrade)
+  - name: "Attach flow"
+    weight: 1
+    beforeScenario: "setAttachContext"
+    flow:
+      - post:
+          url: "/v1/billing.attach"
+          json:
+            customer_id: "{{ customerId }}"
+            # The billing.attach RPC keys the plan on plan_id; paid plans come
+            # back with a payment_url rather than attaching outright.
+            plan_id: "{{ productId }}"
+
+      - post:
+          url: "/v1/check"
+          json:
+            customer_id: "{{ customerId }}"
+            feature_id: "{{ featureId }}"

@@ -14,8 +14,10 @@ export const FullSubjectGateEdgeConfigSchema = z.object({
 	per_customer_pending_max: z.number().int().min(1).max(100_000).default(500),
 	per_org_pending_max: z.number().int().min(1).max(100_000).default(1_000),
 	// Caps above are cluster-wide targets; each process enforces
-	// target / fleet_process_count. Default 1 = per-process (no-op).
-	fleet_process_count: z.number().int().min(1).max(100_000).default(1),
+	// target / fleet_process_count. Unset = derive from the serving fork
+	// count (getFleetProcessCount, pinned at fork time); a value here
+	// overrides the derivation.
+	fleet_process_count: z.number().int().min(1).max(100_000).optional(),
 	// Replica-lane budgets; the top-level numbers stay the primary lane's.
 	replica_lane: z
 		.object({

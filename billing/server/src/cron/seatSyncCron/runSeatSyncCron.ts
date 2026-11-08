@@ -82,6 +82,9 @@ const getMismatchedSeatsPage = async ({
  * One set-based UPDATE converging candidate seats onto their parent. The
  * parent is re-read on MAIN here (the page may come from a lagged replica),
  * and the mismatch predicate re-checks so already-converged rows no-op.
+ *
+ * Convergence is also what makes this cron multi-instance safe: with >1 cron
+ * task, both converge the same rows and the loser's predicate matches nothing.
  */
 const syncSeats = async ({
 	ctx,

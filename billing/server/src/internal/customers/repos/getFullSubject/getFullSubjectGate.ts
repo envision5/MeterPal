@@ -5,6 +5,7 @@ import { LRUCache } from "lru-cache";
 import pLimit, { type LimitFunction } from "p-limit";
 import type { Logger } from "@/external/logtail/logtailUtils.js";
 import { getRuntimeFullSubjectGateConfig } from "@/internal/misc/fullSubjectGateEdgeConfig/fullSubjectGateEdgeConfigStore.js";
+import { getFleetProcessCount } from "@/utils/memory/forkRecycling/recyclePolicy.js";
 
 export type FullSubjectGateLane = "primary" | "replica" | "backup";
 
@@ -209,7 +210,13 @@ export const runWithFullSubjectGate = async <T>({
 	queryFn: () => Promise<T>;
 }): Promise<T> => {
 	const config = getRuntimeFullSubjectGateConfig();
-	const { max_wait_ms, fleet_process_count } = config;
+	const { max_wait_ms } = config;
+	// Explicit edge-config override wins; otherwise divide by the actual
+	// serving fork count (pinned into each child's env at fork time), so the
+	// per-process caps hold without an operator hand-syncing
+	// fleet_process_count to SERVER_FORK_COUNT.
+	const fleetProcessCount =
+		config.fleet_process_count ?? getFleetProcessCount();
 	const {
 		per_customer_limit,
 		per_org_limit,
@@ -221,11 +228,11 @@ export const runWithFullSubjectGate = async <T>({
 
 	const perProcessOrgLimit = toPerProcessLimit(
 		per_org_limit,
-		fleet_process_count,
+		fleetProcessCount,
 	);
 	const perProcessOrgPendingMax = toPerProcessLimit(
 		per_org_pending_max,
-		fleet_process_count,
+		fleetProcessCount,
 	);
 
 	const orgLimiter = getOrgLimiter({
@@ -242,11 +249,11 @@ export const runWithFullSubjectGate = async <T>({
 			orgId,
 			env,
 			customerId,
-			limit: toPerProcessLimit(per_customer_limit, fleet_process_count),
+			limit: toPerProcessLimit(per_customer_limit, fleetProcessCount),
 		});
 		if (
 			customerLimiter.pendingCount >=
-			toPerProcessLimit(per_customer_pending_max, fleet_process_count)
+			toPerProcessLimit(per_customer_pending_max, fleetProcessCount)
 		) {
 			rejectOverloaded({ reason: "per_customer_queue_full", labels });
 		}

@@ -8,13 +8,14 @@ import {
 	isCustomerProductRevertingTrial,
 	PROCESSOR_LINKED_STATUSES,
 } from "@autumn/shared";
-import { and, eq, type InferSelectModel } from "drizzle-orm";
+import { and, eq, inArray, type InferSelectModel } from "drizzle-orm";
 import type { DrizzleCli } from "@/db/initDrizzle";
 import type { AutumnContext } from "@/honoUtils/HonoEnv";
 import { applyPooledBalanceCustomerProductTransitions } from "@/internal/billing/v2/pooledBalances/execute/applyPooledBalanceCustomerProductTransitions";
 import { sendBillingUpdatedWebhook } from "@/internal/billing/v2/workflows/sendBillingUpdatedWebhook/sendBillingUpdatedWebhook";
 import { billingPlanToSendProductsUpdated } from "@/internal/billing/v2/workflows/sendProductsUpdated/billingPlanToSendProductsUpdated";
 import { CusService } from "@/internal/customers/CusService";
+import { ACTIVE_STATUSES } from "@/internal/customers/cusProducts/CusProductService";
 import { deleteCachedFullCustomer } from "@/internal/customers/cusUtils/fullCustomerCacheUtils/deleteCachedFullCustomer";
 
 /**
@@ -67,14 +68,29 @@ export const tryProcessRevertExpiry = async ({
 	});
 
 	const now = Date.now();
-	const restoredPreviousCustomerProduct = await ctx.db.transaction(
+	// The trial-expire UPDATE is status-guarded and decides the run: exactly
+	// one concurrent caller flips the row out of ACTIVE_STATUSES and gets to
+	// run the transitions/webhooks below — the loser's predicate re-evaluates
+	// after the winner commits and matches nothing. (The Paused guard on the
+	// restore already made the un-pause side of the revert one-shot.)
+	const { claimed, restoredPreviousCustomerProduct } = await ctx.db.transaction(
 		async (tx) => {
 			const txDb = tx as unknown as DrizzleCli;
 
-			await txDb
+			const expiredRows = await txDb
 				.update(customerProductsTable)
 				.set({ status: CusProductStatus.Expired, updated_at: now })
-				.where(eq(customerProductsTable.id, customerProduct.id));
+				.where(
+					and(
+						eq(customerProductsTable.id, customerProduct.id),
+						inArray(customerProductsTable.status, ACTIVE_STATUSES),
+					),
+				)
+				.returning({ id: customerProductsTable.id });
+
+			if (expiredRows.length === 0) {
+				return { claimed: false, restoredPreviousCustomerProduct: false };
+			}
 
 			const restoredRows = await txDb
 				.update(customerProductsTable)
@@ -87,9 +103,15 @@ export const tryProcessRevertExpiry = async ({
 				)
 				.returning({ id: customerProductsTable.id });
 
-			return restoredRows.length > 0;
+			return { claimed: true, restoredPreviousCustomerProduct: restoredRows.length > 0 };
 		},
 	);
+
+	if (!claimed) {
+		// Another instance already expired this trial — its webhook/transitions
+		// ran; nothing left to do here.
+		return true;
+	}
 
 	if (trialFullCusProduct) {
 		await applyPooledBalanceCustomerProductTransitions({

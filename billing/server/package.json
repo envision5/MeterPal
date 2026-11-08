@@ -37,7 +37,9 @@
 		"test:unit": "bun tests/testRunner/runUnitTests.ts",
 		"eval:generation": "infisical run --env=dev --recursive -- bun tests/evals/generateBillingRequest/generate-billing-request.eval.ts",
 		"test:integration": "ENV_FILE=.env infisical run --env=dev --recursive -- bun test --timeout 0 --preload ./tests/setup-integration-tests.ts",
-		"loadtest": "ENV_FILE=.env infisical run --env=dev --recursive -- npx artillery run perf/load-test/artillery.yml",
+		"loadtest": "ENV_FILE=.env infisical run --env=dev --recursive -- npx artillery run perf/load-test/artillery.yml --output perf/load-test/results/results.json",
+		"loadtest:stress": "ENV_FILE=.env infisical run --env=dev --recursive -- npx artillery run perf/load-test/artillery.stress.yml --output perf/load-test/results/results-stress.json",
+		"loadtest:report": "bun perf/load-test/summarizeLoadTest.ts",
 		"loadtest:leak": "ENV_FILE=.env infisical run --env=dev --recursive -- bun perf/load-test/runLeakTest.ts",
 		"loadtest:leak:summary": "bun perf/load-test/summarizeLeakSnapshots.ts",
 		"loadtest:setup": "ENV_FILE=.env infisical run --env=dev --recursive -- bun perf/load-test/setup.ts"

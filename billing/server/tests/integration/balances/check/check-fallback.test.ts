@@ -6,16 +6,26 @@ import { products } from "@tests/utils/fixtures/products.js";
 import { initScenario, s } from "@tests/utils/testInitUtils/initScenario.js";
 import chalk from "chalk";
 import { createHonoApp } from "@/initHono.js";
-import type { getFullSubjectNormalized } from "@/internal/customers/repos/getFullSubject/index.js";
 
 const GET_FULL_SUBJECT_MODULE =
 	"@/internal/customers/repos/getFullSubject/index.js";
 
-// Dynamic import so the real implementation stays reachable after mock.module
-// swaps the module's exports.
-const realGetFullSubjectModule: {
-	getFullSubjectNormalized: typeof getFullSubjectNormalized;
-} & Record<string, unknown> = await import(GET_FULL_SUBJECT_MODULE);
+// Capture the real implementations from the inner modules, BELOW the mocked
+// barrel: bun's mock.module patches already-imported namespaces in place, so
+// delegating to the barrel's export would recurse into the mock itself. The
+// factory must cover every barrel export (a partial factory breaks the ones
+// it omits).
+const realGetFullSubjectImpl = await import(
+	"@/internal/customers/repos/getFullSubject/getFullSubject.js"
+);
+const realQueryImpl = await import(
+	"@/internal/customers/repos/getFullSubject/getFullSubjectQuery.js"
+);
+const realRowMappingImpl = await import(
+	"@/internal/customers/repos/getFullSubject/subjectQueryRowToNormalized.js"
+);
+const realGetFullSubjectNormalized =
+	realGetFullSubjectImpl.getFullSubjectNormalized;
 
 /** Customers whose DB hydration must throw a retryable driver error. */
 const outageCustomerIds = new Set<string>();
@@ -26,9 +36,11 @@ const observedBackupReadOptIn = new Map<string, boolean | undefined>();
 // Both /check hydration paths (V2_1 partial + legacy) load the subject through
 // this module, so it is the only seam where a DB outage can be injected.
 mock.module(GET_FULL_SUBJECT_MODULE, () => ({
-	...realGetFullSubjectModule,
+	...realGetFullSubjectImpl,
+	...realQueryImpl,
+	...realRowMappingImpl,
 	getFullSubjectNormalized: async (
-		args: Parameters<typeof getFullSubjectNormalized>[0],
+		args: Parameters<typeof realGetFullSubjectNormalized>[0],
 	) => {
 		if (args.customerId && fatalCustomerIds.has(args.customerId)) {
 			observedBackupReadOptIn.set(
@@ -48,7 +60,7 @@ mock.module(GET_FULL_SUBJECT_MODULE, () => ({
 			error.code = "CONNECT_TIMEOUT";
 			throw error;
 		}
-		return realGetFullSubjectModule.getFullSubjectNormalized(args);
+		return realGetFullSubjectNormalized(args);
 	},
 }));
 
@@ -56,7 +68,11 @@ afterAll(() => {
 	outageCustomerIds.clear();
 	fatalCustomerIds.clear();
 	observedBackupReadOptIn.clear();
-	mock.module(GET_FULL_SUBJECT_MODULE, () => realGetFullSubjectModule);
+	mock.module(GET_FULL_SUBJECT_MODULE, () => ({
+		...realGetFullSubjectImpl,
+		...realQueryImpl,
+		...realRowMappingImpl,
+	}));
 });
 
 test(`${chalk.yellowBright("check-errors: a non-transient hydration failure remains an HTTP 500")}`, async () => {
@@ -69,7 +85,7 @@ test(`${chalk.yellowBright("check-errors: a non-transient hydration failure rema
 	const { customerId } = await initScenario({
 		customerId: "check-fatal-error",
 		setup: [s.customer({ testClock: false }), s.products({ list: [freeProd] })],
-		actions: [s.attach({ productId: freeProd.id })],
+		actions: [s.billing.attach({ productId: freeProd.id })],
 	});
 	const app = createHonoApp();
 
@@ -109,7 +125,7 @@ test(`${chalk.yellowBright("check-fallback: /check returns allowed=true on retry
 	const { customerId } = await initScenario({
 		customerId: "check-fallback",
 		setup: [s.customer({ testClock: false }), s.products({ list: [freeProd] })],
-		actions: [s.attach({ productId: freeProd.id })],
+		actions: [s.billing.attach({ productId: freeProd.id })],
 	});
 
 	const app = createHonoApp();
@@ -161,7 +177,7 @@ test(`${chalk.yellowBright("check-fallback-legacy: /check fallback applies respo
 	const { customerId } = await initScenario({
 		customerId: "check-fallback-legacy",
 		setup: [s.customer({ testClock: false }), s.products({ list: [freeProd] })],
-		actions: [s.attach({ productId: freeProd.id })],
+		actions: [s.billing.attach({ productId: freeProd.id })],
 	});
 
 	const app = createHonoApp();

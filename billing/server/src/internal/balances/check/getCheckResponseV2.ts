@@ -46,6 +46,12 @@ export const getCheckResponseV2 = async ({
 		});
 	}
 
+	// Plain-check branch: this is a read-only evaluation against the cached
+	// subject, NOT a reservation.  Concurrent plain checks can each pass off
+	// the same balance snapshot — the reject/cap gate at track time (against
+	// live Redis state) is what actually bounds spend.  Callers that need
+	// admission to be exclusive must request a lock; the LiteLLM bridge does
+	// so by default and refuses admits returned without a reservation id.
 	if (!evaluationApiBalance && !evaluationApiFlag) {
 		return CheckResponseV3Schema.parse({
 			allowed: false,

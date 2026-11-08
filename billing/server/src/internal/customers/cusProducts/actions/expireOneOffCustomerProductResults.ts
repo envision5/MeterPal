@@ -8,6 +8,7 @@ import type { RepoContext } from "@/db/repoContext.js";
 import { resolveRedisV2 } from "@/external/redis/resolveRedisV2.js";
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
 import { deleteCachedFullCustomer } from "@/internal/customers/cusUtils/fullCustomerCacheUtils/deleteCachedFullCustomer.js";
+import { ACTIVE_STATUSES } from "@/internal/customers/cusProducts/CusProductService.js";
 import { batchUpdateCustomerProducts } from "../repos/batchUpdateCustomerProducts.js";
 import type { OneOffCustomerProductResult } from "./oneOffCustomerProductResult.js";
 
@@ -54,6 +55,9 @@ export const expireOneOffCustomerProductResults = async ({
 
 		await batchUpdateCustomerProducts({
 			ctx: repoContext,
+			// Status-guarded: a duplicate cron instance re-running this batch
+			// after the first committed no-ops instead of re-transitioning rows.
+			inStatuses: ACTIVE_STATUSES,
 			updates: [...group.customerProductIds].map((id) => ({
 				id,
 				updates: { status: CusProductStatus.Expired },

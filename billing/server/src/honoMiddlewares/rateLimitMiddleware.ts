@@ -1,5 +1,10 @@
 import type { Context, Env, Next } from "hono";
 import type { HonoEnv } from "@/honoUtils/HonoEnv.js";
+import { isTransientRedisError } from "@/external/redis/utils/isTransientRedisError.js";
+import {
+	dependencyUnavailableError,
+	isDepFailClosed,
+} from "@/internal/misc/dependencyPolicy/dependencyPolicy.js";
 import {
 	getLimiterForType,
 	getRateLimitKey,
@@ -75,6 +80,16 @@ export const rateLimitMiddleware = async (c: Context<HonoEnv>, next: Next) => {
 		ctx.logger.error(
 			`Error checking rate limit, error: ${error}. Bypassing for now`,
 		);
+		// Strict posture: a limiter that died mid-request sheds instead of
+		// serving unthrottled. Other errors (including downstream handler
+		// errors caught here) keep the historical bypass behaviour.
+		if (isDepFailClosed() && isTransientRedisError({ error })) {
+			throw dependencyUnavailableError({
+				reason: "rate_limiter_unavailable",
+				message:
+					"Rate limiter is temporarily unavailable, please retry shortly.",
+			});
+		}
 		return await next();
 	}
 };

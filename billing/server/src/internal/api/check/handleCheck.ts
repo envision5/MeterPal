@@ -13,6 +13,10 @@ import {
 	Scopes,
 } from "@autumn/shared";
 import { createRoute } from "@/honoMiddlewares/routeHandler.js";
+import {
+	dependencyUnavailableBody,
+	isDepFailClosed,
+} from "@/internal/misc/dependencyPolicy/dependencyPolicy.js";
 import { runCheckWithRollout } from "@/internal/balances/check/index.js";
 import { parseCheckParamsForLock } from "@/internal/balances/utils/lock/parseCheckParamsForLock.js";
 import { savePinnedQuote } from "@/internal/balances/track/utils/pinnedRatesStore.js";
@@ -38,6 +42,13 @@ export const handleCheck = createRoute({
 		},
 		respond: (c) => {
 			const ctx = c.get("ctx");
+			// Strict posture: a timed-out check sheds instead of admitting
+			// without evaluation. Lock/product requests never reach here
+			// (skip above). Direct response — the fail-open respond callback
+			// runs detached after the race settled and must not throw.
+			if (isDepFailClosed()) {
+				return c.json(dependencyUnavailableBody({ ctx }), 503);
+			}
 			const body = parseCheckParamsForLock({ params: c.req.valid("json") });
 			const response = getCheckFailOpenFallback({
 				ctx,

@@ -1,3 +1,5 @@
+import cluster from "node:cluster";
+
 const MB = 1024 * 1024;
 
 /** JSC never returns allocator-retained pages, so forks only shed memory by
@@ -90,6 +92,20 @@ export const getServerForkCount = (): number => {
 	const value = Number(process.env.SERVER_FORK_COUNT);
 	if (!Number.isInteger(value) || value < 1) return 4;
 	return Math.min(6, value);
+};
+
+/** Processes serving traffic per task — the divider the per-process gates use
+ *  (getFullSubjectGate). The primary pins its resolved fork count into every
+ *  child's env at fork time (SERVER_FLEET_SIZE), so all processes divide by
+ *  the same number even when SERVER_FORK_COUNT is unset and the default
+ *  applies. Without the pin, workers/prod fall back to getServerForkCount();
+ *  single-process runs (dev, cron, workers) return 1 = no division. */
+export const getFleetProcessCount = (): number => {
+	const pinned = Number(process.env.SERVER_FLEET_SIZE);
+	if (Number.isInteger(pinned) && pinned >= 1) return pinned;
+	if (cluster.isWorker || process.env.NODE_ENV === "production")
+		return getServerForkCount();
+	return 1;
 };
 
 export const getForkRecycleConfig = () => {

@@ -64,7 +64,9 @@ scenarios:
           url: "/v1/billing.attach"
           json:
             customer_id: "{{ customerId }}"
-            product_id: "{{ productId }}"
+            # The billing.attach RPC keys the plan on plan_id; paid plans come
+            # back with a payment_url rather than attaching outright.
+            plan_id: "{{ productId }}"
 
       - post:
           url: "/v1/check"
