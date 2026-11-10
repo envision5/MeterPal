@@ -4,8 +4,10 @@ demo/bootstrap.py -- one-time seed for the local demo.
 Because a fresh MeterPal database has no organization and therefore no secret
 key (api_keys rows belong to an org), this script bootstraps one directly:
 
-  1. psql: insert org "demo" + a sandbox secret key (hashed with SHA-256,
-     the same scheme as server/src/internal/dev/apiKeys/apiKeyUtils.ts).
+  1. psql: insert org "demo" + a sandbox secret key minted fresh per run
+     (hashed with SHA-256, the same scheme as
+     server/src/internal/dev/apiKeys/apiKeyUtils.ts) and written to
+     gateway/.env as PAB_API_KEY.
   2. MeterPal API: create the "ai_tokens" AI-credit-system feature with
      model_markups pricing custom/demo-gpt at $20/M input, $80/M output.
   3. MeterPal API: create customer "demo-customer" and grant 2.00 credits.
@@ -20,6 +22,8 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
+import secrets
 import subprocess
 import sys
 import time
@@ -88,8 +92,30 @@ def register_paypal_webhook() -> None:
 
 ORG_ID, ORG_SLUG = "org_demo", "demo"
 KEY_ID = "key_demo_bridge"
-# Demo secret key.  LOCAL ONLY -- production keys come from the dashboard.
-METERPAL_SECRET_KEY = "am_sk_test_JvWnILAeT5zTxPfHTPvJKV6NNDTn8uF97Np38YRe6d"
+# Demo secret key.  Minted fresh on every bootstrap run -- NEVER committed to
+# the repo -- and written to gateway/.env (PAB_API_KEY), the single source the
+# gateway, the demo app and run_demo.py all read.  Production keys come from
+# the dashboard.
+METERPAL_SECRET_KEY = "am_sk_test_" + secrets.token_hex(21)
+
+GATEWAY_ENV = ROOT / "gateway" / ".env"
+
+
+def write_gateway_env_key() -> None:
+    """Point gateway/.env at the freshly minted key (idempotent line replace)."""
+    if not GATEWAY_ENV.exists():
+        sys.exit(f"  {GATEWAY_ENV} not found -- copy the demo .env template first")
+    lines = GATEWAY_ENV.read_text(encoding="utf-8").splitlines(keepends=True)
+    out, replaced = [], False
+    for line in lines:
+        if re.match(r"^PAB_API_KEY=", line):
+            out.append(f"PAB_API_KEY={METERPAL_SECRET_KEY}\n")
+            replaced = True
+        else:
+            out.append(line)
+    if not replaced:
+        out.append(f"PAB_API_KEY={METERPAL_SECRET_KEY}\n")
+    GATEWAY_ENV.write_text("".join(out), encoding="utf-8")
 
 FEATURE_ID = "ai_tokens"
 CUSTOMER_ID = "demo-customer"
@@ -143,14 +169,25 @@ def main() -> None:
         -- dashboard refuse /v1/sandboxes.list with a 400 ("sandboxes are managed
         -- from your main organization"). Repair it on every bootstrap.
         UPDATE organizations SET is_sandbox = false WHERE id = '{ORG_ID}';
+        -- Upsert the hash: every run mints a fresh key, so an existing row must
+        -- take the new hash (a stale one would 401 the freshly written .env).
         INSERT INTO api_keys (id, name, prefix, org_id, env, hashed_key, scopes)
         VALUES ('{KEY_ID}', 'Demo bridge key', 'am_sk_test', '{ORG_ID}', 'sandbox', '{hashed}', NULL)
-        ON CONFLICT DO NOTHING;
+        ON CONFLICT (id) DO UPDATE SET hashed_key = EXCLUDED.hashed_key;
     """)
     if r.returncode != 0:
         print(r.stdout, r.stderr, sep="\n")
         sys.exit("  psql failed -- is docker compose up?")
-    ok(f"org '{ORG_SLUG}' + sandbox secret key present (sha256 stored, key never logged)")
+    write_gateway_env_key()
+    ok(f"org '{ORG_SLUG}' + fresh secret key minted -> gateway/.env (sha256 stored, key never logged)")
+    ok("restart the gateway and the demo app so they pick up the new key")
+
+    step("1b. Clear agent proposals from previous demo runs")
+    r = psql("delete from agent_proposals;")
+    if r.returncode != 0:
+        print(r.stdout, r.stderr, sep="\n")
+        sys.exit("  psql failed clearing agent_proposals -- is docker compose up?")
+    ok("agent proposals cleared (the sales agent starts every demo with a clean inbox)")
 
     step("2. Create ai_tokens feature (AI credit system)")
     with httpx.Client(base_url=BASE_URL, headers={"Authorization": f"Bearer {METERPAL_SECRET_KEY}"}, timeout=15) as c:

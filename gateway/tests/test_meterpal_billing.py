@@ -6,8 +6,10 @@
 # bridge's HTTP calls are deterministic. They verify:
 #   - admission short-circuit raises 402 when balance is exhausted
 #   - lock_id is plumbed through metadata when PAB_USE_LOCK=true
-#   - success path settles track_tokens before committing the lock
-#   - failure path settles track_tokens before releasing the lock
+#   - success path releases the lock before settling track_tokens
+#   - failure path releases the lock before settling track_tokens
+#   - the charge is capped at the balance (never an overflow into a negative
+#     balance)
 #   - /check is never cached (each request gets its own check and hold)
 #   - billing unreachable + fail-open is refused unless require_lock=false
 #   - customer_id extraction from kwargs / data / metadata
@@ -216,12 +218,13 @@ async def test_success_commits_lock_and_calls_track(bridge):
     await bridge.async_log_success_event(kwargs, None, None, None)
 
     paths = [c[0] for c in calls]
-    # The charge is settled before the hold is released: releasing first put
-    # the whole balance back while the charge was still pending.
-    assert paths == ["/track_tokens", "/balances.finalize"]
-    assert calls[1][1]["action"] == "confirm"
+    # The hold is released BEFORE the charge: the charge is capped at the
+    # balance the customer actually holds, and measuring it against the
+    # balance minus the hold would leave the cap short by the hold.
+    assert paths == ["/balances.finalize", "/track_tokens"]
+    assert calls[0][1]["action"] == "release"
 
-    track_body = calls[0][1]
+    track_body = calls[1][1]
     assert track_body["customer_id"] == "cus_123"
     # prompt_tokens includes cached input: non-cached input = 150 - 50.
     assert track_body["input_tokens"] == 100
@@ -231,6 +234,9 @@ async def test_success_commits_lock_and_calls_track(bridge):
     assert track_body["properties"]["status"] == "success"
     assert track_body["properties"]["model_id"] == "anthropic/claude-sonnet-4-5"
     assert isinstance(track_body["timestamp"], int)  # unix ms, not ISO string
+    # Capped at the balance: a charge larger than what the customer holds
+    # spends what they have instead of driving the balance negative.
+    assert track_body["overage_behavior"] == "cap"
 
 
 @pytest.mark.asyncio
@@ -250,13 +256,14 @@ async def test_failure_releases_lock_and_records_failure(bridge):
     await bridge.async_log_failure_event(kwargs, None, None, None)
 
     paths = [c[0] for c in calls]
-    # Same charge-before-release ordering as the success path.
-    assert paths == ["/track_tokens", "/balances.finalize"]
-    assert calls[1][1]["action"] == "release"
-    track_body = calls[0][1]
+    # Same release-before-charge ordering as the success path.
+    assert paths == ["/balances.finalize", "/track_tokens"]
+    assert calls[0][1]["action"] == "release"
+    track_body = calls[1][1]
     assert track_body["customer_id"] == "cus_456"
     assert track_body["properties"]["status"] == "failure"
     assert track_body["properties"]["error_type"] == "RuntimeError"
+    assert track_body["overage_behavior"] == "cap"
 
 
 @pytest.mark.asyncio

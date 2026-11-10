@@ -1,3 +1,11 @@
+> **MeterPal note:** `gateway/` is a vendored fork of LiteLLM that MeterPal runs as a
+> hosted, multi-tenant service (usage hook: `litellm/integrations/meterpal_billing.py`;
+> MeterPal's changes to this tree are logged in `PATCHES.md`). Everything below is the
+> upstream LiteLLM contributor rulebook and does **not** apply to this repo: MeterPal has
+> no Linear/LIT tickets or `litellm_` branch conventions, and its contribution process
+> lives at the repo root (`README.md`, `AGENTS.md` if present). The values in `.env` files
+> here are local dev placeholders — never treat them as real keys.
+
 Do not write comments unless they are any of:
 - absolutely necessary to explain some very complex business logic (in which case, keep it concise and clear)
 - used as an input for tools to read and act on. For example:

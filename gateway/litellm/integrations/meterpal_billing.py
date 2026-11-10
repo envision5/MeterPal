@@ -7,10 +7,22 @@ litellm/proxy/hooks/proxy_track_cost_callback.py.
 
 Responsibilities:
   1. async_pre_call_hook     -> billing POST /check  (admission + reservation)
-  2. async_log_success_event -> billing POST /track_tokens (per-token debit)
-                                then POST /balances.finalize (release the hold)
-  3. async_log_failure_event -> billing POST /track_tokens (failure record)
-                                then POST /balances.finalize (release the hold)
+  2. async_log_success_event -> release the reservation, then billing POST
+                                /track_tokens (per-token debit, capped at the
+                                balance)
+  3. async_log_failure_event -> release the reservation, then billing POST
+                                /track_tokens (failure record)
+
+Settle order:
+  The reservation (hold) is released BEFORE the charge, not after.  The hold
+  is the estimate of what the request may cost; it is held while the provider
+  runs so two concurrent requests cannot both spend it.  The charge that
+  follows is what actually costs the customer and it is capped at the balance
+  they hold ("cap"), so a request whose real cost exceeds their credits
+  spends what they have and stops at zero instead of driving the balance
+  negative -- the next request is then refused at admission.  Releasing first
+  is what makes the cap exact: the charge is measured against the customer's
+  whole balance rather than against the balance minus the hold.
 
 Concurrency:
   The admission decision is per request and is NEVER cached.  An earlier
@@ -942,6 +954,31 @@ class MeterPalBridge(CustomLogger):
         request_id = str(
             kwargs.get("litellm_call_id") or md.get("_autumn_request_id") or ""
         )
+        if self.use_lock and lock_id:
+            # Release the hold BEFORE the charge.
+            #
+            # The hold is the estimate of what this request may cost; it is
+            # taken out of the balance while the provider runs so two
+            # concurrent requests cannot both spend it.  The charge below is
+            # what actually costs the customer, and it is capped at the
+            # balance they hold: a request whose real cost exceeds their
+            # credits spends what they have and stops at zero -- the next
+            # request is then refused at admission -- instead of driving the
+            # balance negative.
+            #
+            # Releasing first is what makes that cap exact.  The charge is
+            # measured against the customer's whole balance rather than
+            # against the balance minus the hold, so a capped charge lands
+            # exactly on zero instead of stopping short by the hold.  The
+            # window this opens -- the hold is back in the balance for the
+            # length of one request -- can let a concurrent request be
+            # admitted that would otherwise have been refused.  The cap keeps
+            # the total spend inside the customer's balance either way, so
+            # the worst case is one request billed short, never a negative
+            # balance.
+            await self._billing_finalize(
+                customer_id, lock_id, "release", org_id=md.get("_autumn_org_id")
+            )
         await self._billing_track_tokens(
             customer_id=customer_id,
             org_id=md.get("_autumn_org_id"),
@@ -955,20 +992,12 @@ class MeterPalBridge(CustomLogger):
             request_id=request_id,
             status=status,
             pinned_rates=md.get("_autumn_pinned_rates"),
-            # The hold is still held while this is charged, so the charge has
-            # to be allowed past the remaining balance and be brought back by
-            # the release below.  Capping it here would leave the customer
-            # under-charged for a request the hold already admitted.
-            overage_behavior="overflow" if lock_id else None,
+            # The charge is capped at the balance: a customer never spends
+            # credits they do not have.  Without the cap an oversized charge
+            # (a provider reporting more usage than the request could have
+            # cost) takes the balance negative.
+            overage_behavior="cap",
         )
-        if self.use_lock and lock_id:
-            # Release the hold AFTER the charge.  Releasing first put the
-            # whole balance back while the charge was still pending, and
-            # another request could take it in that window.  This way the
-            # balance only ever goes down.
-            await self._billing_finalize(
-                customer_id, lock_id, "commit", org_id=md.get("_autumn_org_id")
-            )
 
     # -------- Hook 3: failure path --------
     async def async_log_failure_event(self, kwargs, response_obj, start_time, end_time):
@@ -998,6 +1027,14 @@ class MeterPalBridge(CustomLogger):
         request_id = str(
             kwargs.get("litellm_call_id") or md.get("_autumn_request_id") or ""
         )
+        if self.use_lock and lock_id:
+            # Release the hold BEFORE the charge here too, for the same reason
+            # as in the success path: the charge is capped at the balance the
+            # customer actually holds, so a failure that burned more usage
+            # than they paid for stops at zero instead of going negative.
+            await self._billing_finalize(
+                customer_id, lock_id, "release", org_id=md.get("_autumn_org_id")
+            )
         await self._billing_track_tokens(
             customer_id=customer_id,
             org_id=md.get("_autumn_org_id"),
@@ -1012,12 +1049,11 @@ class MeterPalBridge(CustomLogger):
             status=status,
             error_type=exc.__class__.__name__ if exc else None,
             pinned_rates=md.get("_autumn_pinned_rates"),
-            overage_behavior="overflow" if lock_id else None,
+            # Capped at the balance, like the success path: a failure that
+            # produced more usage than the customer holds must not overdraw
+            # them.
+            overage_behavior="cap",
         )
-        if self.use_lock and lock_id:
-            await self._billing_finalize(
-                customer_id, lock_id, "release", org_id=md.get("_autumn_org_id")
-            )
 
 
 # Module-level singleton.  LiteLLM's custom-callback loader requires the
