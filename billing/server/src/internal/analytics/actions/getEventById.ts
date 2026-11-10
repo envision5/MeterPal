@@ -1,4 +1,7 @@
+import { db as defaultDb } from "@/db/initDrizzle.js";
 import { getClickhouseClient } from "@/external/tinybird/initClickhouse.js";
+import { isTinybirdConfigured } from "@/external/tinybird/tinybirdUtils.js";
+import { localGetEventById } from "@/internal/analytics/local/localPipes.js";
 
 type EventRow = {
 	id: string;
@@ -18,11 +21,24 @@ export const getEventById = async ({
 	orgId,
 	env,
 	eventId,
+	db,
 }: {
 	orgId: string;
 	env: string;
 	eventId: string;
+	/** Optional pool override; defaults to the general pool. */
+	db?: typeof defaultDb;
 }): Promise<EventRow> => {
+	// Without ClickHouse the event comes from the Postgres events table.
+	if (!isTinybirdConfigured()) {
+		return (await localGetEventById({
+			db: db ?? defaultDb,
+			orgId,
+			env,
+			eventId,
+		})) as EventRow;
+	}
+
 	const ch = getClickhouseClient();
 
 	const query = `

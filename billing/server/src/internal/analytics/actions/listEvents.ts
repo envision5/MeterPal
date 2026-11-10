@@ -3,7 +3,7 @@ import {
 	epochToDateTime,
 	tinybirdTimestampToEpochMs,
 } from "@autumn/shared/api/common/epochUtils";
-import { getTinybirdPipes } from "@/external/tinybird/initTinybird.js";
+import { getAnalyticsPipes } from "@/internal/analytics/local/analyticsPipes.js";
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
 import { validatePropertyPathForJSON } from "@/internal/analytics/actions/eventValidationUtils.js";
 
@@ -23,7 +23,7 @@ export const listEvents = async ({
 		filter_by?: Record<string, string>;
 	};
 }) => {
-	const pipes = getTinybirdPipes();
+	const pipes = getAnalyticsPipes(ctx);
 	const { org, env } = ctx;
 
 	// Convert epoch ms to DateTime strings (if provided)

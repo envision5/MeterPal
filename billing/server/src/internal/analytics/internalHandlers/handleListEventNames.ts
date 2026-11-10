@@ -1,6 +1,5 @@
 import { Scopes } from "@autumn/shared";
 import { z } from "zod/v4";
-import { isTinybirdConfigured } from "@/external/tinybird/tinybirdUtils.js";
 import { createRoute } from "@/honoMiddlewares/routeHandler.js";
 import { eventActions } from "../actions/eventActions.js";
 
@@ -25,12 +24,11 @@ export const handleListEventNames = createRoute({
 		const { customer_id, entity_id, limit, interval, bin_size, start, end } =
 			c.req.valid("query");
 
-		// No Tinybird means no analytics pipeline, so there are no event names to
-		// list. The dashboard queries this on every page load, and a 503 here is
-		// pure noise in a stack that doesn't run the cloud analytics backend.
-		if (!isTinybirdConfigured()) {
-			return c.json({ eventNames: [] });
-		}
+		// The analytics read path serves from Tinybird when it is configured and
+		// from Postgres otherwise, so this always has real event names to list.
+		// Returning an empty list here used to be the reason the dashboard showed
+		// no usage at all: the page selected zero event names and never issued
+		// the aggregate query.
 
 		const customRange =
 			interval === "custom" && start !== undefined && end !== undefined

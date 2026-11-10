@@ -1,5 +1,4 @@
 import { type Feature, FeatureType, Scopes } from "@autumn/shared";
-import { isTinybirdConfigured } from "@/external/tinybird/tinybirdUtils.js";
 import { createRoute } from "@/honoMiddlewares/routeHandler.js";
 import { eventActions } from "../actions/eventActions.js";
 
@@ -12,11 +11,8 @@ export const handleGetEventNames = createRoute({
 		const ctx = c.get("ctx");
 		const { features } = ctx;
 
-		// No Tinybird means no analytics pipeline, so there are no event names to
-		// report. Answering with an empty list keeps this a read, not an outage.
-		if (!isTinybirdConfigured()) {
-			return c.json({ featureIds: [], eventNames: [] });
-		}
+		// The analytics read path serves from Tinybird when it is configured and
+		// from Postgres otherwise, so there are always event names to report.
 
 		const res = await eventActions.getTopEventNames({ ctx });
 		const result = res.eventNames;

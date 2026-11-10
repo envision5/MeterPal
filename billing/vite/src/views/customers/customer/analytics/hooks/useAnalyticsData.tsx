@@ -1,4 +1,4 @@
-import { ErrCode, LATEST_VERSION } from "@autumn/shared";
+import { LATEST_VERSION } from "@autumn/shared";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { useQueryKeyFactory } from "@/hooks/common/useQueryKeyFactory";
@@ -7,6 +7,7 @@ import { fetchEventsAggregate } from "../api/fetchEventsAggregate";
 import { fetchEventsList } from "../api/fetchEventsList";
 import { fetchGroupDisplayNames } from "../api/fetchGroupDisplayNames";
 import { aggregateListToEventsData } from "../utils/aggregateListToEventsData";
+import { isAnalyticsUnavailableError } from "../utils/analyticsUnavailable";
 import { SOURCE_FEATURE_GROUP } from "../utils/displayLabels";
 import { isUtcBin } from "../utils/epochToPeriodString";
 import { getUserTimezone } from "../utils/getUserTimezone";
@@ -17,8 +18,7 @@ import { useAnalyticsFilterState } from "./useAnalyticsFilterState";
 import { useAnalyticsQueryState } from "./useAnalyticsQueryState";
 import { useSelectedEventNames } from "./useSelectedEventNames";
 
-const isAnalyticsDisabledError = (error: unknown) =>
-	(error as { code?: string } | null)?.code === ErrCode.ClickHouseDisabled;
+const isAnalyticsDisabledError = isAnalyticsUnavailableError;
 
 export const useAnalyticsData = ({
 	hasCleared = false,

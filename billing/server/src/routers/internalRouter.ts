@@ -23,6 +23,7 @@ import { savedViewsRouter } from "../internal/misc/savedViews/savedViewsRouter";
 import { invoiceTemplateRouter } from "../internal/orgs/invoiceTemplates/invoiceTemplateRouter";
 import { internalOrgRouter } from "../internal/orgs/orgRouter";
 import { internalProductRouter } from "../internal/products/internalProductRouter";
+import { studioRouter } from "../internal/studio/studioRouter.js";
 import { workbenchRouter } from "../internal/workbench/workbenchRouter";
 
 export const internalRouter = new Hono<HonoEnv>();
@@ -52,6 +53,7 @@ internalRouter.route("/trmnl", internalTrmnlRouter);
 internalRouter.route("/feedback", feedbackRouter);
 internalRouter.route("/saved_views", savedViewsRouter);
 internalRouter.route("/query", internalAnalyticsRouter);
+internalRouter.route("/studio", studioRouter);
 internalRouter.route("/workbench", workbenchRouter);
 
 // Autumn SDK handler (requires session auth)

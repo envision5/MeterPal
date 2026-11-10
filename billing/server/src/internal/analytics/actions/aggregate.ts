@@ -20,10 +20,10 @@ import { Decimal } from "decimal.js";
 import {
 	type AggregateGroupablePipeRow,
 	type AggregateSimplePipeRow,
-	getTinybirdPipes,
 } from "@/external/tinybird/initTinybird.js";
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
 import { validatePropertyPathForJSON } from "@/internal/analytics/actions/eventValidationUtils.js";
+import { getAnalyticsPipes } from "@/internal/analytics/local/analyticsPipes.js";
 import { getBillingCycleStartDate } from "../analyticsUtils.js";
 import {
 	shouldUseMonthlyRollup,
@@ -417,7 +417,7 @@ export const aggregate = async ({
 	ctx: AutumnContext;
 	params: TimeseriesEventsParams;
 }): Promise<{ formatted: ClickHouseResult; truncated: boolean }> => {
-	const pipes = getTinybirdPipes();
+	const pipes = getAnalyticsPipes(ctx);
 	const { org, env } = ctx;
 
 	const intervalType = params.interval ?? "24h";
@@ -524,7 +524,10 @@ export const aggregate = async ({
 		const readsGatedRollup =
 			groupColumn === "property" && Object.keys(filterParams).length === 0;
 
-		if (readsGatedRollup) {
+		// The completeness check compares a ClickHouse rollup against the raw
+		// event totals. Postgres reads the raw events directly, so there is no
+		// rollup and no gap to detect.
+		if (readsGatedRollup && pipes.backend === "tinybird") {
 			let rollupIsIncomplete: boolean | null = null;
 			const usePropertyCoverage = shouldUsePropertyCoverageCheck({
 				groupColumn,

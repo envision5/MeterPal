@@ -10,8 +10,10 @@ import { UTCDate } from "@date-fns/utc";
 import { format, startOfDay, startOfHour, sub } from "date-fns";
 import { Decimal } from "decimal.js";
 import { getClickhouseClient } from "@/external/tinybird/initClickhouse.js";
+import { isTinybirdConfigured } from "@/external/tinybird/tinybirdUtils.js";
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
 import { validatePropertyPathForJSON } from "@/internal/analytics/actions/eventValidationUtils.js";
+import { localGetCountAndSum } from "@/internal/analytics/local/localPipes.js";
 import { getBillingCycleStartDate } from "../analyticsUtils.js";
 import {
 	buildCountAndSumQuery,
@@ -100,7 +102,6 @@ export const getCountAndSum = async ({
 	// query's window; resolving it here independently drifts by up to one bin.
 	dateRange?: DateRangeResult;
 }) => {
-	const ch = getClickhouseClient();
 	const { org, env } = ctx;
 
 	const { startDate, endDate } =
@@ -120,6 +121,31 @@ export const getCountAndSum = async ({
 	}
 
 	const hasFilters = filterBySql !== "";
+
+	// Without ClickHouse the same totals come from the Postgres events table.
+	// Same arithmetic: count(*) for the count, sum(coalesce(value, 1)) for the sum.
+	if (!isTinybirdConfigured()) {
+		const summary = await localGetCountAndSum({
+			db: ctx.db,
+			orgId: org.id,
+			env,
+			eventNames: params.event_names,
+			startDate,
+			endDate,
+			customerId: params.aggregateAll ? undefined : params.customer_id,
+			entityId: params.entity_id,
+			filterBy: params.filter_by,
+		});
+
+		ctx.logger.debug("Count and sum result (postgres)", {
+			eventCount: Object.keys(summary).length,
+			events: Object.keys(summary),
+		});
+
+		return summary;
+	}
+
+	const ch = getClickhouseClient();
 
 	const source = selectCountAndSumSource({
 		containsCompleteUtcDay: hasCompleteUtcDay({ startDate, endDate }),

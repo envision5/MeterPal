@@ -10,8 +10,8 @@ import {
 	tinybirdTimestampToEpochMicros,
 	tinybirdTimestampToEpochMs,
 } from "@autumn/shared/api/common/epochUtils";
-import { getTinybirdPipes } from "@/external/tinybird/initTinybird.js";
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
+import { getAnalyticsPipes } from "@/internal/analytics/local/analyticsPipes.js";
 import { validatePropertyPathForJSON } from "@/internal/analytics/actions/eventValidationUtils.js";
 
 export const listByCursor = async ({
@@ -29,7 +29,7 @@ export const listByCursor = async ({
 		filter_by?: Record<string, string>;
 	};
 }): Promise<CursorPaginatedResponse<ApiEventsListItem>> => {
-	const pipes = getTinybirdPipes();
+	const pipes = getAnalyticsPipes(ctx);
 	const { org, env } = ctx;
 
 	const cursor = StandardCursor.decode(params.start_cursor);

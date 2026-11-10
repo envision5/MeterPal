@@ -8,9 +8,10 @@ import {
 	Layers,
 	Package,
 	PanelLeft,
+	Rocket,
+	Sparkles,
 	Users,
 	Webhook,
-	Rocket,
 } from "lucide-react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useLocalStorage } from "@/hooks/common/useLocalStorage";
@@ -19,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { useEnv } from "@/utils/envUtils";
 import { useSetupComplete } from "@/views/setup/hooks/useSetupState";
 import { OrgDropdown } from "./components/OrgDropdown";
+import { SidebarBrand } from "./components/SidebarBrand";
 import { EnvDropdown } from "./EnvDropdown";
 import { NavButton } from "./NavButton";
 import { NavSection } from "./NavSection";
@@ -86,35 +88,40 @@ export const MainSidebar = ({
 				)}
 			>
 				<div className="relative flex flex-col gap-3.5">
-					{!isMobileSheet && (
-						<Button
-							variant="secondary"
-							size="sm"
-							onClick={() => {
-								setExpanded((prev) => !prev);
-							}}
-							className={cn(
-								"absolute top-2 right-1.5 z-10 size-4 border-0 border-none p-0 text-[#8A8A8A] shadow-none !bg-transparent hover:text-foreground dark:text-[#6B6B6B] dark:hover:text-[#A1A1A1]",
-								expanded
-									? "opacity-100 transition-opacity duration-100"
-									: "opacity-0 transition-opacity duration-100",
-							)}
-						>
-							<PanelLeft className="size-4" strokeWidth={ICON_STROKE} />
-						</Button>
-					)}
-					<OrgDropdown />
+					{/* Branding sits tighter to the org switcher than to the rest of
+					    the nav, so the two read as one header block. */}
+					<div className="flex flex-col gap-2">
+						<SidebarBrand
+							expanded={expanded}
+							onExpand={() => setExpanded(true)}
+							trailing={
+								!isMobileSheet && expanded ? (
+									<Button
+										variant="secondary"
+										size="sm"
+										onClick={() => {
+											setExpanded((prev) => !prev);
+										}}
+										className="size-4 shrink-0 border-0 border-none p-0 text-[#8A8A8A] shadow-none !bg-transparent hover:text-foreground dark:text-[#6B6B6B] dark:hover:text-[#A1A1A1]"
+									>
+										<PanelLeft className="size-4" strokeWidth={ICON_STROKE} />
+									</Button>
+								) : null
+							}
+						/>
+						<OrgDropdown />
+					</div>
 					<EnvDropdown env={env} />
 					<nav className="flex flex-col gap-[18px]">
 						<SidebarSearchButton />
-							{!setupComplete && (
-								<NavButton
-									value="setup"
-									icon={<Rocket strokeWidth={ICON_STROKE} />}
-									title="Setup"
-									env={env}
-								/>
-							)}
+						{!setupComplete && (
+							<NavButton
+								value="setup"
+								icon={<Rocket strokeWidth={ICON_STROKE} />}
+								title="Setup"
+								env={env}
+							/>
+						)}
 						<NavSection title="Catalog">
 							<NavButton
 								value="products"
@@ -158,6 +165,12 @@ export const MainSidebar = ({
 								value="analytics"
 								icon={<ChartColumn strokeWidth={ICON_STROKE} />}
 								title="Usage"
+								env={env}
+							/>
+							<NavButton
+								value="studio"
+								icon={<Sparkles strokeWidth={ICON_STROKE} />}
+								title="Usage Studio"
 								env={env}
 							/>
 						</NavSection>

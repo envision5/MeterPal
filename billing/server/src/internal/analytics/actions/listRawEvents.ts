@@ -6,11 +6,11 @@ import type {
 } from "@autumn/shared";
 import { UTCDate } from "@date-fns/utc";
 import { sub } from "date-fns";
-import {
-	getTinybirdPipes,
-	type ListEventsPaginatedPipeRow,
+import type {
+	ListEventsPaginatedPipeRow,
 } from "@/external/tinybird/initTinybird.js";
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
+import { getAnalyticsPipes } from "@/internal/analytics/local/analyticsPipes.js";
 import {
 	getBillingCycleStartDate,
 	getStandardIntervalWindow,
@@ -79,7 +79,7 @@ export const listRawEvents = async ({
 	ctx: AutumnContext;
 	params: ListRawEventsParams;
 }): Promise<ClickHouseResult<RawEventFromClickHouse>> => {
-	const pipes = getTinybirdPipes();
+	const pipes = getAnalyticsPipes(ctx);
 	const { org, env, db } = ctx;
 
 	const intervalType = params.interval ?? "day";

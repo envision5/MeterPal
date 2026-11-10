@@ -11,14 +11,17 @@ export const RESERVED_SANDBOX_SLUGS = new Set([
 	"migrations",
 	"dev",
 	"analytics",
+	"studio",
 	"logs",
 	"settings",
 	"admin",
 	"chat",
 	"quickstart",
 	"onboarding",
+	"setup",
 	"impersonate-redirect",
 	"trmnl",
+	"approvals",
 ]);
 
 // A sandbox slug can stand in for an env name, so it must never read as one.

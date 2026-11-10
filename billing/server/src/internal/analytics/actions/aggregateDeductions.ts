@@ -17,9 +17,9 @@ import {
 	notNullish,
 } from "@autumn/shared";
 import type { AggregateDeductionsPipeRow } from "@/external/tinybird/initTinybird.js";
-import { getTinybirdPipes } from "@/external/tinybird/initTinybird.js";
 import { assertDeductionGroupingUnambiguous } from "@/external/tinybird/pipes/aggregateDeductionsPipe.js";
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
+import { getAnalyticsPipes } from "@/internal/analytics/local/analyticsPipes.js";
 import { CusEntService } from "@/internal/customers/cusProducts/cusEnts/CusEntitlementService.js";
 import { periodToEpoch } from "@/internal/events/eventUtils.js";
 import {
@@ -228,7 +228,7 @@ export const aggregateDeductions = async ({
 		property_key: propertyKey,
 	});
 
-	const { data: rows } = await getTinybirdPipes().aggregateDeductions({
+	const { data: rows } = await getAnalyticsPipes(ctx).aggregateDeductions({
 		org_id: ctx.org.id,
 		env: ctx.env,
 		customer_id: params.customerId,

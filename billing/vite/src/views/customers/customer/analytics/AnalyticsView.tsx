@@ -1,4 +1,3 @@
-import { ErrCode } from "@autumn/shared";
 import { PageContainer } from "@autumn/ui";
 import { ChartBarIcon } from "@phosphor-icons/react";
 import { AnimatePresence, motion } from "motion/react";
@@ -25,6 +24,7 @@ import { useAnalyticsQueryState } from "./hooks/useAnalyticsQueryState";
 import { type ShownChart, useLastShownChart } from "./hooks/useLastShownChart";
 import { useResetQuery } from "./hooks/useResetQuery";
 import { RevenueMetricsSection } from "./revenue/RevenueMetricsSection";
+import { isAnalyticsUnavailableResponse } from "./utils/analyticsUnavailable";
 import {
 	DEFAULT_PLOT_INSETS,
 	getCachedPlotInsets,
@@ -288,17 +288,7 @@ export const AnalyticsView = () => {
 	}, [chartConfig]);
 
 	useEffect(() => {
-		if (
-			(
-				error as {
-					response?: {
-						data?: {
-							code?: string;
-						};
-					};
-				}
-			)?.response?.data?.code === ErrCode.TinybirdDisabled
-		) {
+		if (isAnalyticsUnavailableResponse(error)) {
 			setClickHouseDisabled(true);
 		}
 	}, [error]);
@@ -346,8 +336,11 @@ export const AnalyticsView = () => {
 		return (
 			<div className="flex flex-col items-center justify-center h-full">
 				<h3 className="text-sm text-muted-foreground font-bold">
-					Tinybird is disabled
+					Analytics are unavailable on this server
 				</h3>
+				<p className="text-xs text-muted-foreground mt-1">
+					No analytics backend is configured for this environment.
+				</p>
 			</div>
 		);
 	}

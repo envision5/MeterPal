@@ -1,5 +1,5 @@
-import { getTinybirdPipes } from "@/external/tinybird/initTinybird.js";
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
+import { getAnalyticsPipes } from "@/internal/analytics/local/analyticsPipes.js";
 import { getEventRankingWindow } from "../analyticsUtils.js";
 
 export type EventNameWithCount = {
@@ -28,7 +28,7 @@ export const listEventNames = async ({
 	customRange?: { start: number; end: number };
 }): Promise<EventNameWithCount[]> => {
 	const { org, env } = ctx;
-	const pipes = getTinybirdPipes();
+	const pipes = getAnalyticsPipes(ctx);
 	const window = getEventRankingWindow({ interval, binSize, customRange });
 
 	const result = await pipes.listEventNames({

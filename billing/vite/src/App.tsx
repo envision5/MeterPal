@@ -72,6 +72,11 @@ const AnalyticsView = React.lazy(() =>
 	),
 );
 const ApprovalsView = React.lazy(() => import("./views/approvals/ApprovalsView"));
+const StudioView = React.lazy(() =>
+	import("./views/studio/StudioView").then(({ StudioView }) => ({
+		default: StudioView,
+	})),
+);
 const LogsView = React.lazy(() =>
 	import("./views/event-logs/LogsView").then(({ LogsView }) => ({
 		default: LogsView,
@@ -214,6 +219,7 @@ export default function App() {
 							)}
 							{envRoutes("dev", <DevScreen />)}
 							{envRoutes("analytics", <AnalyticsView />)}
+							{envRoutes("studio", <StudioView />)}
 							{envRoutes("approvals", <ApprovalsView />)}
 							{envRoutes("logs", <LogsView />)}
 							{envRoutes("onboarding", <OnboardingView />)}

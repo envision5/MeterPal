@@ -40,6 +40,8 @@ import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse
 
+from mock_agent import final_reply, plan_next_turn
+
 app = FastAPI(title="Mock LLM")
 
 _MODELS = ["demo-gpt", "gpt-4o-mini-mock"]
@@ -90,6 +92,25 @@ def _parse_usage(messages: list[dict]) -> tuple[dict[str, int], str]:
     return usage, cleaned
 
 
+_TOOLS_DUMP = "C:/Users/craig/MeterPal/demo/logs/mock_tools.jsonl"
+
+
+def _dump_tools(body: dict) -> None:
+    """Append the tool schemas this request offered, for inspection."""
+    tools = body.get("tools")
+    if not tools:
+        return
+    try:
+        import json
+        import os
+
+        os.makedirs(os.path.dirname(_TOOLS_DUMP), exist_ok=True)
+        with open(_TOOLS_DUMP, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(tools) + "\n")
+    except Exception as exc:  # pragma: no cover - diagnostics only
+        print(f"[mock-llm] tool dump failed: {exc}")
+
+
 @app.get("/healthz")
 def healthz() -> dict[str, str]:
     return {"status": "ok"}
@@ -109,18 +130,13 @@ async def chat_completions(request: Request) -> Any:
     model = body.get("model") or "demo-gpt"
     usage, cleaned = _parse_usage(body.get("messages") or [])
 
-    prompt_total = usage["in"] + usage["cache_read"] + usage["cache_write"]
-    completion_total = usage["out"] + usage["reasoning"]
-
-    reply = (
-        f"[mock {model}] Acknowledged: {cleaned[:120] or '(empty prompt)'} "
-        f"-- billed {usage['in']:,} input"
-        + (f" (+{usage['cache_read']:,} cached)" if usage["cache_read"] else "")
-        + f" / {usage['out']:,} output tokens."
-    )
+    _dump_tools(body)
 
     completion_id = f"chatcmpl-mock-{int(time.time() * 1000)}"
     created = int(time.time())
+
+    prompt_total = usage["in"] + usage["cache_read"] + usage["cache_write"]
+    completion_total = usage["out"] + usage["reasoning"]
 
     usage_block = {
         # OpenAI semantics: prompt_tokens includes cached input.
@@ -133,6 +149,69 @@ async def chat_completions(request: Request) -> Any:
         "cache_creation_input_tokens": usage["cache_write"],
         "completion_tokens_details": {"reasoning_tokens": usage["reasoning"]},
     }
+
+    # A request that offers tools is an agent turn: play the agent.
+    tool_call = plan_next_turn(body)
+    if tool_call is not None:
+        print(
+            f"[mock-llm] tool call -> {tool_call['name']} "
+            f"{tool_call['arguments'][:300]}",
+            flush=True,
+        )
+        return {
+            "id": completion_id,
+            "object": "chat.completion",
+            "created": created,
+            "model": model,
+            "choices": [
+                {
+                    "index": 0,
+                    "message": {
+                        "role": "assistant",
+                        "content": None,
+                        "tool_calls": [
+                            {
+                                "id": f"call_{int(time.time() * 1000)}",
+                                "type": "function",
+                                "function": {
+                                    "name": tool_call["name"],
+                                    "arguments": tool_call["arguments"],
+                                },
+                            }
+                        ],
+                    },
+                    "finish_reason": "tool_calls",
+                }
+            ],
+            "usage": usage_block,
+        }
+
+    if body.get("tools"):
+        # The agent has nothing left to call: close with a report of what the
+        # delegation built, not an echo of the prompt.
+        reply = final_reply(body)
+        print(f"[mock-llm] final reply -> {reply}", flush=True)
+        return {
+            "id": completion_id,
+            "object": "chat.completion",
+            "created": created,
+            "model": model,
+            "choices": [
+                {
+                    "index": 0,
+                    "message": {"role": "assistant", "content": reply},
+                    "finish_reason": "stop",
+                }
+            ],
+            "usage": usage_block,
+        }
+
+    reply = (
+        f"[mock {model}] Acknowledged: {cleaned[:120] or '(empty prompt)'} "
+        f"-- billed {usage['in']:,} input"
+        + (f" (+{usage['cache_read']:,} cached)" if usage["cache_read"] else "")
+        + f" / {usage['out']:,} output tokens."
+    )
 
     if body.get("stream"):
         return StreamingResponse(
