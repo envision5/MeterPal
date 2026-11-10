@@ -1,5 +1,9 @@
 # Customer-Facing UI — Design for the LiteLLM + MeterPal Billing Layer
 
+> **Archived 2026-11-08.** This design shipped as the React components in
+> [`sdk/typescript/src/components/`](../../sdk/typescript/src/components/) — the living
+> documentation is [`sdk/typescript/README.md`](../../sdk/typescript/README.md).
+
 This is the third and final piece of the architecture. With `plan.md` (the wallet/billing backend) and `bridge.md` (the inference gateway integration) in place, the missing layer is the **end-customer account UI** — the widget inside your apps that shows "you have 1,247 credits", the modal for topping up, the usage history, the upgrade button.
 
 MeterPal does not ship this UI. LiteLLM ships an *operator* dashboard (`gateway/litellm/ui/litellm-dashboard/`) — Next.js 16 + shadcn + TanStack Query — but it is for *you* (the SaaS owner), not for your end users. The end-customer UI is yours to build, and the good news is that MeterPal's React SDK (`autumn-js`) ships the data hooks so you only have to write the components.

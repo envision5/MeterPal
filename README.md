@@ -43,7 +43,7 @@ that can be projected forward. MeterPal is that layer.
 
 ---
 
-## Try it in 60 seconds
+## Try it: ~5 minutes from clone to a metered AI call
 
 You do not need a PayPal account, a provider key, or any setup to see the
 paywall work. The bundled demo runs the whole loop against a mock LLM.
@@ -52,23 +52,67 @@ paywall work. The bundled demo runs the whole loop against a mock LLM.
 metered gateway, dashboard — cloned here for evaluation. The merchant journey
 in production is shorter: sign up, install the SDK, swap one import. Merchants
 never run the gateway (`docs/architecture.md` §1); running it here is how you
-see inside it:
+see inside it.
+
+Prerequisites: Docker, [Bun](https://bun.sh), Python 3.11+, and
+`pip install httpx fastapi uvicorn`. Commands are Git Bash / macOS / Linux
+syntax; verified end-to-end on Windows (Git Bash) — other shells need their
+usual `export`/`source` equivalents and should otherwise work as-is.
 
 ```bash
 git clone <this repo> && cd meterpal
-docker compose up -d                      # 2× Postgres + 2× Redis
-cd billing/server && bun install && bun run dev   # :8080
-# in another terminal:
-python demo/mock_llm.py                   # :9999 — stands in for OpenAI
-cd gateway && set -a && source .env && set +a && litellm --config config.yaml --port 4000
-# and in a third:
-pip install -e sdk/python && python demo/bootstrap.py && python demo/run_demo.py
+
+# 1. infrastructure (2× Postgres + 2× Redis)
+docker compose up -d
+
+# 2. billing server config + schema
+cp billing/server/.env.example billing/server/.env
+cp gateway/.env.example gateway/.env
+cd billing
+export AUTUMN_DB_DIRECT=1
+export DATABASE_URL="postgresql://autumn:autumn_dev_only@localhost:5433/autumn"
+bun scripts/db/index.ts migrate --bootstrap     # no Infisical needed
+unset AUTUMN_DB_DIRECT DATABASE_URL
+cd ..
+
+# 3. install + run the billing server (:8080)   [bun installs the workspace from billing/]
+cd billing && bun install && cd server && bun src/index.ts &
+cd ../..
+
+# 4. mock LLM (:9999) + gateway (:4000) — separate terminals
+python demo/mock_llm.py &
+cd gateway && set -a && source .env && set +a && pip install -e . && litellm --config config.yaml --port 4000 &
+cd ../..
+
+# 5. seed + walkthrough
+python demo/bootstrap.py
+python demo/run_demo.py
+
+# 6. the browser demo app (optional, same stack): metered chat with the
+#    402 paywall inline — http://localhost:5173
+cd demo-app && bun install && bun run dev && cd ../..
 ```
 
-`run_demo.py` walks the story: the balance drains per call, a call is **refused
-with 402 once the wallet dips below headroom**, a top-up re-admits the customer,
-and every call lands in the events ledger with token pools, base cost, markup
-and final credits. Full walkthrough: [`demo/README.md`](demo/README.md).
+Expected: bootstrap seeds the stack (12 ✓); `run_demo.py` meters calls 1–8 at
+exactly $0.36 each, **refuses call 9 with HTTP 402 before the provider is
+touched**, a top-up re-admits the customer, and every call lands in the events
+ledger with token pools, base cost, markup and final credits. Full walkthrough:
+[`demo/README.md`](demo/README.md).
+
+The demo app (step 6) shows the same loop in the browser — metered chat, the
+paywall firing on 402 — against the mock stack. Buying credits through it
+creates a real PayPal order, so that beat follows
+[With PayPal sandbox keys](#with-paypal-sandbox-keys).
+
+> **Judges: what to look at** — four files carry the work:
+> [`gateway/litellm/integrations/meterpal_billing.py`](gateway/litellm/integrations/meterpal_billing.py)
+> (the metering hook: admission, reservation, settle, hold release),
+> [`billing/server/src/external/paypal/webhookSecurity.ts`](billing/server/src/external/paypal/webhookSecurity.ts)
+> (signature-verified, idempotent webhooks),
+> [`billing/server/src/internal/balances/track/utils/pinnedRatesStore.ts`](billing/server/src/internal/balances/track/utils/pinnedRatesStore.ts)
+> (server-owned price pinning), and
+> [`demo/run_demo.py`](demo/run_demo.py) (the scripted 402 → top-up → resume
+> story).
 
 With real money, follow [With PayPal sandbox keys](#with-paypal-sandbox-keys).
 
@@ -180,6 +224,7 @@ in the order of the architecture plan in [`docs/architecture.md`](docs/architect
 | **P2 — The merchant's price sheet** | `served_models` is the per-org price sheet: what a merchant charges is the merchant's decision, so a provider price change cannot move it. `/check` pins the unit rates and the settle uses them verbatim. Verified: a call at 20/80 cost 0.36; after setting 60/100 in the dashboard the same call cost 1.76. |
 | **P3 — The inference proxy and the SDK** | `POST /v1/chat/completions` returns the OpenAI shape verbatim plus a `meterpal` block with what the call cost. `@meterpal/sdk` (TypeScript) and `meterpal` (Python) ship an OpenAI-shaped client, typed errors, and the `init` CLI. |
 | **P4 — Gateway hardening** | The price sheet is the gateway's allow-list; key aliases are re-minted instead of failing forever; the subscription switch completes the whole PayPal loop against the sandbox. |
+| **Usage Studio (AG Grid AG Studio)** | The merchant's usage dashboard, rebuilt as an embedded AG Grid AG Studio surface (`ag-studio-react@3.1.0` on `ag-grid-react/enterprise/stack`). Its assistant is AG Studio's own multi-agent framework, wired to MeterPal's metered endpoint: ask it for a chart and it reads the page, delegates to the page and widget agents, places the widget and maps it to the usage table — and every one of those turns is billed to the customer's wallet, with the cost of the last turn shown on screen. The read path falls back to Postgres when Tinybird is not configured, so the whole surface runs locally with no cloud dependency. |
 | **PayPal subscription switch** | Real PayPal subscription on the merchant's plan → buyer approves → browser returns → plan attached with its allowance. PayPal is the authority for subscription state; the DB flag is no longer trusted. Repeat clicks reuse the pending approval instead of minting an orphan subscription. |
 | **Docs, demo and packaging** | The mock-LLM demo and bootstrap, the demo app, the agent demos, and this documentation set. |
 
@@ -208,8 +253,8 @@ The full record, with file-level detail, is in [`CHANGELOG.md`](CHANGELOG.md).
 | `sdk/python/` | `meterpal` — Python client + LiteLLM hook re-export |
 | `agent/` | MCP server + merchant/buyer demo agents |
 | `demo-app/` | The demo chat app whose AI usage is billed live |
-| `demo/` | Mock LLM provider, bootstrap seeding, scripted billing-loop walkthrough |
-| `docs/` | Design research and the fork lineage; `docs/architecture.md` is the product design, `docs/DEPLOY.md` is the run-the-stack-yourself guide (self-hosting/evaluation — in production MeterPal is hosted; merchants install the SDK) |
+| `demo/` | Mock LLM provider (which also plays the AG Studio agent offline), bootstrap seeding, scripted billing-loop walkthrough |
+| `docs/` | Design research and the fork lineage; `docs/architecture.md` is the product design, `docs/DEPLOY.md` is the run-the-stack-yourself guide, `docs/scaling-and-concurrency.md` is the concurrency-correctness reference (self-hosting/evaluation — in production MeterPal is hosted; merchants install the SDK) |
 
 ---
 

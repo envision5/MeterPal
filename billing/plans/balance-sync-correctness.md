@@ -1,5 +1,9 @@
 # Pooled balance sync correctness
 
+> **OPEN — live correctness gap.** Kept out of `billing/archive/plans/` on purpose:
+> this is the one plan describing work that is **not** done. Convert to a tracked
+> issue when this repo gets an issue tracker.
+
 ## Status
 
 Deferred. This functionality must return before pooled balances are production-ready.

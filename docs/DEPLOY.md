@@ -203,7 +203,7 @@ the browser.
 The components build on `autumn-js` -- the upstream client library MeterPal
 inherits from its fork -- so the provider component is still `<AutumnProvider>`
 and the backend adapter is still `autumn-js/backend` (express / hono / next /
-fetch). See `docs/customer-ui.md`.
+fetch). See `docs/archive/customer-ui.md`.
 
 Mount a customer-portal page at `/account/billing` in each app, and ship the
 `meterpal` CLI with it:

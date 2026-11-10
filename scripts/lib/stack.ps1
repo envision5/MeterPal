@@ -42,13 +42,25 @@ function Test-Port($port) {
 # is really up looks free and the replacement collides with it ("Is port
 # 8080 in use?").  netstat is the fallback.
 function Get-PortOwner($port) {
-	$conn = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue |
+	# A bound listener can come back with an EMPTY State (netstat then omits
+	# the row entirely).  Filtering on -State Listen loses it, so restart.ps1
+	# thinks the port is free, leaves the old process running, and the new
+	# worker dies with "Is port 8080 in use?" -- while the OLD code keeps
+	# serving.  Accept both Listen and the blank-state bound socket.
+	$conn = Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue |
+		Where-Object {
+			$_.State -eq 'Listen' -or [string]::IsNullOrEmpty([string]$_.State)
+		} |
 		Select-Object -First 1
 	if ($conn) { return $conn.OwningProcess }
 
+	# Build the pattern first: concatenating inside `-match` lets operator
+	# precedence turn the expression into a boolean + string, so the fallback
+	# silently never matches.
+	$pattern = '^\s*TCP\s+\S+:' + [string]$port + '\s+\S+\s+LISTENING\s+(\d+)\s*$'
 	$rows = & netstat -ano -p tcp 2>$null
 	foreach ($row in $rows) {
-		if ($row -match '^\s*TCP\s+\S+:' + $port + '\s+\S+\s+LISTENING\s+(\d+)') {
+		if ($row -match $pattern) {
 			return [int]$matches[1]
 		}
 	}

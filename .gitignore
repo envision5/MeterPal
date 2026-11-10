@@ -45,8 +45,27 @@ MeterPal*.zip
 
 # Research working material -- competitor repos, harvested READMEs and source
 # trees.  Local scratch only: it is other people's code and must never ship
-# in the submission repository.
-research/
+# in the submission repository.  Anchored to the repo root so the brief the
+# docs cite (docs/research/) is unaffected.
+/research/
+
+# GUI test-run screenshots (untracked capture artifacts)
+gui-test-screenshots/
+
+# Browser-automation session cache
+.playwright-cli/
+
+# Accessibility-tree dump captured while debugging the demo UI
+home.yaml
+
+# One-off repair script kept while migrating the demo app
+demo-app/.tmp-repair.py
+
+# Video footage captured for the submission video (lives in YouTube, not git)
+demo-video-footage/
+
+# Ad-hoc UI screenshots taken while building the offer flow
+ui-*.png
 
 # Windows shell redirect artifact ("... > nul" in a POSIX-style shell)
 demo-app/nul

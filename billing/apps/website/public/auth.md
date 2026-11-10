@@ -1,17 +1,17 @@
 # MeterPal auth.md
 
-You are an agent. MeterPal supports **agentic registration** in the user-claimed shape: provision an org with no human signed in, use it immediately, and let a human claim it later. This file is `https://useautumn.com/auth.md`.
+You are an agent. MeterPal supports **agentic registration** in the user-claimed shape: provision an org with no human signed in, use it immediately, and let a human claim it later. This file is `https://meterpal.com/auth.md`.
 
 MeterPal does not support ID-JAG identity assertions, verified-email registration, or an `/oauth2/token` exchange today. The credential you get is a sandbox secret key, used as a bearer token directly.
 
-If a human is present and can open a browser, do not use this flow. Run `atmn init --login` instead, or read `https://useautumn.com/SKILL.md` — that skill owns the full setup (connect, pricing, push, integrate) and will ask the user which way to connect. This file covers only the unattended path underneath.
+If a human is present and can open a browser, do not use this flow. Run `atmn init --login` instead, or read `https://meterpal.com/SKILL.md` — that skill owns the full setup (connect, pricing, push, integrate) and will ask the user which way to connect. This file covers only the unattended path underneath.
 
-Base URL is `https://api.useautumn.com`.
+Base URL is `https://api.meterpal.com`.
 
 ## Step 1 — Provision
 
 ```http
-POST https://api.useautumn.com/agent.provision
+POST https://api.meterpal.com/agent.provision
 Content-Type: application/json
 
 {"name":"<project name>","slug":"<project-slug>"}
@@ -42,13 +42,13 @@ Provisioning is rate limited (5/hour per client, 100/hour globally). If it fails
 ## Step 2 — Use the credential
 
 ```http
-POST https://api.useautumn.com/v1/…
+POST https://api.meterpal.com/v1/…
 Authorization: Bearer <api_key>
 ```
 
 Everything a signed-up sandbox org can do works now: push a catalog, create customers, attach plans, track usage.
 
-From here, read `https://useautumn.com/SKILL.md` and follow it from Phase 3. It turns the user's pricing into `autumn.config.ts`, pushes it, and wires the first calls into their app. The `atmn` CLI and the skills it installs read `AUTUMN_SECRET_KEY` and need nothing else — you're already past its connect step. Full API reference: `https://docs.useautumn.com`.
+From here, read `https://meterpal.com/SKILL.md` and follow it from Phase 3. It turns the user's pricing into `autumn.config.ts`, pushes it, and wires the first calls into their app. The `atmn` CLI and the skills it installs read `AUTUMN_SECRET_KEY` and need nothing else — you're already past its connect step. Full API reference: `https://docs.meterpal.com`.
 
 Do not provision a second org for the same project. Do not rotate the key — it survives the claim unchanged.
 
@@ -57,7 +57,7 @@ Do not provision a second org for the same project. Do not rotate the key — it
 Do not mint a claim link until the human is ready to keep the org. Ask which email should receive it.
 
 ```http
-POST https://api.useautumn.com/agent.start_claim
+POST https://api.meterpal.com/agent.start_claim
 Authorization: Bearer <api_key>
 Content-Type: application/json
 
@@ -69,7 +69,7 @@ Or, without the key, send `{"claim_token":"<claim_token>","email":"…"}` and no
 Response:
 
 ```json
-{"claim_url":"https://app.useautumn.com/claim?token=<opaque>","expires_at":"<iso8601>"}
+{"claim_url":"https://app.meterpal.com/claim?token=<opaque>","expires_at":"<iso8601>"}
 ```
 
 MeterPal emails the same `claim_url` to the address you sent. Give the URL to the user in chat as well, and tell them which address it went to.
@@ -83,7 +83,7 @@ Notes:
 - There is no polling endpoint. The user tells you they've claimed; the key keeps working either way.
 - A claimed org, or one past `claim_expires_at`, fails deliberately with a vague error. Don't probe — tell the user it didn't go through and what you'll try next.
 
-After the claim, the human owns the org: same key, same catalog, same customers, plus the dashboard at `https://app.useautumn.com`. You are done.
+After the claim, the human owns the org: same key, same catalog, same customers, plus the dashboard at `https://app.meterpal.com`. You are done.
 
 ## Errors
 

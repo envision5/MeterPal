@@ -22,9 +22,6 @@ supabase.sh
 tests/
 !server/tests
 !packages/ax-evals/tests
-!packages/mcp/tests
-!packages/gateway/tests
-!apps/leaf/tests
 !packages/render/tests
 !packages/ducklake/tests
 !vite/tests
@@ -167,20 +164,6 @@ notes.txt
 server/experiments/results/*
 !server/experiments/results/.gitkeep
 server/experiments/out/getFullSubject-*
-
-# Leaf contract fixtures are synced from private S3.
-apps/leaf/contracts/
-
-# Leaf harness (Claude Code) per-thread workspaces and config dirs.
-apps/leaf/.harness/
-
-# Leaf Eve generated runtime/build artifacts.
-apps/leaf/.eve/
-apps/leaf/.output/
-apps/leaf/.workflow-data/
-
-# Built sandbox runner bundle (produced by sandbox/buildRunner.ts).
-apps/leaf/src/harness/claudeCode/runner/runner.mjs
 
 # ax-evals per-run output (transcripts, generated configs). Can contain real
 # org keys from throwaway provisioning — never commit.

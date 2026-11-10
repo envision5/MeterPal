@@ -10,6 +10,87 @@ checkout, PayerID linking, Invoicing), the MeterPal SDKs (TypeScript + Python),
 the agent layer (MCP server + demos), the end-user demo app, demo retooling,
 documentation, and packaging.
 
+**Checkout order-reuse fix (2026-11-08)**
+- The one-live-order reuse branch matched the customer's latest pending intent
+  regardless of which product the new checkout was for, so a top-up could
+  surface the approval link of a different, still-pending pack. Reuse is now
+  scoped to the requested product; mismatched pendings fall through to the
+  fresh-mint path, whose `abandonOtherIntents` keeps the one-live-order
+  invariant. Verified against the sandbox: a same-product checkout reuses the
+  pending order (same token); a different pack abandons it and mints its own.
+
+**The agentic loop (2026-11-07)**
+- Sales-rep agent (merchant side): one agnes-flash call per turn, grounded in a
+  precomputed context built from the events ledger (month spend, burn/day,
+  days-to-empty, anomaly flag) and the merchant's catalog packs. Replies in
+  prose, or a single fenced JSON action when the terms have settled, and
+  degrades to a deterministic reply built from the same numbers if the model is
+  unreachable. `usageInsights.ts` is the one implementation of the spend math —
+  shared by the agent, the demo app and the dashboard — so every projection a
+  customer sees is arithmetic over real event rows, not a model guess.
+- Approvals inbox and spend alerts (dashboard): the merchant can act on what
+  the agent drafts. A session-auth approvals inbox lists pending proposals with
+  the math and the capped negotiation transcript, and one click mints the plan.
+  A live "Unusual spend" section reads the same ledger anomaly rule the agent
+  uses.
+- Buyer agent bounded by a customer mandate (demo app): on a 402 the buyer
+  agent consults a pure, unit-tested decision policy — initiate a PayPal
+  checkout at or under the customer's auto-approve line, ask via a top-up
+  authorization proposal above it, or deny when the monthly budget or the caps
+  exclude every pack. PayPal's own approval screen stays the human gate on the
+  money in every path (8 policy test cases).
+
+**The demo app and the SDK (2026-11-07)**
+- Tabbed wallet rail: Wallet, Agent, Offers and Usage become tabs instead of a
+  stacked column, and the paywall moment renders as a first-class card inside
+  the conversation — the refused call, the buyer-agent decision (initiated /
+  waiting for approval / stood down), the balance, the shortfall and the pack
+  it picked. Metered turns now carry input/output token counts so the metering
+  cost is legible next to the charge.
+- Python SDK inference client: swap one import for another and every call is
+  admitted, metered and charged to the end user, with the paywall surfaced as a
+  typed error that can open a PayPal checkout. The secret key stays
+  server-side; a per-customer virtual key is minted and cached on first use.
+- The metered path is demoable end to end: legacy checkout maps `product_id`
+  onto `plan_id` so SDK `topUp()` and the buyer agent stop 404ing; the smoke
+  test tops its test user back up below the balance floor; Tinybird-not-
+  configured is a typed 503 instead of a raw throw; onboarding status falls
+  back to the Postgres event ledger; free-plan gateway ceilings raised to
+  survive a real agentic burst.
+- The LiteLLM bridge falls back to reading `gateway/.env` directly when the
+  launcher did not export it, so a bare `litellm --config` does not start the
+  bridge disabled (`PAB_ENV_FILE=0` opts out).
+
+**Concurrency judge-proofing (2026-11-07)**
+- `DEP_FAILURE_POLICY` toggle: fail-closed 503 shedding for the idempotency
+  claim, rate limiter and check fail-open surfaces; queue permits stay
+  fail-open (throughput cap, not correctness).
+- `SERVER_FLEET_SIZE` pinned into cluster forks; the full-subject gate divider
+  derives from the real fork count instead of the per-process default.
+- Cron multi-instance safety: `withSingleFlight` tick-overlap guard,
+  `FOR UPDATE` claim on invoice voids, status-conditioned exactly-once claims
+  for trial/revert/one-off expiries.
+- Load-test rig: setup seeding 4 plans + 500 customers, stress config, results
+  summarizer; the advisory plain-check invariant and the scaling story are
+  documented in `docs/scaling-and-concurrency.md`.
+
+**Stripe removal (2026-11-04)**
+- The Stripe provider is deleted from the fork — server internals, tests,
+  shared models, dashboard views, SDK endpoints — and `stripe_webhook_events`
+  is renamed to the durable `webhook_events` table. MeterPal is
+  PayPal-exclusive.
+
+**The portal, setup wizard and the init CLI (2026-11-04)**
+- The customer portal, the merchant setup wizard, PayPal refunds and overage
+  invoices, PayPal auto-top-up, and the served-model deployment service with
+  its migrations.
+- `meterpal init`: the framework-detecting CLI that writes the integration for
+  the developer's app, so nobody has to work out how to wire a payments rail in
+  by hand. It ships from this repo — it is not on npm yet.
+- Local DB role names kept stable, `docker-compose.yml` / `.env.example` files
+  / demo scripts aligned with the billing/gateway split, and `docs/DEPLOY.md`
+  rewritten from the Stripe-era guide to a PayPal-native one.
+
 **PayPal subscription switch — end to end (2026-11-02)**
 - The plan switch now completes the whole PayPal loop: click → a real PayPal
   subscription on the merchant's plan → buyer approves → the browser returns

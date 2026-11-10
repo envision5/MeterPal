@@ -1,121 +1,43 @@
-# Autumn
+# billing/ — the MeterPal billing core
 
-<img width="1983" height="793" alt="image" src="https://github.com/user-attachments/assets/f2b6271d-19af-4b16-be73-b55a3303b7f1" />
+This directory is the heart of MeterPal: the billing server (wallet ledger,
+catalog, per-org PayPal), the merchant dashboard, and the hosted checkout. It
+is an Apache-2.0 fork of [Autumn](https://github.com/useautumn/autumn) (upstream
+went private 9/2026) with its Stripe rail removed and replaced by PayPal:
+**Orders v2** for credit packs, **Subscriptions** for plans, **Invoicing** for
+overage, and signature-verified webhooks that grant entitlements the moment
+money lands. The fork lineage and everything built on top of the baseline are
+recorded in the root [`README.md`](../README.md) and [`CHANGELOG.md`](../CHANGELOG.md).
 
+## What lives here
 
-[![Discord](https://img.shields.io/badge/Join%20Community-5865F2?logo=discord&logoColor=white)](https://discord.gg/53emPtY9tA)
-[![Follow](https://img.shields.io/twitter/follow/autumnpricing?style=social)](https://x.com/autumnpricing)
-[![Y Combinator](https://img.shields.io/badge/Y%20Combinator-F24-orange)](https://www.ycombinator.com/companies/autumn)
-[![Cloud](https://img.shields.io/badge/Cloud-☁️-blue)](https://app.useautumn.com)
-[![Documentation](https://img.shields.io/badge/Documentation-📕-blue)](https://docs.useautumn.com)
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/useautumn/autumn)
+| Path | What it is |
+|---|---|
+| `server/` | The billing server (:8080): wallet ledger with atomic admission control, catalog v2, the per-org PayPal adapter, webhook routes, the `/check` + `/track_tokens` metering contract, and the OpenAI-shaped inference proxy (`POST /v1/chat/completions`) |
+| `shared/` | Models, API contracts and API versioning shared by server and dashboard |
+| `vite/` | The merchant dashboard: catalog, the served-models price sheet, the PayPal integration panel, customer wallets, agents |
+| `apps/checkout/` | The hosted checkout app behind PayPal approval links |
+| `scripts/` | DB migrations (`bun db`), dev launchers, test tooling |
+| `packages/autumn-js/` | The client library (npm `autumn-js`) used by `@meterpal/sdk` and the dashboard — the upstream package name is kept for compatibility |
+| `packages/agent-docs/`, `packages/atmn/`, `packages/sdk/`, … | Upstream Autumn packages retained because workspace tooling still compiles against them |
 
-[Autumn](https://useautumn.com) is an open-source billing layer between your application and your payment processor, allowing you to create any pricing model and embed it with a couple lines of code. On Autumn you can build:
-- Subscriptions
-- Credit systems & top ups
-- Usage-based models & overages
-- Custom plans for large customers
+## Run it
 
-All this without having to handle webhooks, upgrades/downgrades, cancellations or payment fails.
+The canonical run instructions are the root [`README.md`](../README.md)
+quickstart and [`docs/DEPLOY.md`](../docs/DEPLOY.md). Short form:
 
-
-## Getting Started
-
-**Cloud**: The quickest way to start using Autumn is through our [cloud service](https://app.useautumn.com). 
-
-**Self Hosted**: If you'd like to self-host Autumn:
-
-1. Make sure you have `bun` installed
-2. Install the project dependencies:
 ```bash
-bun install
-```
-3. Run Autumn:
-```bash
-bun dev
-```
-
-That's it! You should be able to see the Autumn dashboard on `http://localhost:3000`. 
-
-> ℹ️ Autumn depends on a bunch of services. If you'd like help with self-hosting or running a local instance, contact the team on [Discord](https://discord.gg/53emPtY9tA).
-
-> ⚠️ To log in, enter an email at the sign in page, and an OTP should appear in your console / terminal. Normally, we use Resend to email an OTP or Google OAuth -- these can be set up by providing your credentials in `server/.env`
-
-> ℹ️ If you'd like to use your own Postgres instance, paste the connection string in the `DATABASE_URL` env variable at `server/.env`
-
-## Why Autumn
-
-**1️⃣ Billing infra gets complex fast**
-
-More than payments: it's building permission management, metering, usage limits with cron jobs, and connecting it to upgrade, downgrade, cancellation and failed payments states. Race conditions, edge cases, and other bugs will slow you down.
-
-**2️⃣ Billing and app logic should be decoupled**
-
-Growing companies iterate on pricing often: raising prices, experimenting with credits or charging for a new feature. DB migrations, rebuilding in-app flows, internal dashboards for custom pricing and grandfathering users on old pricing is a nightmare.
-
-
-## How it works
-First, create your products and plans on the dashboard. We support **any** pricing model. Some popular ones we've seen include:
-
-1. **Usage & Overage** ⚡: set real-time usage limits and choose when they reset. Charge users if they go over.
-2. **Credits** 💰: users can access monetary or arbitrary credits that many features can draw from
-3. **Seat-based with per-seat limits** 👥:: bill customers for their users (or other entities)
-4. **Pay upfront** 💳: let users purchase a fixed quantity of a feature upfront, which is used over time
-
-
-Next, all your billing logic can be implemented through just 3 functions:
-
-1. `/attach`: One function call for all purchase flows. We return a hosted checkout URL, or handle an upgrade/downgrade.
-
-```tsx
-const { attach } = useAutumn();
-<button
-  onClick={async () => {
-    await attach({ productId: "pro" });
-  }}
->
-  Upgrade to Pro
-</button>
+docker compose up -d                 # from the repo root: 2× Postgres + 2× Redis
+cd billing && bun install            # workspace install
+# configure + migrate (see ../docs/DEPLOY.md), then:
+cd server && bun src/index.ts        # :8080
 ```
 
-2. `/check`: Check whether a customer has access to a product, feature or remaining usage.
-```ts
-const { check } = useAutumn();
+## Upstream material
 
-const { data } = await check({ featureId: "ai_tokens" })
-
-!data.allowed && alert("AI limit reached")
-```
-
-3. `/track`: When a customer uses a usage-based feature, record a usage event.
-
-```ts
-const { track } = useAutumn();
-
-await track({
-  featureId: "ai_tokens",
-  value: 1312
-})
-```
-
-## Others
-
-**Contributing** 🤝: If you're interested in contributing, you can check out our guide [here](/.github/CONTRIBUTING.md). All types of help are appreciated :)
-
-**Support** 💬: If you need any type of support, we're typically most responsive on our [Discord channel](https://discord.gg/STqxY92zuS), but feel free to email us `hey@useautumn.com` too!
-
-
-
-<!-- ## Congratulations!
-
-You've embedded a full billing system into your application within a few minutes. You can make any pricing model changes you need, or handle custom plans without needing to alter your codebase.
-
-Feel free to self-host Autumn, or use our hosted version at https://useautumn.com. And let us know any questions, thoughts or feedback at hey@useautumn.com. -->
-
-## Contributors
-
-Thanks to all our contributors for helping make autumn a better product!
-
-<a href="https://github.com/useautumn/autumn/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=useautumn/autumn" />
-</a>
+Parts of the Autumn tree remain that MeterPal neither runs nor documents —
+`apps/docs` (the Mintlify docs site), `apps/website`, `apps/sdk-test`,
+`packages/atmn*` (the pricing-as-code CLI and its tests), `packages/ax-evals`,
+`packages/render`. None of them are on the demo path. Upstream Autumn's own
+product README, self-hosting notes and cloud branding used to live here and
+have been replaced by this file.

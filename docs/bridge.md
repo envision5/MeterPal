@@ -922,7 +922,7 @@ export const reconcileLitellmSpend = new Cron({
 });
 ```
 
-This three-layer reconciliation pattern is documented in `docs/plan.md` — the same shape, applied to the external processor.
+This three-layer reconciliation pattern is documented in `docs/archive/plan.md` — the same shape, applied to the external processor.
 
 ## 8. The setup, in order
 

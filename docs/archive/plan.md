@@ -1,6 +1,7 @@
 # Concurrency-safe usage billing — implementation plan
 
-**Status:** in progress
+**Status:** ✅ completed — the as-built reference is
+[`docs/scaling-and-concurrency.md`](../scaling-and-concurrency.md). Archived 2026-11-08.
 **Scope:** the gateway↔billing-server path that admits, reserves, meters and settles
 AI inference requests.
 **Origin:** the concurrency assessment of MeterPal against Cursor, Copilot, Lovable,
