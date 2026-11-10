@@ -73,13 +73,13 @@ html {
 	--sandbox: #00bfe4;
 	--radius: 0.375rem; /* 6px */
 
-	/* MeterPal brand: dark blue leads, yellow is the highlight, red and light
-	   blue are accents. */
-	--primary: #264082;
+	/* MeterPal brand azure drives primary actions; yellow is the highlight, red
+	   and light blue are accents. */
+	--primary: #0088ff;
 	--primary-foreground: white;
-	--hover-primary: #f0f4fc;
-	--active-primary: #e4ecfa;
-	--radio-group-hover-primary: #f0f4fc;
+	--hover-primary: #f0f8ff;
+	--active-primary: #e0f1ff;
+	--radio-group-hover-primary: #f0f8ff;
 
 	--border: #e5e5e5;
 	--border-sheet: #eaeae9;
@@ -163,9 +163,9 @@ html {
 	--muted-foreground: #ccc;
 	--tertiary-foreground: #999;
 
-	/* A step lighter than the light-mode brand blue so filled buttons keep
-	   presence on the dark background. */
-	--primary: #3d5da9;
+	/* The brand azure is saturated enough to hold its own on the dark
+	   background, so light and dark share one primary. */
+	--primary: #0088ff;
 
 	--outer-background: #121212;
 

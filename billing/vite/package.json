@@ -4,9 +4,13 @@
 	"version": "0.0.0",
 	"type": "module",
 	"scripts": {
+		"sync:brand": "node ../../scripts/sync-brand-assets.mjs",
 		"d": "vite --host",
+		"predev": "node ../../scripts/sync-brand-assets.mjs",
 		"dev": "vite --host",
+		"prebuild": "node ../../scripts/sync-brand-assets.mjs",
 		"build": "tsc && vite build",
+		"prebuild:bun": "node ../../scripts/sync-brand-assets.mjs",
 		"ts": "tsc --noEmit",
 		"render": "bun render/render.ts",
 		"start": "serve -s dist",

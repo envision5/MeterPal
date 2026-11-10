@@ -4,9 +4,11 @@
   "description": "MeterPal demo app — a chat app whose AI usage is billed through PayPal",
   "private": true,
   "type": "module",
-  "scripts": {
-    "build": "vite build",
-    "dev": "bun run build && bun server.ts",
+	"scripts": {
+		"sync:brand": "node ../scripts/sync-brand-assets.mjs",
+		"prebuild": "node ../scripts/sync-brand-assets.mjs",
+		"build": "vite build",
+		"dev": "bun run build && bun server.ts",
     "start": "bun server.ts",
     "test": "bun test agent/"
   },

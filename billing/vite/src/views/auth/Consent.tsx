@@ -53,9 +53,9 @@ type SessionWithScopes = {
 
 const OrgLogo = () => (
 	<img
-		src="/meterpal-logo.svg"
+		src="/meterpal-icon.svg"
 		alt="MeterPal"
-		className="w-5 h-5 min-w-5 rounded-md"
+		className="w-5 h-5 min-w-5 rounded-md bg-white object-contain p-0.5"
 	/>
 );
 

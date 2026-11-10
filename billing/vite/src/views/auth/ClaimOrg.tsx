@@ -2,14 +2,14 @@ import { Button } from "@autumn/ui";
 import { Navigate, useSearchParams } from "react-router";
 import LoadingScreen from "../general/LoadingScreen";
 import { AuthBackground } from "./components/AuthBackground";
-import { MeterPalWordmark } from "./components/MeterPalWordmark";
+import { MeterPalWordmark } from "@/components/general/MeterPalWordmark";
 import { ClaimFooter } from "./components/ClaimFooter";
 import { useAgentClaim } from "./useAgentClaim";
 
 const ClaimUnavailable = () => (
 	<AuthBackground>
 		<div className="flex flex-col items-center gap-3 text-center">
-			<MeterPalWordmark className="h-7 w-auto text-foreground" />
+			<MeterPalWordmark className="h-7 w-auto" />
 			<p className="text-sm text-muted-foreground">
 				This claim link has expired or has already been used.
 			</p>
@@ -54,7 +54,7 @@ export const ClaimOrg = () => {
 		<AuthBackground>
 			<div className="flex flex-col items-center gap-6">
 				<div className="flex flex-col items-center gap-3 text-center">
-					<MeterPalWordmark className="h-7 w-auto text-foreground" />
+					<MeterPalWordmark className="h-7 w-auto" />
 					<p className="min-h-10 text-balance text-sm leading-5 text-muted-foreground">
 						{copy[mode].lead}
 					</p>

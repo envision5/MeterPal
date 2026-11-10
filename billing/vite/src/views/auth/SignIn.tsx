@@ -14,7 +14,7 @@ import { resolveSso } from "@/lib/sso/ssoResolve";
 import type { SsoOrgHint } from "@/lib/sso/ssoTypes";
 import { getBackendErr, getSafeNextPath } from "@/utils/genUtils";
 import { AuthBackground } from "./components/AuthBackground";
-import { MeterPalWordmark } from "./components/MeterPalWordmark";
+import { MeterPalWordmark } from "@/components/general/MeterPalWordmark";
 import { OTPSignIn } from "./components/OTPSignIn";
 import { RememberedSsoSignIn } from "./components/RememberedSsoSignIn";
 
@@ -186,7 +186,7 @@ export const SignIn = () => {
 			<div className="flex flex-col items-center gap-6">
 				{/* Wordmark logo + welcome text */}
 				<div className="flex flex-col items-center gap-3">
-					<MeterPalWordmark className="h-7 w-auto text-foreground" />
+					<MeterPalWordmark className="h-7 w-auto" />
 					<p className="text-sm text-muted-foreground">
 						Welcome to MeterPal, sign in to continue
 					</p>

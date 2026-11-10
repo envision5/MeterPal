@@ -14,7 +14,7 @@ import { OrgService } from "@/services/OrgService";
 import { useAxiosInstance } from "@/services/useAxiosInstance";
 import { getBackendErr, isSafeLocalPath } from "@/utils/genUtils";
 import { AuthBackground } from "./components/AuthBackground";
-import { MeterPalWordmark } from "./components/MeterPalWordmark";
+import { MeterPalWordmark } from "@/components/general/MeterPalWordmark";
 
 /**
  * Landing route for a successful OIDC callback. The server verifies the session
@@ -103,7 +103,7 @@ export const SsoCallback = () => {
 	return (
 		<AuthBackground>
 			<div className="flex flex-col items-center gap-6 text-center">
-				<MeterPalWordmark className="h-7 w-auto text-foreground" />
+				<MeterPalWordmark className="h-7 w-auto" />
 				{displayedError ? (
 					<div className="flex flex-col items-center gap-4">
 						<p role="alert" className="text-sm text-muted-foreground">
