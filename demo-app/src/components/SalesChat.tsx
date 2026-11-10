@@ -14,6 +14,7 @@ import {
 	IconSparkles,
 } from "@tabler/icons-react";
 import { useEffect, useRef, useState } from "react";
+import { authHeaders } from "../customerIdentity";
 
 type SalesMessage = { role: "customer" | "agent"; content: string };
 
@@ -55,7 +56,7 @@ export default function SalesChat({ customerId }: { customerId: string }) {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
-					"x-meterpal-customer": customerId,
+					...authHeaders(customerId),
 				},
 				body: JSON.stringify({
 					message,

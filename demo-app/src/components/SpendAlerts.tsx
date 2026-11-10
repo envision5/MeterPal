@@ -4,7 +4,9 @@
 // same ledger math the agents use (billing server usageInsights).  Renders
 // nothing while nothing is wrong.
 
+import { IconAlertTriangle, IconClock } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
+import { authHeaders } from "../customerIdentity";
 
 type Alert = { kind: "anomaly" | "runway"; text: string } | null;
 
@@ -16,7 +18,7 @@ export default function SpendAlerts({ customerId }: { customerId: string }) {
 		const load = async () => {
 			try {
 				const res = await fetch("/api/agent-settings", {
-					headers: { "x-meterpal-customer": customerId },
+					headers: authHeaders(customerId),
 				});
 				const data = await res.json();
 				if (!alive) return;
@@ -62,7 +64,9 @@ export default function SpendAlerts({ customerId }: { customerId: string }) {
 					: "border-sky-500/50 bg-sky-500/10 text-sky-900 dark:text-sky-100",
 			].join(" ")}
 		>
-			{alert.kind === "anomaly" ? "⚠️ Unusual spend — " : "⏳ "}
+			<strong className="mr-1">
+				{alert.kind === "anomaly" ? "Unusual spend —" : "Runway:"}
+			</strong>
 			{alert.text}
 		</div>
 	);

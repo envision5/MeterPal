@@ -26,7 +26,21 @@ export type AgentProposalPayload = {
 	/** The package on offer, in plan-creation terms. */
 	name: string;
 	credits: number;
+	/**
+	 * What the customer pays.  For a negotiated package this is COMPUTED
+	 * server-side from `package_id` + `coupon_id` against the merchant's
+	 * seller mandate — never taken from the model.  Approval re-derives it,
+	 * so the value here is display-only.
+	 */
 	price_usd: number;
+	/** The merchant's published price for this package, before any coupon. */
+	list_price_usd?: number;
+	/** Coupon percentage applied, for the approval surface to show. */
+	discount_pct?: number;
+	/** The ladder rung the agent chose — the authoritative reference. */
+	package_id?: string;
+	/** The authorized coupon the agent activated, if any. */
+	coupon_id?: string | null;
 	/** Why this package: the math the agent quoted (burn rate, days to empty). */
 	reasoning: string;
 	/** Needs the customer stated during negotiation, tracked by the agent. */

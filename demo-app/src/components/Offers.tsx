@@ -5,77 +5,43 @@
 // authorizations the buyer agent drafted that wait for THIS customer's
 // approval.  Accepting always goes through client.attach → PayPal's own
 // approval; nothing here moves money by itself.
+//
+// Proposals are polled by useOffers at App level (so the tab can badge while
+// closed); this component just renders them.
 
-import { useCallback, useEffect, useState } from "react";
+import {
+	IconBrandPaypal,
+	IconCheck,
+	IconClock,
+	IconGift,
+	IconReceipt,
+	IconRobot,
+	IconX,
+} from "@tabler/icons-react";
+import { useState } from "react";
 import { useAutumnClient } from "autumn-js/react";
-
-type Proposal = {
-	id: string;
-	kind: "custom_package" | "topup_authorization";
-	status: string;
-	plan_id: string | null;
-	payload: {
-		name: string;
-		credits: number;
-		price_usd: number;
-		reasoning: string;
-		product_id?: string;
-	};
-};
+import { authHeaders } from "../customerIdentity";
+import type { Proposal } from "../useOffers";
 
 export default function Offers({
 	customerId,
+	proposals,
+	reload,
 	onNotice,
 }: {
 	customerId: string;
+	proposals: Proposal[];
+	reload: () => void | Promise<void>;
 	onNotice: (msg: string) => void;
 }) {
 	const client = useAutumnClient({ caller: "Offers" });
-	const [proposals, setProposals] = useState<Proposal[]>([]);
 	const [busyId, setBusyId] = useState<string | null>(null);
 
-	const load = useCallback(async () => {
-		try {
-			const res = await fetch("/api/sales/offers", {
-				headers: { "x-meterpal-customer": customerId },
-			});
-			const data = await res.json();
-			setProposals(data?.proposals ?? []);
-		} catch {
-			/* keep the last list */
-		}
-	}, []);
-
-	useEffect(() => {
-		load();
-		const timer = setInterval(load, 5000);
-		window.addEventListener("offers-changed", load);
-		return () => {
-			clearInterval(timer);
-			window.removeEventListener("offers-changed", load);
-		};
-	}, [load]);
-
-	// A proposal-backed purchase completes on the PayPal redirect back to the
-	// app; the landing effect in App.tsx marks it purchased via sessionStorage.
-	useEffect(() => {
-		const finalize = async () => {
-			const raw = sessionStorage.getItem("agent-proposal-pending");
-			if (!raw) return;
-			sessionStorage.removeItem("agent-proposal-pending");
-			const ids: string[] = JSON.parse(raw);
-			for (const id of ids) {
-				await fetch(`/api/sales/proposals/${encodeURIComponent(id)}/purchased`, {
-					method: "POST",
-					headers: { "x-meterpal-customer": customerId },
-				}).catch(() => {});
-			}
-			load();
-		};
-		finalize();
-	}, [load]);
-
-	async function attach(planId: string | null, productId: string | null, proposalId: string) {
+	async function attach(
+		planId: string | null,
+		productId: string | null,
+		proposalId: string,
+	) {
 		const target = planId ?? productId;
 		if (!target) return;
 		setBusyId(proposalId);
@@ -88,7 +54,10 @@ export default function Offers({
 			);
 			const result: any = await client.attach({ planId: target });
 			const url =
-				result?.paymentUrl ?? result?.payment_url ?? result?.checkout_url ?? result?.url;
+				result?.paymentUrl ??
+				result?.payment_url ??
+				result?.checkout_url ??
+				result?.url;
 			if (url) {
 				window.location.href = url;
 				return;
@@ -96,10 +65,10 @@ export default function Offers({
 			// No redirect (e.g. free or already active): finalize immediately.
 			await fetch(`/api/sales/proposals/${encodeURIComponent(proposalId)}/purchased`, {
 				method: "POST",
-				headers: { "x-meterpal-customer": customerId },
+				headers: authHeaders(customerId),
 			});
 			onNotice("✅ Package active — credits are in your wallet.");
-			load();
+			reload();
 		} catch (err: any) {
 			sessionStorage.removeItem("agent-proposal-pending");
 			onNotice(`⚠️ Could not start checkout: ${err?.message ?? String(err)}`);
@@ -113,9 +82,9 @@ export default function Offers({
 		try {
 			await fetch(`/api/sales/proposals/${encodeURIComponent(proposalId)}/decline`, {
 				method: "POST",
-				headers: { "x-meterpal-customer": customerId },
+				headers: authHeaders(customerId),
 			});
-			load();
+			reload();
 		} finally {
 			setBusyId(null);
 		}
@@ -126,36 +95,69 @@ export default function Offers({
 	);
 	const receipts = proposals.filter((p) => p.status === "purchased").slice(0, 3);
 
-	if (actionable.length === 0 && receipts.length === 0) return null;
+	if (actionable.length === 0 && receipts.length === 0) {
+		return (
+			<p className="text-xs text-muted-foreground" data-testid="offers-empty">
+				Nothing here yet. Negotiate in the sales tab — approved packages land
+				here ready to buy.
+			</p>
+		);
+	}
 
 	return (
 		<div className="space-y-3" data-testid="offers">
 			{actionable.map((p) => (
 				<div
 					key={p.id}
-					className="rounded-lg border border-border p-3 text-sm"
+					className={[
+						"rounded-xl border p-3",
+						p.status === "pending_customer"
+							? "border-amber-500/40 bg-amber-500/[0.06]"
+							: "border-emerald-500/40 bg-emerald-500/[0.06]",
+					].join(" ")}
 					data-testid="offer-card"
 				>
-					<div className="flex items-baseline justify-between gap-2">
-						<span className="font-semibold">{p.payload.name}</span>
-						<span data-testid="offer-price">
-							{p.payload.credits} credits · ${p.payload.price_usd.toFixed(2)}
+					<div className="flex items-center gap-2">
+						<span
+							className={[
+								"flex size-8 shrink-0 items-center justify-center rounded-lg",
+								p.status === "pending_customer"
+									? "bg-amber-500/15 text-amber-300"
+									: "bg-emerald-500/15 text-emerald-300",
+							].join(" ")}
+						>
+							{p.kind === "topup_authorization" ? (
+								<IconRobot size={16} />
+							) : (
+								<IconGift size={16} />
+							)}
 						</span>
+						<div className="min-w-0 flex-1">
+							<p className="truncate text-sm font-semibold">{p.payload.name}</p>
+							<p className="text-xs text-muted-foreground">
+								{p.payload.credits} credits · $
+								{p.payload.price_usd.toFixed(2)}
+							</p>
+						</div>
 					</div>
-					<p className="mt-1 text-xs text-muted-foreground">{p.payload.reasoning}</p>
-					{p.kind === "topup_authorization" && (
-						<p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
-							Your agent asks to buy this pack (above your auto-approve line).
+					<p className="mt-2 text-xs text-muted-foreground">
+						{p.payload.reasoning}
+					</p>
+					{p.status === "pending_customer" && (
+						<p className="mt-1.5 flex items-center gap-1 text-[11px] text-amber-300">
+							<IconClock size={12} />
+							Your agent asks to buy this — above your auto-approve line
 						</p>
 					)}
-					<div className="mt-2 flex gap-2">
+					<div className="mt-2.5 flex gap-2">
 						<button
 							type="button"
 							disabled={busyId === p.id}
-							onClick={() => attach(p.plan_id, p.payload.product_id, p.id)}
-							className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:opacity-50"
+							onClick={() => attach(p.plan_id, p.payload.product_id ?? null, p.id)}
+							className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-amber-400 px-3 py-1.5 text-xs font-semibold text-amber-950 hover:bg-amber-300 disabled:opacity-50"
 							data-testid="offer-accept"
 						>
+							<IconBrandPaypal size={14} />
 							{busyId === p.id ? "Opening PayPal…" : "Accept & pay"}
 						</button>
 						{p.status === "pending_customer" && (
@@ -163,19 +165,29 @@ export default function Offers({
 								type="button"
 								disabled={busyId === p.id}
 								onClick={() => decline(p.id)}
-								className="rounded-md border border-border px-3 py-1.5 text-xs hover:bg-muted"
+								className="flex size-8 items-center justify-center rounded-lg border border-border text-muted-foreground hover:text-foreground"
 								data-testid="offer-decline"
+								title="Decline"
 							>
-								Decline
+								<IconX size={14} />
 							</button>
 						)}
 					</div>
 				</div>
 			))}
 			{receipts.map((p) => (
-				<p key={p.id} className="text-xs text-muted-foreground" data-testid="offer-receipt">
-					✅ {p.payload.name} — {p.payload.credits} credits for $
-					{p.payload.price_usd.toFixed(2)} (paid)
+				<p
+					key={p.id}
+					className="flex items-center gap-1.5 text-xs text-muted-foreground"
+					data-testid="offer-receipt"
+				>
+					<IconReceipt size={13} className="text-emerald-400" />
+					{p.payload.name} — {p.payload.credits} credits for $
+					{p.payload.price_usd.toFixed(2)}
+					<span className="ml-1 inline-flex items-center gap-0.5 text-emerald-400">
+						<IconCheck size={12} />
+						paid
+					</span>
 				</p>
 			))}
 		</div>

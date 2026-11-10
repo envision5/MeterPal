@@ -13,6 +13,7 @@ import {
 	IconShieldCheck,
 } from "@tabler/icons-react";
 import { useEffect, useRef, useState } from "react";
+import { authHeaders } from "../customerIdentity";
 
 type Mandate = {
 	enabled: boolean;
@@ -84,7 +85,7 @@ export default function AgentSettings({ customerId }: { customerId: string }) {
 		const load = async () => {
 			try {
 				const res = await fetch("/api/agent-settings", {
-					headers: { "x-meterpal-customer": customerId },
+					headers: authHeaders(customerId),
 				});
 				const data = await res.json();
 				if (!alive) return;
@@ -116,7 +117,7 @@ export default function AgentSettings({ customerId }: { customerId: string }) {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
-					"x-meterpal-customer": customerId,
+					...authHeaders(customerId),
 				},
 				body: JSON.stringify({ mandate }),
 			});
@@ -136,8 +137,9 @@ export default function AgentSettings({ customerId }: { customerId: string }) {
 	return (
 		<div data-testid="agent-settings">
 			<p className="mb-3 text-xs text-muted-foreground">
-				On a 402, your agent picks a pack, respects the budget, and PayPal still
-				asks you to approve every payment.
+				On a 402, your agent sizes a pack from your real usage and opens PayPal
+				approval automatically for purchases inside your auto-approve line.
+				Raise max per purchase and auto-approve up to let it buy bigger packs.
 			</p>
 
 			<button

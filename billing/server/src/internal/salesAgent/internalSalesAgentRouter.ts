@@ -18,6 +18,8 @@ import { createRoute } from "@/honoMiddlewares/routeHandler.js";
 import { createProduct } from "@/internal/product/actions/createProduct.js";
 import { invalidateProductsCache } from "@/external/redis/actions/productsCache/productsCache.js";
 import { getProposal } from "./engine.js";
+import { resolveOffer } from "./offerPricing.js";
+import { readSellerMandate } from "./sellerMandate.js";
 import { detectAnomaly, getSpendPoints } from "./usageInsights.js";
 import { events } from "@autumn/shared";
 import { Hono } from "hono";
@@ -66,13 +68,33 @@ export const handleApproveProposal = createRoute({
 			});
 		}
 
+		// Re-derive the price from the merchant's CURRENT mandate.  The stored
+		// payload is display-only: between draft and approval the ladder or a
+		// coupon may have changed, and a stale proposal must not mint a price
+		// the merchant no longer authorizes.  A proposal with no package
+		// reference (raised before offers were reference-based) is refused
+		// rather than approved at whatever price the model once wrote.
+		const resolution = resolveOffer({
+			mandate: readSellerMandate(ctx.org.metadata),
+			offer: {
+				package_id: proposal.payload.package_id ?? "",
+				coupon_id: proposal.payload.coupon_id ?? null,
+			},
+		});
+		if (!resolution.ok) {
+			throw new RecaseError({
+				message: `This proposal can no longer be approved: ${resolution.reason}`,
+				statusCode: 409,
+			});
+		}
+
 		// Mint the real plan with the exact shape bootstrap uses for one-off
 		// credit packs, mapped through the same V1→V2 converter the plans API
 		// runs — no bespoke plan-creation path.
 		const planId = `pkg_${proposal.id.replace(/^prop_/, "")}`;
 		const v1Params = {
 			id: planId,
-			name: proposal.payload.name,
+			name: resolution.name,
 			description: `Negotiated by the MeterPal sales agent for ${proposal.customer_id}. ${proposal.payload.reasoning}`.slice(
 				0,
 				400,
@@ -82,15 +104,20 @@ export const handleApproveProposal = createRoute({
 			items: [
 				{
 					feature_id: "ai_tokens",
-					included: proposal.payload.credits,
+					included: resolution.credits,
 					price: {
-						amount: proposal.payload.price_usd,
+						amount: resolution.price_usd,
 						interval: "one_off",
 						billing_method: "prepaid",
 					},
 				},
 			],
-			metadata: { sales_proposal_id: proposal.id },
+			metadata: {
+				sales_proposal_id: proposal.id,
+				package_id: resolution.package_id,
+				coupon_id: resolution.coupon_id,
+				list_price_usd: resolution.list_price_usd,
+			},
 		};
 
 		const productData = apiPlan.map.paramsV1ToProductV2({
