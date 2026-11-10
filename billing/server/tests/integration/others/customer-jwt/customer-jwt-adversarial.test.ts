@@ -9,6 +9,7 @@
  *   - Privilege escalation: access token -> keys.mint/revoke -> 403
  *   - Cross-customer: A's token cannot read B (force-set) or B's entity
  *   - Refresh reuse: replaying a rotated-away refresh token revokes the family
+ *   - Self-credit: customer token tracking a negative value -> 403
  */
 
 import { expect, test } from "bun:test";
@@ -162,7 +163,24 @@ test(`${chalk.yellowBright("customer-jwt adversarial: forgery / escalation / cro
 	});
 	expect([400, 404]).toContain(crossEntity.status);
 
-	// ── 6: refresh reuse — replaying a rotated-away refresh revokes family ─
+	// ── 7: balance self-credit — a customer token cannot track negative value.
+	// Negative track values credit balance back; that's a merchant-key
+	// capability, never an end-user capability. The same token must still be
+	// able to track positive (spend) values.
+	const creditSelf = await raw({
+		path: "/track",
+		token: accessToken,
+		body: { feature_id: TestFeature.Messages, value: -50 },
+	});
+	expect(creditSelf.status).toBe(403);
+	const spend = await raw({
+		path: "/track",
+		token: accessToken,
+		body: { feature_id: TestFeature.Messages, value: 1 },
+	});
+	expect(spend.status).toBe(200);
+
+	// ── 8: refresh reuse — replaying a rotated-away refresh revokes family ─
 	const family = await mint(reuseId);
 	const rt1 = family.refresh_token;
 	const refresh1 = await raw({ path: "/keys.refresh", token: rt1 });

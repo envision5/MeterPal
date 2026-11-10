@@ -213,6 +213,26 @@ export const prepareFeatureDeductionV2 = ({
 			// a usage counter and refunds can move it back up freely.
 			const isUnlimited = isUnlimitedCusEnt(customerEntitlement);
 
+			// The floor a deduction may not pass.
+			//
+			//  - unlimited: no floor (the balance is a usage counter)
+			//  - a usage limit is configured: the balance may go that far negative
+			//    (that is what the limit permits)
+			//  - overage is allowed but unbounded: no floor (the debt is collected
+			//    by the auto top-up)
+			//  - overage is NOT allowed: the balance stops at zero. A prepaid
+			//    customer with no overage arrangement has no debt to run up: the
+			//    charge is capped at what they hold, and the NEXT request is
+			//    refused at admission instead. Without this floor a single call
+			//    whose cost exceeds the balance drives it negative.
+			const minBalance = isUnlimited
+				? undefined
+				: notNullish(maxOverage)
+					? -maxOverage
+					: effectiveUsageAllowed
+						? undefined
+						: 0;
+
 			return {
 				customer_entitlement_id: customerEntitlement.id,
 				credit_cost: creditCost,
@@ -221,8 +241,7 @@ export const prepareFeatureDeductionV2 = ({
 				entity_feature_id:
 					customerEntitlement.entitlement.entity_feature_id ?? null,
 				usage_allowed: isUnlimited || effectiveUsageAllowed,
-				min_balance:
-					isUnlimited || !notNullish(maxOverage) ? undefined : -maxOverage,
+				min_balance: minBalance,
 				max_balance: isUnlimited ? undefined : resetBalance,
 				...(isUnlimited ? { unlimited: true } : {}),
 			};

@@ -14,6 +14,7 @@ import {
 	TRACK_V3_IDEMPOTENCY_TTL_MS,
 } from "@/internal/balances/idempotency/trackQueueIdempotency.js";
 import { fireTrackWebhooks } from "@/internal/balances/trackWebhooks/fireTrackWebhooks.js";
+import { handleBalanceDepleted } from "@/internal/balances/trackWebhooks/handleBalanceDepleted.js";
 import { buildDeductFromSubjectBalancesKeys } from "@/internal/customers/cache/fullSubject/builders/buildDeductFromSubjectBalancesKeys.js";
 import { buildFullSubjectKey } from "@/internal/customers/cache/fullSubject/builders/buildFullSubjectKey.js";
 import { FULL_SUBJECT_CACHE_TTL_SECONDS } from "@/internal/customers/cache/fullSubject/config/fullSubjectCacheConfig.js";
@@ -413,6 +414,22 @@ export const executeRedisDeductionV2 = async ({
 			entityId,
 			featuresFromMutationLogs,
 			eventProperties: options.eventProperties,
+		});
+
+		// The wallet just ran dry -> an agent managing this customer can top
+		// it up now, without waiting for the customer's next request to be
+		// refused.  Fire-and-forget: the charge stands either way.
+		handleBalanceDepleted({
+			ctx,
+			oldFullCus: fullSubjectToFullCustomer({
+				fullSubject: currentSegmentOldFullSubject,
+			}),
+			newFullCus: newFullCustomer,
+			feature: deduction.feature,
+		}).catch((error) => {
+			ctx.logger.error(
+				`[executeRedisDeductionV2] Failed to record balance depletion: ${error}`,
+			);
 		});
 
 		if (options.triggerAutoTopUp) {

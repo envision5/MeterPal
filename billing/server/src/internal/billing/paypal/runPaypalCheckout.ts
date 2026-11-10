@@ -7,10 +7,12 @@
 // caller (SDK, UI components, API) works against PayPal unchanged.
 //
 // Customer/product linkage travels in the PayPal custom_id:
-//   orders:  "mp:<customer_id>:<product_id>"
+//   orders:  "mp:<customer_id>:<product_id>[:r2]"
 //   subs:    custom_id = "<customer_id>"
 // Webhook handlers (external/paypal/runPaypalWebhookHandlers.ts) read these to
-// grant credits to the right customer without relying on emails.
+// grant credits to the right customer without relying on emails.  The ":r2"
+// suffix marks orders minted WITH a browser return_url (see below); webhook
+// handlers only read segments 1 and 2, so the extra segment is inert for them.
 
 import type { AppEnv } from "@autumn/shared";
 import {
@@ -54,6 +56,15 @@ import {
 	syncPaypalCatalogForProduct,
 } from "@/internal/billing/paypal/paypalCatalogSync.js";
 import type { AttachParams } from "@/internal/customers/cusProducts/AttachParams.js";
+
+/**
+ * Suffix on an order's custom_id proving it was created with a
+ * `return_url`/`cancel_url` in its experience_context.  Orders minted before
+ * this existed have nowhere to send the buyer after approval — PayPal just
+ * reloads the payment page — so the reuse branch must not hand their approval
+ * link out again.  Segment 3 is safe: every parser reads only [1] and [2].
+ */
+const ORDER_REDIRECT_TAG = "r2";
 
 /**
  * USD amount for a price, major units.  Handles both stored shapes:
@@ -540,9 +551,16 @@ export async function runPaypalCheckout({
 					`/v2/checkout/orders/${pendingIntent.order_id}`,
 					{ method: "GET" },
 				);
-				const reusable = ["CREATED", "PAYER_ACTION_REQUIRED"].includes(
-					existing?.status,
-				);
+				// A pre-fix order has no return_url: approving it drops the buyer
+				// back on PayPal's payment page with no /paypal/return landing,
+				// so no capture happens from the browser.  Force a fresh mint
+				// (which abandons this one) instead of reusing a broken link.
+				const stampedId: string =
+					existing?.purchase_units?.[0]?.custom_id ?? "";
+				const hasReturnUrl = stampedId.endsWith(`:${ORDER_REDIRECT_TAG}`);
+				const reusable =
+					hasReturnUrl &&
+					["CREATED", "PAYER_ACTION_REQUIRED"].includes(existing?.status);
 				if (isFresh && reusable) {
 					const url = approvalLink(existing.links);
 					if (url) {
@@ -583,6 +601,14 @@ export async function runPaypalCheckout({
 		// pending intent before minting a fresh one.
 		await abandonOtherIntents({ client, db, customerId });
 
+		// Orders v2 does NOT inherit the subscription application_context.
+		// Without these two URLs PayPal has no browser return target: the
+		// buyer clicks "Complete Purchase" and PayPal simply reloads the
+		// payment page, so /paypal/return never runs from the browser.
+		// No checkout token: PayPal appends ?token=<order_id> itself, which
+		// is exactly what /paypal/return needs to capture the order.
+		const { returnUrl, cancelUrl } = paypalRedirectUrls();
+
 		// Record the intent so the finalize/poll endpoint can capture the
 		// order without depending on PayPal's browser redirect.
 		const order = await createOrder(
@@ -592,7 +618,7 @@ export async function runPaypalCheckout({
 				purchase_units: [
 					{
 						reference_id: product.id,
-						custom_id: `mp:${customerId}:${product.id}`,
+						custom_id: `mp:${customerId}:${product.id}:${ORDER_REDIRECT_TAG}`,
 						description: product.name.slice(0, 127),
 						amount: {
 							currency_code: "USD",
@@ -614,11 +640,13 @@ export async function runPaypalCheckout({
 				],
 				payment_source: {
 					paypal: {
-						experience_context: {
-							shipping_preference: "NO_SHIPPING",
-							user_action: "PAY_NOW",
-							brand_name: (org.name ?? "MeterPal").slice(0, 127),
-						},
+					experience_context: {
+						shipping_preference: "NO_SHIPPING",
+						user_action: "PAY_NOW",
+						brand_name: (org.name ?? "MeterPal").slice(0, 127),
+						return_url: returnUrl,
+						cancel_url: cancelUrl,
+					},
 					},
 				},
 			},

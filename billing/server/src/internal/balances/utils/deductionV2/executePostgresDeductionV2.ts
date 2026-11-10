@@ -11,6 +11,7 @@ import { withLock } from "@/external/redis/utils/lockUtils/withLock.js";
 import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
 import { triggerAutoTopUp } from "@/internal/balances/autoTopUp/triggerAutoTopUp.js";
 import { fireTrackWebhooks } from "@/internal/balances/trackWebhooks/fireTrackWebhooks.js";
+import { handleBalanceDepleted } from "@/internal/balances/trackWebhooks/handleBalanceDepleted.js";
 import { saveLockReceiptV2 } from "@/internal/balances/utils/lockV2/saveLockReceiptV2.js";
 import type { DeductionOptions } from "../types/deductionTypes.js";
 import type { DeductionUpdate } from "../types/deductionUpdate.js";
@@ -256,6 +257,19 @@ export const executePostgresDeductionV2 = async ({
 				featuresFromMutationLogs,
 			});
 
+			// The wallet just ran dry -> an agent managing this customer can top
+			// it up now, without waiting for the customer's next request to be
+			// refused.  Fire-and-forget: the charge stands either way.
+			handleBalanceDepleted({
+				ctx,
+				oldFullCus: fullSubjectToFullCustomer({ fullSubject: oldFullSubject }),
+				newFullCus: newFullCustomer,
+				feature: deduction.feature,
+			}).catch((error) => {
+				ctx.logger.error(
+					`[executePostgresDeductionV2] Failed to record balance depletion: ${error}`,
+				);
+			});
 			if (resolvedOptions.triggerAutoTopUp) {
 				triggerAutoTopUp({
 					ctx,

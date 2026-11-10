@@ -85,7 +85,13 @@ export const createHonoApp = () => {
 
 	// Better Auth's joined Drizzle query defaults to 100 memberships.
 	app.get("/api/auth/organization/list", handleListAuthOrganizations);
-	if (isCapyDev) app.get("/api/auth/capy-login", handleCapyLogin);
+	if (isCapyDev) {
+		console.warn(
+			"⚠️  CAPY_DEV=1 — the unauthenticated dev login GET /api/auth/capy-login is ENABLED. " +
+				"Never run this outside local development.",
+		);
+		app.get("/api/auth/capy-login", handleCapyLogin);
+	}
 
 	app.on(["POST", "GET"], ["/api/auth/*"], async (c) => {
 		if (FACADE_ONLY_SSO_PATHS.has(c.req.path)) {

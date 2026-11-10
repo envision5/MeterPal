@@ -48,6 +48,11 @@ export interface OrderCreateArgs {
 				user_action?: string;
 				brand_name?: string;
 				locale?: string;
+				/** Where PayPal sends the buyer's browser after approval.  Without
+				 *  this the merchant account's default is used (or nothing), and
+				 *  the buyer gets stuck on the PayPal payment page in a loop. */
+				return_url?: string;
+				cancel_url?: string;
 			};
 		};
 	};

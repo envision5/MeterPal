@@ -131,6 +131,9 @@ export async function captureAndGrant(
 			idempotencyKey: `paypal-capture:${captureId}`,
 			eventName: "wallet_topup",
 			metadata: { capture_id: captureId, order_id: orderId, via },
+			// The buyer paid for a pack of credits, not for a smaller debt.
+			// Clear an overdraft so the pack is visible AND spendable.
+			settleOverdraft: true,
 		});
 		await recordPaypalInvoice({
 			customer: cust,

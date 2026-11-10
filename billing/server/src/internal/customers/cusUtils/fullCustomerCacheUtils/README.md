@@ -11,4 +11,4 @@ cache under `server/src/internal/customers/cache/fullSubject` and
 Delete this shim once the cloud repo migrates to the FullSubject APIs. Cloud
 files importing the deleted `updateCachedCustomerData` /
 `batchDeleteCachedFullCustomers` need fixing there (see
-.plans/redis-cloud-migration/CLOUD-AUDIT.md).
+`billing/archive/plans/redis-cloud-migration/CLOUD-AUDIT.md`).

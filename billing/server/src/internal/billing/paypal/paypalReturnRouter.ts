@@ -158,28 +158,58 @@ async function findSubscriptionForKey(key: string): Promise<SubscriptionLookup> 
  * payer, and the payer names the subscription: find the customer whose pending
  * subscription PayPal now reports as ACTIVE for the same payer id.
  */
+// A payer scan must never be able to wedge the buyer's browser return.  On a
+// demo DB there can be thousands of pending subscription intents and each one
+// costs a PayPal API round trip.
+const PAYER_MATCH_MAX_INTENTS = 20;
+const PAYER_MATCH_DEADLINE_MS = 5_000;
+
 async function findApprovedSubscriptionByPayer(
 	orderToken: string,
 ): Promise<SubscriptionLookup> {
+	// One-off credit packs have their own intent row (subscription_id NULL).
+	// Subscription approvals whose token IS in the intents table were already
+	// resolved by findSubscriptionForKey above — this fallback only exists for
+	// the express-checkout token PayPal invents for a subscription approval,
+	// which is NOT in our intents table.
+	//
+	// Without this guard a COMPLETED one-off order (which always has a payer)
+	// walks every pending subscription in the DB before captureAndGrant ever
+	// runs: 2,300+ PayPal calls on this demo DB, so /paypal/return hangs and
+	// the buyer never sees the success redirect.  The poll/webhook paths still
+	// credited the wallet, which is why only the browser return looked broken.
+	const [knownIntent] = await db
+		.select({ order_id: paypalOrderIntents.order_id })
+		.from(paypalOrderIntents)
+		.where(eq(paypalOrderIntents.order_id, orderToken))
+		.limit(1);
+	if (knownIntent) return null;
+
 	// The order was created for one org; only that org's PayPal account is
 	// asked about it.
 	const client = await getPaypalClientForOrder(orderToken);
 	if (!client) return null;
 
 	let payerId: string | undefined;
+	let isOneOffPack = false;
 	try {
-		const order = await client.fetch<{ payer?: { payer_id?: string } }>(
-			`/v2/checkout/orders/${orderToken}`,
-			{ method: "GET" },
-		);
+		const order = await client.fetch<{
+			payer?: { payer_id?: string };
+			purchase_units?: { custom_id?: string }[];
+		}>(`/v2/checkout/orders/${orderToken}`, { method: "GET" });
 		payerId = order?.payer?.payer_id;
+		// Belt and braces if the intent row was ever pruned: one-off packs are
+		// stamped "mp:<customer>:<product>[:r2]", subscriptions use the bare
+		// customer id.
+		isOneOffPack = !!order?.purchase_units?.[0]?.custom_id?.startsWith("mp:");
 	} catch {
 		return null;
 	}
-	if (!payerId) return null;
+	if (isOneOffPack || !payerId) return null;
 
 	// Only this org's subscriptions that are still awaiting approval can
-	// match.
+	// match.  Bound the scan to the most recent few and a wall-clock deadline
+	// so a stale backlog can never stall a buyer's redirect.
 	const pendings = await db
 		.select({
 			subscription_id: paypalOrderIntents.subscription_id,
@@ -191,9 +221,19 @@ async function findApprovedSubscriptionByPayer(
 				eq(paypalOrderIntents.status, "pending"),
 				isNotNull(paypalOrderIntents.subscription_id),
 			),
-		);
+		)
+		.orderBy(desc(paypalOrderIntents.created_at))
+		.limit(PAYER_MATCH_MAX_INTENTS);
 
+	const deadline = Date.now() + PAYER_MATCH_DEADLINE_MS;
 	for (const row of pendings) {
+		if (Date.now() > deadline) {
+			logger.warn({
+				msg: "paypal return: payer scan deadline hit",
+				orderToken: orderToken.slice(0, 8),
+			});
+			break;
+		}
 		if (!row.subscription_id) continue;
 		try {
 			const sub = await getSubscription(client, row.subscription_id);
@@ -420,7 +460,14 @@ paypalReturnRouter.get("/poll", async (c) => {
 	if (result.status === "captured") {
 		return c.json({ status: "captured", credits: result.credits ?? 0, count: 1 });
 	}
-	return c.json({ status: result.status === "pending" ? "pending" : "none" });
+	// A fresh sandbox order sits in PAYER_ACTION_REQUIRED until the buyer
+	// approves.  captureAndGrant reports that as "unapproved:..." — it is an
+	// IN-FLIGHT approval, not a settled checkout.  Reporting "none" here made
+	// the durable "approve in PayPal" banner clear itself seconds after the
+	// agent opened the order, and made callers stop watching for capture.
+	const stillWaiting =
+		result.status === "pending" || result.status.startsWith("unapproved:");
+	return c.json({ status: stillWaiting ? "pending" : "none" });
 });
 
 /**
@@ -457,9 +504,13 @@ paypalReturnRouter.get("/activate/:subscriptionId", async (c) => {
 			activated,
 		});
 	} catch (err) {
-		return c.json(
-			{ error: String(err).slice(0, 300) },
-			500,
-		);
+		// Generic on purpose: this route is public, and raw PayPal/API error
+		// text can carry internal paths and provider response bodies.
+		logger.error({
+			msg: "paypal activate: handler failed",
+			subscriptionId: subscriptionId?.slice(0, 12),
+			error: String(err).slice(0, 300),
+		});
+		return c.json({ error: "activation_failed" }, 500);
 	}
 });

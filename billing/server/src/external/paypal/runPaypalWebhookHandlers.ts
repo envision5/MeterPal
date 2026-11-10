@@ -38,9 +38,12 @@ import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/db/initDrizzle.js";
 import { logger } from "@/external/logtail/logtailUtils.js";
 import { sendSvixEvent } from "@/external/svix/svixHelpers.js";
+import type { AutumnContext } from "@/honoUtils/HonoEnv.js";
 import { updateBalanceV2 } from "@/internal/balances/updateBalance/v2/updateBalanceV2.js";
 import { getPaypalClientForOrder } from "@/internal/billing/paypal/paypalOrgClient.js";
+import { invalidateCachedFullSubject } from "@/internal/customers/cache/fullSubject/index.js";
 import { hasActiveCustomerProductForProduct } from "@/internal/customers/cusProducts/hasActiveCustomerProductForProduct";
+import { getFeatureBalance } from "@/internal/inference/usageSettlement.js";
 import { createWorkerContext } from "@/queue/createWorkerContext.js";
 import {
 	paypalCaptureInvoiceId,
@@ -48,6 +51,7 @@ import {
 	paypalSaleInvoiceId,
 	recordPaypalInvoice,
 } from "./invoiceRecording.js";
+import { grantBalanceParams } from "./grantBalanceParams.js";
 import type { PaypalClient } from "./paypalClient.js";
 import { PAYPAL_WEBHOOK_EVENT_TYPES } from "./webhookEventTypes.js";
 
@@ -292,6 +296,18 @@ export async function stampPaypalBillingAgreement({
  * Grants `amountUsd` credits to the customer's wallet: one idempotent
  * wallet_ledger row, then the real balance increment through the same
  * worker-context machinery the queue uses.
+ *
+ * `settleOverdraft` is for PAID one-off credit packs only.  The customer
+ * balance API clamps a negative entitlement balance to zero
+ * (cusEntsToCurrentBalance -> Math.max(0, balance)), and the admission check
+ * reads the raw negative value.  So `add_to_balance` on an overdrawn wallet
+ * leaves the buyer staring at "0.00 credits" after paying AND still hitting
+ * a 402: the grant is real but neither visible nor spendable.  A purchased
+ * pack must yield `amountUsd` spendable credits, so when the wallet is
+ * underwater we land the balance AT the pack size rather than merely
+ * reducing the debt by it.  Subscription cycles, refunds and plan grants
+ * keep the plain additive behaviour.
+ *
  * Returns false when the grant was a replay (already applied).
  */
 export async function grantWalletCredits({
@@ -300,12 +316,14 @@ export async function grantWalletCredits({
 	idempotencyKey,
 	eventName,
 	metadata,
+	settleOverdraft = false,
 }: {
 	customer: DbCustomer;
 	amountUsd: number;
 	idempotencyKey: string;
 	eventName: string;
 	metadata?: Record<string, unknown>;
+	settleOverdraft?: boolean;
 }): Promise<boolean> {
 	const customerId = customer.id;
 	if (!customerId || !amountUsd || Number.isNaN(amountUsd)) return false;
@@ -370,15 +388,36 @@ export async function grantWalletCredits({
 		return false;
 	}
 
-	try {
-		await updateBalanceV2({
-			ctx,
-			params: {
-				customer_id: customerId,
-				feature_id: creditFeatureId(),
-				add_to_balance: amountUsd,
-			},
+	const featureId = creditFeatureId();
+	// Only a paid pack needs the extra balance read; every other grant is a
+	// plain additive credit and must not pay for a DB round trip.
+	const currentBalance =
+		settleOverdraft && amountUsd > 0
+			? await getFeatureBalance({
+					db,
+					customerInternalId: customer.internal_id,
+					featureId,
+				})
+			: null;
+	const balanceParams = grantBalanceParams({
+		customerId,
+		featureId,
+		amountUsd,
+		currentBalance,
+		settleOverdraft,
+	});
+	if (typeof balanceParams.remaining === "number") {
+		logger.info({
+			msg: "paypal: paid pack settles overdraft so credits are spendable",
+			customerId,
+			currentBalance,
+			amountUsd,
+			idempotencyKey,
 		});
+	}
+
+	try {
+		await updateBalanceV2({ ctx, params: balanceParams });
 	} catch (err) {
 		logger.error({
 			msg: "paypal: balance update failed — releasing ledger row for retry",
@@ -440,12 +479,71 @@ async function hasActiveMeterPalPlan({
  * fall back to crediting the wallet directly.
  */
 async function attachPaypalPlanMeterPalSide({
+	ctx,
 	customer,
 	productId,
 }: {
+	ctx: AutumnContext;
 	customer: DbCustomer;
 	productId: string;
 }): Promise<boolean> {
+	const customerId = customer.id;
+	if (!customerId) {
+		logger.error({
+			msg: "paypal: customer has no id, cannot attach the plan",
+			internalCustomerId: customer.internal_id,
+			productId,
+		});
+		return false;
+	}
+
+	try {
+		// Imported lazily: billingActions -> attach -> runPaypalCheckout ->
+		// this module.  A static import would close that cycle at module load.
+		const { billingActions } = await import("@/internal/billing/v2/actions");
+		await billingActions.attach({
+			ctx,
+			params: {
+				customer_id: customerId,
+				plan_id: productId,
+				redirect_mode: "never",
+			},
+		});
+		logger.info({
+			msg: "paypal: plan attached meterpal-side",
+			customerId,
+			productId,
+		});
+	} catch (err) {
+		logger.error({
+			msg: "paypal: plan attach failed",
+			customerId,
+			productId,
+			error: String(err),
+		});
+		return false;
+	}
+
+	return true;
+}
+
+/**
+ * Makes sure the MeterPal plan behind a PayPal subscription is attached to the
+ * customer.  Idempotent: a customer who already holds the plan is left alone,
+ * and a failed attach can be retried on the next activation event.
+ *
+ * Either way the cached subject is dropped: the plan state this function
+ * guarantees MUST be what the API serves, and the cache is the only thing that
+ * can disagree with it (the attach ran outside a customer-scoped request, so
+ * nothing invalidated the cache for it).
+ */
+async function ensurePaypalPlanAttached(
+	customer: DbCustomer,
+	paypalPlanId: string | null | undefined,
+): Promise<boolean> {
+	const productId = await resolveProductIdForPaypalPlan(paypalPlanId);
+	if (!productId) return false;
+
 	const customerId = customer.id;
 	if (!customerId) {
 		logger.error({
@@ -475,48 +573,39 @@ async function attachPaypalPlanMeterPalSide({
 		return false;
 	}
 
-	try {
-		// Imported lazily: billingActions -> attach -> runPaypalCheckout ->
-		// this module.  A static import would close that cycle at module load.
-		const { billingActions } = await import("@/internal/billing/v2/actions");
-		await billingActions.attach({
-			ctx,
-			params: {
-				customer_id: customerId,
-				plan_id: productId,
-				redirect_mode: "never",
-			},
-		});
-		logger.info({
-			msg: "paypal: plan attached meterpal-side",
-			customerId,
-			productId,
-		});
-		return true;
-	} catch (err) {
+	const alreadyAttached = await hasActiveMeterPalPlan({ customer, productId });
+	const attached = alreadyAttached
+		? true
+		: await attachPaypalPlanMeterPalSide({ ctx, customer, productId });
+	if (!attached) return false;
+
+	// The plan is attached MeterPal-side.  The cached subject can still be the
+	// one from BEFORE the switch — it was written by an earlier read and
+	// nothing invalidated it, because this activation runs outside a
+	// customer-scoped request.  A stale cache here is exactly what makes a
+	// successful switch look like a no-op: the API keeps serving the old plan
+	// and the old balance, so the new allowance never shows up as credits and
+	// the plan card has no current plan to mark.  Drop it so the next read
+	// rebuilds it from Postgres.
+	//
+	// Deliberately NOT flushing balances to Postgres: the cached values are the
+	// pre-attach ones, and the attach just wrote the new balance there.
+	await invalidateCachedFullSubject({
+		ctx,
+		customerId,
+		source: alreadyAttached
+			? "paypal:plan-already-attached"
+			: "paypal:plan-attach",
+	}).catch((err) =>
 		logger.error({
-			msg: "paypal: plan attach failed",
+			msg: "paypal: failed to invalidate the cached subject after the plan attach",
 			customerId,
 			productId,
 			error: String(err),
-		});
-		return false;
-	}
-}
+		}),
+	);
 
-/**
- * Makes sure the MeterPal plan behind a PayPal subscription is attached to the
- * customer.  Idempotent: a customer who already holds the plan is left alone,
- * and a failed attach can be retried on the next activation event.
- */
-async function ensurePaypalPlanAttached(
-	customer: DbCustomer,
-	paypalPlanId: string | null | undefined,
-): Promise<boolean> {
-	const productId = await resolveProductIdForPaypalPlan(paypalPlanId);
-	if (!productId) return false;
-	if (await hasActiveMeterPalPlan({ customer, productId })) return true;
-	return attachPaypalPlanMeterPalSide({ customer, productId });
+	return true;
 }
 
 // ---------- handlers ----------
@@ -1093,6 +1182,9 @@ async function onCaptureCompleted(
 		idempotencyKey: `paypal-capture:${captureId}`,
 		eventName: "wallet_topup",
 		metadata: { capture_id: captureId, order_id: orderId ?? null },
+		// Same paid-pack guarantee as the browser-return / poll path: the
+		// webhook can be the first (or only) delivery of the capture.
+		settleOverdraft: true,
 	});
 	await recordPaypalInvoice({
 		customer: cust,

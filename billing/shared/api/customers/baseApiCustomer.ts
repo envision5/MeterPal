@@ -22,6 +22,21 @@ export const BaseApiCustomerSchema = z.object({
 		description:
 			"A unique identifier (eg. serial number) to de-duplicate customers across devices or browsers. For example: apple device ID.",
 	}),
+	/**
+	 * Stripe-era customer id.  MeterPal is PayPal-native, so this is ALWAYS
+	 * null — but the field is part of the customer contract the client SDK
+	 * (autumn-js) validates responses against, and a missing key makes the
+	 * SDK reject the WHOLE customer payload.  That silently costs every
+	 * consumer the customer's plan: the plan card can no longer tell which
+	 * plan is current, and the SDK's own reads fail closed.
+	 *
+	 * Required (not optional) on purpose: a builder that forgets to set it
+	 * then fails loudly at parse time instead of shipping a payload the
+	 * client silently rejects.
+	 */
+	stripe_id: z.string().nullable().meta({
+		description: "Always null — MeterPal bills through PayPal, not Stripe.",
+	}),
 	env: z.enum(AppEnv).meta({
 		description: "The environment this customer was created in.",
 	}),

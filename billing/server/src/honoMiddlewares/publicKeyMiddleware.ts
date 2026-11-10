@@ -21,10 +21,10 @@ const allowedEndpoints = [
 	// 	method: "POST",
 	// 	path: "/v1/attach",
 	// },
-	{
-		method: "GET",
-		path: "/v1/customers/:customerId",
-	},
+	// GET /v1/customers/:customerId is deliberately NOT allowed: the
+	// publishable key is public (it ships in the browser), so letting it read
+	// full customer objects would let anyone enumerate a org's customers and
+	// their balances. Frontends read balances through POST /v1/check instead.
 ];
 
 interface IsAllowedEndpointProps {

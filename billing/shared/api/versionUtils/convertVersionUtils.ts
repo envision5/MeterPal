@@ -91,11 +91,23 @@ export function semVerToLegacy({
  * @example parseVersion({ versionStr: "2" }) // ApiVersion.V2_0
  * @example parseVersion({ versionStr: "2.0" }) // ApiVersion.V2_0
  */
+// Legacy underscore names (V1_2 etc.) sent by pre-CalVer Autumn SDKs —
+// notably the npm `autumn-js` 1.2.x adapter, whose hardcoded header predates
+// this fork's CalVer registry.  They resolve to the LATEST version: those
+// clients read the modern response superset (balances, products) fine, while
+// pinning them to the literal 1.2 response shape would strip the fields the
+// dashboard and demo surfaces render.
+const LEGACY_VERSION_NAME_RE = /^V\d(_\d+)?(_Beta)?$/i;
+
 export function parseVersion({
 	versionStr,
 }: {
 	versionStr: string;
 }): ApiVersion | null {
+	if (LEGACY_VERSION_NAME_RE.test(versionStr)) {
+		return ApiVersion.V2_4;
+	}
+
 	// CalVer with optional .clover suffix
 	if (/^\d{4}-\d{2}-\d{2}(\.clover)?$/.test(versionStr)) {
 		return calVerToSemVer({ calver: versionStr });

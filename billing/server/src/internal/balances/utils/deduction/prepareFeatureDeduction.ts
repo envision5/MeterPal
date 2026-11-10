@@ -134,6 +134,18 @@ export const prepareFeatureDeduction = ({
 			// a usage counter and refunds can move it back up freely.
 			const isUnlimited = isUnlimitedCusEnt(ce);
 
+			// The floor a deduction may not pass.  An entitlement that allows no
+			// overage stops at zero: the charge is capped at what the customer
+			// holds and the next request is refused at admission, instead of the
+			// balance running negative.  See the V2 twin for the full breakdown.
+			const minBalance = isUnlimited
+				? undefined
+				: notNullish(maxOverage)
+					? -maxOverage
+					: effectiveUsageAllowed
+						? undefined
+						: 0;
+
 			return {
 				customer_entitlement_id: ce.id,
 				credit_cost: creditCost,
@@ -141,8 +153,7 @@ export const prepareFeatureDeduction = ({
 				feature_id: ce.entitlement.feature.id,
 				entity_feature_id: ce.entitlement.entity_feature_id ?? null,
 				usage_allowed: isUnlimited || effectiveUsageAllowed,
-				min_balance:
-					isUnlimited || !notNullish(maxOverage) ? undefined : -maxOverage,
+				min_balance: minBalance,
 				max_balance: isUnlimited ? undefined : resetBalance,
 				...(isUnlimited ? { unlimited: true } : {}),
 			};

@@ -32,6 +32,7 @@ import {
 import {
 	getServedModel,
 	getServedModelAllowList,
+	resolveServedModelId,
 } from "@/internal/models/servedModelService.js";
 import type { InferenceCaller } from "./inferenceAuth.js";
 import {
@@ -96,6 +97,34 @@ export const resolveInferenceModel = async ({
 	});
 
 	if (allowList !== null && !allowList.includes(model)) {
+		// The gateway hands us the name IT knows the model by ("agnes-flash"),
+		// while the org's sheet lists the id it bills ("custom/agnes-2.5-flash")
+		// and records the gateway's name as `upstream_model`.  Resolve through
+		// that mapping before declaring the model unserved — otherwise every
+		// aliased model 404s even though the merchant sells it.
+		const resolvedId = await resolveServedModelId({
+			db,
+			orgId: org.id,
+			env,
+			modelId: model,
+		});
+		if (resolvedId) {
+			// It resolves to a row; it must be enabled to be callable.
+			if (!allowList.includes(resolvedId)) {
+				throw new ModelNotEnabledError({ model });
+			}
+			const resolvedRow = await getServedModel({
+				db,
+				orgId: org.id,
+				env,
+				modelId: resolvedId,
+			});
+			return {
+				upstreamModel: resolvedRow?.upstream_model ?? model,
+				billableModelId: resolvedId,
+			};
+		}
+
 		const row = await getServedModel({ db, orgId: org.id, env, modelId: model });
 		// The model is in the sheet but switched off, or not in it at all.
 		if (row) throw new ModelNotEnabledError({ model });

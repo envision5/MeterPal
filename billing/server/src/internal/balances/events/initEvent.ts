@@ -51,6 +51,24 @@ export const initEvent = (params: {
 
 	const { org, env } = ctx;
 
+	// What the customer was actually charged.
+	//
+	// A charge can be capped: a prepaid customer with no overage arrangement
+	// cannot spend more credits than they hold, so the deduction stops at
+	// their balance and the rest of the requested amount is never charged.
+	// The ledger records what was charged -- the usage that produced it stays
+	// in the properties (cost, tokens) -- so the ledger sums to what the
+	// customer actually spent, and a capped call cannot look like revenue the
+	// merchant never collected.
+	const requestedValue = eventInfo.value ?? 1;
+	const chargedAmount = deductions && deductions.length > 0
+		? deductions.reduce((sum, deduction) => sum + (deduction.value ?? 0), 0)
+		: undefined;
+	const value =
+		chargedAmount !== undefined && chargedAmount < requestedValue
+			? chargedAmount
+			: requestedValue;
+
 	const timestampDate = eventInfo.timestamp
 		? new Date(eventInfo.timestamp)
 		: new Date();
@@ -70,7 +88,7 @@ export const initEvent = (params: {
 		event_name: eventInfo.event_name,
 		created_at: timestampDate.getTime(),
 		timestamp: timestampDate,
-		value: eventInfo.value ?? 1,
+		value: value,
 		properties: eventInfo.properties ?? {},
 		idempotency_key: eventInfo.idempotency_key ?? null,
 		set_usage: false,

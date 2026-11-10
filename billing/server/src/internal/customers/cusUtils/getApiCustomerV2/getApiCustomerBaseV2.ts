@@ -68,6 +68,10 @@ export const getApiCustomerBaseV2 = async ({
 		name: customer.name || null,
 		email: customer.email || null,
 		fingerprint: customer.fingerprint || null,
+		// Always null (PayPal-native), but the key must be present: the client
+		// SDK validates the customer payload against a schema that requires it,
+		// and rejects the whole payload when it is missing.
+		stripe_id: null,
 		env: customer.env,
 		metadata: customer.metadata ?? {},
 		subscriptions: apiSubscriptions,

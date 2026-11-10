@@ -75,6 +75,23 @@ export const customerJwtMiddleware = async (
 		});
 	}
 
+	// Negative track values credit balance back — legitimate for merchant
+	// secret keys (refunds, manual adjustments), never for the end user
+	// holding this JWT. Reject before the handler sees the body.
+	const isTrackRoute =
+		routeKey === "POST /v1/track" || routeKey === "POST /v1/balances.track";
+	if (claims.aud !== AUD_REFRESH && isTrackRoute) {
+		const body = await c.req.json().catch(() => ({}) as Record<string, unknown>);
+		const value = Number((body as { value?: unknown })?.value);
+		if (Number.isFinite(value) && value < 0) {
+			throw new RecaseError({
+				message: "Customer tokens cannot credit balance (negative value rejected)",
+				code: ErrCode.InvalidRequest,
+				statusCode: 403,
+			});
+		}
+	}
+
 	// One read: org + features + revocation epoch, keyed by the immutable
 	// internal_customer_id. Cache miss → DB; DB down → throws → auth fails.
 	const auth = await getCustomerJwtAuth({
