@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useAutumnClient } from "autumn-js/react";
-import { X } from "lucide-react";
+import { IconX } from "@tabler/icons-react";
 
 interface TopUpModalProps {
   /** Top-up product ids, ordered small → large.  Configure in your MeterPal catalog. */
@@ -332,7 +332,7 @@ export function TopUpModal({
             aria-label="Close"
             className="rounded p-1 hover:bg-muted"
           >
-            <X className="h-4 w-4" aria-hidden />
+            <IconX className="h-4 w-4" aria-hidden />
           </button>
         </div>
 

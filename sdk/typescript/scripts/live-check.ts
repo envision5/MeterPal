@@ -11,9 +11,16 @@ import {
 } from "../src/index";
 
 const BASE_URL = process.env.METERPAL_BASE_URL ?? "http://localhost:8080";
+// No committed fallback: the demo key is minted fresh by demo/bootstrap.py
+// and lives in gateway/.env — never in the repo.
 const API_KEY =
 	process.env.METERPAL_SECRET_KEY ??
-	"am_sk_test_JvWnILAeT5zTxPfHTPvJKV6NNDTn8uF97Np38YRe6d";
+	(() => {
+		console.error(
+			"live-check: set METERPAL_SECRET_KEY (demo: `python demo/bootstrap.py` writes it to gateway/.env)",
+		);
+		process.exit(1);
+	})();
 
 const meterpal = createMeterPal({ apiKey: API_KEY, baseURL: BASE_URL });
 

@@ -25,6 +25,8 @@ export { PlanCard } from "./components/PlanCard";
 export { TopUpModal } from "./components/TopUpModal";
 export { UsageHistoryPanel } from "./components/UsageHistoryPanel";
 export { CostTooltip } from "./components/CostTooltip";
+export { useCurrentPlan, currentPlanIdOf } from "./components/useCurrentPlan";
+export type { CurrentPlan } from "./components/useCurrentPlan";
 export { createMeterPalClient, createBillingClient } from "./client";
 export type {
 	MeterPalClient,
@@ -34,6 +36,7 @@ export type {
 
 // ---- inference client ----
 export { createMeterPal, DEFAULT_BASE_URL } from "./inference/client";
+export { findCustomerBalance, formatCredits } from "./lib/utils";
 export type {
 	MeterPal,
 	MeterPalConfig,

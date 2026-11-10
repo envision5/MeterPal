@@ -9,6 +9,8 @@
 		"sdk/typescript"
 	],
 	"scripts": {
+		"sync:brand": "node scripts/sync-brand-assets.mjs",
+		"sync:brand:check": "node scripts/sync-brand-assets.mjs --check",
 		"test:sdk": "cd sdk/typescript && bun run test && cd ../../sdk/python && python -m pytest tests -q",
 		"test:gateway": "cd gateway && python -m pytest tests/test_meterpal_billing.py -q",
 		"test:billing": "cd billing/server && bun test ./tests/paypal_webhook.test.ts ./tests/paypal_subscriptions.test.ts ./tests/paypal_invoicing.test.ts",

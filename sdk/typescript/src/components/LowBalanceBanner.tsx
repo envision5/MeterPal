@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useCustomer } from "autumn-js/react";
-import { AlertTriangle, X } from "lucide-react";
+import { IconAlertTriangle, IconX } from "@tabler/icons-react";
 import { cn, findCustomerBalance, formatCredits } from "../lib/utils";
 
 interface LowBalanceBannerProps {
@@ -49,7 +49,7 @@ export function LowBalanceBanner({
         level === "critical" && "border-red-500/50 bg-red-500/10 text-red-900 dark:text-red-100",
       )}
     >
-      <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
+      <IconAlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
       <p className="flex-1">
         {level === "critical"
           ? "You've run out of credits. Add more to continue."
@@ -77,7 +77,7 @@ export function LowBalanceBanner({
         aria-label="Dismiss"
         className="rounded p-1 hover:bg-black/10 dark:hover:bg-white/10"
       >
-        <X className="h-4 w-4" aria-hidden />
+        <IconX className="h-4 w-4" aria-hidden />
       </button>
     </div>
   );
