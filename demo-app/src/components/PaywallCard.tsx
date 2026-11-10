@@ -40,6 +40,9 @@ export default function PaywallCard({
 						{data.agent_pack?.price_usd?.toFixed(2)} within your mandate
 					</p>
 					<p className="mt-0.5 text-violet-300/80">{data.agent_reason}</p>
+					<p className="mt-1.5 text-[11px] text-violet-300/70">
+						PayPal approval opened automatically — log in there to approve.
+					</p>
 					{data.checkout?.url && (
 						<a
 							href={data.checkout.url}
@@ -49,7 +52,7 @@ export default function PaywallCard({
 							data-testid="paywall-paypal-link"
 						>
 							<IconBrandPaypal size={14} />
-							Approve in PayPal
+							Reopen PayPal approval
 							<IconArrowRight size={14} />
 						</a>
 					)}
