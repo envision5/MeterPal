@@ -16,7 +16,6 @@
 		"packages/atmn-old",
 		"packages/atmn-generator",
 		"packages/autumn-js",
-		"packages/mcp",
 		"packages/openapi",
 		"packages/sdk"
 	],
@@ -127,17 +126,6 @@
 				"tw-animate-css"
 			]
 		},
-		"apps/leaf": {
-			"entry": [
-				"tests/**/*.ts",
-				"agent/**/*.ts"
-			],
-			"project": [
-				"src/**/*.ts",
-				"tests/**/*.ts",
-				"agent/**/*.ts"
-			]
-		},
 		"packages/agent-docs": {
 			"entry": [
 				"**/*.test.ts",
@@ -157,15 +145,6 @@
 			"project": [
 				"src/**/*.ts",
 				"cases/**/*.ts",
-				"tests/**/*.ts"
-			]
-		},
-		"packages/gateway": {
-			"entry": [
-				"tests/**/*.test.ts"
-			],
-			"project": [
-				"src/**/*.ts",
 				"tests/**/*.ts"
 			]
 		},

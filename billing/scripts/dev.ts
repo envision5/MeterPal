@@ -1,7 +1,6 @@
 import { existsSync, readFileSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { isCloudAgent } from "@autumn/env";
 import { resolveTriggerDevBranch } from "./triggerDevBranch.ts";
 
 function spawnTriggerDevBranchReaper({
@@ -223,10 +222,7 @@ async function startDev() {
 
 		console.log(`  vite:     http://localhost:${VITE_PORT}`);
 		console.log(`  server:   http://localhost:${SERVER_PORT}`);
-		console.log(`  checkout: http://localhost:${CHECKOUT_PORT}`);
-		console.log(`  leaf:     http://localhost:${CHAT_PORT}/health`);
-		console.log(`  eve:      ${EVE_SERVER_URL}/eve/v1/info`);
-		console.log(`  mcp:      http://localhost:${CHAT_PORT}/mcp\n`);
+		console.log(`  checkout: http://localhost:${CHECKOUT_PORT}\n`);
 
 		// Use cmd on Windows, sh on Unix
 		const isWindows = process.platform === "win32";
@@ -300,27 +296,6 @@ async function startDev() {
 				isWindows
 					? `"cd apps/checkout && set VITE_PORT=${CHECKOUT_PORT} && bun dev"`
 					: `"cd apps/checkout && VITE_PORT=${CHECKOUT_PORT} bun dev"`,
-			);
-
-			const skipEve = isCloudAgent();
-			if (!skipEve) {
-				names.push("eve");
-				colors.push("white");
-				cmds.push(
-					isWindows
-						? `"cd apps/leaf && npx eve dev --no-ui --port ${EVE_PORT}"`
-						: `"cd apps/leaf && npx eve dev --no-ui --port ${EVE_PORT}"`,
-				);
-			} else {
-				console.error("CLOUD_AGENT=1 — skipping eve\n");
-			}
-			names.push("leaf");
-			colors.push("gray");
-			cmds.push(
-				// Harness defaults live in apps/leaf/src/lib/chatAgentConfig.ts.
-				isWindows
-					? `"cd apps/leaf && set PORT=${CHAT_PORT} && bun dev"`
-					: `"cd apps/leaf && PORT=${CHAT_PORT} bun dev"`,
 			);
 
 			shellArgs = [

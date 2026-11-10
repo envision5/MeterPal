@@ -24,7 +24,6 @@ COPY server/package.json server/
 COPY shared/package.json shared/
 COPY vite/package.json vite/
 COPY scripts/package.json scripts/
-COPY apps/leaf/package.json apps/leaf/
 COPY apps/checkout/package.json apps/checkout/
 COPY apps/docs/package.json apps/docs/
 COPY apps/sdk-test/package.json apps/sdk-test/
@@ -39,10 +38,8 @@ COPY packages/atmn-tests/package.json packages/atmn-tests/
 COPY packages/auth/package.json packages/auth/
 COPY packages/autumn-js/package.json packages/autumn-js/
 COPY packages/env/package.json packages/env/
-COPY packages/gateway/package.json packages/gateway/
 COPY packages/ksuid/package.json packages/ksuid/
 COPY packages/logging/package.json packages/logging/
-COPY packages/mcp/package.json packages/mcp/
 COPY packages/openapi/package.json packages/openapi/
 COPY packages/render/package.json packages/render/
 COPY packages/ducklake/package.json packages/ducklake/

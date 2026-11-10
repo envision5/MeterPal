@@ -20,7 +20,6 @@
 		"start": "bun $BUN_PROF_FLAGS src/index.ts",
 		"workers": "bun $BUN_PROF_FLAGS src/workers.ts",
 		"cron": "bun src/cron.ts",
-		"leaf": "bun ../apps/leaf/src/index.ts",
 		"check": "bun src/check.ts",
 		"check:concurrency": "bun scripts/concurrencyReservationCheck.ts",
 		"t": "cd ../ && bun t $* && cd ./server",
