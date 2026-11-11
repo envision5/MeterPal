@@ -135,6 +135,10 @@ export const listByCursor = async ({
 			customer_id: row.customer_id,
 			value: row.value ?? 0,
 			properties,
+			// The charge discriminator: null on the reservation and its
+			// release, present on the settled charge.  See
+			// ApiEventsListItemSchema.
+			idempotency_key: row.idempotency_key ?? null,
 			deductions,
 		};
 	});

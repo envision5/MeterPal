@@ -42,7 +42,8 @@ import {
 	ModelNotEnabledError,
 	ModelNotFoundError,
 } from "./inferenceErrors.js";
-import { getFeatureBalance, waitForSettledUsage } from "./usageSettlement.js";
+import { readWallet } from "@/internal/balances/walletProjection.js";
+import { waitForSettledUsage } from "./usageSettlement.js";
 
 /** The OpenAI-shaped request body. Extra fields are passed through. */
 export type InferenceRequest = {
@@ -62,8 +63,25 @@ export type MeterpalBlock = {
 	customer_id: string;
 	/** The model id the charge was recorded against. */
 	model_id: string | null;
+	/**
+	 * Prompt tokens as the provider counted them — cached input INCLUDED.
+	 *
+	 * This is the count the charge was computed from, so
+	 * `input_tokens * input_rate + output_tokens * output_rate` reproduces
+	 * `credits_charged`.  Reporting only the uncached remainder (which is
+	 * what the ledger stores per pool) made a correct charge look wrong on
+	 * screen: 40 in / 475 out priced at $200/$800 is $0.388, but a call
+	 * with 256 cached tokens costs $0.4608.
+	 */
 	input_tokens: number | null;
+	/** Completion tokens as the provider counted them — reasoning INCLUDED. */
 	output_tokens: number | null;
+	/** The part of `input_tokens` the provider served from its prompt cache. */
+	cache_read_tokens: number | null;
+	/** The part of `input_tokens` written to the provider's prompt cache. */
+	cache_write_tokens: number | null;
+	/** The part of `output_tokens` the model spent reasoning. */
+	reasoning_tokens: number | null;
 };
 
 export type ResolvedModel = {
@@ -333,27 +351,54 @@ export const settleMeterpalBlock = async ({
 	});
 
 	if (!settled) {
+		// No charge event landed (the bridge is fail-open).  Report the
+		// settled wallet rather than the raw balance, which may still have
+		// this call's reservation deducted from it.
+		const wallet = await readWallet({
+			db: ctx.db,
+			orgId: ctx.org.id,
+			env: ctx.env,
+			customerId: customer.id as string,
+			featureId: litellmFeatureId(),
+		});
 		return {
 			credits_charged: null,
-			balance_after: await getFeatureBalance({
-				db: ctx.db,
-				customerInternalId: customer.internal_id,
-				featureId: litellmFeatureId(),
-			}),
+			balance_after: wallet.settled,
 			customer_id: customer.id as string,
 			model_id: null,
 			input_tokens: null,
 			output_tokens: null,
+			cache_read_tokens: null,
+			cache_write_tokens: null,
+			reasoning_tokens: null,
 		};
 	}
+
+	// The event stores the bill as pools: uncached input, cache reads, cache
+	// writes, non-reasoning output, reasoning.  The block reports the totals
+	// the pools add up to, so the number beside the charge is the number the
+	// charge was computed from -- and the split stays available for anyone
+	// who wants to see where it went.
+	const cacheRead = settled.cacheReadTokens ?? 0;
+	const cacheWrite = settled.cacheWriteTokens ?? 0;
+	const reasoning = settled.reasoningTokens ?? 0;
 
 	return {
 		credits_charged: settled.creditsCharged,
 		balance_after: settled.balanceAfter,
 		customer_id: customer.id as string,
 		model_id: settled.modelId,
-		input_tokens: settled.inputTokens,
-		output_tokens: settled.outputTokens,
+		input_tokens:
+			settled.inputTokens === null
+				? null
+				: settled.inputTokens + cacheRead + cacheWrite,
+		output_tokens:
+			settled.outputTokens === null
+				? null
+				: settled.outputTokens + reasoning,
+		cache_read_tokens: settled.cacheReadTokens,
+		cache_write_tokens: settled.cacheWriteTokens,
+		reasoning_tokens: settled.reasoningTokens,
 	};
 };
 

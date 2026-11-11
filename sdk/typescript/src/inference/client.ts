@@ -415,10 +415,32 @@ const readJson = async (response: Response): Promise<any> => {
  *
  * The code decides when the status is ambiguous (404 is either an unknown
  * model or an unknown end user); the status decides otherwise.
+ *
+ * The refusal's numbers are read from wherever the gateway put them.  An
+ * OpenAI-shaped error nests them under `error`; a raw FastAPI one nests them
+ * under `detail`.  Both carry `balance` and `required_credits`, and reading
+ * only the first left a 402 with no requirement to report -- which the paywall
+ * then filled in with its own floor, a number smaller than the balance, so it
+ * told the customer they had more than enough while refusing them.
  */
 const toError = (status: number, body: any): MeterPalError => {
-	const error = body?.error ?? {};
-	const code: string | undefined = error.code ?? body?.code;
+	const detail =
+		body?.error && typeof body.error === "object"
+			? body.error
+			: body?.detail && typeof body.detail === "object"
+				? body.detail
+				: {};
+	const error = detail;
+	// The gateway's own refusal is nested one level deeper by the proxy, so a
+	// client talking to it directly still finds the numbers.
+	const upstream = (error?.provider_specific_fields ?? {}) as {
+		balance?: number;
+		required_credits?: number;
+	};
+	const code: string | undefined =
+		error.code ??
+		body?.code ??
+		(typeof body?.error === "string" ? body.error : undefined);
 	const message: string =
 		error.message ?? body?.message ?? `MeterPal request failed (${status})`;
 
@@ -445,8 +467,8 @@ const toError = (status: number, body: any): MeterPalError => {
 				code,
 				body,
 				customerId: error.customer_id,
-				balance: error.balance,
-				requiredCredits: error.required_credits,
+				balance: error.balance ?? upstream.balance,
+				requiredCredits: error.required_credits ?? upstream.required_credits,
 			});
 		case 403:
 			return new ModelNotEnabledError(message, { status, code, body });

@@ -39,6 +39,9 @@ import { cusRouter } from "../internal/customers/cusRouter";
 import { entityRouter } from "../internal/entities/entityRouter";
 import { featureRouter } from "../internal/features/featureRouter";
 import { servedModelRouter } from "../internal/models/servedModelRouter";
+import { handleGetBuyerAgentDefaults } from "../internal/agents/handlers/handleGetBuyerAgentDefaults";
+import { handleGetWallet } from "../internal/inference/handlers/handleGetWallet";
+import { handleGetChatConfig } from "../internal/orgs/handlers/handleGetChatConfig";
 import { salesAgentRouter } from "../internal/salesAgent/salesAgentRouter";
 import { honoOrgRouter } from "../internal/orgs/orgRouter";
 import { platformBetaRouter } from "../internal/platform/platformBeta/platformBetaRouter";
@@ -77,6 +80,17 @@ apiRouter.route("", servedModelRouter);
 apiRouter.route("", entityRouter);
 apiRouter.route("/customers", cusRouter);
 apiRouter.route("/sales-agent", salesAgentRouter);
+// The merchant's standing terms for a customer's own buying agent.
+// Buyer-side only — the seller ladder never leaves the merchant's session.
+apiRouter.get("/agent/buyer-defaults", ...handleGetBuyerAgentDefaults);
+// The merchant's app-level chat settings (streaming), for an app holding a
+// secret key.  Same effective value the dashboard edits.
+apiRouter.get("/chat-config", ...handleGetChatConfig);
+// The customer's wallet as a human should see it: the settled balance, with
+// in-flight reservations added back so the number only steps down by real
+// charges.  `balance` in the response is the spendable figure admission
+// control uses.
+apiRouter.get("/wallet", ...handleGetWallet);
 
 apiRouter.route("/products_beta", honoProductBetaRouter);
 apiRouter.route("/products", honoProductRouter);

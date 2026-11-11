@@ -15,6 +15,7 @@ import {
 	BuildingIcon,
 	CreditCardIcon,
 	KeyRoundIcon,
+	MessageSquareIcon,
 	MousePointerClickIcon,
 	PaletteIcon,
 	ReceiptIcon,
@@ -35,6 +36,7 @@ import { AgentSection } from "./sections/AgentSection";
 import { AppearanceSection } from "./sections/AppearanceSection";
 import { AuthorizedAppsSection } from "./sections/AuthorizedAppsSection";
 import { BillingSettingsSection } from "./sections/BillingSettingsSection";
+import { ChatSection } from "./sections/ChatSection";
 import { CustomButtonsSection } from "./sections/CustomButtonsSection";
 import { InvoicesSection } from "./sections/InvoicesSection";
 import { MembersSection } from "./sections/MembersSection";
@@ -51,6 +53,7 @@ export type SettingsTab =
 	| "subscription"
 	| "members"
 	| "agent"
+	| "chat"
 	| "appearance"
 	| "apps"
 	| "sso"
@@ -123,6 +126,11 @@ export const SETTINGS_GROUPS: readonly SettingsNavGroup[] = [
 				label: "Agent",
 				icon: <BotIcon className="size-4" />,
 			},
+			{
+				id: "chat",
+				label: "Chat",
+				icon: <MessageSquareIcon className="size-4" />,
+			},
 		],
 	},
 	{
@@ -168,6 +176,7 @@ const SECTION_MAP: Record<SettingsTab, React.ComponentType> = {
 	subscription: SubscriptionSection,
 	members: MembersSection,
 	agent: AgentSection,
+	chat: ChatSection,
 	appearance: AppearanceSection,
 	apps: AuthorizedAppsSection,
 	sso: SsoSection,

@@ -153,9 +153,10 @@ paywall moment with the buyer agent: 402 → "your agent is on it" → PayPal ap
 > reads their real usage from the ledger — burn rate, runway, down to the call — and drafts a
 > package sized to it. Nothing takes effect without a human: the merchant approves with one click,
 > the plan is minted instantly, and PayPal itself approves the payment. The buyer's AI runs inside a
-> hard mandate — when the wallet runs dry it tops up on its own, and the same 402 wall that stops a
-> human stops it the moment the budget says so. Both sides of the transaction are agents acting on
-> the same ledger — and neither can overspend."
+> hard mandate — when the wallet runs dry it opens a top-up and hands it to the buyer, who is the
+> only one who can approve the payment in PayPal; the same 402 wall that stops a human stops the
+> agent the moment the budget says so. Both sides of the transaction are agents acting on the same
+> ledger — and neither can spend without a human saying yes."
 
 **Why this beat:** it is the agentic-commerce entry PayPal built this hackathon for — usage-grounded
 negotiation, a merchant approval gate, a buyer mandate, and PayPal rails end to end. The agent's own

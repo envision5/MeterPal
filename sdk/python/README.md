@@ -1,16 +1,21 @@
 # meterpal (Python)
 
-Python client for **MeterPal** — the PayPal-native AI usage-billing gateway —
-plus the LiteLLM usage-billing hook.
+**MeterPal's SDK for Python** — an OpenAI-shaped client that bills the end user
+for every AI call, plus the LiteLLM usage-billing hook.
 
 ## Install
 
+Not on PyPI yet. Install it from this repo:
+
 ```bash
-pip install meterpal            # client (httpx only)
-pip install "meterpal[litellm]" # + gateway hook re-export
+python -m pip install -e sdk/python              # client (httpx only)
+python -m pip install -e "sdk/python[litellm]"   # + gateway hook re-export
 ```
 
-Or from this repo: `pip install -e sdk/python`.
+> Use `python -m pip`, not bare `pip`: on a machine with several Pythons those
+> can point at different interpreters, and the package then installs somewhere
+> the `python` you run cannot import. Same reason the live check below is run
+> with `python -m`.
 
 ## One import: metered inference
 
@@ -21,15 +26,18 @@ and every call is admitted, metered and charged to the end user — the same
 ```python
 from meterpal import create_meterpal, InsufficientBalanceError
 
-meterpal = create_meterpal(api_key="am_sk_test_...")   # server-side only
+# Server-side only. base_url defaults to https://api.meterpal.dev;
+# for this repo's stack pass http://localhost:8080.
+meterpal = create_meterpal(api_key="am_sk_test_...", base_url="http://localhost:8080")
 
 try:
     completion = meterpal.chat.completions.create(
         model="custom/demo-gpt",
         messages=[{"role": "user", "content": "hi"}],
-        user="cus_123",        # the end user being billed
+        user="cus_123",        # the end user being billed — required
     )
     completion["meterpal"]["credits_charged"]   # what it cost
+    completion["meterpal"]["balance_after"]     # their balance once it settled
 except InsufficientBalanceError as err:
     # The paywall, as a typed error: open the PayPal checkout for them.
     checkout = err.top_up()
@@ -43,14 +51,18 @@ rest of the merchant surface. The secret key is exchanged for a per-customer
 virtual key on first use and cached, so one merchant's traffic can never
 spend another merchant's budget.
 
-## Billing client quickstart
+## Billing client
+
+`MeterPalClient` is the lower-level REST client — the merchant surface the
+gateway and the PayPal webhooks use. Most apps only need `create_meterpal`
+above; reach for this to seed customers or to inspect a wallet.
 
 ```python
 from meterpal import MeterPalClient
 
 billing = MeterPalClient(
     secret_key="am_sk_test_...",
-    base_url="http://localhost:8080/v1",
+    base_url="http://localhost:8080/v1",   # the default
 )
 
 # customers (get-or-create semantics)
@@ -101,9 +113,19 @@ Every `/v1/chat/completions` is then pre-authorized against the caller's
 wallet and metered after the call. The `user` field on the request (or the
 `PAB_CUSTOMER_HEADER`) identifies the customer.
 
-## Tests
+## Testing locally
 
 ```bash
-pip install -e "sdk/python[dev]"
-pytest sdk/python/tests -q
+# unit tests — httpx MockTransport, no server, no network
+python -m pytest sdk/python/tests -q
+
+# live: one metered call, one stream, one refusal, one paywall
+export METERPAL_SECRET_KEY=$(grep '^PAB_API_KEY=' gateway/.env | cut -d= -f2)
+export METERPAL_BASE_URL=http://localhost:8080
+python sdk/python/scripts/live_check.py
 ```
+
+`METERPAL_BASE_URL` is the billing server, not the gateway: the billing server
+proxies `/v1/chat/completions` to the metered gateway, so the SDK only ever
+talks to one host. The live check exits non-zero if any assertion fails, so it
+is safe to run in CI.

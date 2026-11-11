@@ -151,6 +151,25 @@ const respondWithGatewayError = async ({
 				`The gateway rejected the request (${response.status})`);
 
 	if (response.status === 402) {
+		// What the customer has, and what the call would have cost.
+		//
+		// The balance is read here because this server knows the settled
+		// figure.  The REQUIREMENT cannot be read here: it is the request's
+		// own estimate -- input plus the output cap priced at this org's
+		// sheet -- and only the gateway's admission check computed it.  The
+		// gateway forwards that number in the 402, nested by LiteLLM under
+		// `provider_specific_fields`.  Reporting the policy floor instead
+		// (PAB_REQUIRED_BALANCE) produced a paywall that said "balance 2.23 /
+		// needed 0.50" while refusing the call: the floor is the minimum a
+		// call may START with, not what this call needs.
+		const upstream =
+			((detail as { provider_specific_fields?: Record<string, unknown> })
+				?.provider_specific_fields ?? detail) as
+				| Record<string, unknown>
+				| undefined;
+		const requiredFromGateway = upstream?.required_credits;
+		const balanceFromGateway = upstream?.balance;
+
 		const balance = await getFeatureBalance({
 			db: ctx.db,
 			customerInternalId,
@@ -163,8 +182,11 @@ const respondWithGatewayError = async ({
 					code: "insufficient_balance",
 					message,
 					customer_id: customerId,
-					balance,
-					required_credits: litellmRequiredBalance(),
+					balance: balance ?? balanceFromGateway ?? null,
+					required_credits:
+						typeof requiredFromGateway === "number"
+							? requiredFromGateway
+							: litellmRequiredBalance(),
 				},
 			},
 			402,

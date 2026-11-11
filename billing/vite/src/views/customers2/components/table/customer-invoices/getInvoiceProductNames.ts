@@ -12,18 +12,24 @@ type ProductGroup = {
 	featureNames: Set<string>;
 };
 
-/** Build the product-id based label used as a fallback while line items load. */
+/**
+ * Build the product-id based label used as a fallback while line items load.
+ * Invoices raised straight through PayPal (e.g. usage overage) have no Autumn
+ * product at all, so fall back to a label rather than rendering a blank cell.
+ */
 const getFallbackNames = ({
 	invoice,
 	products,
 }: {
 	invoice: Invoice;
 	products: ProductV2[];
-}): string =>
-	invoice.product_ids
+}): string => {
+	const names = invoice.product_ids
 		.map((id) => products.find((p) => p.id === id)?.name)
 		.filter(Boolean)
 		.join(", ");
+	return names || UNKNOWN_PRODUCT_LABEL;
+};
 
 /** Resolve a product id to its display name, falling back to the id itself. */
 export const productIdsToNames = ({

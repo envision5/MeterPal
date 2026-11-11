@@ -80,6 +80,10 @@ export const useCusQuery = ({
 	const fetcher = async () => {
 		try {
 			const searchParams = new URLSearchParams();
+			// Invoices are no longer always expanded (V1_1 and later) — ask for
+			// them explicitly, or the invoices table is empty even when the
+			// customer has been billed.
+			searchParams.set("expand", "invoices");
 			if (includeExpiredLoose) {
 				searchParams.set("include_expired_loose", "true");
 			}

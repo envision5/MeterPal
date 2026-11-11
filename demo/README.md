@@ -17,43 +17,58 @@ demo-customer ──► LiteLLM :4000 ──► mock LLM :9999        (stands in
 
 ## Run it
 
+This is the CLI half of the story. For the merchant dashboard and the browser
+storefront, follow [`../docs/FIRST-RUN.md`](../docs/FIRST-RUN.md) instead — it
+runs the same commands in the same order, with the screens.
+
 ```bash
+# (run every command from the repo root; terminals 1–3 below each start there)
+
 # 1. Infrastructure (postgres x2, redis x2)
 docker compose up -d
 
-# 2. MeterPal billing server   (terminal 1)
+# 2. Config + schema. A fresh database has no tables, so this is not optional.
+cp billing/server/.env.example billing/server/.env
+cp gateway/.env.example        gateway/.env
+python demo/bootstrap.py --migrate
+
+# 3. MeterPal billing server   (terminal 1)
 cd billing/server
 NODE_ENV=development bun src/index.ts
 
-# 3. Mock LLM provider       (terminal 2)
+# 4. Mock LLM provider       (terminal 2)
 python demo/mock_llm.py
 
-# 4. LiteLLM proxy           (terminal 3) — loads gateway/.env
+# 5. Seed the demo data — before the proxy starts, because the seed mints the
+#    key the proxy reads at boot
+python demo/bootstrap.py
+
+# 6. LiteLLM proxy           (terminal 3) — loads gateway/.env
 cd gateway
 set -a && source .env && set +a
 litellm --config config.yaml --port 4000
 
-# 5. Seed the demo data, then walk through the story
-python demo/bootstrap.py
+# 7. Walk through the story
 python demo/run_demo.py
 ```
 
 Prereqs: Python 3.12 with the `litellm` package installed (`pip install -e
-"../gateway[proxy]"` from `gateway/` — brings httpx/uvicorn used here),
-[Bun](https://bun.sh), and the LiteLLM + MeterPal DBs already migrated (see
-`../DEPLOY.md`).
+"../gateway[proxy]"` from `gateway/` — brings httpx/uvicorn used here) and
+[Bun](https://bun.sh).
 
 ## What `bootstrap.py` seeds
 
 A fresh MeterPal DB has no organization, so the script:
 
-1. **psql** — inserts org `demo` + a sandbox secret key (`am_sk_test_…`,
-   stored hashed, same SHA-256 scheme as `server/src/internal/dev/apiKeys`).
-   The same key is the bridge's `PAB_API_KEY` in `gateway/.env`.
+1. **psql** — inserts org `org_demo` (slug `demo`) + a sandbox secret key
+   (`am_sk_test_…`, stored hashed, same SHA-256 scheme as
+   `server/src/internal/dev/apiKeys`). The same key is the bridge's
+   `PAB_API_KEY` in `gateway/.env`. It also migrates the schema first if the
+   database is empty, so this works on a fresh clone.
 2. **`POST /v1/features`** — creates `ai_tokens` of type
    `ai_credit_system`, with `model_markups` pricing `custom/demo-gpt` at
    $20/M input, $80/M output. 1 credit = $1 of computed model cost.
-3. **`POST /v1/plans`** — free plan `demo-starter` granting 2.00
+3. **`POST /v1/plans`** — free plan `demo-starter` granting 3.00
    credits/month of `ai_tokens` with `auto_enable: true`.
 4. **`POST /v1/customers`** — creates `demo-customer`; the auto-enable plan
    attaches on creation and grants the credits (in production this attach is

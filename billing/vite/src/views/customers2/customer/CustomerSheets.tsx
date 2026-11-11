@@ -24,7 +24,7 @@ import { BillingUsageAlertSheet } from "../components/sheets/BillingUsageAlertSh
 import { BillingUsageAlertsFeatureSheet } from "../components/sheets/BillingUsageAlertsFeatureSheet";
 import { BillingUsageLimitSheet } from "../components/sheets/BillingUsageLimitSheet";
 import { CheckBalanceSheet } from "../components/sheets/CheckBalanceSheet";
-import { CreateInvoiceSheet } from "../components/sheets/CreateInvoiceSheet";
+import { CreateOverageInvoiceSheet } from "../components/sheets/CreateOverageInvoiceSheet";
 import { CustomerConfigSheet } from "../components/sheets/CustomerConfigSheet";
 import { InvoiceDetailSheet } from "../components/sheets/InvoiceDetailSheet";
 import { LicenseDetailSheet } from "../components/sheets/LicenseDetailSheet";
@@ -35,7 +35,8 @@ import { UpcomingInvoiceSheet } from "../components/sheets/UpcomingInvoiceSheet"
 
 export function CustomerSheets() {
 	const sheetType = useSheetStore((s) => s.type);
-	const hasSidePreview = sheetType === "create-invoice";
+	// The overage invoice form is a single column — no side preview any more.
+	const hasSidePreview = false;
 	const sheetData = useSheetStore((s) => s.data);
 	const closeSheet = useSheetStore((s) => s.closeSheet);
 	const closeBalanceSheet = useCustomerBalanceSheetStore((s) => s.closeSheet);
@@ -82,7 +83,7 @@ export function CustomerSheets() {
 				return <InvoiceDetailSheet invoice={invoice} lineItems={lineItems} />;
 			}
 			case "create-invoice":
-				return <CreateInvoiceSheet />;
+				return <CreateOverageInvoiceSheet />;
 			case "upcoming-invoice-detail": {
 				const preview = sheetData?.preview as ApiInvoicePreviewV0 | undefined;
 				if (!preview) return null;

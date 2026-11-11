@@ -15,6 +15,7 @@ import sys
 
 sys.path.insert(0, "C:/Users/craig/MeterPal/demo")
 
+from mock_agent import _extract_spec as extract_spec
 from mock_agent import final_reply, plan_next_turn
 
 CHART_PROMPTS = [
@@ -29,6 +30,13 @@ CHART_PROMPTS = [
     (
         "Add a chart of tracked events per day for this customer, so I can see how busy it is.",
         {"widgetType": "line-chart", "categoryField": "usage.period", "valueField": "usage.events"},
+    ),
+    # A grid reads `cols`, not `categoryKey`/`valueKey`. This case exists
+    # because a table widget configured with a chart's mapping is not an error
+    # anywhere in the stack -- it just renders "No Rows To Show".
+    (
+        "Add a table of usage by customer, one row per customer, showing total credits used.",
+        {"widgetType": "grid", "categoryField": "usage.customer_id", "valueField": "usage.credits"},
     ),
 ]
 
@@ -113,11 +121,54 @@ def run_chart(prompt, expect, shape):
             break
         args = json.loads(nxt["arguments"])
         orch["messages"].append(assistant_call(nxt["name"], args))
+        if nxt["name"] == "view_page":
+            # The real tool answers with every widget's box. The planner has
+            # to place the new tile below these, so the fixture has to carry
+            # a box -- otherwise the test cannot tell a placed widget from a
+            # guessed one.
+            orch["messages"].append(
+                tool_result(
+                    "c-view_page",
+                    {
+                        "success": True,
+                        "response": "Found 2 widget(s) in layout.",
+                        "data": {
+                            "widgets": {
+                                "kpi-credits": {
+                                    "xTrack": 0,
+                                    "yTrack": 0,
+                                    "xSpan": 6,
+                                    "ySpan": 5,
+                                },
+                                "usage-table": {
+                                    "xTrack": 0,
+                                    "yTrack": 21,
+                                    "xSpan": 24,
+                                    "ySpan": 18,
+                                },
+                            },
+                            "pageLayout": {},
+                            "filters": [],
+                            "issues": [],
+                        },
+                    },
+                )
+            )
         if nxt["name"] == "delegate_to":
             delegate_page = nxt
             break
     assert delegate_page is not None, "orchestrator never delegated"
     page_args = json.loads(delegate_page["arguments"])
+
+    # The plan must land under the seeded table (which ends at track 39), not
+    # at the constant that used to sit on top of it.
+    spec = extract_spec(page_args["instructions"])
+    assert spec is not None, "no SPEC in the delegation"
+    y = spec["layout"]["yTrack"]
+    if y <= 39:
+        print(f"  FAIL: layout yTrack {y} collides with the seeded table")
+        return False
+    print(f"  OK: layout yTrack {y} sits below the seeded table")
 
     page = {
         "tools": mk_tools(PAGE),
@@ -159,10 +210,20 @@ def run_chart(prompt, expect, shape):
 
     if added:
         value = configured[0]["value"]["dataMapping"] if configured else {}
+        # Grids read `cols`; charts read `categoryKey`/`valueKey`.
+        cols = value.get("cols") or []
         mapping = {
             "widgetType": added[0]["type"],
-            "categoryField": value.get("categoryKey", [{}])[0].get("id"),
-            "valueField": value.get("valueKey", [{}])[0].get("id"),
+            "categoryField": (
+                cols[0].get("id")
+                if cols
+                else (value.get("categoryKey") or [{}])[0].get("id")
+            ),
+            "valueField": (
+                cols[-1].get("id")
+                if cols
+                else (value.get("valueKey") or [{}])[0].get("id")
+            ),
         }
         if mapping != expect:
             print(f"  FAIL: mapping {mapping} != {expect}")
@@ -231,6 +292,126 @@ def run_summarise():
     return ok
 
 
+def run_placement():
+    """The page agent places the widget below what is already on the page.
+
+    The plan's layout is written before the page is read and can be empty, so
+    the role that actually places the widget has to consult its own
+    `view_page` result. When it did not, the second widget an agent added
+    landed on top of the first and Studio logged a layout validation failure
+    on screen -- the page ended up correct only because a repair pass moved it
+    afterwards.
+    """
+    print("\n=== placement ===")
+    instructions = (
+        "Place the widget described below on the page.\n"
+        'SPEC: {"widgetType":"column-chart-grouped","widgetId":"w-chart-1",'
+        '"title":"Credits by feature","categoryField":"usage.event_name",'
+        '"valueField":"usage.credits","pageId":"usage",'
+        '"layout":{"xTrack":0,"yTrack":0,"xSpan":12,"ySpan":18}}'
+    )
+    body = {"tools": mk_tools(PAGE), "messages": [{"role": "user", "content": instructions}]}
+
+    added = None
+    for _ in range(6):
+        nxt = plan_next_turn(body)
+        if nxt is None:
+            break
+        args = json.loads(nxt["arguments"])
+        body["messages"].append(assistant_call(nxt["name"], args))
+        if nxt["name"] == "view_page":
+            body["messages"].append(
+                tool_result(
+                    "c-view_page",
+                    {
+                        "success": True,
+                        "response": "Found 2 widget(s) in layout.",
+                        "data": {
+                            "widgets": {
+                                # The agent's own grid, already placed.
+                                "w-grid-1": {
+                                    "xTrack": 0,
+                                    "yTrack": 42,
+                                    "xSpan": 12,
+                                    "ySpan": 18,
+                                },
+                                "usage-table": {
+                                    "xTrack": 0,
+                                    "yTrack": 21,
+                                    "xSpan": 24,
+                                    "ySpan": 18,
+                                },
+                            }
+                        },
+                    },
+                )
+            )
+        if nxt["name"] == "add_widget":
+            added = args
+            break
+
+    if not added:
+        print("  FAIL: page agent never placed the widget")
+        return False
+
+    y = added["yTrack"]
+    # Below the agent's own grid (42 + 18 = 60), not on top of it and not at
+    # the plan's 0.
+    if y < 60:
+        print(f"  FAIL: placed at yTrack {y}, on top of w-grid-1 (42..60)")
+        return False
+    print(f"  OK: placed at yTrack {y}, clear of w-grid-1 (42..60)")
+    return True
+
+
+def run_follow_up():
+    """A second request in the same conversation still builds something.
+
+    The orchestrator's history keeps the first turn's reads, plan and
+    delegation. When "have I already done this?" was answered against the
+    whole history, the second request found everything already done and
+    replied with text -- no widget, no error, nothing on screen.
+    """
+    print("\n=== follow-up turn ===")
+    first = 'SPEC: {"widgetType":"grid","widgetId":"w-grid-1","title":"Usage by customer"}'
+    messages = [
+        {"role": "user", "content": "Add a table of usage by customer."},
+        {"role": "assistant", "content": "", "tool_calls": [
+            {"id": "c1", "type": "function",
+             "function": {"name": "view_schema", "arguments": "{}"}}
+        ]},
+        {"role": "tool", "tool_call_id": "c1", "content": '{"success":true,"data":{"tables":[]}}'},
+        {"role": "assistant", "content": "", "tool_calls": [
+            {"id": "c2", "type": "function",
+             "function": {"name": "view_page", "arguments": "{}"}}
+        ]},
+        {"role": "tool", "tool_call_id": "c2",
+         "content": '{"success":true,"data":{"widgets":{}}}'},
+        {"role": "assistant", "content": "", "tool_calls": [
+            {"id": "c3", "type": "function",
+             "function": {"name": "delegate_to",
+                          "arguments": json.dumps({"type": {"id": "page"},
+                                                   "instructions": first})}}
+        ]},
+        {"role": "tool", "tool_call_id": "c3", "content": '{"success":true}'},
+        {"role": "assistant", "content": 'Added "Usage by customer".'},
+        # The judge asks for something else, in the same conversation.
+        {"role": "user", "content": "Add a column chart of credits by feature."},
+    ]
+
+    nxt = plan_next_turn({"tools": mk_tools(ORCH), "messages": messages})
+    if nxt is None:
+        print("  FAIL: second request answered with text, no work done")
+        return False
+
+    name = nxt["name"]
+    if name not in ("view_schema", "view_report", "view_page", "delegate_to"):
+        print(f"  FAIL: unexpected first step {name}")
+        return False
+    print(f"  OK: second request starts with {name}")
+    return True
+
+
 results = []
 for prompt, expect in CHART_PROMPTS:
     for shape in ("separate", "shared"):
@@ -238,6 +419,8 @@ for prompt, expect in CHART_PROMPTS:
         results.append(run_chart(prompt, expect, shape))
 
 results.append(run_summarise())
+results.append(run_placement())
+results.append(run_follow_up())
 
 print("\nALL:", "PASS" if all(results) else "FAIL")
 sys.exit(0 if all(results) else 1)

@@ -25,11 +25,36 @@ export type PaywallData = {
 
 export default function PaywallCard({
 	data,
+	buyer,
 	onTopUp,
 }: {
 	data: PaywallData;
+	/**
+	 * The sandbox buyer account that approves payments, when the operator has
+	 * named one.  Approval is manual by design — the agent can open a PayPal
+	 * checkout, never approve it — so the one credential a viewer needs is
+	 * worth stating on screen instead of "log in there".
+	 */
+	buyer?: string | null;
 	onTopUp: () => void;
 }) {
+	const approvalHint = buyer
+		? `Approve it as ${buyer} in PayPal — approval is yours, never the agent's.`
+		: "Approve it in PayPal — approval is yours, never the agent's.";
+
+	/**
+	 * How to get through the sandbox approval screen, when no buyer account is
+	 * named.
+	 *
+	 * The sandbox asks for a login the moment you open a checkout, and there is
+	 * no buyer account in this repo to hand out.  The test card is the path
+	 * that always works, and it is the one place a viewer has to act, so it is
+	 * worth saying on screen instead of leaving them to guess.
+	 */
+	const sandboxHint = buyer
+		? null
+		: "Sandbox: the “Pay with Card” tab takes 4111 1111 1111 1111, expiry 12/30, CVV 123.";
+
 	const agent =
 		data.agent_action === "initiated" ? (
 			<div className="flex items-start gap-2 rounded-xl border border-violet-500/40 bg-violet-500/10 p-3">
@@ -41,8 +66,16 @@ export default function PaywallCard({
 					</p>
 					<p className="mt-0.5 text-violet-300/80">{data.agent_reason}</p>
 					<p className="mt-1.5 text-[11px] text-violet-300/70">
-						PayPal approval opened automatically — log in there to approve.
+						{approvalHint}
 					</p>
+					{sandboxHint && (
+						<p
+							className="mt-1 text-[11px] text-violet-300/50"
+							data-testid="paywall-sandbox-card"
+						>
+							{sandboxHint}
+						</p>
+					)}
 					{data.checkout?.url && (
 						<a
 							href={data.checkout.url}
@@ -104,12 +137,27 @@ export default function PaywallCard({
 					<div className="mt-2 flex flex-wrap gap-1.5">
 						<span className="mp-chip">
 							<IconWallet size={12} className="text-amber-300" />
-							balance {typeof data.balance === "number" ? data.balance.toFixed(2) : data.balance}
+							balance{" "}
+							{typeof data.balance === "number"
+								? data.balance.toFixed(2)
+								: "—"}
 						</span>
-						<span className="mp-chip">
-							<IconCoins size={12} className="text-rose-300" />
-							needed {data.requiredCredits}
-						</span>
+						{/* Only shown when the refusal stated a real requirement.
+						    The card used to print a hardcoded 0.50 floor here,
+						    which was smaller than the balance — a paywall that
+						    said "you have 2.23, you need 0.50" while refusing
+						    the call.  No number is better than a wrong one. */}
+						{typeof data.requiredCredits === "number" ? (
+							<span className="mp-chip">
+								<IconCoins size={12} className="text-rose-300" />
+								this call needs {data.requiredCredits.toFixed(2)}
+							</span>
+						) : (
+							<span className="mp-chip">
+								<IconCoins size={12} className="text-rose-300" />
+								more than your balance
+							</span>
+						)}
 					</div>
 					{agent && <div className="mt-3">{agent}</div>}
 					{data.agent_action !== "initiated" && (

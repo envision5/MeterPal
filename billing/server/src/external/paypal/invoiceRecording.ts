@@ -40,6 +40,17 @@ export function paypalInvoiceRefId(invoiceId: string): string {
 	return `pp-inv-${invoiceId}`;
 }
 
+/**
+ * The wallet-ledger idempotency key for an invoice payment.
+ *
+ * Shared by the webhook that grants the credits and the refund path that has
+ * to find the grant again, so a refund can never debit a grant it did not
+ * create.
+ */
+export function paypalInvoiceLedgerKey(invoiceId: string): string {
+	return `paypal-invoice:${invoiceId}`;
+}
+
 /** The PayPal instrument a `pp-*` invoice id names, or null when it isn't one. */
 export function paypalInvoiceInstrument(
 	processorInvoiceId: string | null | undefined,
@@ -73,6 +84,10 @@ export const recordPaypalInvoice = async ({
 	amountUsd,
 	productId,
 	description,
+	status = InvoiceStatus.Paid,
+	amountPaidUsd,
+	refundedUsd,
+	hostedInvoiceUrl,
 	createdAt = Date.now(),
 	db,
 	logger,
@@ -84,6 +99,13 @@ export const recordPaypalInvoice = async ({
 	/** The MeterPal plan the payment was for, when known. */
 	productId?: string | null;
 	description?: string;
+	/** `open` for a sent-but-unpaid invoice, `paid` once the money lands. */
+	status?: InvoiceStatus;
+	/** Amount actually collected; defaults to the full amount for paid rows. */
+	amountPaidUsd?: number;
+	refundedUsd?: number;
+	/** The payer-facing PayPal URL, so the dashboard can link to it. */
+	hostedInvoiceUrl?: string | null;
 	createdAt?: number;
 	db?: DrizzleCli;
 	logger?: typeof defaultLogger;
@@ -119,11 +141,12 @@ export const recordPaypalInvoice = async ({
 		internal_product_ids: internalProductIds,
 		processor_invoice_id: externalId,
 		processor_type: ProcessorType.PayPal,
-		status: InvoiceStatus.Paid,
-		hosted_invoice_url: null,
+		status,
+		hosted_invoice_url: hostedInvoiceUrl ?? null,
 		total: amountUsd,
-		amount_paid: amountUsd,
-		refunded_amount: 0,
+		amount_paid:
+			amountPaidUsd ?? (status === InvoiceStatus.Paid ? amountUsd : 0),
+		refunded_amount: refundedUsd ?? 0,
 		currency: "usd",
 		discounts: [],
 		items: description
@@ -146,6 +169,7 @@ export const recordPaypalInvoice = async ({
 		msg: "paypal: recorded invoice",
 		externalId,
 		amountUsd,
+		status,
 		customerId: customer.id,
 		productId: productId ?? null,
 	});

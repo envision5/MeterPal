@@ -35,6 +35,35 @@ function Test-Port($port) {
 	}
 }
 
+# Is the service on a port actually SERVING?
+#
+# A TCP connect is not enough: a socket left behind by a dying process still
+# accepts connections, so the port looks taken while nothing answers.  An HTTP
+# probe is the honest test -- and any HTTP answer counts, including a 401.
+# The billing server answers 401 without a key, and that is still "up".
+function Test-ServiceServing($port) {
+	try {
+		$req = [System.Net.HttpWebRequest]::Create("http://127.0.0.1:$port/")
+		$req.Method = "GET"
+		$req.Timeout = 5000
+		$req.AllowAutoRedirect = $false
+		$req.UserAgent = "meterpal-stack-health"
+		$resp = $req.GetResponse()
+		$resp.Close()
+		return $true
+	} catch [System.Net.WebException] {
+		$errResp = $_.Exception.Response
+		if ($errResp) {
+			# The app answered -- it just did not like the request.
+			$errResp.Close()
+			return $true
+		}
+		return $false
+	} catch {
+		return $false
+	}
+}
+
 # Finds the PID listening on a port.
 #
 # Get-NetTCPConnection is the primary source, but it can report a bound
@@ -153,6 +182,20 @@ function Get-StackServices {
 			env = @{ PYTHONIOENCODING = "utf-8"; PYTHONUNBUFFERED = "1" }
 			log = "mock-llm"
 		}
+		# Local stand-in for the PayPal Invoicing API (/v2/invoicing/*) only;
+		# every other PayPal path is proxied to the real sandbox, so checkout
+		# still hits PayPal for real.  The sandbox app carries no Invoicing
+		# scope, so without this the whole invoicing surface 403s.
+		# billing/server/.env points PAYPAL_BASE_URL here.
+		"mock-paypal" = @{
+			port = 9997
+			dir = "$StackRoot\demo"
+			exe = (Resolve-Executable "python")
+			args = @("mock_paypal.py")
+			envFile = $null
+			env = @{ PYTHONIOENCODING = "utf-8"; PYTHONUNBUFFERED = "1" }
+			log = "mock-paypal"
+		}
 		"gateway" = @{
 			port = 4000
 			dir = "$StackRoot\gateway"
@@ -245,7 +288,14 @@ function Start-StackService($name, $svc) {
 		-Execute "powershell.exe" `
 		-Argument "-NoProfile -ExecutionPolicy Bypass -File `"$runner`" -Service $name" `
 		-WorkingDirectory $svc.dir
-	$trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(5)
+	# The trigger repeats every five minutes so a service that dies comes back
+	# on its own.  Re-firing is safe because run-service.ps1 is idempotent: if
+	# the service is already serving it exits without starting a second copy.
+	# (A one-shot trigger was worse than useless -- the service stayed down
+	# until somebody noticed.)
+	$trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(5) `
+		-RepetitionInterval (New-TimeSpan -Minutes 5) `
+		-RepetitionDuration (New-TimeSpan -Days 3650)
 	$settings = New-ScheduledTaskSettingsSet `
 		-AllowStartIfOnBatteries `
 		-DontStopIfGoingOnBatteries `

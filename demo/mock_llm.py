@@ -93,6 +93,29 @@ def _parse_usage(messages: list[dict]) -> tuple[dict[str, int], str]:
 
 
 _TOOLS_DUMP = "C:/Users/craig/MeterPal/demo/logs/mock_tools.jsonl"
+_MESSAGES_DUMP = "C:/Users/craig/MeterPal/demo/logs/mock_messages.jsonl"
+
+
+def _dump_messages(body: dict) -> None:
+    """Append the conversation this request carried, when asked to.
+
+    Off by default -- a full studio transcript is ~45kB per step and there is
+    one per model call. Set `MOCK_LLM_DUMP_MESSAGES=1` before starting the
+    service when the question is "what did the agent actually receive?", which
+    is the only way to tell a parsing bug from a planning bug.
+    """
+    import os
+
+    if os.environ.get("MOCK_LLM_DUMP_MESSAGES") not in ("1", "true", "yes"):
+        return
+    try:
+        import json
+
+        os.makedirs(os.path.dirname(_MESSAGES_DUMP), exist_ok=True)
+        with open(_MESSAGES_DUMP, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(body.get("messages") or []) + "\n")
+    except Exception as exc:  # pragma: no cover - diagnostics only
+        print(f"[mock-llm] message dump failed: {exc}")
 
 
 def _dump_tools(body: dict) -> None:
@@ -131,6 +154,7 @@ async def chat_completions(request: Request) -> Any:
     usage, cleaned = _parse_usage(body.get("messages") or [])
 
     _dump_tools(body)
+    _dump_messages(body)
 
     completion_id = f"chatcmpl-mock-{int(time.time() * 1000)}"
     created = int(time.time())

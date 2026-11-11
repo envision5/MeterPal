@@ -50,6 +50,13 @@ export const paypalReturnRouter = new Hono<HonoEnv>();
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 60;
 const RATE_LIMIT_MAX_PER_ARG = 30;
+// The poll is a POLLER: a page watching one order asks again every couple of
+// seconds for as long as the buyer is on PayPal, and that is the route working
+// as designed, not abuse. Sharing the capture budget meant a normal checkout
+// exhausted it in ~40s and started collecting 429s -- which the client could
+// not tell apart from "settled". A separate, larger budget keeps the capture
+// and activation routes tight while letting the watch run for ten minutes.
+const RATE_LIMIT_MAX_POLL = 150;
 const rateBuckets = new Map<string, { count: number; windowStart: number }>();
 
 const hitBucket = (key: string, max: number): boolean => {
@@ -93,8 +100,12 @@ paypalReturnRouter.use("*", async (c, next) => {
 	// Per-argument buckets: the poller names a customer, capture/activate
 	// name an order or subscription.  Rotating either no longer buys
 	// unlimited probes.
+	const isPoll = c.req.path.endsWith("/poll");
 	const customerId = c.req.query("customer_id");
-	if (customerId && hitBucket(`cus:${customerId}`, RATE_LIMIT_MAX_PER_ARG)) {
+	if (
+		customerId &&
+		hitBucket(`cus:${customerId}`, isPoll ? RATE_LIMIT_MAX_POLL : RATE_LIMIT_MAX_PER_ARG)
+	) {
 		return c.json({ error: "rate_limited" }, 429);
 	}
 	const argId =
@@ -474,9 +485,27 @@ paypalReturnRouter.get("/poll", async (c) => {
  * In-page Buttons capture: the host app calls this from the PayPal JS SDK's
  * onApprove with the order id.  Public — the order id is unguessable and the
  * grant is idempotent.
+ *
+ * `?customer_id=` is optional and adds an ownership check. A caller that
+ * asserts who it is gets a 403 when the order belongs to somebody else: the
+ * credits still land with the order's owner either way, so this was never a
+ * way to steal money, but it was a way for one authenticated customer to
+ * force a capture on another's approved order. Callers that do not assert an
+ * identity (the SDK's own onApprove) are unaffected.
  */
 paypalReturnRouter.post("/capture/:order_id", async (c) => {
 	const orderId = c.req.param("order_id");
+	const claimedCustomer = c.req.query("customer_id");
+	if (claimedCustomer) {
+		const [intent] = await db
+			.select({ customer_id: paypalOrderIntents.customer_id })
+			.from(paypalOrderIntents)
+			.where(eq(paypalOrderIntents.order_id, orderId))
+			.limit(1);
+		if (intent?.customer_id && intent.customer_id !== claimedCustomer) {
+			return c.json({ error: "order_not_yours" }, 403);
+		}
+	}
 	const result = await captureAndGrant(orderId, "in_page_buttons");
 	return c.json(result);
 });

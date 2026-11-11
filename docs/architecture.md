@@ -258,8 +258,19 @@ served catalog. The end user id travels in `user` and is cross-checked against t
 ```jsonc
 { "id": "...", "model": "openai/gpt-4o", "choices": [...],
   "usage": { "prompt_tokens": 12, "completion_tokens": 40, "total_tokens": 52 },
-  "meterpal": { "credits_charged": 0.31, "balance_after": 99.69, "customer_id": "cus_123" } }
+  "meterpal": { "credits_charged": 0.31, "balance_after": 99.69, "customer_id": "cus_123",
+                // Totals the charge was computed from: cached input and reasoning
+                // included, because they are billed (at the input / output rate).
+                "input_tokens": 296, "output_tokens": 502,
+                // The split inside those totals, for anyone reconciling the charge.
+                "cache_read_tokens": 256, "cache_write_tokens": 0, "reasoning_tokens": 27 } }
 ```
+
+`input_tokens × input_rate + output_tokens × output_rate` reproduces `credits_charged`
+exactly. The ledger stores the pools separately (uncached input, cache reads, cache
+writes, non-reasoning output, reasoning), so a client that reports only the uncached
+or non-reasoning part shows a number that does not add up to the charge — which reads
+as a billing bug even though the charge is right.
 
 **Errors.** Typed, and each one carries the next action:
 

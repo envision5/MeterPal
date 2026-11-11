@@ -27,6 +27,7 @@ import {
 	entitlements,
 	features,
 	invoices,
+	InvoiceStatus,
 	paypalCatalogMap,
 	paypalOrderIntents,
 	products,
@@ -44,13 +45,22 @@ import { getPaypalClientForOrder } from "@/internal/billing/paypal/paypalOrgClie
 import { invalidateCachedFullSubject } from "@/internal/customers/cache/fullSubject/index.js";
 import { hasActiveCustomerProductForProduct } from "@/internal/customers/cusProducts/hasActiveCustomerProductForProduct";
 import { getFeatureBalance } from "@/internal/inference/usageSettlement.js";
+import { InvoiceService } from "@/internal/invoices/InvoiceService.js";
 import { createWorkerContext } from "@/queue/createWorkerContext.js";
 import {
 	paypalCaptureInvoiceId,
+	paypalInvoiceLedgerKey,
 	paypalInvoiceRefId,
 	paypalSaleInvoiceId,
 	recordPaypalInvoice,
 } from "./invoiceRecording.js";
+import {
+	invoiceTotalUsd,
+	isSettledStatus,
+	type PayPalInvoice,
+	paidAmountUsd,
+	recipientViewUrl,
+} from "./invoicing.js";
 import { grantBalanceParams } from "./grantBalanceParams.js";
 import type { PaypalClient } from "./paypalClient.js";
 import { PAYPAL_WEBHOOK_EVENT_TYPES } from "./webhookEventTypes.js";
@@ -178,6 +188,12 @@ async function dispatch(
 			break;
 		case "INVOICING.INVOICE.PAID":
 			await onInvoicePaid(event, orgId);
+			break;
+		case "INVOICING.INVOICE.REFUNDED":
+			await onInvoiceRefunded(event, orgId);
+			break;
+		case "INVOICING.INVOICE.CANCELLED":
+			await onInvoiceCancelled(event, orgId);
 			break;
 		default:
 			// already filtered above
@@ -1196,22 +1212,20 @@ async function onCaptureCompleted(
 }
 
 async function onInvoicePaid(event: PayPalEvent, orgId?: string): Promise<void> {
-	// An overage invoice was paid.  The invoice resource carries our reference
-	// ("mp:<customer_id>") and the item total.
-	const invoice = event.resource;
+	// INVOICING.INVOICE.PAID fires for a FULL payment, a PARTIAL payment and a
+	// PAYMENT_PENDING one — so the status decides how much, if anything, is
+	// credited.  Crediting the invoice total on every PAID event over-grants on
+	// partials and grants on money that has not settled.
+	const invoice = event.resource as PayPalInvoice | undefined;
 	const invoiceId = invoice?.id;
 	const reference: string | undefined = invoice?.detail?.reference;
-	const amount = parseFloat(
-		invoice?.amount?.breakdown?.item_total?.value ??
-			invoice?.amount?.value ??
-			"0",
-	);
+	if (!invoiceId || !invoice) return;
+
 	const invoiceCurrency = (
-		invoice?.detail?.currency_code ??
-		invoice?.amount?.currency_code ??
+		invoice.detail?.currency_code ??
+		invoice.amount?.currency_code ??
 		"USD"
 	).toUpperCase();
-	if (!invoiceId || !amount) return;
 	if (invoiceCurrency !== "USD") {
 		// 1 credit = 1 USD — never credit a non-USD invoice 1:1.
 		logger.warn({
@@ -1222,6 +1236,10 @@ async function onInvoicePaid(event: PayPalEvent, orgId?: string): Promise<void> 
 		return;
 	}
 
+	const total = invoiceTotalUsd(invoice);
+	const paid = paidAmountUsd(invoice);
+	if (!total) return;
+
 	const customCustomerId = reference?.startsWith("mp:")
 		? reference.slice(3)
 		: undefined;
@@ -1230,7 +1248,7 @@ async function onInvoicePaid(event: PayPalEvent, orgId?: string): Promise<void> 
 		customId: customCustomerId,
 		orgId,
 		email:
-			invoice?.primary_recipients?.[0]?.billing_info?.email_address ?? null,
+			invoice.primary_recipients?.[0]?.billing_info?.email_address ?? null,
 	});
 	if (!cust) {
 		logger.warn({
@@ -1241,18 +1259,175 @@ async function onInvoicePaid(event: PayPalEvent, orgId?: string): Promise<void> 
 		return;
 	}
 
-	await grantWalletCredits({
-		customer: cust,
-		amountUsd: amount,
-		idempotencyKey: `paypal-invoice:${invoiceId}`,
-		eventName: "invoice_paid",
-		metadata: { invoice_id: invoiceId, reference },
-	});
+	const hostedInvoiceUrl = recipientViewUrl(invoice);
+
+	if (!isSettledStatus(invoice.status)) {
+		// PAYMENT_PENDING and friends: record what PayPal says, move no money.
+		logger.info({
+			msg: "paypal invoice paid: not settled yet, nothing credited",
+			invoiceId,
+			status: invoice.status,
+		});
+		await recordPaypalInvoice({
+			customer: cust,
+			externalId: paypalInvoiceRefId(invoiceId),
+			amountUsd: total,
+			description: "PayPal overage invoice",
+			status: InvoiceStatus.Open,
+			amountPaidUsd: 0,
+			hostedInvoiceUrl,
+		});
+		return;
+	}
+
+	// Grant only the DELTA. A partial payment that later completes fires two
+	// PAID events; the second must top up the difference, not re-grant the
+	// total. Prior grants for this invoice sum to `alreadyGranted`, and the
+	// ledger key carries the cumulative paid amount so a replay is a no-op.
+	const priorGrants = await db
+		.select({ amount_usd: walletLedger.amount_usd })
+		.from(walletLedger)
+		.where(
+			sql`${walletLedger.idempotency_key} LIKE ${`${paypalInvoiceLedgerKey(invoiceId)}:%`}`,
+		);
+	const alreadyGranted = priorGrants.reduce(
+		(sum, row) => sum + (Number(row.amount_usd) || 0),
+		0,
+	);
+	const delta = Math.round((paid - alreadyGranted) * 100) / 100;
+
+	if (delta > 0) {
+		await grantWalletCredits({
+			customer: cust,
+			amountUsd: delta,
+			idempotencyKey: `${paypalInvoiceLedgerKey(invoiceId)}:${paid.toFixed(2)}`,
+			eventName: "invoice_paid",
+			metadata: { invoice_id: invoiceId, reference, status: invoice.status },
+		});
+	}
+
 	await recordPaypalInvoice({
 		customer: cust,
 		externalId: paypalInvoiceRefId(invoiceId),
-		amountUsd: amount,
+		amountUsd: total,
 		description: "PayPal overage invoice",
+		status: InvoiceStatus.Paid,
+		amountPaidUsd: paid,
+		hostedInvoiceUrl,
+	});
+}
+
+/**
+ * An invoice was refunded.
+ *
+ * Only the row is synced here.  The wallet clawback is driven by the explicit
+ * refund route, which knows the exact amount it asked PayPal to refund; a
+ * webhook cannot reliably tell a full refund from a partial one (PayPal
+ * reports status only), and debiting the wrong amount is worse than debiting
+ * nothing.  A full refund is unambiguous, so it does claw back.
+ */
+async function onInvoiceRefunded(
+	event: PayPalEvent,
+	orgId?: string,
+): Promise<void> {
+	const invoice = event.resource as PayPalInvoice | undefined;
+	const invoiceId = invoice?.id;
+	const reference: string | undefined = invoice?.detail?.reference;
+	if (!invoiceId || !invoice) return;
+
+	const total = invoiceTotalUsd(invoice);
+	const customCustomerId = reference?.startsWith("mp:")
+		? reference.slice(3)
+		: undefined;
+	const cust = await resolveCustomer({
+		customId: customCustomerId,
+		orgId,
+		email:
+			invoice.primary_recipients?.[0]?.billing_info?.email_address ?? null,
+	});
+	if (!cust) {
+		logger.warn({
+			msg: "paypal: invoice refunded for unknown customer",
+			invoiceId,
+			reference,
+		});
+		return;
+	}
+
+	const fullyRefunded = invoice.status === "REFUNDED";
+	const existing = await InvoiceService.getByProcessorInvoiceId({
+		db,
+		processorInvoiceId: paypalInvoiceRefId(invoiceId),
+	});
+	const alreadyRefunded = Number(existing?.refunded_amount) || 0;
+	const refundedTotal = fullyRefunded ? total : alreadyRefunded;
+
+	if (!fullyRefunded) {
+		logger.warn({
+			msg: "paypal invoice refunded: partial refund — row synced, wallet clawback requires the refund route",
+			invoiceId,
+			status: invoice.status,
+		});
+	}
+
+	const clawback = Math.round((refundedTotal - alreadyRefunded) * 100) / 100;
+	if (fullyRefunded && clawback > 0) {
+		await grantWalletCredits({
+			customer: cust,
+			amountUsd: -clawback,
+			idempotencyKey: `paypal-invoice-refund:${invoiceId}:${refundedTotal.toFixed(2)}`,
+			eventName: "invoice_refunded",
+			metadata: { invoice_id: invoiceId, reference, source: "webhook" },
+		});
+	}
+
+	await recordPaypalInvoice({
+		customer: cust,
+		externalId: paypalInvoiceRefId(invoiceId),
+		amountUsd: total,
+		description: "PayPal overage invoice",
+		status: InvoiceStatus.Void,
+		amountPaidUsd: total,
+		refundedUsd: refundedTotal,
+		hostedInvoiceUrl: recipientViewUrl(invoice),
+	});
+}
+
+/** An invoice was cancelled before payment — mark the row so it stops asking. */
+async function onInvoiceCancelled(
+	event: PayPalEvent,
+	orgId?: string,
+): Promise<void> {
+	const invoice = event.resource as PayPalInvoice | undefined;
+	const invoiceId = invoice?.id;
+	const reference: string | undefined = invoice?.detail?.reference;
+	if (!invoiceId || !invoice) return;
+
+	const existing = await InvoiceService.getByProcessorInvoiceId({
+		db,
+		processorInvoiceId: paypalInvoiceRefId(invoiceId),
+	});
+	if (!existing) {
+		logger.info({ msg: "paypal: cancelled invoice not on record", invoiceId });
+		return;
+	}
+
+	const customCustomerId = reference?.startsWith("mp:")
+		? reference.slice(3)
+		: undefined;
+	const cust = await resolveCustomer({ customId: customCustomerId, orgId });
+	if (!cust) return;
+
+	await recordPaypalInvoice({
+		customer: cust,
+		externalId: paypalInvoiceRefId(invoiceId),
+		amountUsd: Number(existing.total) || invoiceTotalUsd(invoice),
+		description: existing.items?.[0]?.description ?? "PayPal overage invoice",
+		status: InvoiceStatus.Void,
+		amountPaidUsd: Number(existing.amount_paid) || 0,
+		refundedUsd: Number(existing.refunded_amount) || 0,
+		hostedInvoiceUrl: existing.hosted_invoice_url,
+		createdAt: Number(existing.created_at) || Date.now(),
 	});
 }
 

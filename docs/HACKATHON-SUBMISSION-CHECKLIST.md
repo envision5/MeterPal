@@ -96,10 +96,10 @@ python demo/bootstrap.py && python demo/run_demo.py
 re-timed on Nov 10 to fit the AG Studio beat inside the limit):**
 1. **0:00–0:18 Problem** — "Every AI app needs per-user metered billing — with a hard cap. PayPal's Usage Based Billing API meters and invoices in arrears: the overspend happens first. Nothing in the catalog refuses the call that spends the last credit. MeterPal is that enforcement layer: HTTP 402 before any model spend."
 2. **0:18–0:50 The paywall works** — run_demo live: calls metered per token, wallet drains, **HTTP 402 before the provider is touched** (show the ledger row + the refusal).
-3. **0:50–1:24 The agentic loop (the money shot)** — buyer agent hits 402 → decides to buy → creates a PayPal order → sandbox approval → `PAYMENT.CAPTURE.COMPLETED` webhook credits the wallet → the agent's task resumes. No human touched billing.
+3. **0:50–1:24 The agentic loop (the money shot)** — buyer agent hits 402 → decides to buy → creates a PayPal order → **you approve it in the sandbox** → `PAYMENT.CAPTURE.COMPLETED` (or the capture poll on localhost) credits the wallet → the agent's task resumes. Say the boundary out loud: no human touches the billing code, and the human is the only one who can approve the payment — that is the guarantee, not a gap in it.
 4. **1:24–1:54 The Usage Studio (AG Grid)** — the merchant's AG Studio dashboard: ask the agent for a chart, watch it read the page → delegate to the page agent → delegate to the widget agent → a new chart appears on the canvas, and the banner shows what the last turn cost and the wallet balance.
 5. **1:54–2:20 Merchant side + depth** — dashboard: connect PayPal (credentials verified live), edit the served-model price sheet, watch the next call bill at the new price; then `curl` a FORGED webhook → 401; then the live ledger query.
-6. **2:20–2:45 Both sides are AI** — demo-app "Talk to sales" (customer) + dashboard "Agent approvals" (merchant): the customer's agent quotes real ledger math, the merchant approves, PayPal approves, and the buyer's agent tops itself up when the wallet runs dry.
+6. **2:20–2:45 Both sides are AI** — demo-app "Talk to sales" (customer) + dashboard "Agent approvals" (merchant): the customer's agent quotes real ledger math, the merchant approves the package, the buyer approves the payment in PayPal, and the top-up the buyer's agent opened when the wallet ran dry settles and its task resumes.
 7. **2:45–3:00 Close** — "the billing rail for the agent economy" + repo URL.
 
 **Checklist:**
@@ -154,8 +154,9 @@ canvas (KPI tiles, line chart, donut, table), and its AI Assistant is AG Studio'
 own multi-agent framework — orchestrator, page agent, widget agent — wired to
 MeterPal's metered endpoint. Ask it for a chart and it reads the page, delegates,
 places the widget, maps the data to the usage table, and the chart draws. Every one
-of those turns is billed to the selected customer's wallet, and the header shows
-the last turn's cost and the resulting balance.
+of those turns is billed to the merchant's **console wallet** (`meterpal-console`),
+never to the customer whose usage is on screen, and the header shows the last
+turn's cost and the resulting balance.
 
 **Why it is a genuine AG Grid claim, not a logo.** AG Grid's agent framework does
 the work — `view_schema` / `view_report` / `view_page` / `delegate_to` /
@@ -170,6 +171,7 @@ model. The model is the metered one.
 | `billing/vite/src/views/studio/studioAi.ts` | `createAiHarness` wired to the metered adapter |
 | `billing/vite/src/views/studio/studioAdapter.ts` | `AgLlmAdapter` → `/studio/ai`, plus the `meterpal` block |
 | `billing/vite/src/views/studio/studioReport.ts` | the seeded report (the starting widgets) |
+| `billing/vite/src/views/studio/studioLayout.ts` | the overlap repair — moves an agent widget that lands on a tile |
 | `billing/server/src/internal/studio/` | the metered turn, the data endpoint, the customers endpoint, and the AG Studio ⇄ OpenAI protocol |
 | `demo/mock_agent.py` | the offline multi-agent policy (no provider keys needed) |
 | `demo/test_mock_agent.py` | the offline test that locks the delegation chain down |
@@ -180,14 +182,46 @@ with no cloud dependency: no Tinybird, no AG Grid server, no provider keys. The
 agent turns run against the bundled mock LLM (`:9999`) through the LiteLLM proxy
 (`:4000`), exactly like the rest of the demo.
 
-**Verified end-to-end (Nov 10):** the agent's chain runs `view_schema →
-view_report → view_page → delegate_to(page) → add_widget → complete_task →
-delegate_to(widget) → configure_widget → complete_task`, the new "Credits by
-feature" column chart renders real bars from the `usage` table, and the customer's
-prepaid balance drops by exactly the sum of the turns' charges (8.89954 → 8.84006
-across 10 metered turns, 0.05948 credits — the same number the event log records).
+**Verified end-to-end:** the agent's chain runs `view_schema → view_report →
+view_page → delegate_to(page) → add_widget → complete_task → delegate_to(widget)
+→ configure_widget → complete_task`, and the new "Credits by feature" chart
+renders real bars from the `usage` table. The wallet drains turn by turn in the
+header banner — measured on a fresh console wallet: `250 → 246.37` across one
+prompt, with the banner reading "this turn 2.4804 credits across 10 model calls
+on custom/agnes-2.5-flash" — and that figure equals the wallet's own drop. The
+banner reports the **whole chain**, not the last call: one prompt is 6–10 model
+calls, and quoting only the last one understated a turn by ~9×.
 
-**Two things to fix before the recording.** Get an AG Studio license key (or plan
-for the watermark), and run `demo/test_mock_agent.py` after any change to
+**Do not quote a fixed cost per turn.** The reservation is input plus the output
+cap priced at the org's sheet, so the number moves whenever the price sheet does.
+An earlier version of this checklist recorded "0.05948 credits / 10 turns"; that
+was measured before the sheet was repriced, and it is no longer reproducible. The
+invariant that holds is the reconciliation: the banner's drop equals the turn's
+reported charge, and the event log records the same figure.
+
+**The sheet states a margin.** `served_models` carries the merchant's cost basis
+($2/$8 per 1M for `custom/demo-gpt` and `custom/agnes-2.5-flash`) and a 900%
+markup, which bills $20/$80. Both numbers are visible in the dashboard's model
+sheet and in every event's `properties` (`base_cost` vs `cost`, `markup: 900`),
+so the 90% margin is on screen before anyone edits anything.
+
+**Five things that had to be fixed for this beat to work on a fresh clone.**
+(1) The console wallet was seeded from `demo-starter` — 3 credits — while one
+turn reserves up to ~0.66 at the current sheet, so the first few prompts were
+refused; `bootstrap.py` now grants it `CONSOLE_CREDITS` (250). (2) The studio
+turn sent no `max_tokens`, so admission reserved against the gateway's 8192
+ceiling; `handleStudioAi.ts` now caps it (`STUDIO_MAX_OUTPUT_TOKENS`, 2048),
+which cuts the hold roughly 4x. (3) The agent could place a new widget on top of
+the KPI tiles and still report "no overlaps detected"; `studioLayout.ts` repairs
+the layout after every write. (4) The agent could build a widget and never bind
+it to the data, leaving "No Rows To Show" under a good title;
+`repairUnboundWidgets` (same pass) binds anything unmapped from its own title,
+and the widget agent is given the table's field ids. (5) The header reported the
+last model call's charge as the turn's cost, understating a 10-call chain by
+~9×; it now sums the chain. The page and widget agents also get explicit
+placement, data-binding and `complete_task` instructions in `studioAi.ts`.
+
+**Still to do before the recording.** Get an AG Studio license key (or plan for
+the watermark), and run `demo/test_mock_agent.py` after any change to
 `demo/mock_agent.py` — the agent protocol is easy to break silently, and a broken
 chain shows up in the video as "no chart appeared".

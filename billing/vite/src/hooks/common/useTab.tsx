@@ -31,6 +31,12 @@ export const useTab = () => {
 	if (path.startsWith("/customers")) {
 		return "customers";
 	}
+	// Usage Studio. Without this the sidebar has no tab to match, so the nav
+	// row for /studio never renders as active -- the page loads, the highlight
+	// stays on whatever was selected before.
+	if (path.startsWith("/studio")) {
+		return "studio";
+	}
 	if (path.startsWith("/dev")) {
 		return "dev";
 	}

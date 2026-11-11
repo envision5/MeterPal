@@ -72,6 +72,23 @@ export function TopUpModal({
   // capture is idempotent server-side — one click can never double-charge.
   const pendingOrderId = useRef<string | null>(null);
 
+  // The PayPal Buttons effect must run ONCE per checkout, not once per
+  // render.  Hosts pass these as inline literals (`inPageCheckout={{...}}`),
+  // so their identity changes on every parent render — and the parent
+  // re-renders on every wallet poll.  Depending on them tore the buttons
+  // down and rebuilt them every few seconds, and each teardown removed the
+  // container PayPal's card fields were mounted in: "Detected container
+  // element removed from DOM", uncaught, on a loop, for as long as the modal
+  // was open.  The callbacks live in refs instead, and the effect keys on the
+  // one thing that must not change mid-checkout: the client id.
+  const captureRef = useRef(inPageCheckout?.capture);
+  captureRef.current = inPageCheckout?.capture;
+  const pollFinalizeRef = useRef(pollFinalize);
+  pollFinalizeRef.current = pollFinalize;
+  const onCapturedRef = useRef(onCaptured);
+  onCapturedRef.current = onCaptured;
+  const paypalClientId = inPageCheckout?.clientId;
+
   // Closing the modal ends the purchase flow: drop the pending order and
   // reset the buttons so reopening renders them fresh.
   useEffect(() => {
@@ -106,68 +123,69 @@ export function TopUpModal({
 
   // Render in-page Buttons once the pack is chosen in inPage mode.
   useEffect(() => {
-    if (!inPageActive || !inPageCheckout || !buttonsRef.current) return;
+    if (!inPageActive || !paypalClientId || !buttonsRef.current) return;
     let cancelled = false;
+    let buttons: any = null;
     (async () => {
       try {
-        const paypal = await loadPayPalSdk(inPageCheckout.clientId);
-        if (cancelled || !buttonsRef.current) return;
-        buttonsRef.current.innerHTML = "";
-        paypal
-          .Buttons({
-            style: { layout: "vertical", height: 45 },
-            createOrder: async (): Promise<string> => {
-              // Never mint here.  The order was created when the pack was
-              // clicked; handing PayPal a fresh order on every createOrder
-              // (overlay loops, extra clicks) is what allowed one purchase
-              // to double-charge.
-              if (pendingOrderId.current) return pendingOrderId.current;
-              const productId = pendingProductId.current;
-              if (!productId) throw new Error("no pack selected");
-              const result: any = await client.attach({ planId: productId });
-              const checkoutUrl =
-                result?.paymentUrl ??
-                result?.payment_url ??
-                result?.checkout_url ??
-                result?.url;
-              const orderId = checkoutUrl
-                ? new URL(checkoutUrl).searchParams.get("token")
-                : null;
-              if (!orderId) throw new Error("PayPal order could not be created");
-              pendingOrderId.current = orderId;
-              return orderId;
-            },
-            onApprove: async (data: any) => {
-              const res = await inPageCheckout.capture(data.orderID);
-              // Accept both the documented `{ captured: true }` contract and
-              // the billing server's native `{ status: "captured", credits }`
-              // shape — treating a successful capture as a failure made the
-              // modal stay open and invited duplicate purchases.
-              const captured =
-                res?.captured === true || res?.status === "captured";
-              const credits = res?.credits;
-              if (captured) {
-                onCaptured?.(credits);
-                setAwaitingPayment(false);
-                setPending(null);
-                setOpen(false);
-              } else {
-                setError("Capture failed — please try again.");
-                setAwaitingPayment(false);
-                setPending(null);
-              }
-            },
-            onCancel: () => {
+        const paypal = await loadPayPalSdk(paypalClientId);
+        const host = buttonsRef.current;
+        if (cancelled || !host) return;
+        host.innerHTML = "";
+        buttons = paypal.Buttons({
+          style: { layout: "vertical", height: 45 },
+          createOrder: async (): Promise<string> => {
+            // Never mint here.  The order was created when the pack was
+            // clicked; handing PayPal a fresh order on every createOrder
+            // (overlay loops, extra clicks) is what allowed one purchase
+            // to double-charge.
+            if (pendingOrderId.current) return pendingOrderId.current;
+            const productId = pendingProductId.current;
+            if (!productId) throw new Error("no pack selected");
+            const result: any = await client.attach({ planId: productId });
+            const checkoutUrl =
+              result?.paymentUrl ??
+              result?.payment_url ??
+              result?.checkout_url ??
+              result?.url;
+            const orderId = checkoutUrl
+              ? new URL(checkoutUrl).searchParams.get("token")
+              : null;
+            if (!orderId) throw new Error("PayPal order could not be created");
+            pendingOrderId.current = orderId;
+            return orderId;
+          },
+          onApprove: async (data: any) => {
+            const res = await captureRef.current?.(data.orderID);
+            // Accept both the documented `{ captured: true }` contract and
+            // the billing server's native `{ status: "captured", credits }`
+            // shape — treating a successful capture as a failure made the
+            // modal stay open and invited duplicate purchases.
+            const captured =
+              res?.captured === true || res?.status === "captured";
+            const credits = res?.credits;
+            if (captured) {
+              onCapturedRef.current?.(credits);
               setAwaitingPayment(false);
               setPending(null);
-            },
-            onError: (err: any) => {
-              setError(String(err?.message ?? err));
+              setOpen(false);
+            } else {
+              setError("Capture failed — please try again.");
               setAwaitingPayment(false);
               setPending(null);
-            },
-          })
-          .render(buttonsRef.current);
+            }
+          },
+          onCancel: () => {
+            setAwaitingPayment(false);
+            setPending(null);
+          },
+          onError: (err: any) => {
+            setError(String(err?.message ?? err));
+            setAwaitingPayment(false);
+            setPending(null);
+          },
+        });
+        await buttons.render(host);
       } catch (e: any) {
         setError(e?.message ?? "Failed to load PayPal");
         setAwaitingPayment(false);
@@ -176,15 +194,24 @@ export function TopUpModal({
     })();
     return () => {
       cancelled = true;
+      // Closing the checkout is the only teardown that should happen.  It
+      // runs when the pack changes or the modal closes — not on a parent
+      // re-render, which is what the old dependency list made happen.
+      try {
+        buttons?.close?.();
+      } catch {
+        // PayPal throws when the buttons were never mounted; nothing to do.
+      }
+      if (buttonsRef.current) buttonsRef.current.innerHTML = "";
     };
-  }, [inPageActive, inPageCheckout]);
+  }, [inPageActive, paypalClientId, client]);
 
   // Safety net: sandbox PayPal sometimes loops its overlay instead of
   // closing it after approval.  While awaiting, poll the host's finalize
   // endpoint — the server captures APPROVED orders directly, and the modal
   // completes even when the overlay never closes.
   useEffect(() => {
-    if (!inPageActive || !pollFinalize) return;
+    if (!inPageActive || !pollFinalizeRef.current) return;
     let stopped = false;
     (async () => {
       const deadline = Date.now() + 10 * 60 * 1000;
@@ -192,9 +219,9 @@ export function TopUpModal({
         await new Promise((r) => setTimeout(r, 3000));
         if (stopped) return;
         try {
-          const res = await pollFinalize();
+          const res = await pollFinalizeRef.current?.();
           if (res?.captured) {
-            onCaptured?.(res.credits);
+            onCapturedRef.current?.(res.credits);
             setAwaitingPayment(false);
             setPending(null);
             setOpen(false);
@@ -208,7 +235,7 @@ export function TopUpModal({
     return () => {
       stopped = true;
     };
-  }, [inPageActive, pollFinalize]);
+  }, [inPageActive]);
 
   useEffect(() => {
     const handler = () => setOpen(true);
@@ -217,10 +244,6 @@ export function TopUpModal({
   }, []);
 
   async function onTopUp(productId: string) {
-    console.log("[MP-DEBUG] onTopUp", {
-      inPage: !!inPageCheckout,
-      poll: !!pollFinalize,
-    });
     setPending(productId);
     setError(null);
     try {
@@ -323,7 +346,12 @@ export function TopUpModal({
               Add credits
             </h2>
             <p className="text-sm text-muted-foreground">
-              Choose a credit pack — you'll approve the payment with PayPal.
+              {/* Once a pack is chosen there is nothing left to choose, so the
+                  subtitle follows the modal's job instead of asking for a
+                  choice that is no longer on screen. */}
+              {awaitingPayment
+                ? "Approve the payment in PayPal — your credits land the moment it captures."
+                : "Choose a credit pack — you'll approve the payment with PayPal."}
             </p>
           </div>
           <button
@@ -337,25 +365,39 @@ export function TopUpModal({
         </div>
 
         <div className="mt-4 grid gap-2" data-testid="topup-options">
-          {productIds.map((id, i) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => onTopUp(id)}
-              disabled={pending !== null}
-              data-testid={`topup-option-${id}`}
-              className="flex items-center justify-between rounded-md border border-border px-4 py-3 hover:bg-muted disabled:opacity-60 disabled:cursor-not-allowed text-left"
-            >
-              <span className="font-medium">{labels[i] ?? id}</span>
-              <span className="text-muted-foreground">${prices[i] ?? "—"}</span>
-            </button>
-          ))}
+          {/* The packs are hidden once one is chosen, not merely disabled:
+              at that point the modal's job is the PayPal approval, and a
+              still-clickable pack list beside it invites a second order for
+              a purchase that is already in flight. */}
+          {!awaitingPayment &&
+            productIds.map((id, i) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => onTopUp(id)}
+                disabled={pending !== null}
+                data-testid={`topup-option-${id}`}
+                className="flex items-center justify-between rounded-md border border-border px-4 py-3 hover:bg-muted disabled:opacity-60 disabled:cursor-not-allowed text-left"
+              >
+                <span className="font-medium">{labels[i] ?? id}</span>
+                <span className="text-muted-foreground">${prices[i] ?? "—"}</span>
+              </button>
+            ))}
         </div>
 
         {awaitingPayment && (
           <div className="mt-3">
             {inPageCheckout ? (
-              <div ref={buttonsRef} data-testid="paypal-buttons" />
+              <>
+                <p
+                  className="mb-2 text-xs text-muted-foreground"
+                  data-testid="paypal-approval-hint"
+                >
+                  One payment, approved by you in PayPal. An agent can open this
+                  checkout but can never approve it.
+                </p>
+                <div ref={buttonsRef} data-testid="paypal-buttons" />
+              </>
             ) : (
               <p className="text-sm text-muted-foreground">
                 Complete the payment in the PayPal window — this dialog closes

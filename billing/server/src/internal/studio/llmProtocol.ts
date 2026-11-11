@@ -209,6 +209,205 @@ export const studioResponseFormatToOpenAi = ({
 	};
 };
 
+// ---------------------------------------------------------------------------
+// Tool argument repair
+// ---------------------------------------------------------------------------
+//
+// Two repairs, both driven by the schema Studio published for the turn, both
+// strictly faithful: they only reshape what the model already said, and only
+// where the schema says what shape it must be. Studio runs its tools
+// client-side, so a call it cannot parse fails somewhere this server never
+// sees -- the agent loop shows "Failed" and stops, with no error to chase.
+
+const DELEGATE_TO_TOOL = "delegate_to";
+
+/** A JSON-schema node, as much of it as these repairs need. */
+type SchemaNode = {
+	type?: string | string[];
+	properties?: Record<string, SchemaNode>;
+	items?: SchemaNode;
+	anyOf?: SchemaNode[];
+	oneOf?: SchemaNode[];
+	allOf?: SchemaNode[];
+	enum?: unknown;
+};
+
+/**
+ * Does this schema want an object or an array?
+ *
+ * A union counts when any branch wants one: `delegate_to`'s `type` is an
+ * `anyOf` of objects, and the model stringifies it just like a plain object
+ * property.
+ */
+const wantsStructured = (schema: SchemaNode | undefined): boolean => {
+	if (!schema) return false;
+	const types = Array.isArray(schema.type) ? schema.type : [schema.type];
+	if (types.includes("object") || types.includes("array")) return true;
+	return (schema.anyOf ?? []).some(wantsStructured) ||
+		(schema.oneOf ?? []).some(wantsStructured) ||
+		(schema.allOf ?? []).some(wantsStructured);
+};
+
+/**
+ * Undo JSON-encoded nesting, guided by the schema.
+ *
+ * Models routinely send a nested argument as a JSON *string* -- `"model":
+ * "{\"operator\":\"inRelativeRange\",...}"` instead of the object itself --
+ * because emitting a string is a flatter, easier token sequence than emitting
+ * the structure. The tool then validates a string against an object schema and
+ * rejects it, and the model, seeing no explanation it can act on, retries the
+ * same call until the loop gives up.
+ *
+ * So: wherever the schema wants an object or array and the value is a string
+ * that parses to one, parse it. A string the schema wants as a string is never
+ * touched, and a string that does not parse is left as it was.
+ */
+const unstringify = (value: unknown, schema: SchemaNode | undefined): unknown => {
+	if (!schema) return value;
+
+	if (typeof value === "string" && wantsStructured(schema)) {
+		try {
+			const parsed = JSON.parse(value) as unknown;
+			if (parsed !== null && typeof parsed === "object") {
+				return unstringify(parsed, schema);
+			}
+		} catch {
+			return value;
+		}
+		return value;
+	}
+
+	if (Array.isArray(value) && schema.items) {
+		return value.map((entry) => unstringify(entry, schema.items));
+	}
+
+	if (value && typeof value === "object" && !Array.isArray(value)) {
+		const record = value as Record<string, unknown>;
+		const properties = schema.properties ?? {};
+		// A union of objects: every branch's properties are candidates.
+		const branches = [
+			...(schema.anyOf ?? []),
+			...(schema.oneOf ?? []),
+			...(schema.allOf ?? []),
+		];
+		let changed = false;
+		const next: Record<string, unknown> = { ...record };
+
+		for (const key of Object.keys(record)) {
+			const child =
+				properties[key] ??
+				branches.map((branch) => branch.properties?.[key]).find(Boolean);
+			if (!child) continue;
+			const repaired = unstringify(record[key], child);
+			if (repaired !== record[key]) {
+				next[key] = repaired;
+				changed = true;
+			}
+		}
+
+		return changed ? next : value;
+	}
+
+	return value;
+};
+
+/** The target ids `delegate_to` accepts, read from the schema it published. */
+const delegateTargetIds = (schema: SchemaNode | undefined): Set<string> => {
+	const ids = new Set<string>();
+	const branches = schema?.properties?.type?.anyOf ?? [];
+	for (const branch of branches) {
+		const values = branch?.properties?.id?.enum;
+		if (Array.isArray(values)) {
+			for (const value of values) {
+				if (typeof value === "string") ids.add(value);
+			}
+		}
+	}
+	return ids;
+};
+
+/**
+ * Repair a `delegate_to` call the model flattened.
+ *
+ * Studio's schema wants `type: { id, ...params }`. A model that flattens
+ * discriminated unions -- which most do, whatever the schema says -- sends
+ * `type: "page"` with the params beside it instead. Studio then reads
+ * `args.type.id`, finds nothing, and rejects the call with "no target agent
+ * specified", so the agent loop dies on its first hand-off no matter how
+ * correct the plan was.
+ *
+ * The repair is faithful, not creative: it only fires when the flattened
+ * `type` names a target the published schema actually offers, and it only
+ * moves arguments the caller already sent. Anything it cannot confirm is left
+ * exactly as the model emitted it, so a genuinely wrong call still surfaces as
+ * a real error rather than a silent guess.
+ */
+const repairDelegateArguments = ({
+	args,
+	targets,
+}: {
+	args: Record<string, unknown>;
+	targets: Set<string>;
+}): Record<string, unknown> => {
+	if (targets.size === 0) return args;
+
+	const { type, instructions, ...rest } = args;
+
+	// Already in the shape Studio asked for -- but a model will also sometimes
+	// send `{ type: { id: "widget" }, widgetType: "line-chart" }`, which parses
+	// as a valid discriminant with the widget's own params left outside it.
+	// Studio would then validate `type` against the widget branch and fail on
+	// the missing `widgetType`, so fold the strays back in.
+	if (type && typeof type === "object" && !Array.isArray(type)) {
+		if (Object.keys(rest).length === 0) return args;
+		return { ...args, type: { ...(type as Record<string, unknown>), ...rest } };
+	}
+
+	// The flattened form. `type` is the target id; everything beside it that is
+	// not the instruction belongs to that target's params.
+	if (typeof type !== "string" || !targets.has(type)) return args;
+
+	return {
+		...(instructions === undefined ? {} : { instructions }),
+		type: { id: type, ...rest },
+	};
+};
+
+/**
+ * The arguments to hand Studio for one tool call.
+ *
+ * Unparseable arguments are returned untouched: a model that truncated its own
+ * JSON should reach Studio as it wrote it, not become a 500 here.
+ */
+const repairToolArguments = ({
+	raw,
+	schema,
+}: {
+	raw: string;
+	schema?: StudioToolSchema;
+}): string => {
+	let args: Record<string, unknown>;
+	try {
+		const parsed = JSON.parse(raw) as unknown;
+		if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+			return raw;
+		}
+		args = parsed as Record<string, unknown>;
+	} catch {
+		return raw;
+	}
+
+	const node = schema?.parameters as SchemaNode | undefined;
+	const repaired = unstringify(args, node) as Record<string, unknown>;
+
+	if (schema?.name !== DELEGATE_TO_TOOL) return JSON.stringify(repaired);
+
+	const targets = delegateTargetIds(node);
+	return JSON.stringify(
+		repairDelegateArguments({ args: repaired, targets }),
+	);
+};
+
 /** The OpenAI chat completion this module expects back. */
 export type OpenAiChatCompletion = {
 	id?: string;
@@ -274,13 +473,20 @@ export type StudioLlmResponse = {
  *
  * The text (if any) becomes one assistant message; each tool call becomes one
  * `function_call` output item, which Studio then executes and feeds back.
+ *
+ * `tools` is the same list the request went out with. It is used only to
+ * repair a flattened `delegate_to` (see `repairDelegateArguments`) -- Studio
+ * executes that tool client-side, so a call it cannot parse is a dead end the
+ * server would otherwise never hear about.
  */
 export const openAiCompletionToStudioResponse = ({
 	completion,
 	fallbackId,
+	tools,
 }: {
 	completion: OpenAiChatCompletion;
 	fallbackId: string;
+	tools?: StudioToolSchema[];
 }): StudioLlmResponse => {
 	const choice = completion.choices?.[0];
 	const message = choice?.message;
@@ -299,15 +505,21 @@ export const openAiCompletionToStudioResponse = ({
 		});
 	}
 
+	const byName = new Map((tools ?? []).map((tool) => [tool.name, tool]));
+
 	for (const [index, call] of (message?.tool_calls ?? []).entries()) {
 		const callId = call.id ?? `${fallbackId}_call_${index}`;
+		const name = call.function?.name ?? "";
 		output.push({
 			id: callId,
 			kind: "output",
 			type: "function_call",
 			callId,
-			name: call.function?.name ?? "",
-			arguments: call.function?.arguments ?? "{}",
+			name,
+			arguments: repairToolArguments({
+				raw: call.function?.arguments ?? "{}",
+				schema: byName.get(name),
+			}),
 			status: "completed",
 		});
 	}

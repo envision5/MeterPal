@@ -233,6 +233,11 @@ export const insertInvoices = async ({
 				total: row.total,
 				amount_paid: row.amount_paid ?? null,
 				refunded_amount: row.refunded_amount,
+				discounts: (row.discounts ?? []) as {
+					coupon_name: string;
+					amount_off: number;
+					amount_used: number;
+				}[],
 				currency: row.currency,
 				created_at: row.created_at,
 				hosted_invoice_url: row.hosted_invoice_url ?? null,

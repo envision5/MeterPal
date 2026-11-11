@@ -22,7 +22,7 @@ import { createCustomerWithDefaults } from "@/internal/customers/actions/createW
 import { adjustBalanceDbAndCache } from "@/internal/customers/cusProducts/cusEnts/actions/adjustBalanceDbAndCache.js";
 import { ProductService } from "@/internal/products/ProductService.js";
 import { priceAmountUsd } from "@/internal/billing/paypal/runPaypalCheckout.js";
-import { getFeatureBalance } from "@/internal/inference/usageSettlement.js";
+import { readWallet } from "@/internal/balances/walletProjection.js";
 
 /**
  * The end user the wizard's smoke test bills.
@@ -258,11 +258,18 @@ export async function getLastSetupSmokeTest({
 
 	// The balance is not on the event -- it is the end user's balance now,
 	// which is what the wizard wants to show ("what is left after the test").
-	const balanceAfter = await getFeatureBalance({
-		db,
-		customerInternalId: event.internal_customer_id ?? "",
-		featureId: event.event_name,
-	});
+	// Use the settled projection: the raw entitlement balance can still be
+	// dipped by an in-flight reservation, which would make the wizard report
+	// a number that no other screen agrees with.
+	const balanceAfter = (
+		await readWallet({
+			db,
+			orgId: org.id,
+			env,
+			customerId: SETUP_CUSTOMER_ID,
+			featureId: event.event_name,
+		})
+	).settled;
 
 	return {
 		credits_charged: Number(event.value ?? 0),

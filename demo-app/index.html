@@ -1,5 +1,10 @@
 <!doctype html>
-<html lang="en">
+<!-- `class="dark"` is not a user preference here: the storefront's palette is
+     dark unconditionally (`:root` in styles.css sets a 5% background), so
+     Tailwind's `dark:` variants have to be on by class. Left to the media
+     query, a light-mode OS rendered every `text-*-900 dark:text-*-100` pair in
+     its light shade — near-black text on a near-black panel. -->
+<html lang="en" class="dark">
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />

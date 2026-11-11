@@ -71,6 +71,9 @@ export default function AgentCheckoutNotice({
 			const res = await fetch("/api/agent/pending-checkout", {
 				headers: authHeaders(customerId),
 			});
+			// A failed read says nothing about the checkout; the last known
+			// state (the banner) is the better answer than a blank page.
+			if (!res.ok) return;
 			const data = await res.json();
 			if (data?.pending && data?.checkout?.url) {
 				setCheckout(data.checkout);

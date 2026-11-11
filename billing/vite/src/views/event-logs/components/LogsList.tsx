@@ -16,7 +16,7 @@ const PREFETCH_THRESHOLD = 20;
 const ROW_GRID: CSSProperties = {
 	display: "grid",
 	gridTemplateColumns:
-		"150px minmax(0, 180px) minmax(0, 220px) 80px minmax(0, 1fr)",
+		"150px minmax(0, 160px) 74px minmax(0, 190px) 80px minmax(0, 1fr)",
 	columnGap: "16px",
 	alignItems: "center",
 };
@@ -24,6 +24,38 @@ const ROW_GRID: CSSProperties = {
 const CELL = "min-w-0 truncate";
 const VALUE_CELL = "min-w-0 truncate text-right tabular-nums";
 const PROPERTIES_CELL = "min-w-0 truncate pl-4";
+
+/**
+ * What a ledger row actually is.
+ *
+ * A metered call writes three events: the reservation taken at admission (a
+ * negative hold), its release (the matching positive), and the settled charge
+ * (positive, and the only one carrying the call's idempotency key). Listing
+ * all three without saying which is which is what made the log look broken --
+ * a -0.294 with no model and no tokens reads as a charge that makes no sense.
+ *
+ * The raw log keeps every row, because the reserve/release pair IS the
+ * admission-control story. It just gets a label.
+ */
+type LedgerKind = "charge" | "reserve" | "release";
+
+const ledgerKind = (event: ApiEventsListItem): LedgerKind => {
+	if (event.idempotency_key != null) return "charge";
+	// No key: the hold (negative) or the hold being returned (positive).
+	return event.value < 0 ? "reserve" : "release";
+};
+
+const KIND_STYLE: Record<LedgerKind, string> = {
+	charge: "border-primary/40 bg-primary/10 text-primary",
+	reserve: "border-border bg-muted/60 text-muted-foreground",
+	release: "border-border bg-transparent text-subtle",
+};
+
+const KIND_LABEL: Record<LedgerKind, string> = {
+	charge: "charge",
+	reserve: "reserve",
+	release: "release",
+};
 
 export const formatLogTime = ({ timestamp }: { timestamp: number }) =>
 	format(new Date(timestamp), "MMM d · HH:mm:ss");
@@ -35,6 +67,7 @@ const ColumnHeaders = () => (
 	>
 		<span className={CELL}>Time</span>
 		<span className={CELL}>Event</span>
+		<span className={CELL}>Kind</span>
 		<span className={CELL}>Customer</span>
 		<span className={VALUE_CELL}>Value</span>
 		<span className={PROPERTIES_CELL}>Properties</span>
@@ -88,6 +121,16 @@ const LogRow = ({
 				title={event.customer_id}
 			>
 				{event.customer_id}
+			</span>
+			<span className="min-w-0">
+				<span
+					className={cn(
+						"inline-flex items-center rounded border px-1.5 py-px text-[10px] font-medium leading-4",
+						KIND_STYLE[ledgerKind(event)],
+					)}
+				>
+					{KIND_LABEL[ledgerKind(event)]}
+				</span>
 			</span>
 			<span className={cn(VALUE_CELL, "text-[13px] text-foreground")}>
 				{event.value.toLocaleString()}

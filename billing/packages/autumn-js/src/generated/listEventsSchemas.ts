@@ -79,6 +79,17 @@ export const listEventsListSchema = z.object({
 	customerId: z.string(),
 	value: z.number(),
 	properties: z.record(z.string(), z.any()),
+	/**
+	 * The charge discriminator, passed through from the server.
+	 *
+	 * Hand-added: the generator's spec predates the field.  A metered call
+	 * writes a reservation, its release and the charge; only the charge
+	 * carries the call's idempotency key, and without it a usage panel cannot
+	 * tell a real request from the ledger's own bookkeeping.  Absent on
+	 * servers that predate it, so callers must treat `undefined` as unknown
+	 * rather than as "not a charge".
+	 */
+	idempotencyKey: z.string().nullish(),
 	deductions: z.array(deductionsSchema).nullable(),
 });
 

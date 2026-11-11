@@ -185,6 +185,7 @@ export * from "./models/orgModels/agent/agentConfig";
 export * from "./models/orgModels/agent/agentRules";
 export * from "./models/orgModels/agent/agentRulesTable";
 // 1. Org Models
+export * from "./models/orgModels/chat/chatConfig";
 export * from "./models/orgModels/customButton";
 export * from "./models/orgModels/frontendOrg";
 export * from "./models/orgModels/frontendOrg";

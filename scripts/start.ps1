@@ -5,6 +5,8 @@
 # Starts each service, skipping anything already listening:
 #   docker compose (postgres x2, redis x2)
 #   billing server   :8080   (billing/server)
+#   mock cloud       :9998   (demo/mock_cloud.py)  - Google OAuth + mail
+#   mock PayPal      :9997   (demo/mock_paypal.py) - /v2/invoicing/* only
 #   mock LLM         :9999   (demo/mock_llm.py)
 #   metered gateway  :4000   (gateway)  - loads gateway/.env
 #   demo app         :5173   (demo-app)
@@ -26,7 +28,7 @@ $ErrorActionPreference = "Continue"
 
 $root = $StackRoot
 $services = Get-StackServices
-$order = @("billing", "mock-cloud", "mock-llm", "gateway", "demo-app", "dashboard")
+$order = @("billing", "mock-cloud", "mock-paypal", "mock-llm", "gateway", "demo-app", "dashboard")
 
 Write-Host "MeterPal stack startup" -ForegroundColor Cyan
 

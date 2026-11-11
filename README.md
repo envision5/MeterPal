@@ -48,6 +48,12 @@ that can be projected forward. MeterPal is that layer.
 You do not need a PayPal account, a provider key, or any setup to see the
 paywall work. The bundled demo runs the whole loop against a mock LLM.
 
+> **First time here? Start with [`docs/FIRST-RUN.md`](docs/FIRST-RUN.md).**
+> It walks the same steps in the order that actually works, plus the parts
+> this block leaves out: the merchant dashboard (:3000), the storefront demo
+> app (:5173), and what the first sign-in does. The block below is the
+> condensed CLI version of the same path.
+
 **What you're running:** this repo is the full product source — billing server,
 metered gateway, dashboard — cloned here for evaluation. The merchant journey
 in production is shorter: sign up, install the SDK, swap one import. Merchants
@@ -65,41 +71,50 @@ git clone <this repo> && cd meterpal
 # 1. infrastructure (2× Postgres + 2× Redis)
 docker compose up -d
 
-# 2. billing server config + schema
+# 2. config — every example is pre-filled for localhost, nothing to edit
 cp billing/server/.env.example billing/server/.env
-cp gateway/.env.example gateway/.env
-cd billing
-export AUTUMN_DB_DIRECT=1
-export DATABASE_URL="postgresql://autumn:autumn_dev_only@localhost:5433/autumn"
-bun scripts/db/index.ts migrate --bootstrap     # no Infisical needed
-unset AUTUMN_DB_DIRECT DATABASE_URL
-cd ..
+cp gateway/.env.example        gateway/.env
+cp billing/vite/.env.example   billing/vite/.env
 
-# 3. install + run the billing server (:8080)   [bun installs the workspace from billing/]
-cd billing && bun install && cd server && bun src/index.ts &
-cd ../..
+# 3. schema. A fresh database has NO tables (pg-init only installs pg_trgm),
+#    so every insert below fails until this runs.
+( cd billing && AUTUMN_DB_DIRECT=1 bun scripts/db/index.ts migrate --bootstrap )
+#    AUTUMN_DB_DIRECT=1 keeps the script from spawning Infisical for secrets;
+#    it reads DATABASE_URL from billing/server/.env, so no export is needed.
+#    `python demo/bootstrap.py --migrate` does the same thing.
 
-# 4. mock LLM (:9999) + gateway (:4000) — separate terminals
+# 4. billing server (:8080) + the two mocks
 python demo/mock_llm.py &
-cd gateway && set -a && source .env && set +a && pip install -e . && litellm --config config.yaml --port 4000 &
-cd ../..
+python demo/mock_cloud.py &
+( cd billing && bun install && cd server && bun src/index.ts ) &
+#    the server takes ~2 minutes to bind — wait for the port before seeding:
+until (echo > /dev/tcp/127.0.0.1/8080) 2>/dev/null; do sleep 5; done
 
-# 5. seed + walkthrough
-python demo/bootstrap.py
+# 5. seed the org and bind the stack — must come after :8080 is up, and before
+#    the gateway and the demo app, which read the key this writes at boot
+python demo/bootstrap.py --admin you@example.com   # --admin: your dashboard login
+
+# 6. gateway (:4000) + the scripted walkthrough
+( cd gateway && set -a && source .env && set +a && pip install -e . \
+    && litellm --config config.yaml --port 4000 ) &
+until (echo > /dev/tcp/127.0.0.1/4000) 2>/dev/null; do sleep 5; done
 python demo/run_demo.py
 
-# 6. the browser demo app (optional, same stack): metered chat with the
-#    402 paywall inline — http://localhost:5173
-cd demo-app && bun install && bun run dev && cd ../..
+# 7. dashboard (:3000) and storefront demo app (:5173)
+( cd billing/vite && bun run dev ) &
+( cd demo-app && bun install && bun run dev ) &
 ```
 
-Expected: bootstrap seeds the stack (12 ✓); `run_demo.py` meters calls 1–8 at
-exactly $0.36 each, **refuses call 9 with HTTP 402 before the provider is
-touched**, a top-up re-admits the customer, and every call lands in the events
-ledger with token pools, base cost, markup and final credits. Full walkthrough:
-[`demo/README.md`](demo/README.md).
+Expected: bootstrap seeds the stack (every step ✓) and binds the demo app to
+the org it just created; `run_demo.py` meters calls 1–8 at exactly $0.36 each,
+**refuses call 9 with HTTP 402 before the provider is touched**, a top-up
+re-admits the customer, and every call lands in the events ledger with token
+pools, base cost, markup and final credits. Sign in at
+http://localhost:3000 with the `--admin` address to see the same ledger in the
+dashboard. Full walkthroughs: [`docs/FIRST-RUN.md`](docs/FIRST-RUN.md) for the
+merchant path, [`demo/README.md`](demo/README.md) for the CLI one.
 
-The demo app (step 6) shows the same loop in the browser — metered chat, the
+The demo app (step 7) shows the same loop in the browser — metered chat, the
 paywall firing on 402 — against the mock stack. Buying credits through it
 creates a real PayPal order, so that beat follows
 [With PayPal sandbox keys](#with-paypal-sandbox-keys).
@@ -113,6 +128,11 @@ creates a real PayPal order, so that beat follows
 > (server-owned price pinning), and
 > [`demo/run_demo.py`](demo/run_demo.py) (the scripted 402 → top-up → resume
 > story).
+>
+> **To evaluate the SDKs specifically**, follow
+> [`docs/JUDGE-TESTING.md`](docs/JUDGE-TESTING.md): it installs both SDKs the way
+> a merchant would, runs the live checks, and asserts the paywall — ten checks in
+> TypeScript, the same ten in Python, both exiting non-zero on failure.
 
 With real money, follow [With PayPal sandbox keys](#with-paypal-sandbox-keys).
 
@@ -147,14 +167,15 @@ checkout URL.
 ```bash
 # from your app, with the SDK installed from this repo
 bun add file:../meterpal/sdk/typescript
-bunx meterpal init
+bunx meterpal init                      # add --api-url http://localhost:8080 for this stack
 ```
 
 `init` detects the framework (Next, Express, Hono, Fastify, plain Node), writes
 the environment and a server-side handler that keeps the secret key off the
 browser, and prints the snippet to start from. It is deterministic: it does not
 guess, it installs a known-good integration for the framework it found. The SDK
-is not on npm yet, so it comes from this repo.
+is not on npm yet, so it comes from this repo — `dist/` is committed, so nothing
+needs building first. `bunx meterpal init --help` lists every flag.
 
 **3. MCP — let your coding agent do it.**
 
@@ -186,8 +207,50 @@ PAYPAL_CLIENT_ID=... PAYPAL_CLIENT_SECRET=... PAYPAL_WEBHOOK_URL=https://<tunnel
   python demo/bootstrap.py
 ```
 
-Buy credits in the demo app with a sandbox buyer account and watch the
-`PAYMENT.CAPTURE.COMPLETED` webhook credit the wallet in real time.
+`bootstrap.py` writes the resulting `PAYPAL_WEBHOOK_ID` back into
+`billing/server/.env` and the dashboard's PayPal panel shows it as
+**Registered**. PayPal cannot reach `localhost`, so on a laptop without a
+tunnel that row stays **Not registered** — and credits still land, because the
+demo app captures approved orders on a poll instead. Say which one you are
+demonstrating: a localhost run is the poll, not the webhook.
+
+Buy credits in the demo app with a sandbox buyer account and watch the wallet
+credit on capture.
+
+**Approval is manual on purpose.** PayPal is the one place a human has to
+click: the buyer agent can size a pack, open a checkout and hand it to you, but
+it cannot approve it. That is the safety property the money loop is built
+around — an agent that could approve its own payment is an agent that can spend
+without you.
+
+There are two ways through the sandbox approval screen, and this repo only
+guarantees one of them:
+
+- **Pay with Card** (no account needed) — the tab PayPal opens on first. The
+  sandbox accepts `4111 1111 1111 1111`, expiry `12/30`, CVV `123`, any name and
+  billing address. The paywall card prints this hint when no buyer account is
+  configured, because it is the path a judge will actually take.
+- **A sandbox personal account**, if you created one. Name it and the paywall
+  card will tell the viewer to approve as that account instead:
+
+```bash
+# demo-app/.env.local (or the shell) — shown on the paywall card
+DEMO_PAYPAL_BUYER=sb-buyer@personal.example.com
+```
+
+Neither is a MeterPal credential. The agent holds no buyer credentials at all,
+which is why it cannot approve a payment even if it wanted to.
+
+**What can charge without a fresh click, and why it is not the agent.** The one
+merchant-initiated charge in the codebase is PayPal auto top-up
+(`internal/balances/autoTopUp/paypal/paypalAutoTopup.ts`): a reference
+transaction against a vaulted `BA-` billing agreement. That agreement is stamped
+only when a **buyer approves a subscription** — `stampPaypalBillingAgreement`
+runs on activation, never at checkout — so the standing authorisation is itself a
+human approval. Nothing in this repo mints one, no demo customer has one
+(`paypal_billing_agreement_id` is null on every row), and the buyer agent never
+touches the path. In the demo as shipped, every credit that lands came from
+someone clicking Approve.
 
 ```bash
 cd demo-app && bun install && bun run dev     # http://localhost:5173
@@ -254,7 +317,7 @@ The full record, with file-level detail, is in [`CHANGELOG.md`](CHANGELOG.md).
 | `agent/` | MCP server + merchant/buyer demo agents |
 | `demo-app/` | The demo chat app whose AI usage is billed live |
 | `demo/` | Mock LLM provider (which also plays the AG Studio agent offline), bootstrap seeding, scripted billing-loop walkthrough |
-| `docs/` | Design research and the fork lineage; `docs/architecture.md` is the product design, `docs/DEPLOY.md` is the run-the-stack-yourself guide, `docs/scaling-and-concurrency.md` is the concurrency-correctness reference (self-hosting/evaluation — in production MeterPal is hosted; merchants install the SDK) |
+| `docs/` | Design research and the fork lineage; `docs/architecture.md` is the product design, `docs/DEPLOY.md` is the run-the-stack-yourself guide, `docs/JUDGE-TESTING.md` is the install-and-verify path for both SDKs, `docs/scaling-and-concurrency.md` is the concurrency-correctness reference (self-hosting/evaluation — in production MeterPal is hosted; merchants install the SDK) |
 
 ---
 

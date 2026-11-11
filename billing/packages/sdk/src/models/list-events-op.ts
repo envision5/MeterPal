@@ -144,6 +144,12 @@ export type ListEventsList = {
    */
   properties: { [k: string]: any };
   /**
+   * Present on billable charges; null on internal balance movements (the
+   * check-time reservation and its release). Absent on servers that predate
+   * the field.
+   */
+  idempotencyKey?: string | null | undefined;
+  /**
    * Per-balance breakdown of what this event deducted. Null for events ingested before deductions were tracked; an empty array means the event was accepted but no balance moved.
    */
   deductions: Array<Deductions> | null;
@@ -339,12 +345,19 @@ export const ListEventsList$inboundSchema: z.ZodMiniType<
     customer_id: types.string(),
     value: types.number(),
     properties: z.record(z.string(), z.any()),
+    // Hand-added: the charge discriminator. A metered call writes a
+    // reservation, its release and the charge; only the charge carries the
+    // call's idempotency key, and a usage view cannot tell a request from the
+    // ledger's own bookkeeping without it. Optional, because a server that
+    // predates the field simply omits it.
+    idempotency_key: types.optional(types.nullable(types.string())),
     deductions: types.nullable(z.array(z.lazy(() => Deductions$inboundSchema))),
   }),
   z.transform((v) => {
     return remap$(v, {
       "feature_id": "featureId",
       "customer_id": "customerId",
+      "idempotency_key": "idempotencyKey",
     });
   }),
 );

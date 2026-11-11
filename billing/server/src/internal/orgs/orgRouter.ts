@@ -34,6 +34,8 @@ import { handleDeletePaypal } from "./handlers/paypalHandlers/handleDeletePaypal
 import { handleGetPaypalConfig } from "./handlers/paypalHandlers/handleGetPaypalConfig.js";
 import { handleGetAgentConfig } from "./handlers/handleGetAgentConfig.js";
 import { handleUpdateAgentConfig } from "./handlers/handleUpdateAgentConfig.js";
+import { handleGetChatConfig } from "./handlers/handleGetChatConfig.js";
+import { handleUpdateChatConfig } from "./handlers/handleUpdateChatConfig.js";
 
 export const internalOrgRouter = new Hono<HonoEnv>();
 
@@ -44,6 +46,8 @@ internalOrgRouter.get("/custom-buttons", ...handleGetCustomButtons);
 internalOrgRouter.patch("/custom-buttons", ...handleUpdateCustomButtons);
 internalOrgRouter.get("/agent-config", ...handleGetAgentConfig);
 internalOrgRouter.patch("/agent-config", ...handleUpdateAgentConfig);
+internalOrgRouter.get("/chat-config", ...handleGetChatConfig);
+internalOrgRouter.patch("/chat-config", ...handleUpdateChatConfig);
 internalOrgRouter.get("/transition_rules", ...handleGetTransitionRules);
 internalOrgRouter.patch("/transition_rules", ...handleUpdateTransitionRules);
 internalOrgRouter.get("/members", ...handleGetOrgMembers);

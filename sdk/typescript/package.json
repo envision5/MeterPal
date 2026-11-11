@@ -1,55 +1,56 @@
 {
-  "name": "@meterpal/sdk",
-  "version": "0.1.0",
-  "license": "Apache-2.0",
-  "description": "MeterPal — PayPal-native AI usage billing SDK for React apps. Drop-in components + client for credits, plans, top-ups and usage history.",
-  "private": true,
-  "type": "module",
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "bin": {
-    "meterpal": "./dist/cli/index.js"
-  },
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
-    }
-  },
-  "scripts": {
-    "build": "tsup",
-    "dev": "tsup --watch",
-    "test": "vitest run",
-    "lint": "tsc --noEmit"
-  },
-  "peerDependencies": {
-    "react": "^18.0.0 || ^19.0.0",
-    "react-dom": "^18.0.0 || ^19.0.0",
-    "@tanstack/react-query": "^5.0.0"
-  },
-  "dependencies": {
-    "@radix-ui/react-dialog": "^1.1.2",
-    "@radix-ui/react-hover-card": "^1.1.2",
-    "@radix-ui/react-slot": "^1.1.0",
-    "@tabler/icons-react": "^3.50.0",
-    "autumn-js": "1.2.17",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "lucide-react": "^0.460.0",
-    "tailwind-merge": "^2.5.0"
-  },
-  "devDependencies": {
-    "@types/react": "^18.3.0",
-    "@types/react-dom": "^18.3.0",
-    "@vitejs/plugin-react": "^4.3.0",
-    "autumn-js": "1.2.17",
-    "happy-dom": "^15.0.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "tsup": "^8.3.0",
-    "typescript": "^5.6.0",
-    "vitest": "^2.1.0"
-  }
+	"name": "@meterpal/sdk",
+	"version": "0.1.0",
+	"license": "Apache-2.0",
+	"description": "MeterPal \u2014 PayPal-native AI usage billing SDK for React apps. Drop-in components + client for credits, plans, top-ups and usage history.",
+	"private": true,
+	"type": "module",
+	"main": "./dist/index.cjs",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"bin": {
+		"meterpal": "./dist/cli/index.js"
+	},
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"require": "./dist/index.cjs"
+		}
+	},
+	"scripts": {
+		"build": "tsup",
+		"dev": "tsup --watch",
+		"test": "vitest run",
+		"lint": "tsc --noEmit",
+		"test:live": "bun run scripts/live-check.ts"
+	},
+	"peerDependencies": {
+		"react": "^18.0.0 || ^19.0.0",
+		"react-dom": "^18.0.0 || ^19.0.0",
+		"@tanstack/react-query": "^5.0.0"
+	},
+	"dependencies": {
+		"@radix-ui/react-dialog": "^1.1.2",
+		"@radix-ui/react-hover-card": "^1.1.2",
+		"@radix-ui/react-slot": "^1.1.0",
+		"@tabler/icons-react": "^3.50.0",
+		"autumn-js": "1.2.17",
+		"class-variance-authority": "^0.7.1",
+		"clsx": "^2.1.1",
+		"lucide-react": "^0.460.0",
+		"tailwind-merge": "^2.5.0"
+	},
+	"devDependencies": {
+		"@types/react": "^18.3.0",
+		"@types/react-dom": "^18.3.0",
+		"@vitejs/plugin-react": "^4.3.0",
+		"autumn-js": "1.2.17",
+		"happy-dom": "^15.0.0",
+		"react": "^19.0.0",
+		"react-dom": "^19.0.0",
+		"tsup": "^8.3.0",
+		"typescript": "^5.6.0",
+		"vitest": "^2.1.0"
+	}
 }

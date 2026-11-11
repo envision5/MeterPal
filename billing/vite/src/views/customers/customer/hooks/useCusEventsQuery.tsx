@@ -11,10 +11,21 @@ type IntervalType = "7d" | "30d" | "90d";
 export const useCusEventsQuery = ({
 	interval,
 	customerId,
+	chargesOnly = true,
 }: {
 	interval?: IntervalType;
 	/** External customer ID override. Falls back to the internal `customer_id` URL param. */
 	customerId?: string;
+	/**
+	 * Keep settled charges only.
+	 *
+	 * Default true: this feeds the customer's Usage table, and a reservation
+	 * and its release are not usage. They are balance movements, they carry no
+	 * model or token count, and half of them are negative -- six of them
+	 * interleaved with four real requests is what a merchant saw when they
+	 * clicked into a customer. The raw log keeps every row, labelled.
+	 */
+	chargesOnly?: boolean;
 } = {}) => {
 	const axiosInstance = useAxiosInstance({ version: LATEST_VERSION });
 	const buildKey = useQueryKeyFactory();
@@ -23,12 +34,13 @@ export const useCusEventsQuery = ({
 	const id = customerId ?? customer_id;
 
 	const { data, isLoading, isFetching, error } = useQuery({
-		queryKey: buildKey(["customer_events", id, interval]),
+		queryKey: buildKey(["customer_events", id, interval, chargesOnly]),
 		queryFn: () =>
 			fetchEventsList({
 				axiosInstance,
 				customerId: id,
 				interval: interval ?? "30d",
+				chargesOnly,
 			}),
 		enabled: !!id,
 	});

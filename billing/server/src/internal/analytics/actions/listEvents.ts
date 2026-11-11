@@ -118,6 +118,10 @@ export const listEvents = async ({
 			customer_id: row.customer_id,
 			value: row.value ?? 0,
 			properties,
+			// The charge discriminator (see ApiEventsListItemSchema): a null
+			// key marks the check-time reservation and its release, which are
+			// internal balance movements rather than billable requests.
+			idempotency_key: row.idempotency_key ?? null,
 			deductions,
 		};
 	});

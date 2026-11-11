@@ -32,7 +32,7 @@ import {
 	findInferenceCustomer,
 	getOrProvisionVirtualKey,
 } from "@/internal/inference/inferenceService.js";
-import { getApiCustomerByRollout } from "@/internal/customers/actions/getApiCustomerByRollout.js";
+import { readWallet } from "@/internal/balances/walletProjection.js";
 import {
 	computeInsights,
 	getSpendPoints,
@@ -209,7 +209,7 @@ export const buildTurnContext = async ({
 }: {
 	ctx: AutumnContext;
 	customerId: string;
-}): Promise<{ turn: SalesTurnContext; apiCustomer: any }> => {
+}): Promise<{ turn: SalesTurnContext }> => {
 	const customer = await findInferenceCustomer({
 		db: ctx.db,
 		orgId: ctx.org.id,
@@ -220,12 +220,18 @@ export const buildTurnContext = async ({
 		throw new Error(`customer ${customerId} not found`);
 	}
 
-	const apiCustomer = await getApiCustomerByRollout({
-		ctx,
+	// The entitlement balance dips by the worst-case reservation while a call
+	// is in flight and springs back when it settles.  The agent quotes a
+	// number to a human, so it must use the same settled projection as the
+	// wallet pill, /v1/wallet and meterpal.balance_after -- otherwise the
+	// sales agent and the header disagree mid-call.
+	const { settled: balance } = await readWallet({
+		db: ctx.db,
+		orgId: ctx.org.id,
+		env: ctx.env,
 		customerId: customer.id as string,
-		source: "salesAgent.buildTurnContext",
+		featureId: FEATURE_ID,
 	});
-	const balance = apiCustomer?.balances?.[FEATURE_ID]?.remaining ?? 0;
 
 	const nowMs = Date.now();
 	const sinceMs = Math.min(monthStartMs(nowMs), nowMs - CONTEXT_WINDOW_DAYS * 86_400_000);
@@ -247,7 +253,6 @@ export const buildTurnContext = async ({
 			mandate: readMandate(customer.metadata),
 			sellerMandate: readSellerMandate(ctx.org.metadata),
 		},
-		apiCustomer,
 	};
 };
 

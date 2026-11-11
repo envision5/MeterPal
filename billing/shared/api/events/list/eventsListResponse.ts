@@ -53,6 +53,25 @@ export const ApiEventsListItemSchema = z.object({
 	properties: z
 		.record(z.string(), z.unknown())
 		.describe("Event properties (JSON)"),
+	/**
+	 * The charge discriminator.
+	 *
+	 * A metered call writes three events: the reservation taken at admission,
+	 * its release, and the settled charge.  Only the charge carries the call's
+	 * idempotency key; the reservation and the release are internal balance
+	 * movements, and both are signed the wrong way to be a cost.  Clients that
+	 * show "your usage" need to tell them apart -- listing a hold as a request
+	 * gives a row with no model, no tokens and a negative charge.
+	 *
+	 * Null means "not a billable charge".  Undefined means the source could not
+	 * say, so a client should keep the row rather than hide a real charge.
+	 */
+	idempotency_key: z
+		.string()
+		.nullish()
+		.describe(
+			"Present on billable charges; null on internal balance movements (reservations and their release).",
+		),
 	deductions: z
 		.array(TrackDeductionSchema)
 		.nullable()

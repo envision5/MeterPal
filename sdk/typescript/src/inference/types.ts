@@ -52,8 +52,20 @@ export type MeterpalBlock = {
 	customer_id: string;
 	/** The model id the charge was recorded against. */
 	model_id: string | null;
+	/**
+	 * Prompt tokens as the provider counted them, cached input included.
+	 * `input_tokens * input_rate + output_tokens * output_rate` reproduces
+	 * `credits_charged`.
+	 */
 	input_tokens: number | null;
+	/** Completion tokens as the provider counted them, reasoning included. */
 	output_tokens: number | null;
+	/** The part of `input_tokens` served from the provider's prompt cache. */
+	cache_read_tokens?: number | null;
+	/** The part of `input_tokens` written to the prompt cache. */
+	cache_write_tokens?: number | null;
+	/** The part of `output_tokens` the model spent reasoning. */
+	reasoning_tokens?: number | null;
 };
 
 export type ChatCompletionChoice = {

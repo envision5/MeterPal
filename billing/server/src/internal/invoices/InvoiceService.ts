@@ -33,6 +33,7 @@ export const processInvoice = ({
 
 	return {
 		// Current ids from the hydration query; snapshot if nothing resolved.
+		id: invoice.id,
 		plan_ids: invoice.resolved_product_ids?.length
 			? invoice.resolved_product_ids
 			: (invoice.product_ids ?? []),
@@ -40,6 +41,9 @@ export const processInvoice = ({
 		processor_type: processorType,
 		status: invoice.status ?? "",
 		total: invoice.total,
+		amount_paid: invoice.amount_paid ?? null,
+		refunded_amount: invoice.refunded_amount ?? null,
+		discounts: invoice.discounts ?? [],
 		currency: invoice.currency,
 		created_at: invoice.created_at,
 		hosted_invoice_url: invoice.hosted_invoice_url,

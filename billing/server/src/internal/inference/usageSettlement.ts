@@ -19,17 +19,31 @@ import {
 } from "@autumn/shared";
 import { and, eq, isNull, or, sql } from "drizzle-orm";
 import type { DrizzleCli } from "@/db/initDrizzle.js";
+import { readWallet } from "@/internal/balances/walletProjection.js";
 
 export type SettledUsage = {
 	/** Credits charged for the call. */
 	creditsCharged: number;
-	/** The customer's balance for the metered feature after the charge. */
+	/**
+	 * The customer's SETTLED credit balance for the metered feature after
+	 * the charge — the same number GET /v1/wallet would report.  It must not
+	 * be the raw balance: at this instant the reservation for this very call
+	 * may still be deducted from that row.
+	 */
 	balanceAfter: number | null;
 	customerId: string;
 	/** The billable model id the charge was recorded against. */
 	modelId: string | null;
+	/** Input tokens that were NOT served from cache. */
 	inputTokens: number | null;
+	/** Output tokens that were NOT reasoning. */
 	outputTokens: number | null;
+	/** Input tokens the provider served from its prompt cache. */
+	cacheReadTokens: number | null;
+	/** Input tokens written to the provider's prompt cache. */
+	cacheWriteTokens: number | null;
+	/** Output tokens the model spent reasoning before answering. */
+	reasoningTokens: number | null;
 };
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -71,15 +85,36 @@ export const waitForSettledUsage = async ({
 		if (event) {
 			return {
 				creditsCharged: Number(event.value ?? 0),
-				balanceAfter: await getFeatureBalance({
-					db,
-					customerInternalId: event.internal_customer_id ?? "",
-					featureId: event.event_name,
-				}),
+				// Read the wallet projection, not the raw balance row.  The
+				// hold for this call is released just before the charge is
+				// written, but the refund and the events reach Postgres on
+				// different async batchers — so `getFeatureBalance` here can
+				// (and did) return the balance with the whole reservation
+				// still deducted.  Anything displaying that number then dips
+				// and springs back on the next poll.
+				balanceAfter: (
+					await readWallet({
+						db,
+						orgId,
+						env,
+						customerId,
+						featureId: event.event_name,
+					})
+				).settled,
 				customerId,
 				modelId: (event.properties?.model_id as string | undefined) ?? null,
 				inputTokens: (event.properties?.input_tokens as number | undefined) ?? null,
 				outputTokens: (event.properties?.output_tokens as number | undefined) ?? null,
+				// The event splits the bill into pools: `input_tokens` excludes
+				// the cached part and `output_tokens` excludes reasoning, because
+				// the cost model prices those pools separately.  Reporting the
+				// split is what lets a reader add the charge back up.
+				cacheReadTokens:
+					(event.properties?.cache_read_tokens as number | undefined) ?? null,
+				cacheWriteTokens:
+					(event.properties?.cache_write_tokens as number | undefined) ?? null,
+				reasoningTokens:
+					(event.properties?.reasoning_tokens as number | undefined) ?? null,
 			};
 		}
 

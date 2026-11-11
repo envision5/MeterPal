@@ -34,7 +34,10 @@ export type InitOptions = {
 
 export const parseArgs = (argv: string[]): InitOptions => {
 	const options: InitOptions = {
-		apiUrl: DEFAULT_API_URL,
+		// The environment is the sane default: a merchant who exports
+		// METERPAL_API_URL once should not have to repeat it on every run,
+		// and that is also how a judge points the CLI at localhost.
+		apiUrl: process.env.METERPAL_API_URL ?? DEFAULT_API_URL,
 		yes: false,
 		dryRun: false,
 		cwd: process.cwd(),
@@ -120,10 +123,27 @@ export const runInit = async (argv: string[]): Promise<number> => {
 	if (!apiKey) {
 		if (options.yes) {
 			log("  No --api-key given and --yes was passed: skipping the key.");
+		} else if (!process.stdin.isTTY) {
+			// Prompting into a pipe or a CI runner blocks forever: readline
+			// waits on a stdin nobody is typing into.  Say what is missing
+			// and exit instead of hanging.
+			log("");
+			log("  No --api-key given, and stdin is not a terminal (so the key");
+			log("  cannot be prompted for).");
+			log("");
+			log("  Pass one of:");
+			log("    --api-key am_sk_test_...   the merchant's secret key");
+			log("    --yes                      wire the app without a key");
+			log("");
+			log("  Run `meterpal init --help` for every option.");
+			return 2;
 		} else {
 			log("");
 			log("  Get your secret key from the MeterPal dashboard:");
 			log("    https://app.meterpal.dev/settings/api-keys");
+			log("");
+			log("  Local stack? The key is PAB_API_KEY in gateway/.env");
+			log("  (written by demo/bootstrap.py).");
 			log("");
 			apiKey = await ask("  MeterPal secret key (am_sk_...): ");
 		}

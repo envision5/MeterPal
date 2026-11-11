@@ -10,6 +10,128 @@ checkout, PayerID linking, Invoicing), the MeterPal SDKs (TypeScript + Python),
 the agent layer (MCP server + demos), the end-user demo app, demo retooling,
 documentation, and packaging.
 
+**Judge's-chair fixes (2026-11-11)** — seven defects found by driving the running
+stack as a judge would, all fixed:
+
+- **The AG Grid beat 402'd on a fresh clone.** `bootstrap.py` seeded the console
+  wallet (`meterpal-console`) from `demo-starter`, which grants 3 credits, while
+  admission reserves a turn's worst case — input plus the output cap at the org's
+  rates. After `custom/agnes-2.5-flash` was repriced to $200/M in / $800/M out
+  that reservation became 7.5–10.4 credits, so the first studio prompt was
+  refused and the "agent builds a widget" beat died before it started. The
+  console wallet now gets its own grant (`CONSOLE_CREDITS`, 250) through
+  `POST /v1/customers/meterpal-console/balances`, and `handleStudioAi.ts` sends
+  `max_tokens` (`STUDIO_MAX_OUTPUT_TOKENS`, default 2048) so a turn reserves
+  ~2 credits instead of ~10. The 8192-token default was a reservation bound, not
+  a bill: the charge is still the tokens actually used.
+- **The 402 did not state what it required.** The gateway's refusal carried
+  neither the balance nor the requirement, so `InsufficientBalanceError`
+  substituted `ADMISSION_FLOOR_CREDITS = 0.5` and the paywall told the customer
+  they had *more* than enough while refusing them ("balance 2.23 / needed 0.50").
+  `_billing_check` now returns the refusal's own numbers — `balance.remaining`
+  and `pricing.estimated_cost` from the billing server's `/check` — and the
+  gateway puts them in the 402 as `balance` / `required_credits`. The SDK reads
+  them from either the OpenAI-shaped `error` or a FastAPI `detail`, and the
+  paywall renders the real figure or none at all rather than a guess.
+- **The Agent tab said "Agent off" while the agent was buying.** `/api/agent-settings`
+  read only the per-customer `metadata.buyer_agent_mandate`, but the agent acts on
+  `resolveBuyerMandate()`, which falls back to the merchant's standing terms. The
+  panel showed empty budgets while the agent auto-approved a $10 purchase against
+  a $15 line. The endpoint now returns the resolved mandate plus
+  `mandate_source`, the panel labels inherited terms as inherited, and
+  `/api/wallet`'s `mandate_enabled` (the pre-open decision) uses the same
+  resolution.
+- **The customer Usage ledger listed internal holds as requests.** A metered call
+  writes a reservation, its release and the charge; the panel aggregated all
+  three, so 33 of 50 rows had no model, `0 / 0` tokens and a negative charge, and
+  the by-model table had an "other" bucket worth −6.55 credits. The events API now
+  returns `idempotency_key` — the codebase's existing charge discriminator — and
+  the panel keeps only charges. It also stops presenting one page as the month:
+  when the window holds more than the page, the heading says so.
+- **Agent-placed widgets landed on the KPI tiles.** AG Studio's layout repair
+  re-places rather than rejects, and a re-placement can collide again; the agent
+  reported "no overlaps detected" either way. `studioLayout.ts` repairs the page
+  after every state write — overlapping non-seed widgets move below the content,
+  seed widgets never move, and the pass is idempotent — and the page/widget agents
+  are now given explicit placement rules and the `complete_task` contract
+  (`summary` **and** `artifacts`), which is why a delegated run used to finish
+  "without a summary".
+- **PayPal's SDK threw on a loop during the money beat.** `TopUpModal` keyed its
+  buttons effect on `inPageCheckout`, an inline literal the demo app rebuilt on
+  every wallet poll, so the effect tore the buttons down and rebuilt them every
+  ~2.5s — and each teardown removed the container PayPal's fields were mounted in
+  ("Detected container element removed from DOM", uncaught). The callbacks live in
+  refs now and the effect keys on the client id, so the buttons render once per
+  checkout. The pack list is also hidden once a pack is chosen, instead of sitting
+  beside the PayPal button inviting a second order.
+- **The webhook claim was untrue on a laptop.** `PAYPAL_WEBHOOK_ID` was unset, so
+  credits landed through the demo app's capture poll, not a webhook.
+  `bootstrap.py` now reads PayPal settings from `billing/server/.env` as well as
+  the shell (a shell-only read is why the step was skipped even after connecting
+  PayPal), writes the resulting id back, and says plainly what to do when there is
+  no public URL. The README says which path a localhost run is.
+
+**Payments stay manual, on purpose.** The buyer agent can size a pack, open a
+PayPal checkout and hand it over; it cannot approve one. That is the property the
+money loop is built around, and the paywall card now says so — and names the
+sandbox buyer account (`DEMO_PAYPAL_BUYER`) so the one manual click is not
+guesswork.
+
+**Six more defects the live re-test exposed (2026-11-11)** — each found by
+re-driving the same beats in a browser after the fixes above, none of them
+visible from reading the code:
+
+- **The in-page PayPal capture could never settle.** `TopUpModal`'s
+  `pollFinalize` — the callback that turns an approved order into credits when no
+  webhook can reach `localhost` — fetched `/api/paypal/poll` with no customer
+  token, so the route answered 401 on every tick. The modal then sat on "Payment
+  not confirmed yet" while the money had already moved. It sends
+  `authHeaders(customerId)` now. The capture proxy had the mirror problem in the
+  other direction: `POST /api/paypal/capture/:orderId` accepted an order id from
+  anyone, so it now goes through `requireCustomer` like every other money route.
+  Verified: poll answers `{"status":"pending"}` with a token and 401 without.
+- **The Usage ledger's arithmetic looked broken.** A demo turn costs ~0.0052
+  credits, and the table printed two decimals everywhere: three rows of `0.01`
+  under a total of `0.02`. `formatCredits` scales its precision to the magnitude
+  (4 decimals below 0.01) and a `Total` row appears whenever more than one model
+  is listed. Verified live: `0.0052 × 3`, total `0.0155`.
+- **The studio header lost its subject in an empty org.** `selectedCustomer?.name
+  ?? customerId ?? "the customer"` never falls back when `customerId` is `""`,
+  which is exactly what an org with no customers passes, so the line read "never
+  's wallet". Falls back on emptiness, not nullishness.
+- **The top-up modal still asked the buyer to choose after they had chosen.**
+  The pack list is hidden once a pack is picked, but the subtitle kept saying
+  "Choose a credit pack" over a PayPal button. It switches to the approval
+  instruction with the packs.
+- **The paywall named a sandbox account that does not exist.** The hint was
+  built around `DEMO_PAYPAL_BUYER`, and there is no buyer credential in this
+  repo — so an unconfigured run told the viewer to "approve it in PayPal" and
+  left them at a login wall. The card now adds the path that always works in the
+  sandbox (the "Pay with Card" tab and its test card), and only shows the account
+  name when the operator has actually set one.
+- **Half the storefront's alerts were near-black on near-black.** The palette is
+  dark unconditionally (`:root` sets a 5% background), but Tailwind's `dark:`
+  variants keyed off the media query, so on a light-mode OS every
+  `text-emerald-900 dark:text-emerald-100` pair rendered in its light-host shade
+  — including "Your agent opened PayPal automatically", the one instruction the
+  viewer has to read. `tailwind.config.cjs` now uses `darkMode: "class"` and
+  `index.html` sets `class="dark"`, which also fixes the SDK components bundled
+  into the demo (`CreditsBadge`, `LowBalanceBanner`) without giving up their
+  light-host support.
+
+**Metering chip now reconciles with the charge (2026-11-11)**
+- A settled call reported only the *uncached* input and the *non-reasoning*
+  output in `meterpal.input_tokens` / `output_tokens`, because that is how the
+  ledger stores its pools. The demo chip prints those counts beside the charge,
+  so a correct charge looked wrong: 40 in / 475 out at $200/$800 reads as
+  $0.388, while the call (296 prompt tokens, 256 of them cached, plus 27
+  reasoning tokens) really cost $0.4608. The block now reports the totals the
+  charge was computed from, and names the cached / reasoning parts separately;
+  `input_tokens × input_rate + output_tokens × output_rate` reproduces
+  `credits_charged` exactly. The SDK's usage table adds the pools back the same
+  way. Verified against a live call: 300 in / 180 out, 256 cached, 33
+  reasoning → 0.204 credits.
+
 **Checkout order-reuse fix (2026-11-08)**
 - The one-live-order reuse branch matched the customer's latest pending intent
   regardless of which product the new checkout was for, so a top-up could
@@ -240,6 +362,97 @@ documentation, and packaging.
   asserts all of it: the key beats a spoofed customer header, an admin key is
   refused, a model that is not on the price sheet is refused, and an unknown
   key is refused.
+
+**Judge's-chair re-verification, round 2 (2026-11-11, later)** — a second pass
+over the same beats, this time watching what the first pass had only reasoned
+about. Eight more defects, four of them on screen:
+
+- **A rate-limited poll deleted the buyer's pending approval.** Two UI loops
+  watched the same order (the approval ticker at 2s, the durable banner at 4s)
+  for ~45 requests/min against a per-customer budget of 30. Billing answers a
+  refusal with `{ error: "rate_limited" }`, the demo proxy flattened it to
+  HTTP 200, and the handler read "no `status` field" as "settled" and deleted
+  `metadata.pending_agent_checkout`. The order stayed live at PayPal while the
+  approval link vanished from the page — and it lived only in the message list,
+  so a reload lost it for good. Three changes: the proxy now polls **once** for
+  every reader (single-flight plus a 2.5s TTL cache, ~24 upstream calls/min no
+  matter how many loops the page runs) and propagates the upstream status
+  instead of flattening it; the handler clears the mirror only on a real answer
+  (`captured` or `none`); and `/paypal/poll` gets its own larger limiter budget,
+  because a poller polling is the route working, not abuse. Verified: 140s of
+  dual-loop polling, zero 429s, mirror intact; and with the bucket deliberately
+  burned, the proxy returns 429 and the approval survives.
+- **The studio header understated a turn by ~9×.** It reported the *last model
+  call's* charge as "last turn", but one prompt is a chain — a measured turn
+  made 10 calls totalling 2.48 credits and the header said 0.28. It now sums
+  the chain and says so ("this turn 2.4804 credits across 10 model calls"),
+  reconciled against the wallet's own drop. The window is 20s, not 4s: measured
+  gaps between steps inside one chain were up to 8s.
+- **The merchant's ledger still listed holds as usage.** The customer-facing
+  panel was fixed in round 1; `Customers → <customer> → Usage` and
+  `Usage → Logs` were not. The customer Usage table now filters to settled
+  charges (`idempotency_key` present — the same discriminator the SDK panel
+  uses), and the raw log keeps every row but labels it: a **Kind** column with
+  `charge` / `reserve` / `release`, so a `-0.302` with empty properties reads as
+  the hold it is instead of a charge that makes no sense.
+- **The AG Grid beat ended on an empty grid.** A widget is a shell (`type`) plus
+  a `dataMapping`; the agent reliably built the first and sometimes omitted the
+  second, which is not an error anywhere in the stack — the widget simply
+  renders "No Rows To Show" under a perfectly good title. Four fixes:
+  - The widget agent now gets the table's exact field ids and the mapping shape
+    per widget type (`DATA_BINDING_GUIDE`), and `demo/mock_agent.py` emits the
+    shape for the type it is configuring instead of always a chart's.
+  - **The mapping has to bind, not merely exist.** Studio stores whatever keys
+    it is given: a chart-shaped mapping (`categoryKey`/`valueKey`) patched onto
+    a *grid* leaves the grid's own `cols` as `[]`. The widget then carries a
+    `dataMapping` object that passes an `Object.keys().length > 0` test while
+    pointing at nothing — which is why the first pass at this still ended on an
+    empty tile. `repairUnboundWidgets` now tests the keys the widget's *type*
+    reads (`bindsData`), so a wrong-shape mapping is repaired like a missing
+    one.
+  - **A grouped grid lost its duplicate footer row.** Grouping aggregates the
+    dimension with `first`, and the grand-total row aggregates it the same way,
+    so the footer repeated the customer name from the row above it and read as
+    a second row of data. Grouped grids now set
+    `format.style.grandTotalRow.enabled = false`; ungrouped grids keep theirs,
+    where the label lands in an empty first column and reads as a total.
+  - `demo/mock_agent.py` is loaded by a long-running process, so editing it
+    changes nothing until `scripts/restart.ps1 mock-llm`.
+  - **Verified.** "A table of usage by customer, one row per customer" renders
+    `meterpal-setup-test | 0.13` as a single row with no footer, and "a column
+    chart of credits by feature" renders a bar at 0.13 — both with no
+    empty-state overlay. A report saved with a broken widget (`cols: []`, title
+    "Credits by customer") is repaired on the next load: the pass runs on the
+    state update Studio raises at hydration, so a bad save heals itself rather
+    than staying empty until someone asks the agent again.
+- **Both doc corrections were missing from the tree.** `docs/HACKATHON-SUBMISSION-CHECKLIST.md`
+  still said "no human touches billing" in the money-shot beat a judge reads
+  during the shot (now: "no human touches the billing code"), and
+  `docs/PRESENTATION-PLAN.md` still said the buyer's agent "tops up on its own"
+  — the exact self-charging overclaim, in the document the checklist defers to
+  (now: "opens a top-up and hands it to the buyer, who is the only one who can
+  approve the payment").
+- **Ledger rows missed their own total by 0.0001.** Charges of `0.00518` and
+  `0.02556` were printed at 4dp, so four visible rows added to `0.0412` against
+  a true `0.0411`. Five decimals below 1 credit, trailing zeros trimmed, so the
+  column reconciles and `0.5` still reads `0.5`.
+- **The price sheet showed no margin at rest.** `served_models` carried $20/$80
+  as the *cost* with a 0% markup — a reseller working for free — so the 90%
+  story only appeared after someone edited the sheet by hand. The sheet now
+  states the real cost ($2/$8) and the real markup (900%), which bills the same
+  $20/$80 and shows the margin on first look. Two $0/$0 rows with no deployment
+  were removed; they could never be served and priced metering at zero.
+- **The capture proxy did not check who owned the order.** Credits always
+  landed with the order's owner, so this was never theft — but any
+  authenticated customer could force a capture on another customer's approved
+  order. `POST /paypal/capture/:order_id?customer_id=` now 403s on a mismatch;
+  callers that assert no identity (the SDK's own `onApprove`) are unaffected.
+
+Also: the persona switcher remembers its selection across reloads (a reload
+used to snap back to the funded customer mid-demo), and the projected-runway
+line no longer dresses a single day's spend up as a trend — it says
+"extrapolated from today's spend only, no trailing week yet" when that is what
+it is.
 
 ## 0.1.0-baseline — 2026-09-30 (pre-hackathon)
 

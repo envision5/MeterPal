@@ -7,7 +7,7 @@
 // projection shown to a customer is always arithmetic over real rows, never a
 // model's guess.
 
-import { and, eq, gte } from "drizzle-orm";
+import { and, eq, gte, isNotNull } from "drizzle-orm";
 import type { DrizzleCli } from "@/db/initDrizzle.js";
 import { events } from "@autumn/shared";
 
@@ -35,6 +35,18 @@ export type UsageInsights = {
 	burnRatePerDay: number;
 	/** Days until the current balance is empty at burnRatePerDay; null when idle. */
 	daysToEmpty: number | null;
+	/**
+	 * What the projection is extrapolated from.
+	 *
+	 * A customer whose entire history is one day has no "current burn rate" —
+	 * there is no rate, there is one day's spend. Dividing the balance by it
+	 * still produces a number (3 credits against $0.03 spent reads as a
+	 * 100-day runway), and that number is arithmetically right and
+	 * rhetorically wrong: it looks like a forecast when it is a single
+	 * sample. Carrying the basis lets the UI say which one it is instead of
+	 * printing a confident 94.0 days.
+	 */
+	runwayBasis: "trailing-week" | "today" | "none";
 	anomaly: SpendAnomaly;
 };
 
@@ -64,6 +76,14 @@ export const getSpendPoints = async ({
 				eq(events.env, env),
 				eq(events.event_name, featureId),
 				gte(events.timestamp, new Date(sinceMs)),
+				// Only the settled charge counts.  A metered call also writes the
+				// check-time reservation and its refund around it, both internal
+				// and signed the wrong way to be a cost -- and the reservation
+				// stays outstanding for as long as the call runs.  Counting it
+				// would make spend read high while a request is in flight, so
+				// the number on the customer's screen would jump up and back.
+				// The settled event is the one carrying the idempotency key.
+				isNotNull(events.idempotency_key),
 			),
 		)
 		.orderBy(events.timestamp);
@@ -152,6 +172,13 @@ export const computeInsights = ({
 		baselineDaily,
 		burnRatePerDay,
 		daysToEmpty,
+		// A trailing week is a rate; a single day is a sample of one.
+		runwayBasis:
+			daysToEmpty == null
+				? "none"
+				: baselineDaily > 0.01
+					? "trailing-week"
+					: "today",
 		anomaly: detectAnomaly(points, nowMs),
 	};
 };

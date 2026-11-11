@@ -445,7 +445,7 @@ class MeterPalBridge(CustomLogger):
         input_tokens: int = 0,
         output_tokens: int = 0,
         request_id: str = "",
-    ) -> Tuple[bool, Optional[str], Optional[dict], Optional[str]]:
+    ) -> Tuple[bool, Optional[str], Optional[dict], Optional[str], dict]:
         """Admit the request, reserve against its balance, and pin its price.
 
         The billing server resolves the merchant's price for the model and
@@ -465,6 +465,13 @@ class MeterPalBridge(CustomLogger):
         balance, and a cached reservation id is one hold shared by every
         request that read it.  Both are wrong the moment two requests
         overlap, which is exactly when it matters.
+
+        The fifth return value is the refusal's own numbers: the balance the
+        customer actually had and what this request would have cost, both as
+        the billing server computed them.  A 402 that carries neither leaves
+        the client guessing -- and the guess it made ("you need 0.50") was
+        smaller than the balance, so the paywall told the customer they had
+        more than enough.  Empty when nothing was refused.
         """
         body: dict[str, Any] = {
             "customer_id": customer_id,
@@ -504,6 +511,7 @@ class MeterPalBridge(CustomLogger):
         pinned_rates: Optional[dict] = None
         resolved_model_id: Optional[str] = None
         lock_id: Optional[str] = None
+        refusal: dict = {}
         try:
             client = self._get_client()
             resp = await client.post("/check", json=body)
@@ -515,12 +523,24 @@ class MeterPalBridge(CustomLogger):
             pricing = payload.get("pricing") or {}
             pinned_rates = pricing.get("pinned_rates") or None
             resolved_model_id = pricing.get("model_id") or None
+            # The numbers a paywall has to state.  `estimated_cost` is the
+            # amount the hold was sized from -- what this request can spend --
+            # and `balance.remaining` is what the customer has.  Both are the
+            # billing server's own figures, so the 402 and the ledger agree.
+            balance = payload.get("balance") or {}
+            remaining = balance.get("remaining")
+            if isinstance(remaining, (int, float)):
+                refusal["balance"] = float(remaining)
+            estimated = pricing.get("estimated_cost")
+            if isinstance(estimated, (int, float)) and estimated > 0:
+                refusal["required_credits"] = float(estimated)
         except httpx.HTTPError as exc:
             await self._log(f"billing /check failed: {exc!r}")
             allowed = self.fail_mode == "open"
             lock_id = None
             pinned_rates = None
             resolved_model_id = None
+            refusal = {}
 
         if self.use_lock and allowed and not lock_id:
             # A reservation was asked for and none came back.  Serving the
@@ -534,7 +554,7 @@ class MeterPalBridge(CustomLogger):
                 allowed = False
             lock_id = None
 
-        return (allowed, lock_id, pinned_rates, resolved_model_id)
+        return (allowed, lock_id, pinned_rates, resolved_model_id, refusal)
 
     async def _post_billing_with_retry(self, path: str, json_body: dict) -> None:
         # Money-movement POST with bounded retry: a transient billing-server
@@ -885,7 +905,13 @@ class MeterPalBridge(CustomLogger):
             )
 
         model_id = self._model_id(data)
-        allowed, lock_id, pinned_rates, resolved_model_id = await self._billing_check(
+        (
+            allowed,
+            lock_id,
+            pinned_rates,
+            resolved_model_id,
+            refusal,
+        ) = await self._billing_check(
             customer_id,
             org_id=org_id,
             model_id=model_id,
@@ -894,12 +920,18 @@ class MeterPalBridge(CustomLogger):
             request_id=request_id,
         )
         if not allowed and self.admit_mode == "block":
+            # The refusal states the two numbers a paywall needs: what the
+            # customer has, and what the request would have cost.  Without
+            # them the client substituted its own floor, which was smaller
+            # than the balance -- a paywall that says "you have 2.23, you
+            # need 0.50" while refusing the call.
             raise HTTPException(
                 status_code=402,
                 detail={
                     "error": "insufficient_balance",
                     "customer_id": customer_id,
                     "feature_id": self.feature_id,
+                    **refusal,
                 },
             )
 
