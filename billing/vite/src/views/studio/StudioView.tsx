@@ -459,7 +459,12 @@ export const StudioView = () => {
 								customerId?.trim() ||
 								"the customer"}
 						</span>
-						{"'s"}
+						{/* The possessive needs its noun. Without it the sentence
+						    read "never Setup test's · console balance 234.86
+						    credits" -- a dangling possessive followed by a
+						    separator, which parses as though the balance were
+						    the customer's. It is the console's. */}
+						{"'s wallet"}
 						{balanceLabel != null && (
 							<>
 								{" "}
@@ -524,7 +529,14 @@ export const StudioView = () => {
 						licenseKey={import.meta.env.VITE_AG_STUDIO_LICENSE_KEY}
 					>
 						<AgStudio
-							key={resetNonce}
+							// The key carries the customer, not just the reset
+							// counter. Studio reads `initialState` and `data` once,
+							// when it is created; re-rendering it with a different
+							// customer left the previous customer's rows on the
+							// canvas under the new customer's name — no error, no
+							// spinner, just someone else's numbers. Remounting on
+							// the storage key is what makes the picker re-scope.
+							key={`${resetNonce}:${storageKey}`}
 							ref={studioRef}
 							style={{ height: "100%", width: "100%" }}
 							theme={meterpalStudioTheme}

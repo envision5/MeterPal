@@ -45,6 +45,30 @@ _CATEGORY_BY_TYPE = {
 # Words that mean "the page agent is not needed -- just talk".
 _SUMMARISE_RE = re.compile(r"summar|describe|explain|what does|stand[s]? out", re.I)
 
+# How a merchant names the dimension a widget should group by. These are
+# patterns rather than the literal strings "by customer" / "by event" /
+# "per day", because those three were the *only* accepted phrasings: "a table
+# of credits used per customer" fell through to the type default and produced
+# a widget grouped by the wrong column, with a summary that never mentioned
+# the substitution. The vocabulary here is deliberately wider than the demo
+# prompts use -- a merchant says "per user", "for each client", "split by
+# account", and the agent should not silently answer a different question.
+_GROUP_PREFIX = (
+    r"(?:group(?:ed|ing)?\s+by|broken\s+down\s+by|split\s+by"
+    r"|by|per|for\s+each|for\s+every|across)"
+)
+
+_CUSTOMER_GROUP_RE = re.compile(
+    _GROUP_PREFIX + r"\s+(?:customer|user|account|tenant|payer|client|subscriber)s?\b"
+)
+_EVENT_GROUP_RE = re.compile(
+    _GROUP_PREFIX + r"\s+(?:event|feature|model|product|endpoint|operation)s?\b"
+)
+_PERIOD_GROUP_RE = re.compile(
+    r"\b(?:by|per|each|every)\s+(?:day|date|week|month|hour)\b"
+    r"|\bdaily\b|\bover\s+time\b|\btrend\b"
+)
+
 
 def _tool_names(body: dict) -> list[str]:
     return [
@@ -266,13 +290,19 @@ def _category_from_prompt(prompt: str, widget_type: str) -> str:
 
     An explicit "by customer" / "by event" wins. Otherwise the chart type
     decides: a time series groups by date, everything else by feature.
+
+    The phrasings are matched as patterns rather than as literal strings. "by
+    customer" was the only accepted form, so "a table of credits used per
+    customer" fell through to the default and built a table grouped by
+    *feature* -- a correct-looking widget answering a different question, with
+    a summary that never mentioned the substitution.
     """
     text = (prompt or "").lower()
-    if "by customer" in text:
+    if _CUSTOMER_GROUP_RE.search(text):
         return "customer_id"
-    if "by event" in text or "by feature" in text:
+    if _EVENT_GROUP_RE.search(text):
         return "event_name"
-    if widget_type in ("line-chart", "area-chart") or "per day" in text:
+    if widget_type in ("line-chart", "area-chart") or _PERIOD_GROUP_RE.search(text):
         return "period"
     return _CATEGORY_BY_TYPE.get(widget_type, "event_name")
 
@@ -738,7 +768,21 @@ def final_reply(body: dict) -> str:
 
     widget_type = spec.get("widgetType") or "widget"
     title = spec.get("title") or widget_type
-    return (
+    reply = (
         f'Added "{title}" to the Usage page -- a {widget_type} over the metered '
         "usage table, built from this customer's own usage."
     )
+    # Grouping by customer is a request the page can technically honour but
+    # cannot usefully answer: the studio's data source is already scoped to the
+    # selected customer, so a per-customer widget has exactly one row -- the
+    # total for the customer you are looking at. Building it and saying so is
+    # honest; quietly grouping by feature instead would have produced a
+    # convincing widget answering a question nobody asked.
+    if str(spec.get("categoryField") or "").endswith(".customer_id"):
+        reply += (
+            " One thing worth knowing: this page's data source is scoped to a "
+            "single customer, so grouped by customer it holds one row -- their "
+            "own total. Ask for a breakdown by feature or by day to see the "
+            "shape of it."
+        )
+    return reply

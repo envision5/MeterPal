@@ -16,6 +16,7 @@ import sys
 sys.path.insert(0, "C:/Users/craig/MeterPal/demo")
 
 from mock_agent import _extract_spec as extract_spec
+from mock_agent import _category_from_prompt as category_from_prompt
 from mock_agent import final_reply, plan_next_turn
 
 CHART_PROMPTS = [
@@ -36,6 +37,14 @@ CHART_PROMPTS = [
     # anywhere in the stack -- it just renders "No Rows To Show".
     (
         "Add a table of usage by customer, one row per customer, showing total credits used.",
+        {"widgetType": "grid", "categoryField": "usage.customer_id", "valueField": "usage.credits"},
+    ),
+    # The wording a merchant actually uses. "by customer" was matched as a
+    # literal string, so "per customer" fell through to the type default and
+    # built a table grouped by *feature* -- right shape, wrong question, and
+    # a summary that never mentioned the substitution.
+    (
+        "Add a table of credits used per customer.",
         {"widgetType": "grid", "categoryField": "usage.customer_id", "valueField": "usage.credits"},
     ),
 ]
@@ -209,7 +218,12 @@ def run_chart(prompt, expect, shape):
         ok = False
 
     if added:
-        value = configured[0]["value"]["dataMapping"] if configured else {}
+        configured_value = configured[0]["value"] if configured else {}
+        # `value` is the whole patch: `dataMapping` plus `format`. The title
+        # lives in `format`, so reading it off the mapping returned None and
+        # the check silently passed nothing -- which is how a duplicated tile
+        # title ("Usage detail", the seeded table's own name) shipped.
+        value = configured_value.get("dataMapping") or {}
         # Grids read `cols`; charts read `categoryKey`/`valueKey`.
         cols = value.get("cols") or []
         mapping = {
@@ -230,8 +244,17 @@ def run_chart(prompt, expect, shape):
             ok = False
         else:
             print(f"  OK: {mapping}")
-        title = value.get("format", {}).get("title", {}).get("text")
+        title = ((configured_value.get("format") or {}).get("title") or {}).get("text")
         print(f"  title: {title}")
+        if title != spec["title"]:
+            print(f"  FAIL: title {title!r} != plan {spec['title']!r}")
+            ok = False
+        elif title == "Usage detail":
+            # The seeded table's own title. Reusing it reads as a duplicate.
+            print("  FAIL: title reuses the seeded table's name")
+            ok = False
+        else:
+            print("  OK: title matches the plan and is not the seeded one")
 
     if not completed:
         print("  FAIL: no complete_task")
@@ -412,6 +435,79 @@ def run_follow_up():
     return True
 
 
+def run_phrasings():
+    """Every way a merchant names a dimension lands on the right column.
+
+    Only three literal strings used to be understood -- "by customer", "by
+    event", "per day". Anything else was silently answered with a widget
+    grouped by a different column, which is worse than refusing: the widget
+    renders, it has a plausible title, and it is about something else.
+    """
+    print("\n=== grouping phrasings ===")
+    cases = [
+        ("Add a table of credits used per customer.", "grid", "customer_id"),
+        ("Show credits by customer.", "column-chart-grouped", "customer_id"),
+        ("Break credits down by user.", "column-chart-grouped", "customer_id"),
+        ("A table of usage for each customer.", "grid", "customer_id"),
+        ("Credits by client, please.", "column-chart-grouped", "customer_id"),
+        ("Grouped by account.", "grid", "customer_id"),
+        ("Credits by feature.", "column-chart-grouped", "event_name"),
+        ("A table of credits per day.", "grid", "period"),
+        # No dimension named at all -- the widget type still decides.
+        ("Add a chart of credits.", "column-chart-grouped", "event_name"),
+        # "for this customer" is scoping, not grouping: the page is already
+        # scoped to one customer, so it must not turn a time series into a
+        # one-row per-customer chart.
+        (
+            "Add a chart of credits spent per day for this customer.",
+            "line-chart",
+            "period",
+        ),
+    ]
+    ok = True
+    for prompt, widget_type, expect in cases:
+        got = category_from_prompt(prompt, widget_type)
+        if got != expect:
+            print(f"  FAIL: {prompt!r} -> {got}, expected {expect}")
+            ok = False
+        else:
+            print(f"  OK: {prompt!r} -> {got}")
+    return ok
+
+
+def run_scoped_note():
+    """A per-customer widget is built, and the reply admits it holds one row.
+
+    The studio's data source is scoped to the selected customer, so grouping
+    by customer is a one-row table by construction. Building it and saying so
+    is honest; the alternative -- quietly grouping by feature instead -- is a
+    convincing widget answering a question nobody asked.
+    """
+    print("\n=== scoped-per-customer note ===")
+    spec = (
+        'SPEC: {"widgetType":"grid","widgetId":"w-grid-1","title":"Usage by customer",'
+        '"categoryField":"usage.customer_id","valueField":"usage.credits",'
+        '"pageId":"usage","layout":{"xTrack":0,"yTrack":42,"xSpan":12,"ySpan":18}}'
+    )
+    messages = [
+        {"role": "user", "content": "Add a table of credits used per customer."},
+        {"role": "assistant", "content": "", "tool_calls": [
+            {"id": "c1", "type": "function",
+             "function": {"name": "delegate_to",
+                          "arguments": json.dumps({"type": {"id": "page"},
+                                                   "instructions": spec})}}
+        ]},
+        {"role": "tool", "tool_call_id": "c1", "content": '{"success":true}'},
+    ]
+    reply = final_reply({"tools": mk_tools(ORCH), "messages": messages})
+    print(f"  final reply: {reply}")
+
+    ok = "Usage by customer" in reply and "one row" in reply
+    print("  OK: reply names the widget and the one-row consequence" if ok
+          else "  FAIL: reply does not disclose the single-row scoping")
+    return ok
+
+
 results = []
 for prompt, expect in CHART_PROMPTS:
     for shape in ("separate", "shared"):
@@ -421,6 +517,8 @@ for prompt, expect in CHART_PROMPTS:
 results.append(run_summarise())
 results.append(run_placement())
 results.append(run_follow_up())
+results.append(run_phrasings())
+results.append(run_scoped_note())
 
 print("\nALL:", "PASS" if all(results) else "FAIL")
 sys.exit(0 if all(results) else 1)

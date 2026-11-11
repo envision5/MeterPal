@@ -501,6 +501,42 @@ browser, plus one blocker the local stack could never have shown:
   click with no agent banner) was marked abandoned so the only live order in the
   database is the one on screen.
 
+**Round-3 (2026-11-11, final)** — three defects found while rehearsing the demo
+video, plus one cosmetic one found in the same frame:
+
+- **The customer picker changed the name but not the data.** `<AgStudio>` was
+  keyed on the reset counter alone. Studio reads `initialState` and `data` once,
+  when it is created, so switching customer re-rendered the same instance: the
+  header and the picker updated, and the canvas went on showing the *previous*
+  customer's rows — no error, no spinner, just someone else's numbers under the
+  new name. Pressing Reset fixed it, which is how it survived review (the
+  corrective action looked like the normal action). The key now carries the
+  storage key too, so the studio is rebuilt against the customer's own saved
+  report: `${resetNonce}:${storageKey}`.
+- **Two rows in the picker had no name.** The two SDK live-check customers were
+  created with `name = ''` rather than NULL, so `coalesce(c.name, e.customer_id)`
+  passed the empty string straight through and the picker showed rows reading
+  nothing but "· 0.01 credits". It is `coalesce(nullif(c.name, ''), e.customer_id)`
+  now, and the two artifacts were given real names ("TypeScript SDK live check" /
+  "Python SDK live check") rather than deleted — they are real usage rows, and
+  deleting billing records to tidy a picker is the wrong trade.
+- **"per customer" was not in the agent's vocabulary.** `_category_from_prompt`
+  matched three literal strings — "by customer", "by event", "per day" — so "a
+  table of credits used per customer" fell through to the type default and built
+  a table grouped by *feature*: a correct-looking widget answering a different
+  question, with a summary that never mentioned the substitution. The phrasings
+  are patterns now ("by/per/for each/for every/grouped by/split by/across" ×
+  "customer/user/account/tenant/payer/client/subscriber", and the same for
+  features and periods), and "for this customer" is deliberately *not* a
+  grouping — it is scoping, and the page is already scoped.
+- **A per-customer widget says it is one row.** The studio's data source is
+  scoped to the selected customer, so a per-customer grouping can only ever hold
+  one row. The reply now says so and suggests the dimensions that have shape
+  (feature, day) instead of quietly substituting one.
+- **The header read "never Setup test's · console balance".** A dangling
+  possessive followed by a separator, which parses as though the balance belonged
+  to the customer. It is the console's: "'s wallet".
+
 ## 0.1.0-baseline — 2026-09-30 (pre-hackathon)
 
 The starting point, predating the hackathon submission window. This baseline

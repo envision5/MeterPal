@@ -83,6 +83,11 @@ demo-app/.tmp-repair.py
 
 # Video footage captured for the submission video (lives in YouTube, not git)
 demo-video-footage/
+# Stills and b-roll prepared for the same video. Local media only -- it is
+# never part of the product, and the judge's own upload instruction is
+# `git add -A`, which would otherwise sweep 9 MB of images into the repo.
+# Ignored rather than deleted so it can be used and then removed by hand.
+prepared-media/
 
 # Ad-hoc UI screenshots taken while building the offer flow
 ui-*.png

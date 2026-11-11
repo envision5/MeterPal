@@ -51,7 +51,11 @@ export const handleStudioCustomers = createRoute({
 		const rows = await ctx.db.execute(sql`
 			select
 				e.customer_id as id,
-				coalesce(c.name, e.customer_id) as name,
+				-- nullif because an empty name is not a name: the SDK live-check
+				-- customers are created with name '', and coalesce passes that
+				-- straight through, so the picker showed rows reading nothing
+				-- but "· 0.01 credits" with no customer attached to them.
+				coalesce(nullif(c.name, ''), e.customer_id) as name,
 				c.email as email,
 				count(*)::int as events,
 				sum(coalesce(e.value, 1))::double precision as credits,
