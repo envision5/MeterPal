@@ -454,6 +454,53 @@ line no longer dresses a single day's spend up as a trend — it says
 "extrapolated from today's spend only, no trailing week yet" when that is what
 it is.
 
+**Round-2 pass B (2026-11-11, last)** — the eight fixes above verified in the
+browser, plus one blocker the local stack could never have shown:
+
+- **A fresh clone could not build.** Fourteen files that committed code already
+  imported were untracked — the studio's layout pass, the console wallet, the
+  wallet projection behind `readWallet`, the chat-delivery handlers and their
+  settings section, the mock PayPal server `stack.ps1` starts, `JUDGE-TESTING.md`
+  that the README links to. The local stack was green because the files were on
+  disk; the artifact was not. All are committed, and the verification is now
+  "clone to a temp directory and resolve every import in it" rather than "the
+  stack runs here".
+- **`.gitignore` was hiding twelve source directories.** A bare `logs/` rule,
+  meant for the stack's own log output, matches a directory of that name at any
+  depth — including `.../licenses/actions/logs`, `.../billing/v2/utils/logs` and
+  `.../customers/actions/createWithDefaults/logs`, which hold real TypeScript.
+  The rule is root-relative now (`/logs/`, `/demo/logs/`), and the gateway's
+  Next.js export — the one genuine build output that was relying on it — is
+  ignored explicitly. A clone now resolves 8,140 relative imports with none
+  missing.
+- **The agent's second widget landed on its first.** `mock_agent.py` placed
+  every widget at a hardcoded `yTrack: 45`, which is where the seeded table
+  ends, so a chart asked for after a table arrived on top of it and Studio's
+  validator logged a layout failure in the console mid-demo — the page ended up
+  right only because the repair pass moved it afterwards. The page agent now
+  reads `view_page` before it places and puts the widget below everything else.
+- **A collided widget was moved to the bottom of the page.** Correct, but it
+  left a band of empty canvas between the tile and what it had been moved away
+  from, which reads as a gap rather than a placement. It now goes into the first
+  free row under the tile it collided with.
+- **Two tiles were both called "Usage detail".** The agent's grid took the
+  seeded grid's title. Tables are now named for what they group by ("Usage by
+  customer"), so the page never shows the same heading twice.
+- **A second request in the same conversation built nothing.** The orchestrator
+  answered "have I already done this?" against the whole transcript, so after
+  one widget the next prompt found the page already read, a plan already written
+  and the delegation already made, and replied with the *previous* turn's
+  summary. Lookups are now scoped to the current request, anchored on the last
+  message the merchant actually typed (a delegation instruction is also a
+  user-role message, and it carries the plan).
+- **An unreachable billing server answered 500.** The poll proxy reported "not
+  reachable" as status 0, which is the right internal signal and not a valid
+  HTTP status; Hono throws on `c.json(body, 0)`. It answers 503 now, which is
+  what the caller's `res.ok` branch already assumed.
+- A stray pending $10 sandbox order (`6R8774075D733940A`, from a top-up modal
+  click with no agent banner) was marked abandoned so the only live order in the
+  database is the one on screen.
+
 ## 0.1.0-baseline — 2026-09-30 (pre-hackathon)
 
 The starting point, predating the hackathon submission window. This baseline
