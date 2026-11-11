@@ -1,0 +1,75 @@
+import type { AttachBillingContext } from "@autumn/shared";
+import { formatMs } from "@autumn/shared";
+import type { AutumnContext } from "@/honoUtils/HonoEnv";
+import { addToExtraLogs } from "@/utils/logging/addToExtraLogs";
+
+export const logAttachContext = ({
+	ctx,
+	billingContext,
+}: {
+	ctx: AutumnContext;
+	billingContext: AttachBillingContext;
+}) => {
+	const {
+		attachProduct,
+		currentCustomerProduct,
+		scheduledCustomerProduct,
+		planTiming,
+		endOfCycleMs,
+		checkoutMode,
+		featureQuantities,
+		transitionConfig,
+		currentEpochMs,
+		invoiceMode,
+		isCustom,
+		billingCycleAnchorMs,
+		resetCycleAnchorMs,
+		trialContext,
+	} = billingContext;
+
+	addToExtraLogs({
+		ctx,
+		extras: {
+			attachContext: {
+				product: `${attachProduct.id} (v${attachProduct.version}) ${isCustom ? "custom" : "standard"}`,
+
+				transition: currentCustomerProduct
+					? `${currentCustomerProduct.product.id} -> ${attachProduct.id} (${planTiming})`
+					: "new attachment",
+
+				currentCustomerProduct: currentCustomerProduct?.id ?? "none",
+				scheduledCustomerProduct: scheduledCustomerProduct?.id ?? "none",
+
+				planTiming,
+				endOfCycleMs: endOfCycleMs ? formatMs(endOfCycleMs) : "n/a",
+				checkoutMode: checkoutMode ?? "direct billing",
+
+				timestamps: `Current: ${formatMs(currentEpochMs)} | Billing Anchor: ${billingCycleAnchorMs === "now" ? "now" : formatMs(billingCycleAnchorMs)} | Reset: ${formatMs(resetCycleAnchorMs)}`,
+
+				invoiceMode: invoiceMode
+					? `enable immediately: ${invoiceMode.enableProductImmediately} | finalize invoice: ${invoiceMode.finalizeInvoice}`
+					: "default",
+
+				featureQuantities:
+					featureQuantities.length > 0
+						? featureQuantities
+								.map((fq) => `${fq.feature_id}: ${fq.quantity}`)
+								.join(", ")
+						: "none",
+
+				resetAfterTrialEndFeatureIds:
+					transitionConfig?.resetAfterTrialEndFeatureIds
+						? transitionConfig.resetAfterTrialEndFeatureIds.join(", ")
+						: "none",
+
+				trialContext: trialContext
+					? `trial ends at: ${formatMs(trialContext.trialEndsAt)} | free trial ID: ${trialContext.freeTrial?.id ?? "none"} | appliesToBilling: ${trialContext.appliesToBilling}`
+					: "none",
+
+				anchorResetRefund: billingContext.anchorResetRefund
+					? `noPartialRefund: ${billingContext.anchorResetRefund.noPartialRefund} | refundCycle: ${billingContext.anchorResetRefund.refundCycle ? `${billingContext.anchorResetRefund.refundCycle.interval} x${billingContext.anchorResetRefund.refundCycle.intervalCount}` : "none"}`
+					: "none",
+			},
+		},
+	});
+};
