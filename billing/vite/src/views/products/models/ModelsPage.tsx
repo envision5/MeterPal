@@ -442,7 +442,7 @@ export const ModelsPage = () => {
 
 			<SettingsGroup
 				title="Add a model"
-				description="Pick from the catalog, and the provider model, base URL and inputs are filled in for you — usually only the key is left. Add a custom model for anything the catalog does not list: a self-hosted endpoint, an OpenAI-compatible provider."
+				description="Pick from the catalog and the provider model, base URL and inputs are filled in — usually only the key is left. A custom model is anything the catalog does not list."
 				trailing={
 					<Button variant="secondary" size="sm" onClick={openCustomModel}>
 						<PlusIcon className="size-3.5" />
