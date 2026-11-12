@@ -353,9 +353,8 @@ PayPal webhook receiver.
 | `POST` | `/webhooks/paypal/{org_id}/{webhook_id}` | Signature-verified, idempotent PayPal webhook |
 | `GET` | `/ready` | Readiness probe |
 
-The machine-readable definition is [`openapi.yaml`](openapi.yaml) (OpenAPI 3.1,
-18 operations). The hosted API reference and SDKs are generated from it with
-APIMatic — see [Tools used](#tools-used).
+The machine-readable definition is [`openapi.yaml`](openapi.yaml) — OpenAPI 3.1,
+18 operations, with the HTTP 402 refusal modelled as a first-class response.
 
 ---
 
@@ -391,7 +390,6 @@ All PayPal work runs against the **sandbox**. No live credentials ship in this r
 
 | Tool | Use |
 | --- | --- |
-| **APIMatic** | API documentation generated from MeterPal's OpenAPI definition |
 | **Postgres + Redis** | Ledger of record and atomic admission counters |
 | **Bun / TypeScript / Hono / Drizzle** | Billing server, dashboard, SDK |
 | **Python / FastAPI** | Demo harness, mocks, agents |
