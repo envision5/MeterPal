@@ -9,17 +9,35 @@ This product includes software developed as part of the following projects:
    taken private in September 2026; this fork carries the last public Apache-2.0
    snapshot (last upstream commit c7a8f30ca2, PR #3744) plus MeterPal's PayPal
    integration layer, LiteLLM bridge provisioning, and supporting migrations.
-   The fork's own Apache-2.0 LICENSE is preserved at `billing/LICENSE`.
+   The fork's own Apache-2.0 LICENSE is preserved at `billing/LICENSE` and
+   reproduced at `LICENSES/Apache-2.0.txt`.
 
 2. The AI gateway under `gateway/` is a fork of LiteLLM
-   (https://github.com/BerriAI/litellm), portions of which are licensed under
-   the MIT License (with `enterprise/` portions under their own license as
-   described in `gateway/LICENSE`). Copyright BerriAI and contributors.
+   (https://github.com/BerriAI/litellm), licensed under the MIT License.
+   Copyright Berri AI and contributors. The MIT text is reproduced at
+   `LICENSES/MIT.txt` and preserved at `gateway/LICENSE`.
    MeterPal adds a self-contained usage-billing hook
    (`gateway/litellm/integrations/meterpal_billing.py`); no LiteLLM core files
    are modified.
 
-All new code added by MeterPal (the `sdk/`, `agent/`, `demo-app/`, `demo/`,
-`docs/` trees, and the PayPal integration files under
-`billing/server/src/external/paypal/`) is licensed under the Apache License,
-Version 2.0, as stated in the root LICENSE file.
+   Upstream LiteLLM distributes an `enterprise/` package under the separate
+   BerriAI Enterprise License, which requires paid seats and does not permit
+   public redistribution. That package has been REMOVED from this repository
+   and is not distributed here. LiteLLM guards every import of it with
+   `try/except ImportError`, so the paid-only callbacks (PagerDuty, SendGrid,
+   SMTP email, enterprise guardrails) are simply unavailable; the gateway and
+   the MeterPal demo run without them.
+
+3. All new code added by MeterPal is licensed under the GNU Affero General
+   Public License, Version 3, as stated in the root `LICENSE` file. This covers
+   the `sdk/`, `agent/`, `demo/`, `demo-app/`, `docs/`, `scripts/`, `docker/`
+   and `assets/` trees, and MeterPal's own integration layers inside the
+   vendored trees (the PayPal adapter under
+   `billing/server/src/external/paypal/`, the LiteLLM usage hook, webhook
+   signature verification, and MeterPal's database migrations).
+
+   The AGPL does not apply to, and grants no rights in, the vendored components
+   described in items 1 and 2, which remain under their own licenses.
+
+   Commercial licensing of MeterPal-authored code is available separately.
+   See `LICENSE-COMMERCIAL.md`.

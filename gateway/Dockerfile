@@ -72,11 +72,10 @@ ENV UV_PROJECT_ENVIRONMENT=/app/.venv \
 
 # Copy dependency metadata first for layer caching
 COPY pyproject.toml uv.lock ./
-COPY enterprise/pyproject.toml enterprise/
 COPY litellm-proxy-extras/pyproject.toml litellm-proxy-extras/
 
 # Install third-party dependencies (cached unless pyproject.toml/uv.lock change)
-RUN uv sync --frozen --no-install-project --no-install-workspace --no-default-groups --no-editable \
+RUN uv sync --no-install-project --no-install-workspace --no-default-groups --no-editable \
     --extra proxy \
     --extra proxy-runtime \
     --extra extra_proxy \
@@ -98,7 +97,7 @@ COPY --from=ui-builder /ui/out/. litellm/proxy/_experimental/out/
 RUN sed -i 's/\r$//' docker/build_admin_ui.sh && chmod +x docker/build_admin_ui.sh && ./docker/build_admin_ui.sh
 
 # Install project and workspace packages (fast - deps already cached)
-RUN uv sync --frozen --no-default-groups --no-editable \
+RUN uv sync --no-default-groups --no-editable \
     --extra proxy \
     --extra proxy-runtime \
     --extra extra_proxy \
@@ -144,10 +143,10 @@ COPY --from=builder /app/.venv /app/.venv
 COPY --from=builder /app/docker /app/docker
 COPY --from=builder /app/schema.prisma /app/schema.prisma
 COPY --from=builder /app/litellm/proxy/prisma_migration.py /app/litellm/proxy/prisma_migration.py
-# enterprise/ is imported by source path at runtime (proxy_cli puts the
-# working directory on sys.path; litellm/proxy/hooks resolves
-# enterprise.enterprise_hooks from it)
-COPY --from=builder /app/enterprise /app/enterprise
+# NOTE: upstream LiteLLM ships an enterprise/ package under the BerriAI
+# Enterprise License (paid seats). It has been removed from this repository so
+# the project can be published as open source. LiteLLM guards every import of
+# it with try/except ImportError, so paid-only callbacks are simply unavailable.
 COPY --from=builder /app/litellm-proxy-extras /app/litellm-proxy-extras
 # Prisma CLI + engines are baked under /opt/prisma, a fixed path every
 # runtime uid can read and that no cache volume mount shadows. The paths are
