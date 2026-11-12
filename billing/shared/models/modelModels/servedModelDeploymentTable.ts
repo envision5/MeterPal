@@ -55,6 +55,20 @@ export const servedModelDeployments = pgTable(
 		organization: text("organization"),
 
 		/**
+		 * Input modalities the model accepts, from `["image", "audio",
+		 * "pdf", "video"]`. Pushed to the gateway as `model_info` capability
+		 * flags, which is what decides whether a request carrying an image
+		 * is allowed through.
+		 *
+		 * Null means "not configured" and sends no flags at all; an empty
+		 * array means text-only and sends explicit falsehoods. The two are
+		 * different answers, and LiteLLM treats them differently: a missing
+		 * `supports_vision` reads as "might work", an explicit false reads as
+		 * "refuse".
+		 */
+		modalities: jsonb("modalities").$type<string[]>(),
+
+		/**
 		 * Anything else LiteLLM accepts on a deployment, as a JSON object —
 		 * encrypted whole, because provider credential families (Azure,
 		 * Vertex, Bedrock) routinely hold secrets. `extra_params_keys` keeps

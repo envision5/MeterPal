@@ -144,6 +144,46 @@ describe("pushDeploymentToGateway", () => {
 		expect(calls[0].body.litellm_params).not.toHaveProperty("tpm");
 	});
 
+	test("sends capabilities as model_info, not as litellm_params", async () => {
+		const { fetchImpl, calls } = recordingTransport(() =>
+			json(200, { model_id: "gw-row-3" }),
+		);
+
+		await pushDeploymentToGateway({
+			modelName: "mp_sandbox_org-1__openai-vision",
+			providerModel: "openai/gpt-4o",
+			apiKey: "sk-test-0002",
+			modalities: ["image", "pdf"],
+			fetchImpl,
+		});
+
+		// The router reads supports_vision off model_info; a flag inside
+		// litellm_params would be forwarded to the provider instead.
+		expect(calls[0].body.model_info).toEqual({
+			supports_vision: true,
+			supports_audio_input: false,
+			supports_pdf_input: true,
+			supports_video_input: false,
+		});
+		expect(calls[0].body.litellm_params).not.toHaveProperty("supports_vision");
+	});
+
+	test("sends no model_info at all when modalities were never set", async () => {
+		const { fetchImpl, calls } = recordingTransport(() =>
+			json(200, { model_id: "gw-row-4" }),
+		);
+
+		await pushDeploymentToGateway({
+			modelName: "mp_sandbox_org-1__openai-gpt-4o-mini",
+			providerModel: "openai/gpt-4o-mini",
+			apiKey: "sk-test-0003",
+			modalities: null,
+			fetchImpl,
+		});
+
+		expect(calls[0].body).not.toHaveProperty("model_info");
+	});
+
 	test("throws with the gateway's detail on a 400", async () => {
 		const { fetchImpl } = recordingTransport(() =>
 			json(400, { error: { message: "bad provider prefix" } }),

@@ -59,12 +59,21 @@ export interface ModelsDevCost {
 	};
 }
 
+/** What a model accepts as input, as models.dev reports it. `text` is
+ *  implied and usually present; the rest are what the dashboard's modality
+ *  checkboxes are pre-filled from. */
+export interface ModelsDevModalities {
+	input?: string[];
+	output?: string[];
+}
+
 /** Shape of a single model from the models.dev API */
 export interface ModelsDevModel {
 	id: string;
 	name: string;
 	release_date?: string;
 	cost: ModelsDevCost;
+	modalities?: ModelsDevModalities;
 }
 
 /** Shape of a provider from the models.dev API */
@@ -72,4 +81,11 @@ export interface ModelsDevProvider {
 	id: string;
 	name: string;
 	models: Record<string, ModelsDevModel>;
+	/** The provider's API base URL. Absent for first-party providers whose
+	 *  URL the SDK already knows (OpenAI, Anthropic, Google...). */
+	api?: string;
+	/** The AI SDK package the provider speaks -- the wire protocol. */
+	npm?: string;
+	/** Environment variable the provider's key is conventionally read from. */
+	env?: string[];
 }

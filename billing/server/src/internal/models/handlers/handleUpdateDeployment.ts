@@ -32,6 +32,9 @@ export const handleUpdateDeployment = createRoute({
 		organization: z.string().min(1).nullish(),
 		/** Absent keeps the stored blob; {} clears it. */
 		extra_params: z.record(z.string(), z.unknown()).optional(),
+		/** Absent keeps the stored modalities; [] means text only, null
+		 *  clears the declaration. */
+		modalities: z.array(z.string()).nullish(),
 	}),
 	handler: async (c) => {
 		const ctx = c.get("ctx");
@@ -69,6 +72,7 @@ export const handleUpdateDeployment = createRoute({
 				weight: deployment.weight,
 				order: deployment.routing_order,
 				organization: deployment.organization,
+				modalities: deployment.modalities,
 				extra_params_keys: deployment.extra_params_keys,
 				key_rotated: Boolean(body.api_key && body.api_key.length > 0),
 			},

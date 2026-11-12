@@ -62,6 +62,7 @@ const Stat = ({
 
 const ServedModelCard = ({
 	model,
+	catalogEntry,
 	providerInput,
 	providerOutput,
 	onEdit,
@@ -73,6 +74,9 @@ const ServedModelCard = ({
 	isDeploymentBusy,
 }: {
 	model: ServedModel;
+	/** The catalog's view of this model, when it has one: what a new
+	 *  instance starts from. */
+	catalogEntry: AvailableModel | undefined;
 	providerInput: number | null;
 	providerOutput: number | null;
 	onEdit: () => void;
@@ -181,6 +185,20 @@ const ServedModelCard = ({
 
 			<DeploymentsSection
 				deployments={model.deployments ?? []}
+				defaults={
+					catalogEntry
+						? {
+								provider_model: catalogEntry.provider_model,
+								api_base: catalogEntry.api_base,
+								// A second instance of the same model takes the same
+								// inputs as the first; the catalog is the fallback for
+								// a model whose first instance predates the field.
+								modalities:
+									model.deployments?.[0]?.modalities ??
+									catalogEntry.modalities,
+							}
+						: undefined
+				}
 				onCreate={onCreateDeployment}
 				onUpdate={onUpdateDeployment}
 				onRemove={onRemoveDeployment}
@@ -315,6 +333,7 @@ export const ModelsPage = () => {
 							<ServedModelCard
 								key={model.model_id}
 								model={model}
+								catalogEntry={providerCosts.get(model.model_id)}
 								providerInput={
 									providerCosts.get(model.model_id)
 										?.provider_input_cost_usd_1m ?? null
@@ -350,7 +369,7 @@ export const ModelsPage = () => {
 
 			<SettingsGroup
 				title="Add a model"
-				description="Every model MeterPal can serve, with the provider's current price. Add one to set what you charge for it before it goes live."
+				description="Every model MeterPal can serve, with the provider's current price. Pick one to set what you charge and connect the provider account behind it -- the provider model, base URL and inputs are filled in from the catalog, so the key is usually all that is left."
 			>
 				<div className="flex flex-col gap-3">
 					<Input
@@ -396,6 +415,10 @@ export const ModelsPage = () => {
 													candidate.provider_input_cost_usd_1m,
 												provider_output:
 													candidate.provider_output_cost_usd_1m,
+												provider_name: candidate.provider_name,
+												provider_model: candidate.provider_model,
+												api_base: candidate.api_base,
+												modalities: candidate.modalities,
 											})
 										}
 									>
@@ -417,6 +440,10 @@ export const ModelsPage = () => {
 									display_name: null,
 									provider_input: null,
 									provider_output: null,
+									provider_name: null,
+									provider_model: null,
+									api_base: null,
+									modalities: null,
 								})
 							}
 						>

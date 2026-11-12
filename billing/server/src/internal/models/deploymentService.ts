@@ -32,6 +32,15 @@ import { litellmBase, litellmMasterKey } from "@/internal/keys/litellmEnv.js";
 import { syncOrgLitellmKeys } from "@/internal/keys/litellmKeys.js";
 import { decryptData, encryptData } from "@/utils/encryptUtils.js";
 import { generateId } from "@/utils/genUtils.js";
+import {
+	buildModelInfo,
+	INPUT_MODALITIES,
+	litellmProviderFor,
+	normalizeApiBase,
+	providerModelProblem,
+	splitProviderModel,
+} from "./providerProtocol.js";
+import { getModelsDevPricing } from "@/internal/features/utils/getModelPricing.js";
 
 /** Injectable transport, so tests can stub the gateway. */
 export type FetchImpl = typeof fetch;
@@ -98,7 +107,87 @@ export type DeploymentInput = {
 	routing_order?: number | null;
 	organization?: string | null;
 	extra_params?: ExtraParams | null;
+	/** Input modalities, `[]` meaning text-only and null meaning "not
+	 *  configured" — see `buildModelInfo`. */
+	modalities?: string[] | null;
 };
+
+/**
+ * Normalizes the two fields a merchant is most likely to get subtly wrong,
+ * and refuses the one that cannot work at all.
+ *
+ * The refusal is the important half: an unroutable provider prefix is saved
+ * happily by the gateway and only fails at routing time, as a 500 about pods.
+ * Catching it here turns a mystery into a sentence naming the right id.
+ */
+export const validateDeploymentTarget = ({
+	providerModel,
+	apiBase,
+	suggestion,
+}: {
+	providerModel: string;
+	apiBase?: string | null;
+	/** A better "did you mean" than the prefix's nearest neighbour. */
+	suggestion?: string | null;
+}): { apiBase: string | null } => {
+	const problem = providerModelProblem(providerModel, { suggestion });
+	if (problem) {
+		throw new RecaseError({
+			message: problem,
+			code: ErrCode.InvalidRequest,
+			statusCode: 400,
+		});
+	}
+	return { apiBase: apiBase ? normalizeApiBase(apiBase) : null };
+};
+
+/**
+ * How the catalog says this model is served, for the error message.
+ *
+ * Only consulted when a prefix is already known to be unroutable, so the
+ * feed is never on the success path — a models.dev outage cannot slow down
+ * adding an instance, let alone block one.
+ */
+const suggestedProviderModel = async (
+	modelId: string,
+): Promise<string | null> => {
+	try {
+		const parts = splitProviderModel(modelId);
+		if (!parts) return null;
+		const pricing = await getModelsDevPricing();
+		const provider = pricing[parts.prefix];
+		if (!provider) return null;
+		return `${litellmProviderFor({
+			providerId: parts.prefix,
+			npm: provider.npm,
+		})}/${parts.modelKey}`;
+	} catch {
+		return null;
+	}
+};
+
+/** The suggestion for a model id, if this deployment's target needs one. */
+const suggestionFor = async (
+	modelId: string,
+	providerModel: string,
+): Promise<string | null> =>
+	providerModelProblem(providerModel)
+		? suggestedProviderModel(modelId)
+		: null;
+
+
+/** Modalities as stored: known values only, deduplicated, sorted for a
+ *  stable audit trail. */
+export const cleanModalities = (
+	modalities: readonly string[] | null | undefined,
+): string[] | null => {
+	if (modalities == null) return null;
+	const known = INPUT_MODALITIES.filter((modality) =>
+		modalities.includes(modality),
+	);
+	return [...known].sort();
+};
+
 
 /**
  * The LiteLLM model name a model's deployment group is registered under.
@@ -242,6 +331,7 @@ export const pushDeploymentToGateway = async ({
 	routingOrder,
 	organization,
 	extraParams,
+	modalities,
 	fetchImpl = fetch,
 }: {
 	modelName: string;
@@ -256,6 +346,8 @@ export const pushDeploymentToGateway = async ({
 	routingOrder?: number | null;
 	organization?: string | null;
 	extraParams?: ExtraParams | null;
+	/** Null or absent leaves `model_info` off the deployment entirely. */
+	modalities?: string[] | null;
 	fetchImpl?: FetchImpl;
 }): Promise<string | null> => {
 	const litellmParams = buildLitellmParams({
@@ -272,9 +364,18 @@ export const pushDeploymentToGateway = async ({
 		extraParams,
 	});
 
+	// Capabilities live on `model_info`, not in `litellm_params`: that is
+	// where the router reads `supports_vision` and friends from when it
+	// decides whether a request may carry an image, an audio clip or a PDF.
+	const modelInfo = buildModelInfo(modalities);
+
 	const res = await gatewayFetch(
 		"/model/new",
-		{ model_name: modelName, litellm_params: litellmParams },
+		{
+			model_name: modelName,
+			litellm_params: litellmParams,
+			...(modelInfo ? { model_info: modelInfo } : {}),
+		},
 		"POST",
 		fetchImpl,
 	);
@@ -434,6 +535,7 @@ export const toDeploymentResponse = (d: ServedModelDeployment) => ({
 	weight: d.weight,
 	order: d.routing_order,
 	organization: d.organization,
+	modalities: d.modalities ?? null,
 	extra_params_keys: d.extra_params_keys ?? [],
 	created_at: d.created_at,
 });
@@ -453,13 +555,20 @@ export const createDeployment = async ({
 	const modelName = gatewayDeploymentName({ env, orgId: org.id, modelId });
 	if (input.extra_params) validateExtraParams(input.extra_params);
 
+	const { apiBase } = validateDeploymentTarget({
+		providerModel: input.provider_model,
+		apiBase: input.api_base,
+		suggestion: await suggestionFor(modelId, input.provider_model),
+	});
+	const modalities = cleanModalities(input.modalities);
+
 	let gatewayModelId: string | null;
 	try {
 		gatewayModelId = await pushDeploymentToGateway({
 			modelName,
 			providerModel: input.provider_model,
 			apiKey: input.api_key,
-			apiBase: input.api_base,
+			apiBase,
 			rpm: input.rpm,
 			tpm: input.tpm,
 			timeout: input.timeout,
@@ -468,6 +577,7 @@ export const createDeployment = async ({
 			routingOrder: input.routing_order,
 			organization: input.organization,
 			extraParams: input.extra_params,
+			modalities,
 			fetchImpl,
 		});
 	} catch (error) {
@@ -483,7 +593,7 @@ export const createDeployment = async ({
 			env,
 			model_id: modelId,
 			provider_model: input.provider_model,
-			api_base: input.api_base ?? null,
+			api_base: apiBase,
 			api_key_enc: encryptData(input.api_key),
 			api_key_hint: apiKeyHint(input.api_key),
 			gateway_model_id: gatewayModelId,
@@ -494,6 +604,7 @@ export const createDeployment = async ({
 			weight: input.weight ?? null,
 			routing_order: input.routing_order ?? null,
 			organization: input.organization ?? null,
+			modalities,
 			...storeExtraParams(input.extra_params ?? {}),
 			created_at: now,
 			updated_at: now,
@@ -556,6 +667,16 @@ export const updateDeployment = async ({
 		input.organization === undefined
 			? existing.organization
 			: input.organization;
+	const modalities =
+		input.modalities === undefined
+			? (existing.modalities ?? null)
+			: cleanModalities(input.modalities);
+
+	const target = validateDeploymentTarget({
+		providerModel,
+		apiBase,
+		suggestion: await suggestionFor(modelId, providerModel),
+	});
 	// Absent extras keep the stored blob; an explicit object replaces it
 	// (an empty object clears, matching the form's "blank keeps, {} clears").
 	const extraParams =
@@ -591,7 +712,7 @@ export const updateDeployment = async ({
 			modelName,
 			providerModel,
 			apiKey,
-			apiBase,
+			apiBase: target.apiBase,
 			rpm,
 			tpm,
 			timeout,
@@ -600,6 +721,7 @@ export const updateDeployment = async ({
 			routingOrder,
 			organization,
 			extraParams,
+			modalities,
 			fetchImpl,
 		});
 	} catch (error) {
@@ -610,7 +732,7 @@ export const updateDeployment = async ({
 		.update(servedModelDeployments)
 		.set({
 			provider_model: providerModel,
-			api_base: apiBase,
+			api_base: target.apiBase,
 			api_key_enc: encryptData(apiKey),
 			api_key_hint: apiKeyHint(apiKey),
 			gateway_model_id: gatewayModelId,
@@ -621,6 +743,7 @@ export const updateDeployment = async ({
 			weight,
 			routing_order: routingOrder,
 			organization,
+			modalities,
 			...storeExtraParams(extraParams),
 			updated_at: Date.now(),
 		})

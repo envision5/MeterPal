@@ -8,10 +8,18 @@
 //
 // The form carries the fields every deployment needs up front; the knobs
 // most deployments never touch (timeouts, routing precedence, provider
-// credential families, anything else LiteLLM accepts) live behind the
-// Advanced expander and land in the same litellm_params the gateway reads.
+// credential families, input modalities, anything else LiteLLM accepts) live
+// behind the Advanced expander and land in the same litellm_params the
+// gateway reads.
+//
+// The first two fields are the ones a merchant should never have to type.
+// `provider_model` is the gateway's id for the model, which is a different
+// vocabulary from the catalog id they picked (`302ai/claude-fable-5` is
+// served as `openai/claude-fable-5`), and `api_base` is a fact about the
+// provider. Both arrive as `defaults` from the catalog, so adding a model
+// from the list asks for a key and nothing else.
 
-import { Button, FormLabel, Input } from "@autumn/ui";
+import { Button, Checkbox, FormLabel, Input, Switch } from "@autumn/ui";
 import {
 	ChevronDownIcon,
 	ChevronRightIcon,
@@ -26,7 +34,15 @@ import type {
 
 export type DeploymentCreateValues = DeploymentUpdate & { api_key: string };
 
-interface DeploymentFormValues {
+/** What the catalog knows about a model's instance, so the form can open
+ *  filled in. Every field is optional: a custom model has none of them. */
+export type DeploymentDefaults = {
+	provider_model?: string | null;
+	api_base?: string | null;
+	modalities?: string[] | null;
+};
+
+export interface DeploymentFormValues {
 	provider_model: string;
 	api_key: string;
 	api_base: string;
@@ -40,12 +56,27 @@ interface DeploymentFormValues {
 	/** The extra-params textarea. Always blank on open: blank keeps whatever
 	 *  is stored, an explicit {} clears it. */
 	extra_json: string;
+	/** Input modalities beyond text. Null means "no declaration" -- which is
+	 *  not the same as text-only, and is the default because a wrong guess
+	 *  here silently refuses images the model could have taken. */
+	modalities: string[] | null;
 }
 
-const emptyForm: DeploymentFormValues = {
-	provider_model: "",
+/** The four modalities the gateway has a flag for. `video` has no gate in
+ *  this gateway: it is recorded, not enforced. */
+const MODALITY_OPTIONS = [
+	{ id: "image", label: "Images" },
+	{ id: "audio", label: "Audio" },
+	{ id: "pdf", label: "PDFs" },
+	{ id: "video", label: "Video" },
+] as const;
+
+export const emptyDeploymentForm = (
+	defaults?: DeploymentDefaults,
+): DeploymentFormValues => ({
+	provider_model: defaults?.provider_model ?? "",
 	api_key: "",
-	api_base: "",
+	api_base: defaults?.api_base ?? "",
 	rpm: "",
 	tpm: "",
 	timeout: "",
@@ -54,7 +85,8 @@ const emptyForm: DeploymentFormValues = {
 	order: "",
 	organization: "",
 	extra_json: "",
-};
+	modalities: defaults?.modalities ?? null,
+});
 
 const toFormValues = (d: ServedModelDeployment): DeploymentFormValues => ({
 	provider_model: d.provider_model,
@@ -68,6 +100,7 @@ const toFormValues = (d: ServedModelDeployment): DeploymentFormValues => ({
 	order: d.order?.toString() ?? "",
 	organization: d.organization ?? "",
 	extra_json: "",
+	modalities: d.modalities ?? null,
 });
 
 const parseOptionalNumber = (raw: string): number | null => {
@@ -98,10 +131,57 @@ const parseExtraJson = (raw: string): ExtraJsonState => {
 	}
 };
 
+/**
+ * What is missing from an instance before it can be saved, or null.
+ *
+ * Exported because the create flow submits this form from the sheet's own
+ * footer, and two places deciding what "valid" means is how a form ends up
+ * with a live button that always fails.
+ */
+export const deploymentFormProblem = (
+	values: DeploymentFormValues,
+	{ requireKey }: { requireKey: boolean },
+): string | null => {
+	const providerModel = values.provider_model.trim();
+	if (!providerModel) return "A provider model is required.";
+	if (!providerModel.includes("/")) {
+		return "Use a provider-prefixed model, like openai/gpt-4o-mini.";
+	}
+	if (requireKey && !values.api_key.trim()) {
+		return "An API key is required.";
+	}
+	if (parseExtraJson(values.extra_json).state === "invalid") {
+		return "The extra params are not valid JSON.";
+	}
+	return null;
+};
+
+/** The request body for an instance, from the form's strings. */
+export const buildDeploymentPayload = (
+	values: DeploymentFormValues,
+	{ requireKey }: { requireKey: boolean },
+): DeploymentCreateValues | DeploymentUpdate => {
+	const extraState = parseExtraJson(values.extra_json);
+	return {
+		provider_model: values.provider_model.trim(),
+		api_base: values.api_base.trim() || null,
+		rpm: parseOptionalNumber(values.rpm),
+		tpm: parseOptionalNumber(values.tpm),
+		timeout: parseOptionalNumber(values.timeout),
+		max_retries: parseOptionalNumber(values.max_retries),
+		weight: parseOptionalNumber(values.weight),
+		order: parseOptionalNumber(values.order),
+		organization: values.organization.trim() || null,
+		modalities: values.modalities,
+		...(extraState.state === "valid" ? { extra_params: extraState.value } : {}),
+		...(requireKey ? { api_key: values.api_key.trim() } : {}),
+	};
+};
+
 /** Shared by "add instance" and "edit instance": the fields one deployment
  *  carries. In edit mode the key starts empty -- leaving it that way keeps
  *  the stored key. */
-const DeploymentForm = ({
+export const DeploymentForm = ({
 	values,
 	setValues,
 	requireKey,
@@ -109,6 +189,7 @@ const DeploymentForm = ({
 	onSubmit,
 	onCancel,
 	isSaving,
+	hideActions,
 }: {
 	values: DeploymentFormValues;
 	setValues: (values: DeploymentFormValues) => void;
@@ -118,8 +199,13 @@ const DeploymentForm = ({
 	 *  what "leave blank" is keeping. */
 	currentExtraKeys: string[];
 	onSubmit: (values: DeploymentCreateValues | DeploymentUpdate) => void;
-	onCancel: () => void;
+	/** Absent when the form is the whole of a create flow: there is nothing
+	 *  to go back to but the sheet. */
+	onCancel?: () => void;
 	isSaving: boolean;
+	/** The create flow submits from the sheet footer, so the form's own
+	 *  buttons would be a second, differently-guarded way to save. */
+	hideActions?: boolean;
 }) => {
 	const [showKey, setShowKey] = useState(false);
 	const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -132,36 +218,35 @@ const DeploymentForm = ({
 		[values.extra_json],
 	);
 
-	const canSave =
-		values.provider_model.trim().length > 0 &&
-		(!requireKey || values.api_key.trim().length > 0) &&
-		extraState.state !== "invalid";
+	const canSave = deploymentFormProblem(values, { requireKey }) === null;
 
-	const buildPayload = (): DeploymentCreateValues | DeploymentUpdate => ({
-		provider_model: values.provider_model.trim(),
-		api_base: values.api_base.trim() || null,
-		rpm: parseOptionalNumber(values.rpm),
-		tpm: parseOptionalNumber(values.tpm),
-		timeout: parseOptionalNumber(values.timeout),
-		max_retries: parseOptionalNumber(values.max_retries),
-		weight: parseOptionalNumber(values.weight),
-		order: parseOptionalNumber(values.order),
-		organization: values.organization.trim() || null,
-		...(extraState.state === "valid" ? { extra_params: extraState.value } : {}),
-		...(requireKey ? { api_key: values.api_key.trim() } : {}),
-	});
+	const buildPayload = (): DeploymentCreateValues | DeploymentUpdate =>
+		buildDeploymentPayload(values, { requireKey });
 
-	const advancedHasValue = currentExtraKeys.length > 0;
+
+	const advancedHasValue =
+		currentExtraKeys.length > 0 || values.modalities != null;
+
+	const toggleModality = (id: string, checked: boolean) => {
+		const current = values.modalities ?? [];
+		const next = checked
+			? [...current, id]
+			: current.filter((modality) => modality !== id);
+		setValues({ ...values, modalities: next });
+	};
 
 	return (
 		<div className="flex flex-col gap-3 rounded-lg border bg-background px-3 py-3">
+			{/* Two rows rather than one wrapping row: the four fields together
+			 *  are wider than the sheet, and letting them wrap puts TPM alone
+			 *  on its own line on some widths and not others. */}
 			<div className="flex flex-wrap items-end gap-3">
 				<div className="flex flex-col gap-1">
 					<FormLabel>
 						<span className="text-subtle">Provider model</span>
 					</FormLabel>
 					<Input
-						className="w-56"
+						className="w-64"
 						value={values.provider_model}
 						onChange={(e) => set("provider_model")(e.target.value)}
 						placeholder="openai/gpt-4o-mini"
@@ -180,12 +265,14 @@ const DeploymentForm = ({
 						autoComplete="off"
 					/>
 				</div>
+			</div>
+			<div className="flex flex-wrap items-end gap-3">
 				<div className="flex flex-col gap-1">
 					<FormLabel>
 						<span className="text-subtle">RPM</span>
 					</FormLabel>
 					<Input
-						className="w-24"
+						className="w-28"
 						value={values.rpm}
 						onChange={(e) => set("rpm")(e.target.value)}
 						placeholder="—"
@@ -197,7 +284,7 @@ const DeploymentForm = ({
 						<span className="text-subtle">TPM</span>
 					</FormLabel>
 					<Input
-						className="w-24"
+						className="w-28"
 						value={values.tpm}
 						onChange={(e) => set("tpm")(e.target.value)}
 						placeholder="—"
@@ -205,6 +292,20 @@ const DeploymentForm = ({
 					/>
 				</div>
 			</div>
+
+			<p className="text-subtle text-xs leading-4">
+				<strong className="font-medium text-tertiary-foreground">RPM</strong>{" "}
+				and <strong className="font-medium text-tertiary-foreground">TPM</strong>{" "}
+				are ceilings this gateway enforces before it calls the provider:
+				requests per minute and tokens per minute for this one account. Set
+				them just under the limit your provider gives you, and the gateway
+				sends traffic to another instance when this one is at its ceiling
+				instead of letting the provider reject the call. Leave both blank for
+				no ceiling. The API base is the root URL, not the endpoint — the
+				gateway appends <code className="font-mono">/chat/completions</code>{" "}
+				itself.
+			</p>
+
 			<div className="flex flex-col gap-1">
 				<FormLabel>
 					<span className="text-subtle">
@@ -249,13 +350,64 @@ const DeploymentForm = ({
 					Advanced settings
 					{advancedHasValue && (
 						<span className="rounded-full bg-interactive px-1.5 py-0.5 font-medium text-foreground text-tiny-id">
-							{currentExtraKeys.length}
+							{currentExtraKeys.length + (values.modalities != null ? 1 : 0)}
 						</span>
 					)}
 				</button>
 
 				{advancedOpen && (
 					<div className="mt-3 flex flex-col gap-3 rounded-lg border px-3 py-3">
+						<div className="flex flex-col gap-2 rounded-lg border bg-interactive-secondary px-3 py-2.5">
+							<div className="flex items-center justify-between gap-3">
+								<div className="flex flex-col gap-0.5">
+									<span className="font-medium text-foreground text-xs">
+										Multimodal
+									</span>
+									<span className="text-subtle text-xs leading-4">
+										{values.modalities == null
+											? "Off — the gateway accepts whatever this provider does. Turn it on to declare the inputs this model takes."
+											: "On — the gateway accepts text plus whatever is checked below, and refuses the rest."}
+									</span>
+								</div>
+								<Switch
+									checked={values.modalities != null}
+									onCheckedChange={(checked) =>
+										setValues({
+											...values,
+											// Turning it on starts from text-only
+											// rather than guessing: a guess that is
+											// wrong in the generous direction sends
+											// images to a model that cannot read them.
+											modalities: checked ? [] : null,
+										})
+									}
+									aria-label="Declare input modalities"
+								/>
+							</div>
+							{values.modalities != null && (
+								<div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+									{MODALITY_OPTIONS.map((option) => (
+										<label
+											key={option.id}
+											className="flex cursor-pointer items-center gap-1.5 text-foreground text-xs"
+										>
+											<Checkbox
+												checked={values.modalities?.includes(option.id)}
+												onCheckedChange={(checked) =>
+													toggleModality(option.id, checked === true)
+												}
+												aria-label={option.label}
+											/>
+											{option.label}
+										</label>
+									))}
+									{values.modalities.length === 0 && (
+										<span className="text-subtle text-xs">Text only</span>
+									)}
+								</div>
+							)}
+						</div>
+
 						<p className="text-subtle text-xs leading-4">
 							Passed to the gateway with the call. Everything here is
 							optional -- the fields cover LiteLLM's timeout and routing
@@ -359,19 +511,28 @@ const DeploymentForm = ({
 				)}
 			</div>
 
-			<div className="flex gap-2">
-				<Button
-					size="sm"
-					onClick={() => onSubmit(buildPayload())}
-					isLoading={isSaving}
-					disabled={!canSave}
-				>
-					Save instance
-				</Button>
-				<Button size="sm" variant="secondary" onClick={onCancel} type="button">
-					Cancel
-				</Button>
-			</div>
+			{!hideActions && (
+				<div className="flex gap-2">
+					<Button
+						size="sm"
+						onClick={() => onSubmit(buildPayload())}
+						isLoading={isSaving}
+						disabled={!canSave}
+					>
+						Save instance
+					</Button>
+					{onCancel && (
+						<Button
+							size="sm"
+							variant="secondary"
+							onClick={onCancel}
+							type="button"
+						>
+							Cancel
+						</Button>
+					)}
+				</div>
+			)}
 		</div>
 	);
 };
@@ -388,6 +549,9 @@ const instanceSummary = (d: ServedModelDeployment): string[] => {
 	if (d.weight != null) parts.push(`weight ${d.weight}`);
 	if (d.order != null) parts.push(`order ${d.order}`);
 	if (d.organization) parts.push(`org ${d.organization}`);
+	if (d.modalities != null) {
+		parts.push(d.modalities.length === 0 ? "text only" : d.modalities.join(" + "));
+	}
 	if (d.extra_params_keys.length > 0) {
 		parts.push(`+${d.extra_params_keys.length} advanced`);
 	}
@@ -402,12 +566,16 @@ const instanceSummary = (d: ServedModelDeployment): string[] => {
  */
 export const DeploymentsList = ({
 	deployments,
+	defaults,
 	onCreate,
 	onUpdate,
 	onRemove,
 	isBusy,
 }: {
 	deployments: ServedModelDeployment[];
+	/** What a new instance starts from -- the catalog's provider model, base
+	 *  URL and modalities. Absent for a model the catalog does not know. */
+	defaults?: DeploymentDefaults;
 	onCreate: (values: DeploymentCreateValues) => Promise<void>;
 	onUpdate: (
 		deploymentId: string,
@@ -417,15 +585,19 @@ export const DeploymentsList = ({
 	isBusy: boolean;
 }) => {
 	const [adding, setAdding] = useState(false);
-	const [addValues, setAddValues] = useState<DeploymentFormValues>(emptyForm);
+	const [addValues, setAddValues] = useState<DeploymentFormValues>(() =>
+		emptyDeploymentForm(defaults),
+	);
 	const [editingId, setEditingId] = useState<string | null>(null);
-	const [editValues, setEditValues] = useState<DeploymentFormValues>(emptyForm);
+	const [editValues, setEditValues] = useState<DeploymentFormValues>(() =>
+		emptyDeploymentForm(),
+	);
 	const [removingId, setRemovingId] = useState<string | null>(null);
 
 	const handleCreate = async (values: DeploymentCreateValues) => {
 		try {
 			await onCreate(values);
-			setAddValues(emptyForm);
+			setAddValues(emptyDeploymentForm(defaults));
 			setAdding(false);
 		} catch {
 			// The caller toasted the failure; keep the form and its values up.
@@ -526,7 +698,7 @@ export const DeploymentsList = ({
 					currentExtraKeys={[]}
 					onSubmit={(values) => handleCreate(values as DeploymentCreateValues)}
 					onCancel={() => {
-						setAddValues(emptyForm);
+						setAddValues(emptyDeploymentForm(defaults));
 						setAdding(false);
 					}}
 					isSaving={isBusy}
@@ -536,7 +708,10 @@ export const DeploymentsList = ({
 					variant="secondary"
 					size="sm"
 					className="w-fit"
-					onClick={() => setAdding(true)}
+					onClick={() => {
+						setAddValues(emptyDeploymentForm(defaults));
+						setAdding(true);
+					}}
 				>
 					Add instance
 				</Button>
@@ -547,12 +722,14 @@ export const DeploymentsList = ({
 
 export const DeploymentsSection = ({
 	deployments,
+	defaults,
 	onCreate,
 	onUpdate,
 	onRemove,
 	isBusy,
 }: {
 	deployments: ServedModelDeployment[];
+	defaults?: DeploymentDefaults;
 	onCreate: (values: DeploymentCreateValues) => Promise<void>;
 	onUpdate: (
 		deploymentId: string,
@@ -584,6 +761,7 @@ export const DeploymentsSection = ({
 			{open && (
 				<DeploymentsList
 					deployments={deployments}
+					defaults={defaults}
 					onCreate={onCreate}
 					onUpdate={onUpdate}
 					onRemove={onRemove}

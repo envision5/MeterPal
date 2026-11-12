@@ -3,11 +3,12 @@
 // The editor for one served model -- the same sheet for adding a model and
 // for changing one that is already on the price sheet.
 //
-// Adding a model used to fire a request and drop a row on the sheet with the
-// provider's price and nothing else: no way to name it, no way to set a
-// markup, and no way to change any of it afterwards.  So "Add" now opens
-// this sheet with the provider's price as the starting point, and the same
-// sheet is what "Edit" opens.
+// Adding a model used to be a two-step affair: save the row, then come back
+// and add the provider account that serves it. That second step is where a
+// model actually becomes servable, so the sheet now asks for it up front --
+// with the gateway's provider id, the provider's base URL and the model's
+// input modalities already filled in from the catalog. From the list, adding
+// a model is picking it and pasting a key.
 //
 // The sheet owns one rule the rest of the app has to respect: a price sheet
 // row states a price for both directions or for neither.  Half a price is
@@ -38,7 +39,12 @@ import {
 import { getBackendErr } from "@/utils/genUtils";
 import {
 	type DeploymentCreateValues,
+	buildDeploymentPayload,
+	DeploymentForm,
+	type DeploymentFormValues,
 	DeploymentsList,
+	deploymentFormProblem,
+	emptyDeploymentForm,
 } from "./DeploymentsSection";
 import {
 	baseInputPrice,
@@ -57,6 +63,14 @@ export type ModelSheetTarget =
 			display_name: string | null;
 			provider_input: number | null;
 			provider_output: number | null;
+			/** The catalog's name for the provider, e.g. "302.AI". */
+			provider_name: string | null;
+			/** What the gateway calls this model, which is not the id the
+			 *  merchant picked -- `302ai/claude-fable-5` is served as
+			 *  `openai/claude-fable-5`. */
+			provider_model: string | null;
+			api_base: string | null;
+			modalities: string[] | null;
 	  };
 
 type Draft = {
@@ -115,6 +129,19 @@ const draftFromTarget = (target: ModelSheetTarget): Draft => {
 	};
 };
 
+/** The instance a new model starts with: the catalog's provider model, base
+ *  URL and modalities, and nothing else. The key is the merchant's to type. */
+const instanceFromTarget = (
+	target: ModelSheetTarget,
+): DeploymentFormValues => {
+	if (target.kind === "edit") return emptyDeploymentForm();
+	return emptyDeploymentForm({
+		provider_model: target.provider_model,
+		api_base: target.api_base,
+		modalities: target.modalities,
+	});
+};
+
 const ModelSheetForm = ({
 	target,
 	availableModels,
@@ -130,6 +157,8 @@ const ModelSheetForm = ({
 		models,
 		upsert,
 		isUpserting,
+		remove,
+		isRemoving,
 		createDeployment,
 		isCreatingDeployment,
 		updateDeployment,
@@ -139,27 +168,25 @@ const ModelSheetForm = ({
 		fetchPlanMarkup,
 	} = useServedModelsQuery();
 
+	const isCreate = target.kind === "create";
+
 	const [draft, setDraft] = useState<Draft>(() => draftFromTarget(target));
+	const [instance, setInstance] = useState<DeploymentFormValues>(() =>
+		instanceFromTarget(target),
+	);
 
 	/**
-	 * The row, once it exists.
+	 * The row as it stands in the list.
 	 *
-	 * A model has to be on the sheet before it can have instances, so in
-	 * "create" mode this stays null until the first save.  It is tracked
-	 * explicitly rather than looked up by id, so typing the id of a model
-	 * that is already on the sheet does not silently turn an "add" into an
-	 * "edit".
+	 * Read from the query rather than from the sheet's target: an edit saves
+	 * and the list refetches, and the instances shown have to be the ones
+	 * the server just stored, not the ones the sheet opened with.
 	 */
-	const [savedModelId, setSavedModelId] = useState<string | null>(
-		target.kind === "edit" ? target.model.model_id : null,
-	);
-
-	const saved = useMemo(
-		() => models.find((m) => m.model_id === savedModelId) ?? null,
-		[models, savedModelId],
-	);
-
-	const isCreate = savedModelId === null;
+	const saved = useMemo(() => {
+		const modelId = target.kind === "edit" ? target.model.model_id : null;
+		if (!modelId) return null;
+		return models.find((m) => m.model_id === modelId) ?? null;
+	}, [models, target]);
 
 	/**
 	 * The markup the plan applies to this model on its own.
@@ -245,72 +272,160 @@ const ModelSheetForm = ({
 			? "your plan has no markup for this model"
 			: `your plan's ${planMarkup.source} markup (${planMarkup.pct}%)`;
 
-	const handleSave = async () => {
+	/** The model half of the save, shared by both create paths. Returns the
+	 *  trimmed id, or null when the form has a problem worth refusing. */
+	const saveModel = async (): Promise<string | null> => {
 		const trimmedId = draft.model_id.trim();
 		if (!trimmedId) {
 			toast.error("A model id is required");
-			return;
+			return null;
 		}
 		if (!trimmedId.includes("/")) {
 			toast.error(
 				"Use a provider/model id, like openai/gpt-4o-mini or custom/my-model",
 			);
-			return;
+			return null;
 		}
 		if (halfPriced) {
 			toast.error(
 				"Set both prices, or leave both blank to use the provider's price",
 			);
-			return;
+			return null;
 		}
 		if (ownInput != null && ownInput < 0) {
 			toast.error("The input price cannot be negative");
-			return;
+			return null;
 		}
 		if (ownOutput != null && ownOutput < 0) {
 			toast.error("The output price cannot be negative");
-			return;
+			return null;
 		}
 
 		const customMarkup =
 			draft.markup_mode === "custom" ? parseNumber(draft.markup) : null;
 		if (draft.markup_mode === "custom" && customMarkup == null) {
 			toast.error("Enter a markup, or use your plan's markup instead");
-			return;
+			return null;
 		}
 		if (customMarkup != null && customMarkup < 0) {
 			toast.error("The markup cannot be negative");
-			return;
+			return null;
 		}
 
+		await upsert({
+			model_id: trimmedId,
+			display_name: draft.display_name.trim() || null,
+			upstream_model: draft.upstream_model.trim() || null,
+			enabled: draft.enabled,
+			input_cost_usd_1m: ownInput,
+			output_cost_usd_1m: ownOutput,
+			// Null clears the model's own markup, putting the plan's back.
+			markup_pct: draft.markup_mode === "plan" ? null : customMarkup,
+		});
+		return trimmedId;
+	};
+
+	const handleSaveChanges = async () => {
 		try {
-			await upsert({
-				model_id: trimmedId,
-				display_name: draft.display_name.trim() || null,
-				upstream_model: draft.upstream_model.trim() || null,
-				enabled: draft.enabled,
-				input_cost_usd_1m: ownInput,
-				output_cost_usd_1m: ownOutput,
-				// Null clears the model's own markup, putting the plan's back.
-				markup_pct: draft.markup_mode === "plan" ? null : customMarkup,
-			});
-			if (isCreate) {
-				setSavedModelId(trimmedId);
-				toast.success(`Added ${trimmedId}. Add an instance to serve it.`);
-			} else {
-				toast.success("Model saved");
-			}
+			await saveModel();
+			toast.success("Model saved");
 		} catch (error) {
 			toast.error(getBackendErr(error, "Failed to save the model"));
 		}
 	};
 
+	/**
+	 * Add the model, and the provider account that serves it, as one action.
+	 *
+	 * Two writes, one outcome: if the gateway refuses the instance, the row
+	 * is taken back out. Leaving a model on the price sheet that was created
+	 * by a failed attempt is worse than leaving nothing -- it looks served,
+	 * it is in the allow-list, and it routes to a deployment that does not
+	 * exist. `withInstance: false` is the deliberate version of that state,
+	 * for a merchant whose gateway already has the model.
+	 */
+	const handleCreate = async ({ withInstance }: { withInstance: boolean }) => {
+		if (withInstance) {
+			const problem = deploymentFormProblem(instance, { requireKey: true });
+			if (problem) {
+				toast.error(problem);
+				return;
+			}
+		}
+
+		let addedId: string | null = null;
+		try {
+			addedId = await saveModel();
+		} catch (error) {
+			toast.error(getBackendErr(error, "Failed to add the model"));
+			return;
+		}
+		if (!addedId) return;
+
+		if (!withInstance) {
+			toast.success(
+				`Added ${addedId}. It has no instance, so nothing routes to it until you add one.`,
+			);
+			onClose();
+			return;
+		}
+
+		try {
+			await createDeployment({
+				modelId: addedId,
+				...(buildDeploymentPayload(instance, {
+					requireKey: true,
+				}) as DeploymentCreateValues),
+			});
+			toast.success(`Added ${addedId} and its instance.`);
+			onClose();
+		} catch (error) {
+			const reason = getBackendErr(error, "The gateway refused the instance.");
+			let rolledBack = true;
+			try {
+				await remove(addedId);
+			} catch {
+				rolledBack = false;
+			}
+			toast.error(
+				rolledBack
+					? `Nothing was added. ${reason}`
+					: `The model was added, but its instance was not: ${reason} Add one from the model's card.`,
+			);
+		}
+	};
+
+	const instanceProblem = isCreate
+		? deploymentFormProblem(instance, { requireKey: true })
+		: null;
+	const isSaving = isUpserting || isCreatingDeployment || isRemoving;
+
+	/**
+	 * What a second instance starts from.
+	 *
+	 * A model's instances all serve the same thing, so the fields a merchant
+	 * would otherwise retype are the ones the first instance already has:
+	 * the gateway id, the base URL, and the inputs the model takes. The
+	 * catalog fills in whatever the first instance predates.
+	 */
+	const editDefaults = useMemo(() => {
+		if (isCreate) return undefined;
+		const entry = availableModels.find(
+			(m) => m.model_id === target.model.model_id,
+		);
+		const first = saved?.deployments?.[0];
+		if (!entry && !first) return undefined;
+		return {
+			provider_model: first?.provider_model ?? entry?.provider_model ?? null,
+			api_base: first?.api_base ?? entry?.api_base ?? null,
+			modalities: first?.modalities ?? entry?.modalities ?? null,
+		};
+	}, [isCreate, availableModels, saved, target]);
+
 	return (
 		<>
 			{/* The dialog needs a title of its own for assistive technology;
-			 *  the visible heading lives in the sheet header below.  Both
-			 *  follow the sheet's current state: a model saved from "add"
-			 *  becomes an edit of that model. */}
+			 *  the visible heading lives in the sheet header below. */}
 			<SheetTitle className="sr-only">
 				{isCreate ? "Add model" : "Edit model"}
 			</SheetTitle>
@@ -319,7 +434,7 @@ const ModelSheetForm = ({
 				title={isCreate ? "Add model" : "Edit model"}
 				description={
 					isCreate
-						? "Set what you charge before the model goes on your price sheet."
+						? "Set what you charge, and add the provider account that serves it."
 						: "Change what this model costs, how it is served, and where it points."
 				}
 			/>
@@ -518,25 +633,47 @@ const ModelSheetForm = ({
 					</div>
 				</SheetSection>
 
-				<SheetSection title="Instances" withSeparator={false}>
-					{isCreate ? (
-						<p className="text-subtle text-xs leading-4">
-							Save the model first, then add the provider accounts that serve
-							it.
-						</p>
-					) : (
+				{isCreate ? (
+					<SheetSection title="Instance" withSeparator={false}>
+						<div className="flex flex-col gap-3">
+							<p className="text-subtle text-xs leading-4">
+								{target.provider_name
+									? `One account with ${target.provider_name}. The provider model and base URL are filled in from the catalog -- paste your key and you are serving.`
+									: "One provider account and key. Add the base URL of the endpoint you are calling, then paste your key."}
+							</p>
+							<DeploymentForm
+								values={instance}
+								setValues={setInstance}
+								requireKey={true}
+								currentExtraKeys={[]}
+								onSubmit={() => undefined}
+								isSaving={isSaving}
+								hideActions
+							/>
+							<button
+								type="button"
+								className="w-fit text-subtle text-xs underline-offset-2 hover:text-foreground hover:underline"
+								onClick={() => handleCreate({ withInstance: false })}
+							>
+								Add the model without an instance
+							</button>
+						</div>
+					</SheetSection>
+				) : (
+					<SheetSection title="Instances" withSeparator={false}>
 						<DeploymentsList
 							deployments={saved?.deployments ?? []}
+							defaults={editDefaults}
 							onCreate={async (values: DeploymentCreateValues) => {
 								await createDeployment({
-									modelId: savedModelId as string,
+									modelId: target.model.model_id,
 									...values,
 								});
 								toast.success("Instance added");
 							}}
 							onUpdate={async (deploymentId, values) => {
 								await updateDeployment({
-									modelId: savedModelId as string,
+									modelId: target.model.model_id,
 									deploymentId,
 									...values,
 								});
@@ -544,7 +681,7 @@ const ModelSheetForm = ({
 							}}
 							onRemove={async (deploymentId) => {
 								await removeDeployment({
-									modelId: savedModelId as string,
+									modelId: target.model.model_id,
 									deploymentId,
 								});
 								toast.success("Instance removed");
@@ -555,8 +692,8 @@ const ModelSheetForm = ({
 								isRemovingDeployment
 							}
 						/>
-					)}
-				</SheetSection>
+					</SheetSection>
+				)}
 			</div>
 
 			<SheetFooter>
@@ -565,15 +702,26 @@ const ModelSheetForm = ({
 					singleShortcut="escape"
 					onClick={onClose}
 				>
-					{isCreate ? "Cancel" : "Close"}
+					Cancel
 				</ShortcutButton>
-				<ShortcutButton
-					metaShortcut="enter"
-					onClick={handleSave}
-					isLoading={isUpserting}
-				>
-					{isCreate ? "Save model" : "Save changes"}
-				</ShortcutButton>
+				{isCreate ? (
+					<ShortcutButton
+						metaShortcut="enter"
+						onClick={() => handleCreate({ withInstance: true })}
+						isLoading={isSaving}
+						disabled={instanceProblem !== null}
+					>
+						Add model
+					</ShortcutButton>
+				) : (
+					<ShortcutButton
+						metaShortcut="enter"
+						onClick={handleSaveChanges}
+						isLoading={isUpserting}
+					>
+						Save changes
+					</ShortcutButton>
+				)}
 			</SheetFooter>
 		</>
 	);
@@ -597,7 +745,7 @@ export const ModelSheet = ({
 			<SheetContent className="flex flex-col overflow-hidden md:max-w-2xl">
 				{open && target && (
 					<ModelSheetForm
-						key={target.model_id}
+						key={target.kind === "edit" ? target.model.model_id : "create"}
 						target={target}
 						availableModels={availableModels}
 						onClose={() => onOpenChange(false)}

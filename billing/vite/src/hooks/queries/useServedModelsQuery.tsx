@@ -24,6 +24,9 @@ export interface ServedModelDeployment {
 	/** LiteLLM's `order` — lower orders are tried first. */
 	order: number | null;
 	organization: string | null;
+	/** Input modalities beyond text: "image", "audio", "pdf", "video".
+	 *  Null = not configured, [] = text only. */
+	modalities: string[] | null;
 	extra_params_keys: string[];
 	created_at?: number | null;
 }
@@ -63,6 +66,21 @@ export interface AvailableModel {
 	provider_input_cost_usd_1m: number | null;
 	provider_output_cost_usd_1m: number | null;
 	source: "provider" | "custom" | "served";
+	/** The catalog provider's display name, e.g. "302.AI". */
+	provider_name: string | null;
+	/**
+	 * What an instance of this model is called on the gateway.
+	 *
+	 * The catalog id and the gateway id are different vocabularies —
+	 * `302ai/claude-fable-5` is served as `openai/claude-fable-5` — so this
+	 * is what the instance form starts from.
+	 */
+	provider_model: string | null;
+	/** The provider's base URL; null when the SDK already knows it. */
+	api_base: string | null;
+	/** Input modalities beyond text, pre-filled from the catalog. Null when
+	 *  the catalog does not say, which is not the same as "text only". */
+	modalities: string[] | null;
 }
 
 export interface ServedModelUpdate {
@@ -96,6 +114,8 @@ export interface DeploymentUpdate {
 	weight?: number | null;
 	order?: number | null;
 	organization?: string | null;
+	/** Absent keeps the stored modalities; [] declares text only. */
+	modalities?: string[] | null;
 	extra_params?: Record<string, unknown>;
 }
 

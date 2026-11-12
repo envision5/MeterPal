@@ -1,0 +1,1 @@
+ALTER TABLE "served_model_deployments" ADD COLUMN "modalities" jsonb;

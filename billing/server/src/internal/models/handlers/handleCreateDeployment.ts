@@ -37,6 +37,8 @@ export const handleCreateDeployment = createRoute({
 		order: z.number().int().nonnegative().nullish(),
 		organization: z.string().min(1).nullish(),
 		extra_params: z.record(z.string(), z.unknown()).nullish(),
+		/** Input modalities. Absent = not configured, [] = text only. */
+		modalities: z.array(z.string()).nullish(),
 	}),
 	handler: async (c) => {
 		const ctx = c.get("ctx");
@@ -88,6 +90,7 @@ export const handleCreateDeployment = createRoute({
 				weight: deployment.weight,
 				order: deployment.routing_order,
 				organization: deployment.organization,
+				modalities: deployment.modalities,
 				extra_params_keys: deployment.extra_params_keys,
 			},
 		});

@@ -537,6 +537,51 @@ video, plus one cosmetic one found in the same frame:
   possessive followed by a separator, which parses as though the balance belonged
   to the customer. It is the console's: "'s wallet".
 
+**Adding a model is now one step, and the catalog fills it in (2026-11-12)** —
+the model sheet asked for a save before it would show the instance form, and the
+instance form asked the merchant to translate a catalog id into a gateway id by
+hand. Both were wrong: a model is not servable until it has an instance, so the
+two belong to one action, and the gateway's id for a model is a fact about the
+provider, not a question for the merchant.
+
+- **The 500 was a saved-but-unroutable deployment.** `/model/new` writes the row
+  to the gateway's database and *then* reloads the router; when the router cannot
+  build the deployment it drops it and the endpoint answers 500 with "the model
+  id(s) [...] are not live in this pod's router". The cause was one layer down:
+  `LLM Provider NOT provided. You passed model=claude/claude-fable-5`. LiteLLM
+  routes on its own provider vocabulary, and neither `claude` nor the catalog's
+  `302ai` is in it. That is now refused before anything is pushed — a 400 that
+  names the id that would have worked, resolved from the catalog for the model
+  being served ("Did you mean openai/claude-fable-5?"). The feed is only read on
+  the failure path, so a models.dev outage cannot slow down or block a save.
+- **The instance form opens filled in.** `GET /v1/served_models/available` now
+  carries `provider_model`, `api_base`, `provider_name` and `modalities` for every
+  catalog entry, derived from the provider's AI SDK package (`302ai` speaks
+  `@ai-sdk/openai-compatible`, so it is served as `openai/<model>` with its own
+  base URL). Adding a model from the list is picking it and pasting a key.
+- **Model and first instance are one save.** "Save the model first, then add the
+  provider accounts that serve it" is gone. The sheet creates both, and if the
+  gateway refuses the instance it takes the row back out — a model left behind by
+  a failed attempt looks served, sits in the allow-list, and routes to a
+  deployment that does not exist. `Add the model without an instance` remains, for
+  a gateway that already serves it.
+- **Input modalities are a first-class field.** Advanced settings now declares
+  whether the model is multimodal and, if so, which of images / audio / PDFs /
+  video it takes, pre-filled from the catalog. They are pushed as `model_info`
+  capability flags — `supports_vision`, `supports_audio_input`,
+  `supports_pdf_input` — which is where the router reads them when deciding
+  whether a request may carry an image. Null ("not configured") and `[]`
+  ("text only") are kept distinct, because LiteLLM reads a missing
+  `supports_vision` as "might work" and only refuses on an explicit false.
+  `supports_video_input` is recorded for the merchant; this gateway has no video
+  gate, so nothing enforces it.
+- **RPM and TPM say what they are.** Both are ceilings the gateway enforces
+  before it calls the provider, and the form now explains that an instance at its
+  ceiling sends traffic to another instance instead of letting the provider
+  reject the call. The API base field notes that it wants the root URL: every SDK
+  appends its own path, so a pasted `.../v1/messages` is normalized to the host
+  rather than becoming `.../v1/messages/v1/messages`.
+
 ## 0.1.0-baseline — 2026-09-30 (pre-hackathon)
 
 The starting point, predating the hackathon submission window. This baseline
