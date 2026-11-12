@@ -2,6 +2,7 @@ import {
 	IconBolt,
 	IconBrandPaypal,
 	IconChartBar,
+	IconCircleCheck,
 	IconCoins,
 	IconGift,
 	IconLock,
@@ -27,6 +28,7 @@ import Offers from "./components/Offers";
 import PaywallCard, { type PaywallData } from "./components/PaywallCard";
 import SalesChat from "./components/SalesChat";
 import SpendAlerts from "./components/SpendAlerts";
+import { paywallResolved } from "./paywallState";
 import { useOffers } from "./useOffers";
 // The official white wordmark already carries the gauge mark and the name --
 // the header is just this one asset, with no companion text. Imported straight
@@ -54,6 +56,15 @@ type Message = {
 	};
 	/** The 402 moment, when admission control refused the call. */
 	paywall?: PaywallData;
+	/** The prompt this refusal belongs to. Kept so the thread can offer to
+	 *  send it again the moment the wallet can afford it, without depending
+	 *  on the message above it still being the one that was refused. */
+	refusedPrompt?: string;
+	/** Set when the wallet came to cover the call this message was refused
+	 *  for. The refusal card is dropped at that point: it states a balance
+	 *  and a requirement that are no longer true, and its "reopen PayPal"
+	 *  link points at an order that has already been captured. */
+	resolved?: { balance: number };
 	/** Still arriving — drives the caret and the "thinking" state. */
 	streaming?: boolean;
 	/** The live meter while it arrives: tokens seen and credits accrued. */
@@ -565,6 +576,23 @@ function Dashboard({
 		(p) => p.status === "pending_customer",
 	).length;
 
+	/**
+	 * Money landed somewhere: say so, and read the wallet now.
+	 *
+	 * The notice alone was the whole of the old behaviour, and it left the
+	 * 402 in the thread untouched — the banner said "10 credits added" while
+	 * the card above it still said "balance 0.00". Every recharge path goes
+	 * through here so the wallet (and therefore the card) settles at once
+	 * instead of waiting for the next 2.5s poll.
+	 */
+	const noteRecharge = useCallback(
+		(msg: string) => {
+			setPaymentNotice(msg);
+			void reloadWallet();
+		},
+		[reloadWallet],
+	);
+
 	useEffect(() => {
 		fetch("/api/config")
 			.then((r) => r.json())
@@ -594,6 +622,11 @@ function Dashboard({
 				setPaymentNotice(
 					`✅ Payment captured — ${data.credits ?? 0} credits added to your wallet.`,
 				);
+				// Read the new balance now rather than at the next poll: the
+				// thread retires the refusal it was holding the moment the
+				// wallet can cover it, and a 2.5s lag between the banner and
+				// the card going away reads as "the card is stuck".
+				void reloadWallet();
 				window.dispatchEvent(new Event("agent-checkout-changed"));
 				window.dispatchEvent(new Event("offers-changed"));
 			})
@@ -601,7 +634,7 @@ function Dashboard({
 		return () => {
 			alive = false;
 		};
-	}, [customerId]);
+	}, [customerId, reloadWallet]);
 
 	// The models this merchant serves, with their prices.  This is the
 	// merchant's own price sheet -- the app shows exactly what it may call
@@ -665,6 +698,7 @@ function Dashboard({
 			clearApprovalWindow();
 			setAwaitingApproval(false);
 			setPaymentNotice(paymentNoticeFor(payload));
+			void reloadWallet();
 			window.dispatchEvent(new Event("agent-checkout-changed"));
 			window.dispatchEvent(new Event("offers-changed"));
 		};
@@ -720,6 +754,7 @@ function Dashboard({
 				setPaymentNotice(
 					`✅ Payment captured — ${data.credits ?? 0} credits added to your wallet. Send your message again.`,
 				);
+				void reloadWallet();
 				window.dispatchEvent(new Event("agent-checkout-changed"));
 				window.dispatchEvent(new Event("offers-changed"));
 				// The money is settled; do not leave the buyer staring at a
@@ -735,22 +770,74 @@ function Dashboard({
 			alive = false;
 			window.clearInterval(timer);
 		};
-	}, [awaitingApproval, customerId]);
+	}, [awaitingApproval, customerId, reloadWallet]);
 
 	// The price sheet entry for the model on screen — what the live meter
 	// prices against.
 	const model = models.find((m) => m.model_id === modelId);
 
-	async function send(prompt: string) {
+	/**
+	 * Retire a refusal the moment the wallet can cover it.
+	 *
+	 * Latched, not derived: once the balance has covered a call, the card
+	 * stays gone even if a later call spends the wallet back down. A refusal
+	 * that reappeared because the next message drained the balance would be
+	 * re-stating an old moment as if it were happening now.
+	 *
+	 * The balance is the trigger rather than the payment notice, because the
+	 * notice only knows about PayPal. Money reaches this wallet four other
+	 * ways — an accepted offer, a plan switch, a dashboard grant, the top-up
+	 * modal — and a 402 that outlives the money that answered it is the same
+	 * bug in all five cases.
+	 */
+	useEffect(() => {
+		const balance = wallet?.balance;
+		if (typeof balance !== "number") return;
+		setMessages((list) => {
+			let changed = false;
+			const next = list.map((msg) => {
+				if (!msg.paywall || msg.resolved) return msg;
+				if (!paywallResolved(msg.paywall, balance)) return msg;
+				changed = true;
+				return { ...msg, paywall: undefined, resolved: { balance } };
+			});
+			// Same array back when nothing moved: setState bails out and the
+			// 2.5s wallet poll does not re-render the thread for nothing.
+			return changed ? next : list;
+		});
+	}, [wallet?.balance]);
+
+	async function send(prompt: string, resume?: { messageId: string }) {
 		if (!prompt.trim() || busy) return;
-		const assistantId = crypto.randomUUID();
+		const assistantId = resume?.messageId ?? crypto.randomUUID();
+		// A retry reuses the refusal's own slot instead of appending a second
+		// copy of the same prompt: the note that said "paid — send it again"
+		// becomes the answer to the message it was talking about.
+		const appended: Message[] = resume
+			? [
+					{
+						role: "assistant",
+						content: "",
+						id: assistantId,
+						streaming: true,
+					},
+				]
+			: [
+					{ role: "user", content: prompt },
+					// The reply's slot exists before the first token does, so text
+					// can be written into it as it arrives instead of the thread
+					// holding a "thinking" placeholder that swaps for a wall of
+					// text at the end.
+					{
+						role: "assistant",
+						content: "",
+						id: assistantId,
+						streaming: true,
+					},
+				];
 		setMessages((m) => [
-			...m,
-			{ role: "user", content: prompt },
-			// The reply's slot exists before the first token does, so text can
-			// be written into it as it arrives instead of the thread holding a
-			// "thinking" placeholder that swaps for a wall of text at the end.
-			{ role: "assistant", content: "", id: assistantId, streaming: true },
+			...(resume ? m.filter((msg) => msg.id !== assistantId) : m),
+			...appended,
 		]);
 		setInput("");
 		setBusy(true);
@@ -821,6 +908,9 @@ function Dashboard({
 									? "Your agent stood down."
 									: "Call refused.",
 					paywall: data,
+					// Kept with the refusal so the thread can send this exact
+					// prompt again once the wallet can afford it.
+					refusedPrompt: prompt,
 				});
 				return;
 			}
@@ -1044,7 +1134,7 @@ function Dashboard({
 
 			{/* collapses to nothing when no banners are showing */}
 			<div className="empty:hidden flex shrink-0 flex-col gap-3 pt-4">
-				<AgentCheckoutNotice customerId={customerId} onNotice={setPaymentNotice} />
+				<AgentCheckoutNotice customerId={customerId} onNotice={noteRecharge} />
 				{paymentNotice && (
 					<div
 						role="status"
@@ -1143,94 +1233,139 @@ function Dashboard({
 												<p className="text-[11px] font-semibold text-muted-foreground">
 													Assistant
 												</p>
-												<div
-													className="whitespace-pre-wrap text-sm"
-													data-testid={
-														m.streaming ? "chat-streaming-msg" : undefined
-													}
-												>
-													{m.content}
-													{m.streaming && (
-														<span
-															className="ml-0.5 inline-block h-4 w-1.5 translate-y-0.5 animate-pulse rounded-sm bg-primary align-middle"
-															aria-hidden
+												{/* The refusal, once the wallet covers it. The
+												    card is gone — its balance, its requirement
+												    and its "reopen PayPal" link are all out of
+												    date — and what is left is the one true
+												    statement plus the way forward. Sending
+												    again reuses this slot, so the note becomes
+												    the answer rather than sitting above a
+												    duplicate of the same prompt. */}
+												{m.resolved ? (
+													<div
+														className="flex flex-wrap items-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs"
+														data-testid="paywall-resolved"
+													>
+														<IconCircleCheck
+															size={15}
+															className="shrink-0 text-emerald-300"
+														/>
+														<span className="text-emerald-200">
+															Topped up — the wallet is at{" "}
+															<span className="tabular-nums">
+																{m.resolved.balance.toFixed(2)}
+															</span>{" "}
+															credits, so this call can run now.
+														</span>
+														{m.refusedPrompt && m.id && (
+															<button
+																type="button"
+																onClick={() =>
+																	send(m.refusedPrompt as string, {
+																		messageId: m.id as string,
+																	})
+																}
+																disabled={busy}
+																className="ml-auto inline-flex items-center gap-1 rounded-lg bg-emerald-400 px-2.5 py-1 font-semibold text-emerald-950 transition hover:bg-emerald-300 disabled:opacity-40"
+																data-testid="paywall-retry"
+															>
+																<IconSend size={12} />
+																Send it again
+															</button>
+														)}
+													</div>
+												) : (
+													<>
+													<div
+														className="whitespace-pre-wrap text-sm"
+														data-testid={
+															m.streaming ? "chat-streaming-msg" : undefined
+														}
+													>
+														{m.content}
+														{m.streaming && (
+															<span
+																className="ml-0.5 inline-block h-4 w-1.5 translate-y-0.5 animate-pulse rounded-sm bg-primary align-middle"
+																aria-hidden
+															/>
+														)}
+													</div>
+													{m.streaming && !m.content && (
+														<p className="text-xs text-muted-foreground">
+															waiting for the first token…
+														</p>
+													)}
+													{/* The live meter: what this reply has accrued so
+													    far, at the merchant's own rates. It is
+													    replaced by the exact charge below the moment
+													    the call settles. */}
+													{m.streaming && m.live && (
+														<div
+															className="flex flex-wrap items-center gap-1.5"
+															data-testid="chat-live-meter"
+														>
+															<span className="mp-chip !text-sky-200">
+																<span className="size-1.5 animate-pulse rounded-full bg-sky-400" />
+																metering · {m.live.tokens.toLocaleString()} tokens
+															</span>
+															<span className="mp-chip !text-amber-200 tabular-nums">
+																<IconCoins size={11} className="text-amber-300" />≈
+																{m.live.credits.toFixed(4)} credits
+															</span>
+														</div>
+													)}
+													{m.charged !== undefined && (
+														<div
+															className="flex flex-wrap items-center gap-1.5"
+															data-testid="chat-charge"
+														>
+															<span className="mp-chip !text-amber-200">
+																<IconCoins size={11} className="text-amber-300" />
+																charged {m.charged} credits
+															</span>
+															{m.tokens && (
+																<span
+																	className="mp-chip"
+																	title="Prompt and completion tokens as the provider counted them — the same counts the charge was computed from."
+																>
+																	{m.tokens.input.toLocaleString()} in /{" "}
+																	{m.tokens.output.toLocaleString()} out
+																</span>
+															)}
+															{/* Cached input and reasoning are inside the in/out
+															    totals above, and priced through their own pool
+															    (cache reads at the input rate, reasoning at the
+															    output rate).  Naming them keeps the charge
+															    checkable against the rate sheet instead of
+															    looking like it was rounded up. */}
+															{((m.tokens?.cacheRead ?? 0) > 0 ||
+																(m.tokens?.reasoning ?? 0) > 0) && (
+																<span
+																	className="mp-chip"
+																	title="Already included in the in/out totals: cached input is billed at the input rate, reasoning at the output rate."
+																>
+																	{[
+																		(m.tokens?.cacheRead ?? 0) > 0 &&
+																			`${(m.tokens?.cacheRead ?? 0).toLocaleString()} cached`,
+																		(m.tokens?.reasoning ?? 0) > 0 &&
+																			`${(m.tokens?.reasoning ?? 0).toLocaleString()} reasoning`,
+																	]
+																		.filter(Boolean)
+																		.join(" · ")}
+																</span>
+															)}
+														</div>
+													)}
+													{m.paywall && (
+														<PaywallCard
+															data={m.paywall}
+															buyer={paypalBuyer}
+															onTopUp={() =>
+																window.dispatchEvent(new Event("open-topup-modal"))
+															}
 														/>
 													)}
-												</div>
-												{m.streaming && !m.content && (
-													<p className="text-xs text-muted-foreground">
-														waiting for the first token…
-													</p>
-												)}
-												{/* The live meter: what this reply has accrued so
-												    far, at the merchant's own rates. It is
-												    replaced by the exact charge below the moment
-												    the call settles. */}
-												{m.streaming && m.live && (
-													<div
-														className="flex flex-wrap items-center gap-1.5"
-														data-testid="chat-live-meter"
-													>
-														<span className="mp-chip !text-sky-200">
-															<span className="size-1.5 animate-pulse rounded-full bg-sky-400" />
-															metering · {m.live.tokens.toLocaleString()} tokens
-														</span>
-														<span className="mp-chip !text-amber-200 tabular-nums">
-															<IconCoins size={11} className="text-amber-300" />≈
-															{m.live.credits.toFixed(4)} credits
-														</span>
-													</div>
-												)}
-												{m.charged !== undefined && (
-													<div
-														className="flex flex-wrap items-center gap-1.5"
-														data-testid="chat-charge"
-													>
-														<span className="mp-chip !text-amber-200">
-															<IconCoins size={11} className="text-amber-300" />
-															charged {m.charged} credits
-														</span>
-														{m.tokens && (
-															<span
-																className="mp-chip"
-																title="Prompt and completion tokens as the provider counted them — the same counts the charge was computed from."
-															>
-																{m.tokens.input.toLocaleString()} in /{" "}
-																{m.tokens.output.toLocaleString()} out
-															</span>
-														)}
-														{/* Cached input and reasoning are inside the in/out
-														    totals above, and priced through their own pool
-														    (cache reads at the input rate, reasoning at the
-														    output rate).  Naming them keeps the charge
-														    checkable against the rate sheet instead of
-														    looking like it was rounded up. */}
-														{((m.tokens?.cacheRead ?? 0) > 0 ||
-															(m.tokens?.reasoning ?? 0) > 0) && (
-															<span
-																className="mp-chip"
-																title="Already included in the in/out totals: cached input is billed at the input rate, reasoning at the output rate."
-															>
-																{[
-																	(m.tokens?.cacheRead ?? 0) > 0 &&
-																		`${(m.tokens?.cacheRead ?? 0).toLocaleString()} cached`,
-																	(m.tokens?.reasoning ?? 0) > 0 &&
-																		`${(m.tokens?.reasoning ?? 0).toLocaleString()} reasoning`,
-																]
-																	.filter(Boolean)
-																	.join(" · ")}
-															</span>
-														)}
-													</div>
-												)}
-												{m.paywall && (
-													<PaywallCard
-														data={m.paywall}
-														buyer={paypalBuyer}
-														onTopUp={() =>
-															window.dispatchEvent(new Event("open-topup-modal"))
-														}
-													/>
+													</>
 												)}
 											</div>
 										</div>
@@ -1409,7 +1544,7 @@ function Dashboard({
 											return { captured: false };
 										}}
 										onCaptured={(credits) => {
-											setPaymentNotice(
+											noteRecharge(
 												credits
 													? `✅ Payment captured — ${credits} credits added to your wallet.`
 													: "✅ Payment captured — credits added to your wallet.",
@@ -1446,7 +1581,7 @@ function Dashboard({
 									customerId={customerId}
 									proposals={proposals}
 									reload={reloadOffers}
-									onNotice={setPaymentNotice}
+									onNotice={noteRecharge}
 								/>
 							</section>
 						)}

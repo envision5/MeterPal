@@ -600,6 +600,37 @@ provider, not a question for the merchant.
   says so and offers the same route inline, since that is the moment a merchant
   learns their model is not in the catalog.
 
+**A 402 does not outlive the money that answered it (2026-11-12)** — the demo's
+paywall card is a snapshot of one arithmetic moment, and nothing ever took it
+out of the thread. A viewer could pay in PayPal, watch the banner say "10 credits
+added", watch the wallet climb to 10.00, and still be looking at a red card that
+said `balance 0.00` with a button offering to reopen an order PayPal had already
+captured.
+
+- **The card retires when the wallet covers the call.** The test is the card's
+  own arithmetic — `balance >= requiredCredits`, or any increase when the
+  refusal never stated a number — so the same rule answers all five ways money
+  reaches a wallet: the agent's checkout, the top-up modal, an accepted offer, a
+  plan switch, a dashboard grant. Hooking the payment notice instead would have
+  fixed one of them.
+- **Latched, not derived.** Once a refusal has been answered it stays answered,
+  even if the next message spends the wallet back down. A card that reappeared
+  because the balance fell again would be restating an old moment as if it were
+  now. The rule lives in `demo-app/src/paywallState.ts` with unit tests, because
+  "is this refusal still true" is arithmetic, not presentation.
+- **What replaces it is true, and offers the next step.** The red card becomes a
+  single line — "Topped up — the wallet is at 10.00 credits, so this call can run
+  now" — with `Send it again`, which re-sends the refused prompt *into that same
+  message slot*. The note becomes the answer instead of sitting above a second
+  copy of the same question.
+- **The wallet is read on the recharge rather than at the next poll.** Every
+  notice path (`/api/paypal/poll` on mount, the approval popup's broadcast, the
+  capture poll, the in-page top-up, the checkout banner, an accepted offer) now
+  reloads the balance through one `noteRecharge`, so the card goes away when the
+  money lands instead of up to 2.5s later. A partial top-up does not retire it:
+  0.50 does not buy a 0.66 call, and pretending otherwise would send the
+  customer into a second refusal with nothing to explain it.
+
 
 ## 0.1.0-baseline — 2026-09-30 (pre-hackathon)
 

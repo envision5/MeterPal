@@ -10,7 +10,7 @@
 		"build": "vite build",
 		"dev": "bun run build && bun server.ts",
     "start": "bun server.ts",
-    "test": "bun test agent/"
+    "test": "bun test agent/ src/"
   },
   "dependencies": {
     "@meterpal/sdk": "workspace:*",
