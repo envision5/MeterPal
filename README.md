@@ -353,7 +353,8 @@ PayPal webhook receiver.
 | `POST` | `/webhooks/paypal/{org_id}/{webhook_id}` | Signature-verified, idempotent PayPal webhook |
 | `GET` | `/ready` | Readiness probe |
 
-A machine-readable OpenAPI definition and a hosted API reference are generated with
+The machine-readable definition is [`openapi.yaml`](openapi.yaml) (OpenAPI 3.1,
+18 operations). The hosted API reference and SDKs are generated from it with
 APIMatic — see [Tools used](#tools-used).
 
 ---

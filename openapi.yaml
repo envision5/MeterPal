@@ -1,0 +1,779 @@
+openapi: 3.1.0
+info:
+  title: MeterPal API
+  version: 1.0.0
+  summary: Usage-based billing for AI inference, settled through PayPal.
+  description: |
+    MeterPal meters every AI call per end user — tokens to cost to credits —
+    debits a prepaid wallet with atomic admission control, and moves every
+    dollar through PayPal.
+
+    The defining behaviour: a request a customer cannot afford is refused with
+    **HTTP 402** *before* the model provider is ever called. The 402 body
+    carries the current balance and the credits the call required, so a client
+    can open a PayPal checkout and resume.
+
+    ## The path of one call
+
+    1. `POST /check` — pre-authorize. A hold is placed against the wallet.
+    2. Call your model provider.
+    3. `POST /track_tokens` — meter the tokens at the org's pinned rates and
+       settle the hold.
+
+    If step 1 returns 402, no provider call is made and no money moves.
+
+    ## Authentication
+
+    All merchant endpoints require a secret API key as a bearer token. The key
+    is server-side only and must never reach a browser. Virtual keys issued by
+    `POST /key/generate` are separate: they carry the tenant and are what a
+    metered gateway presents.
+  contact:
+    name: MeterPal
+    url: https://github.com/envision5/MeterPal
+  license:
+    name: GNU Affero General Public License v3.0
+    identifier: AGPL-3.0-only
+servers:
+  - url: http://localhost:8080/v1
+    description: Local development stack (docker compose)
+  - url: https://api.meterpal.dev/v1
+    description: Hosted
+security:
+  - secretKey: []
+tags:
+  - name: Metering
+    description: Admission control, usage tracking and settlement
+  - name: Balances
+    description: Wallet balance operations
+  - name: Catalog
+    description: Plans, credit packs and the per-org price sheet
+  - name: Customers
+    description: End users being billed
+  - name: Keys
+    description: Virtual key provisioning for the metered gateway
+  - name: PayPal
+    description: Merchant PayPal credentials, capture and webhooks
+  - name: Inference
+    description: OpenAI-compatible metered inference
+paths:
+  /check:
+    post:
+      tags: [Metering]
+      summary: Pre-authorize a call
+      description: |
+        Places a hold against the customer's wallet for the expected cost of a
+        call. Returns 402 when the wallet cannot cover it — the caller must not
+        proceed to the provider in that case.
+      operationId: check
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckRequest'
+      responses:
+        '200':
+          description: Authorized. The hold is placed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckResponse'
+        '402':
+          $ref: '#/components/responses/InsufficientBalance'
+  /track_tokens:
+    post:
+      tags: [Metering]
+      summary: Meter usage and settle
+      description: |
+        Records token usage for a completed call, prices it at the org's pinned
+        rates, and settles the hold placed by `/check`. Idempotent on
+        `request_id`.
+      operationId: trackTokens
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrackTokensRequest'
+      responses:
+        '200':
+          description: Usage recorded and settled.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackTokensResponse'
+        '402':
+          $ref: '#/components/responses/InsufficientBalance'
+  /chat/completions:
+    post:
+      tags: [Inference]
+      summary: OpenAI-compatible metered inference
+      description: |
+        Returns the OpenAI chat completion shape verbatim, plus a `meterpal`
+        block reporting what the call cost. Metering, admission control and
+        settlement happen inside the request.
+      operationId: chatCompletions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatCompletionRequest'
+      responses:
+        '200':
+          description: Completion, with cost attribution.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatCompletionResponse'
+        '402':
+          $ref: '#/components/responses/InsufficientBalance'
+  /attach:
+    post:
+      tags: [Customers]
+      summary: Attach a payment method
+      description: Attaches a PayPal billing agreement or payment method to a customer.
+      operationId: attach
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [customer_id, provider]
+              properties:
+                customer_id:
+                  type: string
+                provider:
+                  type: string
+                  enum: [paypal]
+                billing_agreement_id:
+                  type: string
+                  description: Vaulted `BA-` agreement id from an approved subscription.
+      responses:
+        '200':
+          description: Attached.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+  /balances/update:
+    post:
+      tags: [Balances]
+      summary: Adjust a balance
+      description: Grants or refunds credits. Idempotent on `idempotency_key`.
+      operationId: updateBalance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [customer_id, amount]
+              properties:
+                customer_id:
+                  type: string
+                amount:
+                  type: number
+                  description: Positive to grant, negative to debit.
+                description:
+                  type: string
+                idempotency_key:
+                  type: string
+      responses:
+        '200':
+          description: Updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Balance'
+  /balances/finalize:
+    post:
+      tags: [Balances]
+      summary: Finalize a metering window
+      description: Closes an open window so holds are settled rather than released.
+      operationId: finalizeBalances
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [customer_id]
+              properties:
+                customer_id:
+                  type: string
+      responses:
+        '200':
+          description: Finalized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Balance'
+  /catalog:
+    get:
+      tags: [Catalog]
+      summary: List plans, credit packs and features
+      operationId: getCatalog
+      responses:
+        '200':
+          description: The org's catalog.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  plans:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Plan'
+                  credit_packs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CreditPack'
+  /customers/{customerId}:
+    get:
+      tags: [Customers]
+      summary: Get a customer
+      operationId: getCustomer
+      parameters:
+        - $ref: '#/components/parameters/CustomerId'
+      responses:
+        '200':
+          description: The customer, with balance and usage.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /features/ai/model_pricing:
+    get:
+      tags: [Catalog]
+      summary: Get the org's pinned price sheet
+      description: |
+        The per-org price sheet. What a merchant charges is the merchant's
+        decision, so these rates are pinned at `/check` and used verbatim at
+        settle — a provider price change cannot move them.
+      operationId: getModelPricing
+      responses:
+        '200':
+          description: The price sheet.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ModelPrice'
+  /key/generate:
+    post:
+      tags: [Keys]
+      summary: Provision a virtual key
+      description: Issues a virtual key that carries the tenant, for the metered gateway.
+      operationId: generateKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [customer_id]
+              properties:
+                customer_id:
+                  type: string
+                alias:
+                  type: string
+      responses:
+        '200':
+          description: The new key. The secret is returned once.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VirtualKey'
+  /key/update:
+    post:
+      tags: [Keys]
+      summary: Re-mint a virtual key
+      operationId: updateKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [key_id]
+              properties:
+                key_id:
+                  type: string
+                alias:
+                  type: string
+      responses:
+        '200':
+          description: Updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VirtualKey'
+  /key/block:
+    post:
+      tags: [Keys]
+      summary: Revoke a virtual key
+      operationId: blockKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [key_id]
+              properties:
+                key_id:
+                  type: string
+      responses:
+        '200':
+          description: Revoked.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VirtualKey'
+  /keys:
+    get:
+      tags: [Keys]
+      summary: List virtual keys
+      operationId: listKeys
+      responses:
+        '200':
+          description: Virtual keys for the org.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VirtualKey'
+  /organization/paypal:
+    post:
+      tags: [PayPal]
+      summary: Store the org's PayPal credentials
+      description: |
+        Each merchant's PayPal account is their own. Credentials are verified
+        before being stored, and the client secret is encrypted at rest.
+      operationId: setOrganizationPaypal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [client_id, client_secret, environment]
+              properties:
+                client_id:
+                  type: string
+                client_secret:
+                  type: string
+                  writeOnly: true
+                environment:
+                  type: string
+                  enum: [sandbox, live]
+                webhook_id:
+                  type: string
+      responses:
+        '200':
+          description: Stored and verified.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaypalIntegration'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /org/paypal:
+    delete:
+      tags: [PayPal]
+      summary: Detach the org's PayPal account
+      operationId: deleteOrganizationPaypal
+      responses:
+        '204':
+          description: Detached.
+  /paypal/capture:
+    post:
+      tags: [PayPal]
+      summary: Capture an approved order
+      description: Captures a buyer-approved PayPal order and credits the wallet. Idempotent on the capture id.
+      operationId: capturePaypalOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [order_id, customer_id]
+              properties:
+                order_id:
+                  type: string
+                customer_id:
+                  type: string
+      responses:
+        '200':
+          description: Captured and credited.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Balance'
+  /paypal/poll:
+    get:
+      tags: [PayPal]
+      summary: Poll an approval
+      description: |
+        Resolves an approved order without a webhook. Used when PayPal cannot
+        reach a localhost callback during development.
+      operationId: pollPaypalApproval
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Current approval state.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [pending, approved, captured, failed]
+                  balance:
+                    $ref: '#/components/schemas/Balance'
+  /webhooks/paypal/{orgId}/{webhookId}:
+    post:
+      tags: [PayPal]
+      summary: PayPal webhook receiver
+      description: |
+        Signature-verified against **that org's** webhook id, and idempotent on
+        the capture/sale/invoice id. Grants entitlement the moment money lands.
+
+        This endpoint is called by PayPal, not by your application. It is
+        unauthenticated by API key and authenticated by the PayPal signature.
+      operationId: paypalWebhook
+      security: []
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: webhookId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: paypal-transmission-id
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: paypal-transmission-sig
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: paypal-cert-url
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: paypal-auth-algo
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: A PayPal event. MeterPal handles capture, sale and invoice events.
+      responses:
+        '200':
+          description: Accepted. Duplicates are acknowledged without double-crediting.
+        '400':
+          description: Signature verification failed.
+components:
+  securitySchemes:
+    secretKey:
+      type: http
+      scheme: bearer
+      description: |
+        Merchant secret key (`am_sk_...`). Server-side only — never ship it to
+        a browser. Virtual keys issued by `/key/generate` are a separate
+        credential presented to the metered gateway.
+  parameters:
+    CustomerId:
+      name: customerId
+      in: path
+      required: true
+      schema:
+        type: string
+  responses:
+    InsufficientBalance:
+      description: |
+        The wallet cannot cover the call. **The provider is never touched.**
+        The body carries what the client needs to open a PayPal checkout.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/InsufficientBalanceError'
+    NotFound:
+      description: Not found.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    BadRequest:
+      description: Invalid request.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  schemas:
+    CheckRequest:
+      type: object
+      required: [customer_id, feature_id]
+      properties:
+        customer_id:
+          type: string
+        feature_id:
+          type: string
+          description: The metered feature, e.g. `ai_tokens`.
+        required_balance:
+          type: number
+          description: Credits the call is expected to need. Used for the hold.
+        model:
+          type: string
+          description: Model id, used to resolve the pinned rate.
+    CheckResponse:
+      type: object
+      properties:
+        allowed:
+          type: boolean
+        balance:
+          type: number
+        required_credits:
+          type: number
+        reservation_id:
+          type: string
+          description: Pass to `/track_tokens` to settle this hold.
+        rates:
+          $ref: '#/components/schemas/ModelPrice'
+    TrackTokensRequest:
+      type: object
+      required: [customer_id, feature_id, request_id]
+      properties:
+        customer_id:
+          type: string
+        feature_id:
+          type: string
+        request_id:
+          type: string
+          description: Idempotency key — the gateway call id.
+        reservation_id:
+          type: string
+          description: The hold returned by `/check`.
+        input_tokens:
+          type: integer
+        output_tokens:
+          type: integer
+        model:
+          type: string
+    TrackTokensResponse:
+      type: object
+      properties:
+        credits_charged:
+          type: number
+        balance:
+          type: number
+        base_cost:
+          type: number
+        markup:
+          type: number
+    ChatCompletionRequest:
+      type: object
+      required: [model, messages, user]
+      properties:
+        model:
+          type: string
+        messages:
+          type: array
+          items:
+            type: object
+            required: [role, content]
+            properties:
+              role:
+                type: string
+                enum: [system, user, assistant]
+              content:
+                type: string
+        user:
+          type: string
+          description: The end user being billed.
+        stream:
+          type: boolean
+          default: false
+    ChatCompletionResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        object:
+          type: string
+          const: chat.completion
+        choices:
+          type: array
+          items:
+            type: object
+            properties:
+              index:
+                type: integer
+              message:
+                type: object
+                properties:
+                  role:
+                    type: string
+                  content:
+                    type: string
+              finish_reason:
+                type: string
+        usage:
+          type: object
+          properties:
+            prompt_tokens:
+              type: integer
+            completion_tokens:
+              type: integer
+            total_tokens:
+              type: integer
+        meterpal:
+          type: object
+          description: MeterPal's cost attribution for this call.
+          properties:
+            credits_charged:
+              type: number
+            balance:
+              type: number
+            model:
+              type: string
+    InsufficientBalanceError:
+      type: object
+      required: [error, balance, required_credits]
+      properties:
+        error:
+          type: string
+          const: insufficient_balance
+        balance:
+          type: number
+          description: Credits the customer currently has.
+        required_credits:
+          type: number
+          description: Credits this call needed.
+        top_up_url:
+          type: string
+          format: uri
+          description: A PayPal checkout URL for a credit pack, when one can be minted.
+    Balance:
+      type: object
+      properties:
+        customer_id:
+          type: string
+        balance:
+          type: number
+        currency:
+          type: string
+          default: USD
+    Customer:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+          format: email
+        balance:
+          $ref: '#/components/schemas/Balance'
+        plan_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    ModelPrice:
+      type: object
+      description: A pinned per-model rate on the org's price sheet.
+      properties:
+        model:
+          type: string
+        input_per_million:
+          type: number
+          description: Credits per million input tokens.
+        output_per_million:
+          type: number
+          description: Credits per million output tokens.
+    Plan:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        price:
+          type: number
+        interval:
+          type: string
+          enum: [month, year]
+        allowance_credits:
+          type: number
+    CreditPack:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        price:
+          type: number
+        credits:
+          type: number
+    VirtualKey:
+      type: object
+      properties:
+        key_id:
+          type: string
+        key:
+          type: string
+          description: The secret. Returned only on creation and re-mint.
+        alias:
+          type: string
+        customer_id:
+          type: string
+        blocked:
+          type: boolean
+    PaypalIntegration:
+      type: object
+      properties:
+        environment:
+          type: string
+          enum: [sandbox, live]
+        client_id:
+          type: string
+        webhook_registered:
+          type: boolean
+        webhook_id:
+          type: string
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
