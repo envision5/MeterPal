@@ -14,7 +14,7 @@
 
 import { Button, Input, Skeleton, Switch } from "@autumn/ui";
 import { TrashIcon } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
 	type AvailableModel,
@@ -42,6 +42,11 @@ import {
 	markupSourceLabel,
 	withMarkup,
 } from "./modelPricing";
+
+/** How many catalog rows arrive at a time. Big enough that a search result
+ *  set usually lands in one page, small enough that the first paint of a
+ *  filtered list is instant. */
+const CATALOG_PAGE_SIZE = 40;
 
 /** One labelled number in a model's stat strip. */
 const Stat = ({
@@ -241,9 +246,56 @@ export const ModelsPage = () => {
 		const served = new Set(models.map((m) => m.model_id));
 		return availableModels
 			.filter((m) => !served.has(m.model_id))
-			.filter((m) => !term || m.model_id.toLowerCase().includes(term))
-			.slice(0, 40);
+			.filter(
+				(m) =>
+					!term ||
+					// The id is what the price is filed under, but it is not
+					// what the merchant reads: they search "claude sonnet 5",
+					// not "claude-sonnet-5-20250929".
+					m.model_id.toLowerCase().includes(term) ||
+					(m.display_name ?? "").toLowerCase().includes(term),
+			);
 	}, [availableModels, models, search]);
+
+	/**
+	 * The catalog is 8,668 models, and it grows with every provider that
+	 * joins it. Rendering all of them at once is a slow first paint for a
+	 * list nobody scrolls to the end of, and rendering the first forty with
+	 * no way forward is a list that simply stops. So: a page at a time, with
+	 * the next page arriving when the sentinel below the list comes into
+	 * view, and a button for the cases where it does not (no observer, a
+	 * keyboard user, a very tall window).
+	 */
+	const [visibleCount, setVisibleCount] = useState(CATALOG_PAGE_SIZE);
+	const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+	const shown = suggestions.slice(0, visibleCount);
+	const hasMore = suggestions.length > shown.length;
+
+	// A new search is a new list; keeping the old depth would drop the
+	// merchant into the middle of results they have not seen.
+	useEffect(() => {
+		setVisibleCount(CATALOG_PAGE_SIZE);
+	}, [search]);
+
+	const loadMore = useCallback(() => {
+		setVisibleCount((count) => count + CATALOG_PAGE_SIZE);
+	}, []);
+
+	useEffect(() => {
+		const node = sentinelRef.current;
+		if (!node || !hasMore) return;
+		const observer = new IntersectionObserver(
+			(entries) => {
+				if (entries[0]?.isIntersecting) loadMore();
+			},
+			// Start the next page while the last one is still on screen, so
+			// scrolling does not stutter at every boundary.
+			{ rootMargin: "240px" },
+		);
+		observer.observe(node);
+		return () => observer.disconnect();
+	}, [hasMore, loadMore]);
 
 	const handleToggle = async (model: ServedModel, enabled: boolean) => {
 		try {
@@ -377,15 +429,28 @@ export const ModelsPage = () => {
 						onChange={(e) => setSearch(e.target.value)}
 						placeholder="Search models, e.g. gpt-4o"
 					/>
+					{/* Above the list, not below it: forty rows of a 8,662-model
+					 *  catalog looks like the whole catalog until something says
+					 *  otherwise, and the something is not at the far end of
+					 *  what you have not scrolled through yet. */}
+					{!isLoadingAvailable && suggestions.length > 0 && (
+						<p className="px-1 text-subtle text-xs">
+							{hasMore
+								? `Showing ${shown.length.toLocaleString()} of ${suggestions.length.toLocaleString()} models`
+								: `${suggestions.length.toLocaleString()} ${suggestions.length === 1 ? "model" : "models"}`}
+						</p>
+					)}
 					{isLoadingAvailable ? (
 						<Skeleton className="h-[120px] w-full rounded-lg" />
 					) : suggestions.length === 0 ? (
 						<p className="px-1 py-2 text-subtle text-xs">
-							No more models match that search.
+							{search.trim()
+								? `No models match "${search.trim()}".`
+								: "Every model in the catalog is already on your price sheet."}
 						</p>
 					) : (
 						<div className={SETTINGS_LIST_CLASS}>
-							{suggestions.map((candidate) => (
+							{shown.map((candidate) => (
 								<div
 									key={candidate.model_id}
 									className="flex items-center gap-3 px-4 py-2.5"
@@ -428,6 +493,20 @@ export const ModelsPage = () => {
 							))}
 						</div>
 					)}
+
+					{suggestions.length > 0 && (
+						<div className="flex items-center justify-center px-1">
+							{hasMore && (
+								<Button variant="secondary" size="sm" onClick={loadMore}>
+									Show more
+								</Button>
+							)}
+						</div>
+					)}
+
+					{/* Zero height on purpose: it is a scroll position, not a
+					 *  visible thing. */}
+					<div ref={sentinelRef} aria-hidden className="h-px w-full" />
 
 					<div>
 						<Button
