@@ -590,6 +590,15 @@ provider, not a question for the merchant.
   models") because the far end of what you have not scrolled through is the worst
   place to put that news. Search resets the depth, and now matches the display
   name as well as the id — nobody types `claude-sonnet-5-20250929`.
+- **Paging buried the other way in.** "Add a custom model" sat below the list, so
+  the merchant who scrolled to the end of a page or two could see it and nobody
+  else could — the more the catalog paged, the less reachable it became. It is
+  now the section's header action (`+ Add custom model`, next to "Add a model"),
+  the way "Add package" works in the agent settings, and the list is labelled
+  `From the catalog` so the two routes read as two routes rather than one action
+  offered twice. The header copy names both. A search that finds nothing now
+  says so and offers the same route inline, since that is the moment a merchant
+  learns their model is not in the catalog.
 
 
 ## 0.1.0-baseline — 2026-09-30 (pre-hackathon)

@@ -13,7 +13,7 @@
 // can be left half-configured.
 
 import { Button, Input, Skeleton, Switch } from "@autumn/ui";
-import { TrashIcon } from "lucide-react";
+import { PlusIcon, TrashIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -235,6 +235,27 @@ export const ModelsPage = () => {
 	const [sheetTarget, setSheetTarget] = useState<ModelSheetTarget | null>(null);
 	const [deleting, setDeleting] = useState<ServedModel | null>(null);
 
+	/**
+	 * The other way in: a model the catalog has never heard of.
+	 *
+	 * Every field the catalog would have filled in is blank here, which is
+	 * the honest starting point -- a self-hosted endpoint has no provider
+	 * entry to copy a base URL or a gateway name from.
+	 */
+	const openCustomModel = useCallback(() => {
+		setSheetTarget({
+			kind: "create",
+			model_id: "",
+			display_name: null,
+			provider_input: null,
+			provider_output: null,
+			provider_name: null,
+			provider_model: null,
+			api_base: null,
+			modalities: null,
+		});
+	}, []);
+
 	const providerCosts = useMemo(() => {
 		const map = new Map<string, AvailableModel>();
 		for (const model of availableModels) map.set(model.model_id, model);
@@ -421,32 +442,55 @@ export const ModelsPage = () => {
 
 			<SettingsGroup
 				title="Add a model"
-				description="Every model MeterPal can serve, with the provider's current price. Pick one to set what you charge and connect the provider account behind it -- the provider model, base URL and inputs are filled in from the catalog, so the key is usually all that is left."
+				description="Pick from the catalog, and the provider model, base URL and inputs are filled in for you — usually only the key is left. Add a custom model for anything the catalog does not list: a self-hosted endpoint, an OpenAI-compatible provider."
+				trailing={
+					<Button variant="secondary" size="sm" onClick={openCustomModel}>
+						<PlusIcon className="size-3.5" />
+						Add custom model
+					</Button>
+				}
 			>
 				<div className="flex flex-col gap-3">
+					{/* The label names the list, so the header's button reads as
+					 *  the other route rather than as another way to add from
+					 *  here. The count rides along on the same line: forty rows
+					 *  of an 8,662-model catalog looks like the whole catalog
+					 *  until something says otherwise. */}
+					<div className="flex items-center justify-between gap-3 px-1">
+						<span className="text-subtle text-xs">From the catalog</span>
+						{!isLoadingAvailable && suggestions.length > 0 && (
+							<span className="text-subtle text-xs">
+								{hasMore
+									? `Showing ${shown.length.toLocaleString()} of ${suggestions.length.toLocaleString()} models`
+									: `${suggestions.length.toLocaleString()} ${suggestions.length === 1 ? "model" : "models"}`}
+							</span>
+						)}
+					</div>
 					<Input
 						value={search}
 						onChange={(e) => setSearch(e.target.value)}
 						placeholder="Search models, e.g. gpt-4o"
 					/>
-					{/* Above the list, not below it: forty rows of a 8,662-model
-					 *  catalog looks like the whole catalog until something says
-					 *  otherwise, and the something is not at the far end of
-					 *  what you have not scrolled through yet. */}
-					{!isLoadingAvailable && suggestions.length > 0 && (
-						<p className="px-1 text-subtle text-xs">
-							{hasMore
-								? `Showing ${shown.length.toLocaleString()} of ${suggestions.length.toLocaleString()} models`
-								: `${suggestions.length.toLocaleString()} ${suggestions.length === 1 ? "model" : "models"}`}
-						</p>
-					)}
 					{isLoadingAvailable ? (
 						<Skeleton className="h-[120px] w-full rounded-lg" />
 					) : suggestions.length === 0 ? (
 						<p className="px-1 py-2 text-subtle text-xs">
-							{search.trim()
-								? `No models match "${search.trim()}".`
-								: "Every model in the catalog is already on your price sheet."}
+							{search.trim() ? (
+								<>
+									No models match "{search.trim()}". If it exists but is
+									not in the catalog,{" "}
+									<button
+										type="button"
+										className="underline underline-offset-2 hover:text-foreground"
+										onClick={openCustomModel}
+									>
+										add it as a custom model
+									</button>
+									.
+								</>
+							) : (
+								"Every model in the catalog is already on your price sheet."
+							)}
 						</p>
 					) : (
 						<div className={SETTINGS_LIST_CLASS}>
@@ -505,38 +549,10 @@ export const ModelsPage = () => {
 					)}
 
 					{/* Zero height on purpose: it is a scroll position, not a
-					 *  visible thing. */}
+					 *  visible thing. It has to be the last child -- the
+					 *  observer fires when it comes into view, and anything
+					 *  below it would delay that by its own height. */}
 					<div ref={sentinelRef} aria-hidden className="h-px w-full" />
-
-					<div>
-						<Button
-							variant="secondary"
-							size="sm"
-							onClick={() =>
-								setSheetTarget({
-									kind: "create",
-									model_id: "",
-									display_name: null,
-									provider_input: null,
-									provider_output: null,
-									provider_name: null,
-									provider_model: null,
-									api_base: null,
-									modalities: null,
-								})
-							}
-						>
-							Add a custom model
-						</Button>
-						<p className="mt-2 text-subtle text-xs leading-4">
-							Anything the catalog does not know: a self-hosted endpoint, an
-							OpenAI-compatible provider. Use a{" "}
-							<code className="font-mono text-foreground text-tiny">
-								provider/name
-							</code>{" "}
-							id.
-						</p>
-					</div>
 				</div>
 			</SettingsGroup>
 
