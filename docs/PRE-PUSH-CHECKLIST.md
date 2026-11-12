@@ -131,8 +131,7 @@ then the judge-facing detail. Sections now present:
 - [x] **Hackathon submission** — event link, demo video slot, how judges run it free
 - [x] **License section** — the AGPL + commercial + vendored split
 - [x] Documentation index, repository layout, guarantees
-- [ ] ⚠️ **Fill the demo video YouTube URL** — currently a `TODO` comment in the
-      "Hackathon submission" section. Required by the rules; must not ship as-is.
+- [x] **Demo video URL added** — https://youtu.be/lvoW53DDbz4 (public)
 - [ ] Add the APIMatic portal URL once generated (referenced from "API surface"
       and "Tools used")
 

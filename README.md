@@ -479,7 +479,7 @@ The full record, with file-level detail, is in [`CHANGELOG.md`](CHANGELOG.md).
 
 - **Event:** [PayPal AI Hackathon 2026](https://paypalaihackathon.devpost.com/)
 - **Category:** open — built to the "meaningfully use both PayPal and AI" requirement
-- **Demo video:** <!-- TODO: replace with the public YouTube URL before submitting -->
+- **Demo video:** [Watch on YouTube](https://youtu.be/lvoW53DDbz4) — *MeterPal: Serve AI And Bill For Usage Per Token, Natively on PayPal*
 - **Live demo:** runs locally, free, with no credentials — see [Quickstart](#quickstart--5-minutes-from-clone-to-a-metered-ai-call)
 
 Judges can run the entire loop with zero external accounts: `docker compose up -d`,
