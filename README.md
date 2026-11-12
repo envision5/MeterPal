@@ -492,7 +492,8 @@ PayPal sandbox keys are only needed for the checkout beat.
 ## License
 
 MeterPal-authored code is licensed under the **GNU Affero General Public License,
-Version 3** — see [`LICENSE`](LICENSE).
+Version 3** — see [`LICENSE`](LICENSE). A path-by-path map of which code carries
+which license is in [`LICENSE-SCOPE.md`](LICENSE-SCOPE.md).
 
 Commercial licensing is available for teams that need to use MeterPal in
 closed-source products or hosted services without the AGPL's source-disclosure

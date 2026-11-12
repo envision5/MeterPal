@@ -40,4 +40,5 @@ This product includes software developed as part of the following projects:
    described in items 1 and 2, which remain under their own licenses.
 
    Commercial licensing of MeterPal-authored code is available separately.
-   See `LICENSE-COMMERCIAL.md`.
+   See `LICENSE-COMMERCIAL.md`. A path-by-path map of which code carries which
+   license is in `LICENSE-SCOPE.md`.
