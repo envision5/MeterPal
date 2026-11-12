@@ -581,6 +581,16 @@ provider, not a question for the merchant.
   reject the call. The API base field notes that it wants the root URL: every SDK
   appends its own path, so a pasted `.../v1/messages` is normalized to the host
   rather than becoming `.../v1/messages/v1/messages`.
+- **The catalog pages instead of stopping at forty.** The list rendered
+  `filter(...).slice(0, 40)` of 8,662 models with no pagination, no "show more"
+  and no indication that anything had been withheld — a search for "claude" ended
+  at forty rows with 120 matches behind them. It now loads forty at a time as a
+  sentinel below the list comes into view, with a "Show more" button for the
+  paths where it does not, and a count **above** the list ("Showing 40 of 8,662
+  models") because the far end of what you have not scrolled through is the worst
+  place to put that news. Search resets the depth, and now matches the display
+  name as well as the id — nobody types `claude-sonnet-5-20250929`.
+
 
 ## 0.1.0-baseline — 2026-09-30 (pre-hackathon)
 
