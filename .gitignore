@@ -95,3 +95,6 @@ ui-*.png
 # Windows shell redirect artifact ("... > nul" in a POSIX-style shell)
 demo-app/nul
 nul
+
+# local tooling (portable gh CLI etc.)
+/.tools/
